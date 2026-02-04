@@ -75,7 +75,7 @@ button,select,input{touch-action:manipulation}
   background:rgba(255,255,255,.06);
   font-size:18px;
   color:#fff;
-  display:inline-block; /* ← これ固定 */
+  display:inline-block; /* ← 指定どおり固定 */
   line-height:1;
 }
 .delivery,.copy{
@@ -110,12 +110,18 @@ textarea{
 /* ===== list ===== */
 .list{padding:12px}
 .card{
+  display:block;
   background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
   border:1px solid rgba(255,255,255,.10);
   border-radius:16px;
   padding:12px;
   margin-bottom:10px;
 }
+.card.hidden{display:none !important}
+
+/* 0のときは中身だけ畳む（ヘッダは残す） */
+.card.autoCollapsed .sexrow{display:none}
+.card.autoCollapsed{padding-bottom:10px}
 
 .head{
   display:flex;
@@ -165,7 +171,6 @@ select.type{
   border-color:rgba(255,134,200,.45);
   background:rgba(255,134,200,.14);
 }
-
 /* ♀無効時：見た目もグレーアウト */
 .sex.f.disabled{
   border-color:rgba(255,255,255,.16);
@@ -182,7 +187,7 @@ select.type{
 }
 .btn{
   width:44px;
-  height:30px; /* 低め */
+  height:30px;
   border-radius:12px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.10);
@@ -199,12 +204,6 @@ select.type{
   font-size:16px;
   letter-spacing:.2px;
   color:rgba(255,255,255,.92);
-}
-.sym{
-  width:16px;
-  text-align:center;
-  font-weight:900;
-  opacity:.95;
 }
 </style>
 </head>
@@ -263,10 +262,7 @@ const copyBtn=document.getElementById("copy");
 
 function yen(n){return n.toLocaleString("ja-JP")+"円"}
 
-/* ひらがな検索用の超簡易正規化
-   - カタカナ→ひらがな
-   - ひらがな/カタカナ/英数はそのまま
-*/
+/* ひらがな検索 */
 function toHira(str){
   return (str||"").replace(/[\u30a1-\u30f6]/g, ch =>
     String.fromCharCode(ch.charCodeAt(0) - 0x60)
@@ -276,11 +272,7 @@ function norm(str){
   return toHira((str||"").trim()).toLowerCase();
 }
 
-/* dinos.txt 1行のパース
-   - 形式: 恐竜名|タイプ
-   - 先頭の "・" は許可
-   - タイプ省略/不正は受精卵へフォールバック
-*/
+/* dinos.txt 1行のパース: 恐竜名|タイプ */
 function parseLine(line){
   line = (line||"").trim();
   if(!line) return null;
@@ -289,47 +281,67 @@ function parseLine(line){
   line = line.replace(/^・/,"").trim();
   if(!line) return null;
 
-  const parts = line.split("|");
-  const name = (parts[0]||"").trim();
-  const rawType = (parts[1]||"").trim();
+  const [rawName, rawType] = line.split("|");
+  const name = (rawName||"").trim();
+  const t = (rawType||"").trim();
   if(!name) return null;
 
-  const defType = (rawType && (rawType in prices)) ? rawType : "受精卵";
+  const defType = (t && (t in prices)) ? t : "受精卵";
   return {name, defType};
 }
 
+/* ===== UI helpers ===== */
+function applyFemaleDisabled(s){
+  const card = s.card;
+  const fbox = card.querySelector(".sex.f");
+  const fc = card.querySelector(".fc");
+
+  if(!sexTypes.has(s.type)){
+    s.f = 0;
+    fc.textContent = "0";
+    fbox.classList.add("disabled");
+  }else{
+    fbox.classList.remove("disabled");
+  }
+}
+
+function updateCardAutoCollapse(s){
+  const qty = s.m + s.f;
+  // 入力なしは自動で畳む（ヘッダだけ）
+  s.card.classList.toggle("autoCollapsed", qty === 0);
+}
+
+/* ===== rebuild ===== */
 function rebuild(){
   let lines=[],sum=0,idx=1;
 
   for (const name of dinos){
     const s=state.get(name);
     const qty=s.m+s.f;
+    updateCardAutoCollapse(s);
+
     if(qty===0) continue;
 
     const price=(prices[s.type]||0)*qty;
     sum+=price;
 
-    // "(指定)" は出力しない
     const t=s.type.replace("(指定)","");
     let line="";
 
     if(pairTypes.has(s.type)){
       if(s.m===s.f){
-        // 受精卵(指定)/胚(指定)/幼体/成体/クローン で ♂=♀ のとき
         line = `${name}${t}ペア${s.m>1 ? "×"+s.m : ""} = ${price.toLocaleString("ja-JP")}円`;
       }else{
-        // 片方0なら表示しない
-        let p=[];
+        const p=[];
         if(s.m>0) p.push(`♂×${s.m}`);
         if(s.f>0) p.push(`♀×${s.f}`);
+        // 片方0は表示しない（pが片方だけになる）
         line = `${name}${t}${p.length ? " " + p.join(" ") : ""} = ${price.toLocaleString("ja-JP")}円`;
       }
     }else{
-      // 性別不要タイプは合算
       line = `${name}${t}×${qty} = ${price.toLocaleString("ja-JP")}円`;
     }
 
-    // ナンバリング + 「. のあと半角スペース」 + 他の余計なスペースは入れない
     lines.push(`${idx}. ${line}`);
     idx++;
   }
@@ -350,23 +362,28 @@ ${lines.join("\n")}
 また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
 }
 
-/* ===== search（iOS IME対応 + 確実に反映） ===== */
+/* ===== search（完全に作り直し） ===== */
 function applySearch(){
   const q = norm(qEl.value);
+
   for (const name of dinos){
     const s = state.get(name);
-    if (!s || !s.card) continue;
+    // cardに持ってる正規化キー（ひらがな化済み）で検索
+    const hit = !q || s.key.includes(q);
+    s.card.classList.toggle("hidden", !hit);
 
-    // ひらがな検索OK（名前側を正規化したkeyで検索）
-    const hit = !q || (s.key && s.key.includes(q));
-
-    // iOS Safariで display:"" が戻らない/当たらないケースを避ける
-    s.card.style.display = hit ? "block" : "none";
+    // 検索中はヒットしたカードだけ畳まない（入力しやすい）
+    if(q && hit){
+      s.card.classList.remove("autoCollapsed");
+    }else{
+      updateCardAutoCollapse(s);
+    }
   }
 }
-// input だけだとiOS+IMEで取りこぼすことがあるので全部つける
+
+// iOS IME取りこぼし対策：全部つける
 ["input","change","keyup","compositionend"].forEach(ev=>{
-  qEl.addEventListener(ev, applySearch);
+  qEl.addEventListener(ev, ()=>requestAnimationFrame(applySearch));
 });
 qClear.addEventListener("click", ()=>{
   qEl.value="";
@@ -380,25 +397,70 @@ copyBtn.addEventListener("click", async ()=>{
 
   try{
     await navigator.clipboard.writeText(t);
-    const prev = copyBtn.textContent;
-    copyBtn.textContent="コピー済み✓";
-    copyBtn.style.opacity="0.8";
-    setTimeout(()=>{
-      copyBtn.textContent=prev;
-      copyBtn.style.opacity="";
-    }, 1200);
   }catch(e){
-    // iOSでclipboardが失敗する環境向けフォールバック
     outEl.focus();
     outEl.select();
     document.execCommand("copy");
-    const prev = copyBtn.textContent;
-    copyBtn.textContent="コピー済み✓";
-    setTimeout(()=>copyBtn.textContent=prev,1200);
   }
+  const prev = copyBtn.textContent;
+  copyBtn.textContent="コピー済み✓";
+  copyBtn.style.opacity="0.8";
+  setTimeout(()=>{
+    copyBtn.textContent=prev;
+    copyBtn.style.opacity="";
+  }, 1200);
 });
 
-/* load */
+/* ===== 重要：イベント委譲（stateズレを根絶） ===== */
+listEl.addEventListener("click", (e)=>{
+  const btn = e.target.closest(".btn");
+  if(!btn) return;
+
+  const card = e.target.closest(".card");
+  if(!card) return;
+
+  const name = card.dataset.name;
+  const s = state.get(name);
+  if(!s) return;
+
+  const sex = btn.dataset.sex;   // "m" or "f"
+  const d = Number(btn.dataset.d);
+
+  if(sex==="f" && !sexTypes.has(s.type)) return;
+
+  s[sex] = Math.max(0, s[sex] + d);
+
+  // 表示更新
+  card.querySelector(".mc").textContent = String(s.m);
+  card.querySelector(".fc").textContent = String(s.f);
+
+  rebuild();
+});
+
+listEl.addEventListener("change", (e)=>{
+  const sel = e.target.closest("select.type");
+  if(!sel) return;
+
+  const card = e.target.closest(".card");
+  if(!card) return;
+
+  const name = card.dataset.name;
+  const s = state.get(name);
+  if(!s) return;
+
+  s.type = sel.value;
+
+  card.querySelector(".unit").textContent = `単価${prices[s.type]}円`;
+  applyFemaleDisabled(s);
+
+  // 値表示（♀が0にされた場合も反映）
+  card.querySelector(".mc").textContent = String(s.m);
+  card.querySelector(".fc").textContent = String(s.f);
+
+  rebuild();
+});
+
+/* ===== load ===== */
 async function load(){
   const text = await fetch("dinos.txt?ts="+Date.now(), {cache:"no-store"}).then(r=>r.text());
 
@@ -409,13 +471,13 @@ async function load(){
       dinos.push(name);
 
       const s={type:defType,m:0,f:0};
-      // 検索キー（ひらがな化して持つ）
-      s.key = norm(name);
+      s.key = norm(name); // ひらがな化キー
       state.set(name,s);
 
       const card=document.createElement("div");
-      s.card=card;
-      card.className="card";
+      card.className="card autoCollapsed";
+      card.dataset.name = name;
+      s.card = card;
 
       card.innerHTML=`
         <div class="head">
@@ -431,7 +493,6 @@ async function load(){
         <div class="sexrow">
           <div class="sex m">
             <div class="stepper">
-              <div class="sym">♂</div>
               <button class="btn" data-sex="m" data-d="-1" type="button">−</button>
               <div class="val mc">0</div>
               <button class="btn" data-sex="m" data-d="1" type="button">＋</button>
@@ -440,7 +501,6 @@ async function load(){
 
           <div class="sex f">
             <div class="stepper">
-              <div class="sym">♀</div>
               <button class="btn" data-sex="f" data-d="-1" type="button">−</button>
               <div class="val fc">0</div>
               <button class="btn" data-sex="f" data-d="1" type="button">＋</button>
@@ -448,54 +508,23 @@ async function load(){
           </div>
         </div>
       `;
+
       listEl.appendChild(card);
 
-      const sel=card.querySelector(".type");
-      const unit=card.querySelector(".unit");
-      const mc=card.querySelector(".mc");
-      const fc=card.querySelector(".fc");
-      const fbox=card.querySelector(".sex.f");
+      // 初期値反映
+      const sel = card.querySelector("select.type");
+      sel.value = defType;
 
-      function applyFemaleDisabled(){
-        if(!sexTypes.has(s.type)){
-          s.f=0;
-          fc.textContent="0";
-          fbox.classList.add("disabled");
-        }else{
-          fbox.classList.remove("disabled");
-        }
-      }
+      s.type = defType;
+      card.querySelector(".unit").textContent = `単価${prices[s.type]}円`;
 
-      // 初期値（dinos.txt）を UI に反映
-      sel.value = s.type;
-      unit.textContent = `単価${prices[s.type]}円`;
-      applyFemaleDisabled();
-
-      sel.addEventListener("change", ()=>{
-        s.type=sel.value;
-        unit.textContent=`単価${prices[s.type]}円`;
-        applyFemaleDisabled();
-        rebuild();
-      });
-
-      card.querySelectorAll(".btn").forEach(b=>{
-        b.addEventListener("click", ()=>{
-          const sex=b.dataset.sex;
-          if(sex==="f" && !sexTypes.has(s.type)) return;
-
-          s[sex]=Math.max(0, s[sex] + Number(b.dataset.d));
-          mc.textContent=s.m;
-          fc.textContent=s.f;
-
-          rebuild();
-        });
-      });
+      applyFemaleDisabled(s);
+      updateCardAutoCollapse(s);
     });
 
   rebuild();
-  applySearch(); // 起動直後も検索状態を反映
+  applySearch();
 }
-
 load();
 </script>
 
