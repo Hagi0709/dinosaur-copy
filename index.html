@@ -4,28 +4,34 @@
 <meta charset="UTF-8">
 <title>恐竜販売コピー生成</title>
 <style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; padding: 20px; }
-  select, input, button { margin: 6px 0; padding: 10px; font-size: 16px; }
-  textarea { width: 100%; height: 240px; margin-top: 10px; font-size: 14px; }
-  .item { border-bottom: 1px solid #ddd; padding: 12px 0; margin-bottom: 10px; }
-  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .row > * { flex: 1 1 auto; }
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 16px; }
+button, input, select, textarea {
+  font-size: 16px;
+  margin: 6px 0;
+  padding: 8px;
+}
+.item {
+  border-bottom: 1px solid #ddd;
+  padding: 10px 0;
+}
+textarea {
+  width: 100%;
+  height: 220px;
+}
 </style>
 </head>
 <body>
 
-<h2>🦖 恐竜販売コピー生成</h2>
+<h3>🦖 恐竜販売コピー生成</h3>
 
 <div id="items"></div>
 
-<div class="row">
-  <button onclick="addItem()">＋恐竜を追加</button>
-  <button onclick="generate()">コピー文を生成</button>
-</div>
+<button onclick="addItem()">＋恐竜を追加</button>
+<button onclick="generate()">コピー文を生成</button>
 
-<textarea id="result" readonly placeholder="ここに生成結果が出ます"></textarea>
-
-<button onclick="copyText()">📋 コピーする</button>
+<textarea id="result" placeholder="ここに生成結果が出ます" readonly></textarea>
+<br>
+<button onclick="copyText()">コピーする</button>
 
 <script>
 const prices = {
@@ -41,25 +47,16 @@ function addItem() {
   const div = document.createElement("div");
   div.className = "item";
   div.innerHTML = `
-    <div class="row">
-      <label>恐竜名</label>
-      <input class="dinoName" type="text" placeholder="TEKギガノト">
-    </div>
-    <div class="row">
-      <label>状態</label>
-      <select class="dinoType">
-        <option>受精卵</option>
-        <option>受精卵(指定)</option>
-        <option>幼体</option>
-        <option>胚</option>
-        <option>胚(指定)</option>
-        <option>成体</option>
-      </select>
-    </div>
-    <div class="row">
-      <label>数量</label>
-      <input class="dinoQty" type="number" value="1" min="1" inputmode="numeric">
-    </div>
+    <input class="name" placeholder="TEKギガノト">
+    <select class="type">
+      <option>受精卵</option>
+      <option>受精卵(指定)</option>
+      <option>幼体</option>
+      <option>胚</option>
+      <option>胚(指定)</option>
+      <option>成体</option>
+    </select>
+    <input class="qty" type="number" value="1" min="1">
   `;
   document.getElementById("items").appendChild(div);
 }
@@ -68,28 +65,21 @@ function generate() {
   const items = document.querySelectorAll(".item");
   let total = 0;
   let lines = [];
-  let index = 1;
+  let i = 1;
 
-  for (const item of items) {
-    const name = item.querySelector(".dinoName").value.trim();
-    const type = item.querySelector(".dinoType").value;
-    const qty = Number(item.querySelector(".dinoQty").value);
-
-    if (!name) continue;                 // 空行は無視
-    if (!Number.isFinite(qty) || qty < 1) continue;
+  items.forEach(item => {
+    const name = item.querySelector(".name").value;
+    const type = item.querySelector(".type").value;
+    const qty = Number(item.querySelector(".qty").value);
+    if (!name) return;
 
     const price = prices[type] * qty;
     total += price;
-    lines.push(`${index}. ${name}${type}×${qty} = ${price}円`);
-    index++;
-  }
+    lines.push(`${i}. ${name}${type}×${qty} = ${price}円`);
+    i++;
+  });
 
-  if (lines.length === 0) {
-    alert("少なくとも1つ、恐竜名を入力してください。");
-    return;
-  }
-
-  const text =
+  document.getElementById("result").value =
 `この度はご検討いただきありがとうございます！
 ご希望内容は以下となります👇🏻
 
@@ -101,26 +91,17 @@ ${lines.join("\n")}
 ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻
 
 また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
-
-  document.getElementById("result").value = text;
 }
 
-async function copyText() {
+function copyText() {
   const t = document.getElementById("result");
-  const text = t.value;
+  if (!t.value) return alert("先に生成してください");
+  navigator.clipboard.writeText(t.value);
+  alert("コピーしました");
+}
 
-  if (!text) { alert("先に「コピー文を生成」を押してください。"); return; }
+addItem();
+</script>
 
-  // iOS Safariでの安定優先：Clipboard API → フォールバック
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
-    } else {
-      t.focus();
-      t.select();
-      t.setSelectionRange(0, t.value.length);
-      document.execCommand("copy");
-    }
-    alert("コピーしました！");
-  } catch (e) {
-    alert("コピーに失敗しました。Safariで開いているか確認してください
+</body>
+</html>
