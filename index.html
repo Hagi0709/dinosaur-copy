@@ -14,6 +14,8 @@
 <style>
 :root{
   --bg:#0b0f14;
+  --card:#141a22;
+  --stroke:rgba(255,255,255,.10);
   --txt:rgba(255,255,255,.92);
   --mut:rgba(255,255,255,.60);
   --male:#74d7ff;
@@ -47,6 +49,7 @@ button,select,input{touch-action:manipulation}
   align-items:center;
   flex-wrap:wrap;
 }
+
 .search{
   flex:1;
   display:flex;
@@ -66,23 +69,24 @@ button,select,input{touch-action:manipulation}
   font-size:14px;
 }
 .qClear{
-  width:26px;height:26px;
+  width:24px;height:24px;
   border-radius:999px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.06);
-  font-size:18px;
+  font-size:16px;
   color:#fff;
-  display:inline-block;
 }
+
 .delivery,.copy{
   height:36px;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
   color:#fff;
-  padding:0 12px;
+  padding:0 10px;
 }
 .copy{font-weight:900}
+
 .total{
   margin-left:auto;
   font-size:14px;
@@ -90,6 +94,7 @@ button,select,input{touch-action:manipulation}
   font-weight:900;
   white-space:nowrap;
 }
+
 textarea{
   width:100%;
   margin-top:8px;
@@ -105,6 +110,7 @@ textarea{
 
 /* ===== list ===== */
 .list{padding:12px}
+
 .card{
   background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
   border:1px solid rgba(255,255,255,.10);
@@ -116,78 +122,57 @@ textarea{
 .head{
   display:flex;
   justify-content:space-between;
-  align-items:flex-start;
+  align-items:center;
 }
 .name{font-weight:900}
-.right{
-  text-align:right;
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-}
-select.type{
+
+.badge{
+  font-size:12px;
   padding:6px 10px;
   border-radius:999px;
-  background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.14);
-  color:#fff;
-  font-size:12px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);
 }
 .unit{font-size:12px;color:var(--mut)}
 
-/* ===== compact steppers ===== */
+.controls{margin-top:8px}
+
 .sexrow{
   display:flex;
   gap:10px;
-  margin-top:10px;
+  margin-top:8px;
 }
 .sex{
   flex:1;
-  padding:8px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:6px 10px;
   border-radius:14px;
   border:2px solid rgba(255,255,255,.10);
 }
-.sex.m{
-  border-color:rgba(116,215,255,.45);
-  background:rgba(116,215,255,.14);
-}
-.sex.f{
-  border-color:rgba(255,134,200,.45);
-  background:rgba(255,134,200,.14);
+.sex.m{border-color:rgba(116,215,255,.45);background:rgba(116,215,255,.16)}
+.sex.f{border-color:rgba(255,134,200,.45);background:rgba(255,134,200,.16)}
+
+.sex.disabled{
+  opacity:.35;
+  pointer-events:none;
 }
 
-/* ♀無効時：見た目もグレーアウト */
-.sex.f.disabled{
-  border-color:rgba(255,255,255,.16);
-  background:rgba(255,255,255,.04);
-  filter:saturate(0);
-  opacity:.55;
-}
-.sex.f.disabled *{pointer-events:none}
-
-.stepper{
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
 .btn{
-  width:46px;
-  height:32px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.10);
+  width:36px;height:32px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.08);
   color:#fff;
   font-size:18px;
   font-weight:900;
-  line-height:1;
 }
-.val{
-  flex:1;
+
+.count{
+  min-width:20px;
   text-align:center;
   font-weight:900;
-  font-size:16px;
-  letter-spacing:.2px;
-  color:rgba(255,255,255,.92);
 }
 </style>
 </head>
@@ -216,24 +201,20 @@ select.type{
 <div class="list" id="list"></div>
 
 <script>
-/* ===== data ===== */
+/* ===== price / rules ===== */
 const prices={
   "受精卵":30,"受精卵(指定)":50,
-  "幼体":100,"胚":50,"胚(指定)":100,"成体":500,
+  "胚":50,"胚(指定)":100,
+  "幼体":100,"成体":500,
   "クローン":500,"クローン(指定)":300
 };
 
-// ♂♀区別するタイプ（成体相当 + クローンも含める）
 const sexTypes=new Set([
   "受精卵(指定)","胚(指定)","幼体","成体",
   "クローン","クローン(指定)"
 ]);
 
-// ペア表記の対象（成体相当 + クローンも含める）
-const pairTypes=new Set([
-  "受精卵(指定)","胚(指定)","幼体","成体",
-  "クローン","クローン(指定)"
-]);
+const pairTypes=new Set(sexTypes);
 
 const dinos=[], state=new Map();
 const listEl=document.getElementById("list");
@@ -246,28 +227,19 @@ const copyBtn=document.getElementById("copy");
 
 function yen(n){return n.toLocaleString("ja-JP")+"円"}
 
-/* dinos.txt 1行のパース
-   - 形式: 恐竜名|タイプ
-   - 先頭の "・" は許可
-   - タイプ省略/不正は受精卵へフォールバック
-*/
-function parseLine(line){
-  line = (line||"").trim();
-  if(!line) return null;
-  if(line.startsWith("#")) return null;
-
-  line = line.replace(/^・/,"").trim();
-  if(!line) return null;
-
-  const parts = line.split("|");
-  const name = (parts[0]||"").trim();
-  const rawType = (parts[1]||"").trim();
-  if(!name) return null;
-
-  const defType = (rawType && (rawType in prices)) ? rawType : "受精卵";
-  return {name, defType};
+/* ===== search normalize ===== */
+function toHiragana(s){
+  return (s||"").replace(/[\u30a1-\u30f6]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0x60));
+}
+function norm(s){
+  return toHiragana(
+    (s||"").normalize("NFKC").toLowerCase()
+      .replace(/[\s0-9０-９]/g,"")
+      .replace(/lv|レベル/g,"")
+  );
 }
 
+/* ===== rebuild ===== */
 function rebuild(){
   let lines=[],sum=0,idx=1;
 
@@ -279,7 +251,6 @@ function rebuild(){
     const price=(prices[s.type]||0)*qty;
     sum+=price;
 
-    // "(指定)" は出力しない
     const t=s.type.replace("(指定)","");
     let line="";
 
@@ -315,118 +286,103 @@ ${lines.join("\n")}
 また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
 }
 
-/* search */
-qEl.oninput=()=>{
-  const v=qEl.value;
+/* ===== search ===== */
+function applySearch(){
+  const q=norm(qEl.value);
   dinos.forEach(n=>{
-    state.get(n).card.style.display=n.includes(v)?"":"none";
+    const s=state.get(n);
+    s.card.style.display=s.key.includes(q)?"":"none";
   });
-};
-qClear.onclick=()=>{qEl.value="";qEl.oninput()};
+}
+qEl.addEventListener("input",applySearch);
+qEl.addEventListener("keyup",applySearch);
+qClear.onclick=()=>{qEl.value="";applySearch()};
 
-/* copy */
+/* ===== copy ===== */
 copyBtn.onclick=()=>{
-  const t=outEl.value.trim();
-  if(!t)return;
-  navigator.clipboard.writeText(t).then(()=>{
-    const prev = copyBtn.textContent;
-    copyBtn.textContent="コピー済み✓";
-    setTimeout(()=>copyBtn.textContent=prev,1200);
-  });
+  if(!outEl.value.trim())return;
+  navigator.clipboard.writeText(outEl.value);
 };
 
-/* load */
+/* ===== load dinos.txt ===== */
 async function load(){
-  const text=await fetch("dinos.txt?ts="+Date.now()).then(r=>r.text());
+  const t=await fetch("dinos.txt?ts="+Date.now()).then(r=>r.text());
+  t.split(/\r?\n/).map(s=>s.replace(/^・/,"").trim()).filter(Boolean).forEach(line=>{
+    const [name,rawType]=line.split("|").map(v=>(v||"").trim());
+    const defType=prices[rawType]!=null?rawType:"受精卵";
 
-  text.split(/\r?\n/)
-    .map(parseLine)
-    .filter(Boolean)
-    .forEach(({name, defType})=>{
-      dinos.push(name);
+    dinos.push(name);
+    const s={type:defType,m:0,f:0};
+    s.key=norm(name);
+    state.set(name,s);
 
-      const s={type:defType,m:0,f:0};
-      state.set(name,s);
-
-      const card=document.createElement("div");
-      s.card=card;
-      card.className="card";
-
-      card.innerHTML=`
-        <div class="head">
-          <div class="name">${name}</div>
-          <div class="right">
-            <select class="type">
-              ${Object.keys(prices).map(t=>`<option value="${t}">${t}</option>`).join("")}
-            </select>
-            <div class="unit">単価30円</div>
-          </div>
+    const card=document.createElement("div");
+    s.card=card;
+    card.className="card";
+    card.innerHTML=`
+      <div class="head">
+        <div class="name">${name}</div>
+        <div>
+          <select class="badge">
+            ${Object.keys(prices).map(t=>`<option>${t}</option>`).join("")}
+          </select>
+          <div class="unit"></div>
         </div>
+      </div>
 
+      <div class="controls">
         <div class="sexrow">
           <div class="sex m">
-            <div class="stepper">
-              <button class="btn" data-sex="m" data-d="-1">−</button>
-              <div class="val mc">0</div>
-              <button class="btn" data-sex="m" data-d="1">＋</button>
-            </div>
+            <button class="btn" data-sex="m" data-d="-1">−</button>
+            <div class="count mc">0</div>
+            <button class="btn" data-sex="m" data-d="1">＋</button>
           </div>
-
           <div class="sex f">
-            <div class="stepper">
-              <button class="btn" data-sex="f" data-d="-1">−</button>
-              <div class="val fc">0</div>
-              <button class="btn" data-sex="f" data-d="1">＋</button>
-            </div>
+            <button class="btn" data-sex="f" data-d="-1">−</button>
+            <div class="count fc">0</div>
+            <button class="btn" data-sex="f" data-d="1">＋</button>
           </div>
         </div>
-      `;
-      listEl.appendChild(card);
+      </div>`;
+    listEl.appendChild(card);
 
-      const sel=card.querySelector(".type");
-      const unit=card.querySelector(".unit");
-      const mc=card.querySelector(".mc");
-      const fc=card.querySelector(".fc");
-      const fbox=card.querySelector(".sex.f");
+    const badge=card.querySelector(".badge");
+    const unit=card.querySelector(".unit");
+    const mc=card.querySelector(".mc");
+    const fc=card.querySelector(".fc");
+    const fbox=card.querySelector(".sex.f");
 
-      function applyFemaleDisabled(){
-        if(!sexTypes.has(s.type)){
-          s.f=0;
-          fc.textContent="0";
-          fbox.classList.add("disabled");
-        }else{
-          fbox.classList.remove("disabled");
-        }
-      }
+    badge.value=s.type;
+    unit.textContent=`単価${prices[s.type]}円`;
 
-      // 初期値（dinos.txt）を UI に反映
-      sel.value = s.type;
-      unit.textContent = `単価${prices[s.type]}円`;
-      applyFemaleDisabled();
+    function applyFemale(){
+      if(!sexTypes.has(s.type)){
+        s.f=0;fc.textContent="0";fbox.classList.add("disabled");
+      }else fbox.classList.remove("disabled");
+    }
+    applyFemale();
 
-      sel.onchange=()=>{
-        s.type=sel.value;
-        unit.textContent=`単価${prices[s.type]}円`;
-        applyFemaleDisabled();
+    badge.onchange=()=>{
+      s.type=badge.value;
+      unit.textContent=`単価${prices[s.type]}円`;
+      applyFemale();
+      rebuild();
+    };
+
+    card.querySelectorAll(".btn").forEach(b=>{
+      b.onclick=()=>{
+        const sex=b.dataset.sex;
+        if(sex==="f"&&!sexTypes.has(s.type))return;
+        s[sex]=Math.max(0,s[sex]+Number(b.dataset.d));
+        mc.textContent=s.m;
+        fc.textContent=s.f;
         rebuild();
       };
-
-      card.querySelectorAll(".btn").forEach(b=>{
-        b.onclick=()=>{
-          const sex=b.dataset.sex;
-          if(sex==="f" && !sexTypes.has(s.type)) return;
-          s[sex]=Math.max(0, s[sex] + Number(b.dataset.d));
-          mc.textContent=s.m;
-          fc.textContent=s.f;
-          rebuild();
-        };
-      });
     });
-
+  });
   rebuild();
 }
 load();
 </script>
-
 </body>
 </html>
