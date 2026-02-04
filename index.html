@@ -26,7 +26,6 @@ body{
   padding-bottom:120px;
 }
 
-/* 上部固定 */
 .top{
   position:sticky;
   top:0;
@@ -47,14 +46,32 @@ body{
   flex:1;
   background:#1b2330;
   border-radius:14px;
-  padding:8px 12px;
+  padding:8px 10px;
+  display:flex;
+  align-items:center;
+  gap:6px;
 }
+
 .search input{
   width:100%;
   background:none;
   border:none;
   color:#fff;
   outline:none;
+  font-size:14px;
+}
+
+.qClear{
+  width:26px;
+  height:26px;
+  border-radius:999px;
+  border:1px solid var(--stroke);
+  background:rgba(255,255,255,.06);
+  color:#fff;
+  font-size:18px;
+  line-height:24px;
+  padding:0;
+  display:none;
 }
 
 .total{
@@ -91,7 +108,6 @@ textarea{
   padding:12px;
 }
 
-/* カード */
 .card{
   background:var(--card);
   border-radius:16px;
@@ -181,6 +197,7 @@ select{
   <div class="row">
     <div class="search">
       <input id="q" placeholder="検索（ひらがなOK）">
+      <button id="qClear" class="qClear" type="button">×</button>
     </div>
     <div class="total">合計 <b id="total">0円</b></div>
     <button class="copy" id="copy">コピー</button>
@@ -209,6 +226,10 @@ function hira(s){
           .toLowerCase().replace(/[^\w]/g,"");
 }
 
+function displayType(t){
+  return String(t).replace("(指定)","");
+}
+
 async function load(){
   const t=await fetch("dinos.txt").then(r=>r.text());
   t.split(/\r?\n/).forEach(d=>{
@@ -234,8 +255,8 @@ function render(){
       <div class="head">
         <div><b>${name}</b></div>
         <div>
-          <div class="badge">${s.type}</div>
-          <div class="price">単価 ${prices[s.type]}円</div>
+          <div class="badge">${displayType(s.type)}</div>
+          <div class="price">単価 ${prices[s.type].toLocaleString("ja-JP")}円</div>
         </div>
       </div>
       <div class="controls">
@@ -275,50 +296,63 @@ function render(){
   });
 }
 
-function format(name,s){
+function formatLine(name,s){
   const qty=s.m+s.f;
   if(qty===0)return "";
-  const price=prices[s.type]*qty;
-  if(pairTypes.has(s.type)&&s.m===s.f){
+
+  const unit=prices[s.type];
+  const price=unit*qty;
+  const t=displayType(s.type);
+
+  if(pairTypes.has(t)&&s.m===s.f&&s.m>0){
     const p=s.m;
-    return `${name} ${s.type}ペア${p>1?"×"+p:""} = ${price}円`;
+    return `${name}${t}ペア${p>1?"×"+p:""} = ${price.toLocaleString("ja-JP")}円`;
   }
-  return `${name} ${s.type}×${qty} = ${price}円`;
+  return `${name}${t}×${qty} = ${price.toLocaleString("ja-JP")}円`;
 }
 
 function update(){
-  let lines=[],sum=0;
+  let lines=[],sum=0,idx=1;
   dinos.forEach(d=>{
     const s=state.get(d);
     const q=s.m+s.f;
     if(q===0)return;
-    const p=prices[s.type]*q;
-    sum+=p;
-    lines.push(format(d,s));
+    sum+=prices[s.type]*q;
+    lines.push(`${idx}. ${formatLine(d,s)}`);
+    idx++;
   });
+
   document.getElementById("out").value=
 `この度はご検討いただきありがとうございます！
 
 ${lines.join("\n")}
 --------------------
-計：${sum}円
+計：${sum.toLocaleString("ja-JP")}円
 最短納品目安：即納可能`;
-  document.getElementById("total").textContent=sum+"円";
+
+  document.getElementById("total").textContent=sum.toLocaleString("ja-JP")+"円";
 }
 
-document.getElementById("q").oninput=e=>{
-  const v=hira(e.target.value);
+const q=document.getElementById("q");
+const qClear=document.getElementById("qClear");
+
+function applyFilter(){
+  const v=hira(q.value);
+  qClear.style.display=v?"":"none";
   document.querySelectorAll(".card").forEach(c=>{
     c.style.display=c.dataset.key.includes(v)?"":"none";
   });
-};
+}
+
+q.oninput=applyFilter;
+qClear.onclick=()=>{q.value="";applyFilter();q.focus();};
 
 document.getElementById("copy").onclick=()=>{
   navigator.clipboard.writeText(document.getElementById("out").value);
 };
 
-load();
 setInterval(update,100);
+load();
 </script>
 
 </body>
