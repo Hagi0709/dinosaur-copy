@@ -13,6 +13,7 @@
     --male:#74d7ff; --maleBg:rgba(116,215,255,.18); --maleStroke:rgba(116,215,255,.40);
     --female:#ff86c8; --femaleBg:rgba(255,134,200,.18); --femaleStroke:rgba(255,134,200,.40);
   }
+
   *{box-sizing:border-box}
   body{
     margin:0; color:var(--txt);
@@ -25,24 +26,60 @@
     padding-bottom:calc(92px + env(safe-area-inset-bottom));
   }
 
-  /* ✅ 上固定：出力 + 合計 + コピー */
+  /* 上固定：検索 + 合計 + コピー + 出力 */
   .topBar{
-    position:sticky; top:0; z-index:20;
+    position:sticky; top:0; z-index:30;
     padding:10px 12px;
     padding-top:calc(10px + env(safe-area-inset-top));
     backdrop-filter:blur(18px);
     background:linear-gradient(to bottom, rgba(11,15,20,.92), rgba(11,15,20,.40));
     border-bottom:1px solid rgba(255,255,255,.06);
   }
+
   .topRow{
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    display:flex; align-items:center; gap:10px;
     margin-bottom:8px;
   }
-  .brand{font-weight:900; font-size:14px; letter-spacing:.2px; opacity:.92}
-  .total{font-size:12px; color:var(--mut)}
-  .total b{color:var(--good); font-size:14px}
+
+  .search{
+    flex:1;
+    display:flex; align-items:center; gap:10px;
+    height:36px;
+    padding:0 12px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.07);
+  }
+  .searchIcon{opacity:.7; font-size:14px;}
+  .search input{
+    width:100%;
+    border:0; outline:none;
+    background:transparent;
+    color:var(--txt);
+    font-size:14px;
+  }
+
+  .total{
+    font-size:12px; color:var(--mut);
+    white-space:nowrap;
+  }
+  .total b{
+    color:var(--good);
+    font-size:14px;
+    display:inline-block;
+    transform-origin:center;
+  }
+  .pulse{
+    animation:pulse .15s ease-out;
+  }
+  @keyframes pulse{
+    0%{transform:scale(1)}
+    60%{transform:scale(1.06)}
+    100%{transform:scale(1)}
+  }
+
   .copyBtn{
-    height:36px; padding:0 14px; border-radius:14px;
+    height:36px; padding:0 12px; border-radius:14px;
     border:1px solid rgba(255,255,255,.14);
     background:rgba(255,255,255,.08);
     color:var(--txt); font-weight:900; font-size:14px;
@@ -50,9 +87,10 @@
     white-space:nowrap;
   }
   .copyBtn:active{transform:scale(.99);}
+
   textarea{
     width:100%;
-    height:108px; /* ✅ 小さめで上固定 */
+    height:108px;
     resize:none;
     border-radius:14px;
     border:1px solid rgba(255,255,255,.12);
@@ -65,8 +103,9 @@
   }
 
   .wrap{padding:12px 14px;}
+  .spacer{height:14px;}
 
-  /* list cards */
+  /* カード */
   .card{
     background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
     border:1px solid var(--stroke);
@@ -74,8 +113,11 @@
     padding:12px;
     box-shadow:var(--shadow);
     margin-bottom:10px;
+    overflow:hidden;
   }
-  .toprow{display:flex; align-items:flex-start; justify-content:space-between; gap:10px}
+  .toprow{
+    display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+  }
   .name{font-weight:900; font-size:15px}
   .rightInfo{display:flex; flex-direction:column; align-items:flex-end; gap:4px}
   .badge{
@@ -85,7 +127,12 @@
     white-space:nowrap;
   }
   .unitPrice{font-size:12px; color:var(--mut)}
-  .controls{margin-top:10px; display:flex; flex-direction:column; gap:10px}
+
+  .controls{
+    margin-top:10px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+
   select{
     width:100%;
     border:1px solid rgba(255,255,255,.12);
@@ -96,6 +143,7 @@
     font-size:15px;
     outline:none;
   }
+
   .sexrow{display:flex; gap:10px}
   .sexbox{
     flex:1;
@@ -106,11 +154,13 @@
   }
   .sexbox.male{ background:var(--maleBg); border-color:var(--maleStroke); }
   .sexbox.female{ background:var(--femaleBg); border-color:var(--femaleStroke); }
+
   .sexhead{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
   .label{font-weight:900; font-size:13px}
   .label.m{color:var(--male)}
   .label.f{color:var(--female)}
   .count{font-variant-numeric:tabular-nums; font-size:20px; font-weight:900}
+
   .btnrow{display:flex; gap:10px}
   .btn{
     flex:1; height:42px; border-radius:14px;
@@ -121,19 +171,31 @@
   }
   .btn.plus.m{ color:var(--male); border-color:rgba(116,215,255,.45); }
   .btn.plus.f{ color:var(--female); border-color:rgba(255,134,200,.45); }
+
   .disabled{opacity:.35; pointer-events:none}
 
-  /* 下の余白（iPhoneでカードがボタンに隠れない） */
-  .spacer{height:14px;}
+  /* ② 0のカードを圧縮 */
+  .collapsed{
+    padding:10px 12px;
+  }
+  .collapsed .controls{
+    display:none;
+  }
+  .collapsed .unitPrice{
+    opacity:.75;
+  }
 </style>
 </head>
 <body>
 
 <div class="topBar">
   <div class="topRow">
-    <div class="brand">🦖 恐竜コピー</div>
+    <div class="search">
+      <div class="searchIcon">🔎</div>
+      <input id="q" placeholder="検索（ひらがなOK）" autocomplete="off" />
+    </div>
     <div class="total">合計 <b id="totalView">0円</b></div>
-    <button class="copyBtn" onclick="copyText()">コピー</button>
+    <button id="copyBtn" class="copyBtn" type="button">コピー</button>
   </div>
   <textarea id="result" readonly placeholder="入力するとここに自動で出ます"></textarea>
 </div>
@@ -142,31 +204,45 @@
 <div class="spacer"></div>
 
 <script>
+  // 単価
   const prices = {"受精卵":30,"受精卵(指定)":50,"幼体":100,"胚":50,"胚(指定)":100,"成体":500};
 
-  // ✅ ♂♀入力対象（ペア判定あり）
+  // ♂♀入力対象＆ペア判定対象（指定はいっさい表示に出さない）
   const sexTypes  = new Set(["受精卵(指定)","胚(指定)","幼体","成体"]);
   const pairTypes = new Set(["受精卵(指定)","胚(指定)","幼体","成体"]);
 
   let dinos = [];
   const state = new Map();
+  const cardEls = new Map(); // name -> {card, norm}
 
   const list = document.getElementById("list");
   const totalView = document.getElementById("totalView");
   const resultTa = document.getElementById("result");
+  const qInput = document.getElementById("q");
+  const copyBtn = document.getElementById("copyBtn");
 
   function yen(n){ return `${Number(n).toLocaleString("ja-JP")}円`; }
+
+  // ひらがな検索：カタカナ→ひらがな、記号・空白除去、lower
+  function kataToHira(str){
+    return str.replace(/[\u30A1-\u30F6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+  }
+  function normalize(str){
+    return kataToHira(String(str).toLowerCase())
+      .replace(/[\s　・()（）【】\[\]「」『』"'.\-_,/\\]/g,"");
+  }
 
   async function loadDinos(){
     const res = await fetch(`dinos.txt?ts=${Date.now()}`);
     const text = await res.text();
     dinos = text.split(/\r?\n/).map(s => s.trim().replace(/^・\s*/,"")).filter(Boolean);
     dinos.forEach(d => state.set(d, { type:"受精卵", m:0, f:0 }));
-    render();
-    refreshOutput();
+    renderAll();
+    refreshOutput(true);
   }
 
   function baseName(type){
+    // 表示に(指定)は出さない
     return type.replace("(指定)", "");
   }
 
@@ -174,7 +250,7 @@
     const qty = m + f;
     if (qty <= 0) return "";
 
-    // ✅ ペア判定（指定/幼体/成体）
+    // ペア判定タイプ
     if (pairTypes.has(type)){
       const base = baseName(type);
       if (m === f && m > 0){
@@ -186,11 +262,19 @@
       return `${base} ${parts.join(" ")}`.trim();
     }
 
-    // ✅ それ以外：性別なし合算
+    // それ以外：合算のみ
     return `${type}×${qty}`;
   }
 
-  function refreshOutput(){
+  // ③ 合計アニメ（値が変わった時だけ）
+  let lastTotal = 0;
+  function animateTotal(){
+    totalView.classList.remove("pulse");
+    void totalView.offsetWidth; // reflow
+    totalView.classList.add("pulse");
+  }
+
+  function refreshOutput(force=false){
     let lines = [];
     let total = 0;
     let idx = 1;
@@ -201,7 +285,7 @@
 
       const type = s.type;
       const m = s.m;
-      const f = s.f;
+      const f = s.f; // sexTypes以外はUI側でf=0に寄せる
       const qty = m + f;
       if (qty === 0) continue;
 
@@ -213,6 +297,8 @@
     }
 
     totalView.textContent = yen(total);
+    if (force || total !== lastTotal) animateTotal();
+    lastTotal = total;
 
     resultTa.value =
 `この度はご検討いただきありがとうございます！
@@ -226,13 +312,47 @@ ${lines.join("\n")}
 ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻
 
 また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
+
+    // ② 0カード圧縮の同期
+    syncCollapse();
   }
 
-  function render(){
+  function syncCollapse(){
+    for (const name of dinos){
+      const s = state.get(name);
+      const ref = cardEls.get(name);
+      if (!s || !ref) continue;
+
+      const qty = s.m + s.f;
+      // 検索で一時展開しても、数量>0なら必ず展開
+      if (qty > 0) {
+        ref.card.classList.remove("collapsed");
+      } else {
+        ref.card.classList.add("collapsed");
+      }
+    }
+  }
+
+  function applySearch(){
+    const q = normalize(qInput.value || "");
+    for (const name of dinos){
+      const ref = cardEls.get(name);
+      if (!ref) continue;
+      if (!q || ref.norm.includes(q)){
+        ref.card.style.display = "";
+      } else {
+        ref.card.style.display = "none";
+      }
+    }
+  }
+
+  function renderAll(){
     list.innerHTML = "";
+    cardEls.clear();
 
     for (const name of dinos){
       const s = state.get(name);
+
       const card = document.createElement("div");
       card.className = "card";
       card.dataset.name = name;
@@ -281,7 +401,11 @@ ${lines.join("\n")}
           </div>
         </div>
       `;
+
       list.appendChild(card);
+
+      // 正規化キャッシュ
+      cardEls.set(name, { card, norm: normalize(name) });
 
       const sel = card.querySelector(".type");
       const badge = card.querySelector(".badge");
@@ -293,7 +417,7 @@ ${lines.join("\n")}
         badge.textContent = st.type;
         unitPriceEl.textContent = `単価 ${yen(prices[st.type] || 0)}`;
 
-        // ✅ ♂♀が不要なタイプは♀を無効化して0に寄せる（出力は合算）
+        // 性別不要タイプは♀無効化して0（出力は合算）
         if (!sexTypes.has(st.type)){
           st.f = 0;
           card.querySelector(".fcnt").textContent = "0";
@@ -302,7 +426,7 @@ ${lines.join("\n")}
           femaleBox.classList.remove("disabled");
         }
 
-        refreshOutput(); // ✅ 常に更新
+        refreshOutput();
       }
 
       sel.addEventListener("change", () => {
@@ -322,27 +446,43 @@ ${lines.join("\n")}
           st[sex] = Math.max(0, st[sex] + d);
           card.querySelector(sex==="m" ? ".mcnt" : ".fcnt").textContent = st[sex];
 
-          refreshOutput(); // ✅ 増減したら即更新
+          refreshOutput();
         });
       });
 
-      applyMode(); // 初期適用
+      applyMode();
     }
+
+    applySearch();
+    syncCollapse();
   }
 
+  // ① コピー済みの静かなフィードバック（ボタン文言だけ）
+  let copyTimer = null;
   async function copyText(){
-    if (!resultTa.value.trim()){
+    const text = resultTa.value || "";
+    if (!text.trim()){
+      // 常に押せるが、空なら軽く知らせる
       alert("まだ出力がありません");
       return;
     }
     try{
-      await navigator.clipboard.writeText(resultTa.value);
-      // うるさくしない：成功アラートは無し
+      await navigator.clipboard.writeText(text);
     }catch(e){
       resultTa.focus(); resultTa.select();
       document.execCommand("copy");
     }
+
+    // ボタン文言変更 → 自動で戻す
+    const prev = copyBtn.textContent;
+    copyBtn.textContent = "コピー済み ✓";
+    if (copyTimer) clearTimeout(copyTimer);
+    copyTimer = setTimeout(() => { copyBtn.textContent = prev; }, 1200);
   }
+
+  // イベント
+  qInput.addEventListener("input", () => applySearch());
+  copyBtn.addEventListener("click", () => copyText());
 
   loadDinos();
 </script>
