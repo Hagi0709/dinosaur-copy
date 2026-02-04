@@ -43,7 +43,12 @@ button,select,input{touch-action:manipulation}
   padding-top:calc(10px + env(safe-area-inset-top));
   border-bottom:1px solid rgba(255,255,255,.06);
 }
-.row{display:flex;gap:8px;align-items:center}
+.row{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap; /* ← 見切れ防止 */
+}
 
 .search{
   flex:1;
@@ -55,6 +60,7 @@ button,select,input{touch-action:manipulation}
   border-radius:14px;
   background:rgba(255,255,255,.07);
   border:1px solid rgba(255,255,255,.12);
+  min-width:0;
 }
 .search input{
   flex:1;
@@ -94,6 +100,7 @@ button,select,input{touch-action:manipulation}
 }
 
 .total{
+  margin-left:auto; /* ← 右寄せ */
   font-size:14px;
   color:var(--ok);
   font-weight:900;
@@ -124,7 +131,9 @@ textarea{
   margin-bottom:10px;
   transition:all .25s ease;
 }
-.card.collapsed .controls{display:none}
+
+/* 未入力は性別入力だけ畳む（＋は押せる） */
+.card.collapsed .sexrow{display:none}
 
 .head{
   display:flex;
@@ -215,6 +224,7 @@ select.type{
 <div class="list" id="list"></div>
 
 <script>
+/* ===== data ===== */
 const prices={
   "受精卵":30,"受精卵(指定)":50,
   "幼体":100,"胚":50,"胚(指定)":100,"成体":500
@@ -222,30 +232,34 @@ const prices={
 const sexTypes=new Set(["受精卵(指定)","胚(指定)","幼体","成体"]);
 const pairTypes=new Set(["受精卵(指定)","胚(指定)","幼体","成体"]);
 
-const dinos=[],state=new Map();
+const dinos=[], state=new Map();
 const listEl=document.getElementById("list");
 const outEl=document.getElementById("out");
 const totalEl=document.getElementById("total");
 const qEl=document.getElementById("q");
 const qClear=document.getElementById("qClear");
 const delivery=document.getElementById("delivery");
+const copyBtn=document.getElementById("copy");
 
 function yen(n){return n.toLocaleString("ja-JP")+"円"}
 
+/* ===== rebuild ===== */
 function rebuild(){
   let lines=[],sum=0,idx=1;
+
   dinos.forEach(name=>{
     const s=state.get(name);
     const qty=s.m+s.f;
-    const card=s.card;
-    card.classList.toggle("collapsed",qty===0);
 
-    if(qty===0)return;
+    s.card.classList.toggle("collapsed",qty===0);
+    if(qty===0) return;
+
     const price=(prices[s.type]||0)*qty;
     sum+=price;
 
-    let line="";
     const t=s.type.replace("(指定)","");
+    let line="";
+
     if(pairTypes.has(s.type)){
       if(s.m===s.f){
         line=`${name}${t}ペア${s.m>1?"×"+s.m:""} = ${price.toLocaleString("ja-JP")}円`;
@@ -258,6 +272,7 @@ function rebuild(){
     }else{
       line=`${name}${t}×${qty} = ${price.toLocaleString("ja-JP")}円`;
     }
+
     lines.push(`${idx}. ${line}`);
     idx++;
   });
@@ -277,6 +292,7 @@ ${lines.join("\n")}
 また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
 }
 
+/* ===== search ===== */
 qEl.oninput=()=>{
   const v=qEl.value;
   dinos.forEach(n=>{
@@ -285,8 +301,25 @@ qEl.oninput=()=>{
 };
 qClear.onclick=()=>{qEl.value="";qEl.oninput()};
 
+/* ===== copy ===== */
+copyBtn.onclick=()=>{
+  const text=outEl.value.trim();
+  if(!text)return;
+
+  navigator.clipboard.writeText(text).then(()=>{
+    const prev=copyBtn.textContent;
+    copyBtn.textContent="コピー済み✓";
+    copyBtn.disabled=true;
+    setTimeout(()=>{
+      copyBtn.textContent=prev;
+      copyBtn.disabled=false;
+    },1200);
+  });
+};
+
+/* ===== load ===== */
 async function load(){
-  const t=await fetch("dinos.txt").then(r=>r.text());
+  const t=await fetch("dinos.txt?ts="+Date.now()).then(r=>r.text());
   t.split(/\r?\n/).map(s=>s.replace(/^・/,"").trim()).filter(Boolean).forEach(name=>{
     dinos.push(name);
     const s={type:"受精卵",m:0,f:0};
@@ -295,6 +328,7 @@ async function load(){
     const card=document.createElement("div");
     card.className="card collapsed";
     s.card=card;
+
     card.innerHTML=`
       <div class="head">
         <div class="name">${name}</div>
@@ -339,8 +373,9 @@ async function load(){
       s.type=sel.value;
       badge.textContent=s.type.replace("(指定)","");
       unit.textContent=`単価${prices[s.type]}円`;
-      if(!sexTypes.has(s.type)){s.f=0;fc.textContent="0";fbox.classList.add("disabled")}
-      else fbox.classList.remove("disabled");
+      if(!sexTypes.has(s.type)){
+        s.f=0;fc.textContent="0";fbox.classList.add("disabled");
+      }else fbox.classList.remove("disabled");
       rebuild();
     };
 
