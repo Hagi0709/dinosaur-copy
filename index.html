@@ -6,208 +6,156 @@
 <title>恐竜販売コピー生成</title>
 
 <style>
-  :root{
-    --bg:#0b0f14;
-    --card:#141a22;
-    --stroke:rgba(255,255,255,.10);
-    --txt:rgba(255,255,255,.92);
-    --mut:rgba(255,255,255,.60);
-    --male:#74d7ff;
-    --female:#ff86c8;
-    --ok:#78ffb3;
-  }
-  *{box-sizing:border-box}
-  body{
-    margin:0;
-    font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
-    background:var(--bg);
-    color:var(--txt);
-    padding-bottom:120px;
-  }
+:root{
+  --bg:#0b0f14;
+  --card:#141a22;
+  --stroke:rgba(255,255,255,.10);
+  --txt:rgba(255,255,255,.92);
+  --mut:rgba(255,255,255,.60);
+  --male:#74d7ff;
+  --female:#ff86c8;
+  --ok:#78ffb3;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--txt);
+  padding-bottom:120px;
+}
 
-  /* Top (sticky) */
-  .top{
-    position:sticky;
-    top:0;
-    z-index:20;
-    padding:10px;
-    padding-top:calc(10px + env(safe-area-inset-top));
-    background:rgba(11,15,20,.95);
-    backdrop-filter:blur(14px);
-    border-bottom:1px solid rgba(255,255,255,.06);
-  }
-  .row{
-    display:flex;
-    gap:8px;
-    align-items:center;
-  }
+/* top */
+.top{
+  position:sticky;
+  top:0;
+  z-index:20;
+  padding:10px;
+  padding-top:calc(10px + env(safe-area-inset-top));
+  background:rgba(11,15,20,.95);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.row{
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+.search{
+  flex:1;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  height:36px;
+  padding:0 10px;
+  border-radius:14px;
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.12);
+}
+.search input{
+  width:100%;
+  border:0;
+  outline:none;
+  background:transparent;
+  color:var(--txt);
+  font-size:14px;
+}
+.qClear{
+  width:26px;
+  height:26px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  color:#fff;
+  font-size:18px;
+  line-height:24px;
+  padding:0;
+  display:inline-block; /* ← 常時表示で確定 */
+}
+.total{
+  font-size:12px;
+  color:var(--mut);
+}
+.total b{
+  color:var(--ok);
+  font-size:14px;
+}
+.copy{
+  height:36px;
+  padding:0 12px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-weight:900;
+}
+textarea{
+  width:100%;
+  margin-top:8px;
+  height:112px;
+  resize:none;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.22);
+  color:#fff;
+  padding:10px 12px;
+  font-size:12px;
+  line-height:1.45;
+}
 
-  .search{
-    flex:1;
-    display:flex;
-    align-items:center;
-    gap:8px;
-    height:36px;
-    padding:0 10px;
-    border-radius:14px;
-    background:rgba(255,255,255,.07);
-    border:1px solid rgba(255,255,255,.12);
-    min-width:0;
-  }
-  .search input{
-    width:100%;
-    border:0;
-    outline:none;
-    background:transparent;
-    color:var(--txt);
-    font-size:14px;
-  }
-  .qClear{
-    width:26px;
-    height:26px;
-    border-radius:999px;
-    border:1px solid rgba(255,255,255,.14);
-    background:rgba(255,255,255,.06);
-    color:rgba(255,255,255,.90);
-    font-size:18px;
-    line-height:24px;
-    padding:0;
-    display:inline-block;
-
-  }
-  .qClear:active{transform:scale(.98);}
-
-  .total{
-    font-size:12px;
-    color:var(--mut);
-    white-space:nowrap;
-  }
-  .total b{
-    color:var(--ok);
-    font-size:14px;
-  }
-
-  .copy{
-    height:36px;
-    padding:0 12px;
-    border-radius:14px;
-    border:1px solid rgba(255,255,255,.14);
-    background:rgba(255,255,255,.08);
-    color:var(--txt);
-    font-weight:900;
-    font-size:14px;
-    white-space:nowrap;
-  }
-  .copy:active{transform:scale(.99);}
-
-  textarea{
-    width:100%;
-    margin-top:8px;
-    height:112px;
-    resize:none;
-    border-radius:14px;
-    border:1px solid rgba(255,255,255,.12);
-    background:rgba(0,0,0,.22);
-    color:var(--txt);
-    padding:10px 12px;
-    font-size:12px;
-    line-height:1.45;
-    outline:none;
-  }
-
-  .list{padding:12px;}
-
-  /* Cards */
-  .card{
-    background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
-    border:1px solid rgba(255,255,255,.10);
-    border-radius:16px;
-    padding:12px;
-    margin-bottom:10px;
-  }
-  .head{
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    gap:10px;
-  }
-  .name{
-    font-weight:900;
-    font-size:15px;
-  }
-  .right{
-    display:flex;
-    flex-direction:column;
-    align-items:flex-end;
-    gap:4px;
-  }
-  .badge{
-    font-size:12px;
-    padding:6px 10px;
-    border-radius:999px;
-    border:1px solid rgba(255,255,255,.12);
-    background:rgba(255,255,255,.06);
-    white-space:nowrap;
-  }
-  .unit{
-    font-size:12px;
-    color:var(--mut);
-  }
-
-  .controls{
-    margin-top:10px;
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-  }
-
-  select{
-    width:100%;
-    padding:10px 12px;
-    border-radius:14px;
-    border:1px solid rgba(255,255,255,.12);
-    background:rgba(255,255,255,.06);
-    color:var(--txt);
-    font-size:15px;
-    outline:none;
-  }
-
-  .sexrow{display:flex; gap:10px;}
-  .sex{
-    flex:1;
-    padding:10px;
-    border-radius:16px;
-    border:2px solid rgba(255,255,255,.10);
-    background:rgba(255,255,255,.06);
-  }
-  .sex.m{border-color:rgba(116,215,255,.45); background:rgba(116,215,255,.16);}
-  .sex.f{border-color:rgba(255,134,200,.45); background:rgba(255,134,200,.16);}
-  .sexhead{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:8px;
-    font-weight:900;
-  }
-  .sexhead .label.m{color:var(--male)}
-  .sexhead .label.f{color:var(--female)}
-  .count{
-    font-variant-numeric:tabular-nums;
-    font-size:20px;
-  }
-  .btns{display:flex; gap:10px;}
-  .btn{
-    flex:1;
-    height:42px;
-    border-radius:14px;
-    border:1px solid rgba(255,255,255,.12);
-    background:rgba(255,255,255,.08);
-    color:var(--txt);
-    font-size:22px;
-    font-weight:900;
-    touch-action:manipulation;
-  }
-  .disabled{opacity:.35; pointer-events:none;}
+/* list */
+.list{padding:12px;}
+.card{
+  background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:16px;
+  padding:12px;
+  margin-bottom:10px;
+}
+.head{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+}
+.name{font-weight:900;}
+.badge{
+  font-size:12px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);
+}
+.unit{font-size:12px;color:var(--mut);}
+.controls{margin-top:10px;display:flex;flex-direction:column;gap:10px;}
+select{
+  padding:10px;
+  border-radius:14px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);
+  color:#fff;
+}
+.sexrow{display:flex;gap:10px;}
+.sex{
+  flex:1;
+  padding:10px;
+  border-radius:16px;
+  border:2px solid rgba(255,255,255,.10);
+}
+.sex.m{border-color:var(--male);background:rgba(116,215,255,.16);}
+.sex.f{border-color:var(--female);background:rgba(255,134,200,.16);}
+.sexhead{display:flex;justify-content:space-between;font-weight:900;}
+.btns{display:flex;gap:10px;margin-top:6px;}
+.btn{
+  flex:1;
+  height:42px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-size:22px;
+  font-weight:900;
+}
+.disabled{opacity:.35;pointer-events:none;}
 </style>
 </head>
 
@@ -216,128 +164,89 @@
 <div class="top">
   <div class="row">
     <div class="search">
-      <input id="q" placeholder="検索（ひらがなOK）" autocomplete="off">
-      <button id="qClear" class="qClear" type="button" aria-label="検索をクリア">×</button>
+      <input id="q" placeholder="検索（ひらがなOK）">
+      <button id="qClear" class="qClear">×</button>
     </div>
-    <div class="total">合計 <b id="total">0円
 
-<select id="delivery" style="
-  height:36px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-size:13px;
-  padding:0 10px;
-">
-  <option value="即納品可能">即納品可能</option>
-  <option value="本日夜">本日夜</option>
-</select>
+    <div class="total">合計 <b id="total">0円</b></div>
 
-</b></div>
-    <button id="copy" class="copy" type="button">コピー</button>
+    <select id="delivery">
+      <option value="即納品可能">即納品可能</option>
+      <option value="本日夜">本日夜</option>
+    </select>
+
+    <button id="copy" class="copy">コピー</button>
   </div>
-  <textarea id="out" readonly placeholder="数量を入れると自動で更新されます"></textarea>
+
+  <textarea id="out" readonly></textarea>
 </div>
 
 <div class="list" id="list"></div>
 
 <script>
-  // 単価
-  const prices = {
-    "受精卵":30,
-    "受精卵(指定)":50,
-    "幼体":100,
-    "胚":50,
-    "胚(指定)":100,
-    "成体":500
-  };
+const prices={
+  "受精卵":30,
+  "受精卵(指定)":50,
+  "幼体":100,
+  "胚":50,
+  "胚(指定)":100,
+  "成体":500
+};
 
-  // ♂♀内訳（&ペア判定）対象
-  // 指定なしの「受精卵」「胚」は対象外（ペアにもならない）
-  const sexTypes  = new Set(["受精卵(指定)","胚(指定)","幼体","成体"]);
-  const pairTypes = new Set(["受精卵(指定)","胚(指定)","幼体","成体"]);
+const sexTypes=new Set(["受精卵(指定)","胚(指定)","幼体","成体"]);
+const pairTypes=new Set(["受精卵(指定)","胚(指定)","幼体","成体"]);
 
-  const dinos = [];
-  const state = new Map(); // name -> {type,m,f}
-  const ui = new Map();    // name -> dom refs
+const dinos=[];
+const state=new Map();
+const ui=new Map();
 
-  const listEl  = document.getElementById("list");
-  const outEl   = document.getElementById("out");
-  const totalEl = document.getElementById("total");
-const deliveryEl = document.getElementById("delivery");
+const listEl=document.getElementById("list");
+const outEl=document.getElementById("out");
+const totalEl=document.getElementById("total");
+const qEl=document.getElementById("q");
+const qClearEl=document.getElementById("qClear");
+const copyBtn=document.getElementById("copy");
+const deliveryEl=document.getElementById("delivery");
+
 deliveryEl.addEventListener("change", rebuildOutput);
-  const qEl     = document.getElementById("q");
-  const qClearEl= document.getElementById("qClear");
-  const copyBtn = document.getElementById("copy");
 
-  function yen(n){ return Number(n).toLocaleString("ja-JP") + "円"; }
+function kataToHira(s){
+  return s.replace(/[\u30A1-\u30F6]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
+}
+function normalize(s){
+  return kataToHira(String(s)).toLowerCase().replace(/[\s　・()（）]/g,"");
+}
+function displayType(t){return t.replace("(指定)","");}
 
-  // カタカナ→ひらがな
-  function kataToHira(str){
-    return str.replace(/[\u30A1-\u30F6]/g, ch =>
-      String.fromCharCode(ch.charCodeAt(0) - 0x60)
-    );
-  }
+function formatLine(name,s){
+  const qty=s.m+s.f;
+  const price=prices[s.type]*qty;
+  const t=displayType(s.type);
 
-  // 検索用正規化：ひらがな化＋空白/記号除去（日本語は消さない）
-  function normalize(str){
-    const s = kataToHira(String(str || "").toLowerCase());
-    return s.replace(/[\s　・()（）【】\[\]「」『』"'.\-_,/\\]/g,"");
-  }
-
-  // 表示上は(指定)を消す（単価計算は元のtypeでOK）
-  function displayType(t){
-    return String(t).replace("(指定)", "");
-  }
-
-  // 行（生物名の後スペースなし、=両端だけ半角スペース、金額は3桁区切り）
-  // sexTypes/pairTypes は "指定＋幼体＋成体" のみ
-  function formatLine(name, s){
-    const qty = s.m + s.f;
-    const unit = prices[s.type] || 0;
-    const price = unit * qty;
-    const t = displayType(s.type);
-
-    if (pairTypes.has(s.type)){
-      // 同数ならペア（×N）
-      if (s.m === s.f && s.m > 0){
-        const p = s.m;
-        return `${name}${t}ペア${p > 1 ? "×" + p : ""} = ${price.toLocaleString("ja-JP")}円`;
-      }
-
-      // 同数じゃない：0は表示しない（♂1♀0 なら ♀×0は出さない）
-      const parts = [];
-      if (s.m > 0) parts.push(`♂×${s.m}`);
-      if (s.f > 0) parts.push(`♀×${s.f}`);
-
-      return `${name}${t} ${parts.join(" ")} = ${price.toLocaleString("ja-JP")}円`;
+  if(pairTypes.has(s.type)){
+    if(s.m===s.f&&s.m>0){
+      return `${name}${t}ペア${s.m>1?"×"+s.m:""} = ${price.toLocaleString("ja-JP")}円`;
     }
-
-    // それ以外（指定なし受精卵/胚を含む）は合算のみ、ペアにしない
-    return `${name}${t}×${qty} = ${price.toLocaleString("ja-JP")}円`;
+    const parts=[];
+    if(s.m>0)parts.push(`♂×${s.m}`);
+    if(s.f>0)parts.push(`♀×${s.f}`);
+    return `${name}${t} ${parts.join(" ")} = ${price.toLocaleString("ja-JP")}円`;
   }
+  return `${name}${t}×${qty} = ${price.toLocaleString("ja-JP")}円`;
+}
 
-  function rebuildOutput(){
-    let lines = [];
-    let sum = 0;
-    let idx = 1;
-
-    for (const name of dinos){
-      const s = state.get(name);
-      if (!s) continue;
-
-      const qty = s.m + s.f;
-      if (qty === 0) continue;
-
-      sum += (prices[s.type] || 0) * qty;
-      lines.push(`${idx}. ${formatLine(name, s)}`);
-      idx++;
-    }
-
-    totalEl.textContent = yen(sum);
-
-    outEl.value =
+function rebuildOutput(){
+  let sum=0,idx=1,lines=[];
+  dinos.forEach(d=>{
+    const s=state.get(d);
+    const q=s.m+s.f;
+    if(!q)return;
+    sum+=prices[s.type]*q;
+    lines.push(`${idx}. ${formatLine(d,s)}`);
+    idx++;
+  });
+  totalEl.textContent=sum.toLocaleString("ja-JP")+"円";
+  outEl.value=
 `この度はご検討いただきありがとうございます！
 ご希望内容は以下となります👇🏻
 
@@ -349,203 +258,89 @@ ${lines.join("\n")}
 ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻
 
 また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
-  }
+}
 
-  function applySearch(){
-    const raw = qEl.value || "";
-    const q = normalize(raw);
-
-    // ×は「入力があるか」で出す（正規化に依存しない）
-    qClearEl.style.display = raw.length ? "" : "none";
-
-    for (const name of dinos){
-      const ref = ui.get(name);
-      if (!ref) continue;
-      const hit = !q || ref.norm.includes(q);
-      ref.card.style.display = hit ? "" : "none";
-    }
-  }
-
-  function setModeForCard(name){
-    const s = state.get(name);
-    const ref = ui.get(name);
-    if (!s || !ref) return;
-
-    ref.badge.textContent = displayType(s.type);
-    ref.unit.textContent = `単価 ${yen(prices[s.type] || 0)}`;
-
-    // sexTypes以外は♀を無効化して0へ寄せる（合算表示用）
-    if (!sexTypes.has(s.type)){
-      s.f = 0;
-      ref.fcnt.textContent = "0";
-      ref.fBox.classList.add("disabled");
-    } else {
-      ref.fBox.classList.remove("disabled");
-    }
-  }
-
-  function render(){
-    listEl.innerHTML = "";
-    ui.clear();
-
-    for (const name of dinos){
-      const s = state.get(name);
-
-      const card = document.createElement("div");
-      card.className = "card";
-      card.innerHTML = `
-        <div class="head">
-          <div class="name">${name}</div>
-          <div class="right">
-            <div class="badge"></div>
-            <div class="unit"></div>
-          </div>
-        </div>
-
-        <div class="controls">
-          <select class="type">
-            <option ${s.type==="受精卵"?"selected":""}>受精卵</option>
-            <option ${s.type==="受精卵(指定)"?"selected":""}>受精卵(指定)</option>
-            <option ${s.type==="幼体"?"selected":""}>幼体</option>
-            <option ${s.type==="胚"?"selected":""}>胚</option>
-            <option ${s.type==="胚(指定)"?"selected":""}>胚(指定)</option>
-            <option ${s.type==="成体"?"selected":""}>成体</option>
-          </select>
-
-          <div class="sexrow">
-            <div class="sex m">
-              <div class="sexhead">
-                <div class="label m">♂</div>
-                <div class="count mcnt">0</div>
-              </div>
-              <div class="btns">
-                <button class="btn" type="button" data-sex="m" data-d="-1">−</button>
-                <button class="btn" type="button" data-sex="m" data-d="1">＋</button>
-              </div>
-            </div>
-
-            <div class="sex f">
-              <div class="sexhead">
-                <div class="label f">♀</div>
-                <div class="count fcnt">0</div>
-              </div>
-              <div class="btns">
-                <button class="btn" type="button" data-sex="f" data-d="-1">−</button>
-                <button class="btn" type="button" data-sex="f" data-d="1">＋</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      listEl.appendChild(card);
-
-      const badge = card.querySelector(".badge");
-      const unit  = card.querySelector(".unit");
-      const sel   = card.querySelector(".type");
-      const mcnt  = card.querySelector(".mcnt");
-      const fcnt  = card.querySelector(".fcnt");
-      const fBox  = card.querySelector(".sex.f");
-
-      const ref = {
-        card,
-        badge,
-        unit,
-        sel,
-        mcnt,
-        fcnt,
-        fBox,
-        norm: normalize(name)
-      };
-      ui.set(name, ref);
-
-      // 初期表示
-      mcnt.textContent = String(s.m);
-      fcnt.textContent = String(s.f);
-
-      // タイプ変更
-      sel.addEventListener("change", () => {
-        s.type = sel.value;
-        setModeForCard(name);
-        rebuildOutput();
-      });
-
-      // ±ボタン
-      card.querySelectorAll("button[data-sex]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const sex = btn.dataset.sex;
-          const d = Number(btn.dataset.d);
-
-          // 性別不要タイプで♀は触らせない
-          if (!sexTypes.has(s.type) && sex === "f") return;
-
-          s[sex] = Math.max(0, s[sex] + d);
-          if (sex === "m") mcnt.textContent = String(s.m);
-          else fcnt.textContent = String(s.f);
-
-          setModeForCard(name);
-          rebuildOutput();
-        });
-      });
-
-      setModeForCard(name);
-    }
-
-    applySearch();
-    rebuildOutput();
-  }
-
-  // コピー演出
-  let copyTimer = null;
-  async function copyOut(){
-    const text = outEl.value.trim();
-    if (!text){
-      alert("まだ出力がありません");
-      return;
-    }
-    try{
-      await navigator.clipboard.writeText(text);
-    }catch(e){
-      outEl.focus(); outEl.select();
-      document.execCommand("copy");
-    }
-
-    const prev = copyBtn.textContent;
-    copyBtn.textContent = "コピー済み ✓";
-    copyBtn.disabled = true;
-    if (copyTimer) clearTimeout(copyTimer);
-    copyTimer = setTimeout(() => {
-      copyBtn.textContent = prev;
-      copyBtn.disabled = false;
-    }, 1200);
-  }
-
-  // 検索入力/クリア（×で確実にリセット）
-  qEl.addEventListener("input", applySearch);
-  qClearEl.addEventListener("click", () => {
-    qEl.value = "";
-    applySearch();
-    qEl.focus();
+function applySearch(){
+  const q=normalize(qEl.value);
+  dinos.forEach(d=>{
+    const ref=ui.get(d);
+    ref.card.style.display=!q||ref.norm.includes(q)?"":"none";
   });
+}
 
-  copyBtn.addEventListener("click", copyOut);
+qEl.oninput=applySearch;
+qClearEl.onclick=()=>{qEl.value="";applySearch();qEl.focus();};
 
-  async function load(){
-    const res = await fetch(`dinos.txt?ts=${Date.now()}`);
-    const text = await res.text();
-    const lines = text.split(/\r?\n/).map(s => s.trim().replace(/^・\s*/,"")).filter(Boolean);
+copyBtn.onclick=async()=>{
+  await navigator.clipboard.writeText(outEl.value);
+  const t=copyBtn.textContent;
+  copyBtn.textContent="コピー済み ✓";
+  setTimeout(()=>copyBtn.textContent=t,1200);
+};
 
-    dinos.length = 0;
-    state.clear();
-
-    for (const d of lines){
+async function load(){
+  const t=await fetch("dinos.txt?"+Date.now()).then(r=>r.text());
+  t.split(/\r?\n/).forEach(d=>{
+    d=d.replace(/^・/,"").trim();
+    if(d){
       dinos.push(d);
-      state.set(d, {type:"受精卵", m:0, f:0});
+      state.set(d,{type:"受精卵",m:0,f:0});
     }
+  });
+  render();
+}
 
-    render();
-  }
-
-  load();
+function render(){
+  listEl.innerHTML="";
+  dinos.forEach(name=>{
+    const s=state.get(name);
+    const card=document.createElement("div");
+    card.className="card";
+    card.innerHTML=`
+      <div class="head">
+        <div class="name">${name}</div>
+        <div>
+          <div class="badge">${displayType(s.type)}</div>
+          <div class="unit">単価 ${prices[s.type]}円</div>
+        </div>
+      </div>
+      <div class="controls">
+        <select>
+          ${Object.keys(prices).map(t=>`<option ${t===s.type?"selected":""}>${t}</option>`).join("")}
+        </select>
+        <div class="sexrow">
+          <div class="sex m">
+            <div class="sexhead"><span>♂</span><span class="mc">${s.m}</span></div>
+            <div class="btns">
+              <button class="btn" data-s="m" data-d="-1">−</button>
+              <button class="btn" data-s="m" data-d="1">＋</button>
+            </div>
+          </div>
+          <div class="sex f">
+            <div class="sexhead"><span>♀</span><span class="fc">${s.f}</span></div>
+            <div class="btns">
+              <button class="btn" data-s="f" data-d="-1">−</button>
+              <button class="btn" data-s="f" data-d="1">＋</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    listEl.appendChild(card);
+    ui.set(name,{card,norm:normalize(name)});
+    const sel=card.querySelector("select");
+    sel.onchange=()=>{s.type=sel.value;render();};
+    card.querySelectorAll(".btn").forEach(b=>{
+      b.onclick=()=>{
+        const sex=b.dataset.s;
+        if(!sexTypes.has(s.type)&&sex==="f")return;
+        s[sex]=Math.max(0,s[sex]+Number(b.dataset.d));
+        render();
+      };
+    });
+  });
+  rebuildOutput();
+}
+load();
 </script>
 
 </body>
