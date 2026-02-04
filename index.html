@@ -2,43 +2,51 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>恐竜販売コピー生成</title>
 <style>
 body {
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  margin: 0;
   padding: 10px;
 }
-table {
-  width: 100%;
-  border-collapse: collapse;
+.row {
+  border-bottom: 1px solid #ddd;
+  padding: 8px 0;
+}
+.name {
+  font-weight: bold;
   font-size: 14px;
 }
-th, td {
-  border: 1px solid #ccc;
-  padding: 6px;
+.controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+}
+select {
+  font-size: 14px;
+}
+.btn {
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+}
+.count {
+  min-width: 24px;
   text-align: center;
-}
-th {
-  background: #eee;
-}
-td.name {
-  text-align: left;
-  background: #eaffea;
-}
-input[type=number] {
-  width: 60px;
   font-size: 16px;
+}
+button.main {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  margin-top: 10px;
 }
 textarea {
   width: 100%;
   height: 220px;
   margin-top: 10px;
-}
-button {
-  margin-top: 10px;
-  padding: 10px;
-  width: 100%;
-  font-size: 16px;
 }
 </style>
 </head>
@@ -46,76 +54,93 @@ button {
 
 <h3>🦖 恐竜販売コピー生成</h3>
 
-<table id="dinoTable">
-  <tr>
-    <th>恐竜</th>
-    <th>オス</th>
-    <th>メス</th>
-  </tr>
-</table>
+<div id="list"></div>
 
-<button onclick="generate()">コピー文を生成</button>
-
+<button class="main" onclick="generate()">コピー文を生成</button>
 <textarea id="result" readonly></textarea>
-<button onclick="copyText()">コピーする</button>
+<button class="main" onclick="copyText()">コピーする</button>
 
 <script>
-const PRICE_PER_UNIT = 30; // 仮単価（後で変更可）
+const prices = {
+  "受精卵": 30,
+  "受精卵(指定)": 50,
+  "幼体": 100,
+  "胚": 50,
+  "胚(指定)": 100,
+  "成体": 500
+};
 
 const dinos = [
 "TEKギガノト","TEKケツァル","TEKティラノサウルス","アーケロン","アースロプレウラ",
 "アイスワイバーン","アルゲン","アルマドッゴ","アロサウルス","アンキロサウルス",
-"アンコウ","イーリン","オヴィラプトル","オリジナルカスタムレシピ","カストロイデス",
-"ガスバッグ","ガチャクローン","ガチャクローン全種","カマキリ","カルカロ",
-"カルカロ Lv1クローン","カルキノス","カルノタウルス変種","カルボネミス",
-"カワウソ変種","ギガノト","ギガントラプトル","グリフィン","ケラトサウルス",
-"コスモ","サルコスクス","シファクティヌス","ステゴサウルス","スピノサウルス変種",
-"ダイアベア","ダエオドン","ダンクル","デイノスクス","デイノテリウム",
-"デイノニクス","ティラコレオ","ティラノサウルス","デフォルトカスタムレシピ",
-"テリジノ","トゥソ","ドエディクルス変種","ドードー",
-"ドレイクリング(夏)","ドレイクリング(秋)","ドレイクリング(春)","ドレイクリング(冬)",
-"ドレッドノータス","ドレッドメア","バイソン","パイロメイン","ハゲワシ",
-"バジリスク","バシロサウルス","ハチ","バリオニクス変種","バルブドッグ",
-"ヒエノドン","ヒツジ","ファイアワイバーン","ファソラスクス","フェザーライト",
-"プテラノドン","プロコプトドン","ブロントサウルス","フンコロガシ","ベールウィン",
-"ベールゼブフォ","ペゴマスタクス","ヘスペロルニス","ペラゴルニス","ヘリコプリオン",
-"ベロナサウルス","マナガルム","マンモス","メイグアナ","メガテリウム","メガラニア",
-"メガロサウルス変種","メガロドン","モササウルス","ユウティラヌス","ユニコーン",
-"ライトニングワイバーン","ラベジャー","リマントリア","ロックドレイク","雪フクロウ"
+"アンコウ","イーリン","オヴィラプトル","オリジナルカスタムレシピ"
 ];
 
-const table = document.getElementById("dinoTable");
+const list = document.getElementById("list");
 
 dinos.forEach(name => {
-  const tr = document.createElement("tr");
-  tr.innerHTML = `
-    <td class="name">・${name}</td>
-    <td><input type="number" min="0" value="0" class="male"></td>
-    <td><input type="number" min="0" value="0" class="female"></td>
+  const div = document.createElement("div");
+  div.className = "row";
+  div.innerHTML = `
+    <div class="name">${name}</div>
+    <div class="controls">
+      <select class="type">
+        <option>受精卵</option>
+        <option>受精卵(指定)</option>
+        <option>幼体</option>
+        <option>胚</option>
+        <option>胚(指定)</option>
+        <option>成体</option>
+      </select>
+      ♂
+      <button class="btn" onclick="chg(this,-1,'m')">−</button>
+      <span class="count m">0</span>
+      <button class="btn" onclick="chg(this,1,'m')">＋</button>
+      ♀
+      <button class="btn" onclick="chg(this,-1,'f')">−</button>
+      <span class="count f">0</span>
+      <button class="btn" onclick="chg(this,1,'f')">＋</button>
+    </div>
   `;
-  table.appendChild(tr);
+  list.appendChild(div);
 });
 
+function chg(btn, delta, sex) {
+  const row = btn.closest(".row");
+  const el = row.querySelector("." + sex);
+  let v = Number(el.textContent);
+  v = Math.max(0, v + delta);
+  el.textContent = v;
+}
+
 function generate() {
-  const rows = table.querySelectorAll("tr");
-  let total = 0;
   let lines = [];
+  let total = 0;
   let i = 1;
 
-  rows.forEach((row, idx) => {
-    if (idx === 0) return;
-
-    const name = row.querySelector(".name").textContent.replace("・","");
-    const male = Number(row.querySelector(".male").value);
-    const female = Number(row.querySelector(".female").value);
-    const qty = male + female;
-
+  document.querySelectorAll(".row").forEach(row => {
+    const name = row.querySelector(".name").textContent;
+    const type = row.querySelector(".type").value;
+    const m = Number(row.querySelector(".m").textContent);
+    const f = Number(row.querySelector(".f").textContent);
+    const qty = m + f;
     if (qty === 0) return;
 
-    const price = qty * PRICE_PER_UNIT;
+    let label = "";
+
+    if (type === "受精卵" && m === f && m > 0) {
+      label = `受精卵ペア${m > 1 ? "×" + m : ""}`;
+    } else {
+      let sexText = [];
+      if (m > 0) sexText.push(`♂×${m}`);
+      if (f > 0) sexText.push(`♀×${f}`);
+      label = `${type} ${sexText.join(" ")}`;
+    }
+
+    const price = prices[type] * qty;
     total += price;
 
-    lines.push(`${i}. ${name} オス×${male} メス×${female} = ${price}円`);
+    lines.push(`${i}. ${name} ${label} = ${price}円`);
     i++;
   });
 
