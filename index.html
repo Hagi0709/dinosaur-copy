@@ -4,19 +4,41 @@
 <meta charset="UTF-8">
 <title>恐竜販売コピー生成</title>
 <style>
-body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 16px; }
-button, input, select, textarea {
-  font-size: 16px;
-  margin: 6px 0;
-  padding: 8px;
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  padding: 10px;
 }
-.item {
-  border-bottom: 1px solid #ddd;
-  padding: 10px 0;
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+th, td {
+  border: 1px solid #ccc;
+  padding: 6px;
+  text-align: center;
+}
+th {
+  background: #eee;
+}
+td.name {
+  text-align: left;
+  background: #eaffea;
+}
+input[type=number] {
+  width: 60px;
+  font-size: 16px;
 }
 textarea {
   width: 100%;
   height: 220px;
+  margin-top: 10px;
+}
+button {
+  margin-top: 10px;
+  padding: 10px;
+  width: 100%;
+  font-size: 16px;
 }
 </style>
 </head>
@@ -24,58 +46,76 @@ textarea {
 
 <h3>🦖 恐竜販売コピー生成</h3>
 
-<div id="items"></div>
+<table id="dinoTable">
+  <tr>
+    <th>恐竜</th>
+    <th>オス</th>
+    <th>メス</th>
+  </tr>
+</table>
 
-<button onclick="addItem()">＋恐竜を追加</button>
 <button onclick="generate()">コピー文を生成</button>
 
-<textarea id="result" placeholder="ここに生成結果が出ます" readonly></textarea>
-<br>
+<textarea id="result" readonly></textarea>
 <button onclick="copyText()">コピーする</button>
 
 <script>
-const prices = {
-  "受精卵": 30,
-  "受精卵(指定)": 50,
-  "幼体": 100,
-  "胚": 50,
-  "胚(指定)": 100,
-  "成体": 500
-};
+const PRICE_PER_UNIT = 30; // 仮単価（後で変更可）
 
-function addItem() {
-  const div = document.createElement("div");
-  div.className = "item";
-  div.innerHTML = `
-    <input class="name" placeholder="TEKギガノト">
-    <select class="type">
-      <option>受精卵</option>
-      <option>受精卵(指定)</option>
-      <option>幼体</option>
-      <option>胚</option>
-      <option>胚(指定)</option>
-      <option>成体</option>
-    </select>
-    <input class="qty" type="number" value="1" min="1">
+const dinos = [
+"TEKギガノト","TEKケツァル","TEKティラノサウルス","アーケロン","アースロプレウラ",
+"アイスワイバーン","アルゲン","アルマドッゴ","アロサウルス","アンキロサウルス",
+"アンコウ","イーリン","オヴィラプトル","オリジナルカスタムレシピ","カストロイデス",
+"ガスバッグ","ガチャクローン","ガチャクローン全種","カマキリ","カルカロ",
+"カルカロ Lv1クローン","カルキノス","カルノタウルス変種","カルボネミス",
+"カワウソ変種","ギガノト","ギガントラプトル","グリフィン","ケラトサウルス",
+"コスモ","サルコスクス","シファクティヌス","ステゴサウルス","スピノサウルス変種",
+"ダイアベア","ダエオドン","ダンクル","デイノスクス","デイノテリウム",
+"デイノニクス","ティラコレオ","ティラノサウルス","デフォルトカスタムレシピ",
+"テリジノ","トゥソ","ドエディクルス変種","ドードー",
+"ドレイクリング(夏)","ドレイクリング(秋)","ドレイクリング(春)","ドレイクリング(冬)",
+"ドレッドノータス","ドレッドメア","バイソン","パイロメイン","ハゲワシ",
+"バジリスク","バシロサウルス","ハチ","バリオニクス変種","バルブドッグ",
+"ヒエノドン","ヒツジ","ファイアワイバーン","ファソラスクス","フェザーライト",
+"プテラノドン","プロコプトドン","ブロントサウルス","フンコロガシ","ベールウィン",
+"ベールゼブフォ","ペゴマスタクス","ヘスペロルニス","ペラゴルニス","ヘリコプリオン",
+"ベロナサウルス","マナガルム","マンモス","メイグアナ","メガテリウム","メガラニア",
+"メガロサウルス変種","メガロドン","モササウルス","ユウティラヌス","ユニコーン",
+"ライトニングワイバーン","ラベジャー","リマントリア","ロックドレイク","雪フクロウ"
+];
+
+const table = document.getElementById("dinoTable");
+
+dinos.forEach(name => {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td class="name">・${name}</td>
+    <td><input type="number" min="0" value="0" class="male"></td>
+    <td><input type="number" min="0" value="0" class="female"></td>
   `;
-  document.getElementById("items").appendChild(div);
-}
+  table.appendChild(tr);
+});
 
 function generate() {
-  const items = document.querySelectorAll(".item");
+  const rows = table.querySelectorAll("tr");
   let total = 0;
   let lines = [];
   let i = 1;
 
-  items.forEach(item => {
-    const name = item.querySelector(".name").value;
-    const type = item.querySelector(".type").value;
-    const qty = Number(item.querySelector(".qty").value);
-    if (!name) return;
+  rows.forEach((row, idx) => {
+    if (idx === 0) return;
 
-    const price = prices[type] * qty;
+    const name = row.querySelector(".name").textContent.replace("・","");
+    const male = Number(row.querySelector(".male").value);
+    const female = Number(row.querySelector(".female").value);
+    const qty = male + female;
+
+    if (qty === 0) return;
+
+    const price = qty * PRICE_PER_UNIT;
     total += price;
-    lines.push(`${i}. ${name}${type}×${qty} = ${price}円`);
+
+    lines.push(`${i}. ${name} オス×${male} メス×${female} = ${price}円`);
     i++;
   });
 
@@ -94,13 +134,9 @@ ${lines.join("\n")}
 }
 
 function copyText() {
-  const t = document.getElementById("result");
-  if (!t.value) return alert("先に生成してください");
-  navigator.clipboard.writeText(t.value);
+  navigator.clipboard.writeText(document.getElementById("result").value);
   alert("コピーしました");
 }
-
-addItem();
 </script>
 
 </body>
