@@ -267,6 +267,7 @@
   const outEl   = document.getElementById("out");
   const totalEl = document.getElementById("total");
 const deliveryEl = document.getElementById("delivery");
+deliveryEl.addEventListener("change", rebuildOutput);
   const qEl     = document.getElementById("q");
   const qClearEl= document.getElementById("qClear");
   const copyBtn = document.getElementById("copy");
