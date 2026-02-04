@@ -246,6 +246,14 @@ const copyBtn=document.getElementById("copy");
 
 function yen(n){return n.toLocaleString("ja-JP")+"円"}
 
+/* ===== ひらがな/カタカナ検索対応（NFKC + カナ統一） ===== */
+function toHiragana(s){
+  return (s||"").replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+}
+function norm(s){
+  return toHiragana((s||"").normalize("NFKC")).toLowerCase().trim();
+}
+
 /* dinos.txt 1行のパース
    - 形式: 恐竜名|タイプ
    - 先頭の "・" は許可
@@ -315,14 +323,25 @@ ${lines.join("\n")}
 また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
 }
 
-/* search */
-qEl.oninput=()=>{
-  const v=qEl.value;
+/* ===== search（安定版） ===== */
+function applySearch(){
+  const q = norm(qEl.value);
   dinos.forEach(n=>{
-    state.get(n).card.style.display=n.includes(v)?"":"none";
+    const s = state.get(n);
+    // 事前に正規化キーを持つ（高速・確実）
+    const hit = !q || s.key.includes(q);
+    s.card.style.display = hit ? "" : "none";
   });
+}
+
+// iOS Safariでの取りこぼし対策：input + keyup 併用
+qEl.addEventListener("input", applySearch);
+qEl.addEventListener("keyup", applySearch);
+
+qClear.onclick=()=>{
+  qEl.value="";
+  applySearch();
 };
-qClear.onclick=()=>{qEl.value="";qEl.oninput()};
 
 /* copy */
 copyBtn.onclick=()=>{
@@ -346,6 +365,7 @@ async function load(){
       dinos.push(name);
 
       const s={type:defType,m:0,f:0};
+      s.key = norm(name); // ← 検索キー作成
       state.set(name,s);
 
       const card=document.createElement("div");
@@ -424,6 +444,7 @@ async function load(){
     });
 
   rebuild();
+  applySearch(); // 初期状態（検索欄が残ってる場合も反映）
 }
 load();
 </script>
