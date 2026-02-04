@@ -4,487 +4,321 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>恐竜販売コピー生成</title>
+
 <style>
-  :root{
-    --bg:#0b0f14; --txt:rgba(255,255,255,.92); --mut:rgba(255,255,255,.60);
-    --stroke:rgba(255,255,255,.10); --shadow:0 14px 40px rgba(0,0,0,.30);
-    --r:18px; --good:#78ffb3;
+:root{
+  --bg:#0b0f14;
+  --card:#141a22;
+  --stroke:rgba(255,255,255,.08);
+  --txt:#fff;
+  --mut:rgba(255,255,255,.6);
+  --male:#74d7ff;
+  --female:#ff86c8;
+  --ok:#78ffb3;
+}
 
-    --male:#74d7ff; --maleBg:rgba(116,215,255,.18); --maleStroke:rgba(116,215,255,.40);
-    --female:#ff86c8; --femaleBg:rgba(255,134,200,.18); --femaleStroke:rgba(255,134,200,.40);
-  }
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--txt);
+  padding-bottom:120px;
+}
 
-  *{box-sizing:border-box}
-  body{
-    margin:0; color:var(--txt);
-    font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
-    background:
-      radial-gradient(900px 700px at 20% -10%, rgba(116,215,255,.18), transparent 55%),
-      radial-gradient(800px 700px at 120% 20%, rgba(255,134,200,.12), transparent 55%),
-      var(--bg);
-    padding-top:calc(10px + env(safe-area-inset-top));
-    padding-bottom:calc(92px + env(safe-area-inset-bottom));
-  }
+/* 上部固定 */
+.top{
+  position:sticky;
+  top:0;
+  z-index:10;
+  padding:10px;
+  background:rgba(11,15,20,.95);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--stroke);
+}
 
-  /* 上固定：検索 + 合計 + コピー + 出力 */
-  .topBar{
-    position:sticky; top:0; z-index:30;
-    padding:10px 12px;
-    padding-top:calc(10px + env(safe-area-inset-top));
-    backdrop-filter:blur(18px);
-    background:linear-gradient(to bottom, rgba(11,15,20,.92), rgba(11,15,20,.40));
-    border-bottom:1px solid rgba(255,255,255,.06);
-  }
+.row{
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
 
-  .topRow{
-    display:flex; align-items:center; gap:10px;
-    margin-bottom:8px;
-  }
+.search{
+  flex:1;
+  background:#1b2330;
+  border-radius:14px;
+  padding:8px 12px;
+}
+.search input{
+  width:100%;
+  background:none;
+  border:none;
+  color:#fff;
+  outline:none;
+}
 
-  .search{
-    flex:1;
-    display:flex; align-items:center; gap:10px;
-    height:36px;
-    padding:0 12px;
-    border-radius:14px;
-    border:1px solid rgba(255,255,255,.12);
-    background:rgba(255,255,255,.07);
-  }
-  .searchIcon{opacity:.7; font-size:14px;}
-  .search input{
-    width:100%;
-    border:0; outline:none;
-    background:transparent;
-    color:var(--txt);
-    font-size:14px;
-  }
+.total{
+  font-size:13px;
+}
+.total b{
+  color:var(--ok);
+  font-size:15px;
+}
 
-  .total{
-    font-size:12px; color:var(--mut);
-    white-space:nowrap;
-  }
-  .total b{
-    color:var(--good);
-    font-size:14px;
-    display:inline-block;
-    transform-origin:center;
-  }
-  .pulse{
-    animation:pulse .15s ease-out;
-  }
-  @keyframes pulse{
-    0%{transform:scale(1)}
-    60%{transform:scale(1.06)}
-    100%{transform:scale(1)}
-  }
+.copy{
+  background:#1b2330;
+  border:1px solid var(--stroke);
+  border-radius:14px;
+  padding:8px 12px;
+  color:#fff;
+  font-weight:700;
+}
 
-  .copyBtn{
-    height:36px; padding:0 12px; border-radius:14px;
-    border:1px solid rgba(255,255,255,.14);
-    background:rgba(255,255,255,.08);
-    color:var(--txt); font-weight:900; font-size:14px;
-    touch-action:manipulation;
-    white-space:nowrap;
-  }
-  .copyBtn:active{transform:scale(.99);}
+textarea{
+  width:100%;
+  margin-top:8px;
+  height:110px;
+  border-radius:14px;
+  background:#0f141c;
+  border:1px solid var(--stroke);
+  color:#fff;
+  padding:10px;
+  font-size:12px;
+  resize:none;
+}
 
-  textarea{
-    width:100%;
-    height:108px;
-    resize:none;
-    border-radius:14px;
-    border:1px solid rgba(255,255,255,.12);
-    background:rgba(0,0,0,.22);
-    color:var(--txt);
-    padding:10px 12px;
-    font-size:12px;
-    line-height:1.45;
-    outline:none;
-  }
+.list{
+  padding:12px;
+}
 
-  .wrap{padding:12px 14px;}
-  .spacer{height:14px;}
+/* カード */
+.card{
+  background:var(--card);
+  border-radius:16px;
+  padding:12px;
+  margin-bottom:10px;
+  border:1px solid var(--stroke);
+}
 
-  /* カード */
-  .card{
-    background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
-    border:1px solid var(--stroke);
-    border-radius:var(--r);
-    padding:12px;
-    box-shadow:var(--shadow);
-    margin-bottom:10px;
-    overflow:hidden;
-  }
-  .toprow{
-    display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
-  }
-  .name{font-weight:900; font-size:15px}
-  .rightInfo{display:flex; flex-direction:column; align-items:flex-end; gap:4px}
-  .badge{
-    font-size:12px; padding:6px 10px; border-radius:999px;
-    border:1px solid rgba(255,255,255,.12);
-    background:rgba(255,255,255,.06);
-    white-space:nowrap;
-  }
-  .unitPrice{font-size:12px; color:var(--mut)}
+.head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
 
-  .controls{
-    margin-top:10px;
-    display:flex; flex-direction:column; gap:10px;
-  }
+.badge{
+  font-size:12px;
+  padding:4px 10px;
+  border-radius:999px;
+  background:#1b2330;
+  border:1px solid var(--stroke);
+}
 
-  select{
-    width:100%;
-    border:1px solid rgba(255,255,255,.12);
-    background:rgba(255,255,255,.06);
-    color:var(--txt);
-    border-radius:14px;
-    padding:10px 12px;
-    font-size:15px;
-    outline:none;
-  }
+.price{
+  font-size:12px;
+  color:var(--mut);
+  margin-top:2px;
+}
 
-  .sexrow{display:flex; gap:10px}
-  .sexbox{
-    flex:1;
-    border-radius:16px;
-    padding:10px;
-    border:2px solid rgba(255,255,255,.10);
-    background:rgba(255,255,255,.06);
-  }
-  .sexbox.male{ background:var(--maleBg); border-color:var(--maleStroke); }
-  .sexbox.female{ background:var(--femaleBg); border-color:var(--femaleStroke); }
+.controls{
+  margin-top:10px;
+}
 
-  .sexhead{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
-  .label{font-weight:900; font-size:13px}
-  .label.m{color:var(--male)}
-  .label.f{color:var(--female)}
-  .count{font-variant-numeric:tabular-nums; font-size:20px; font-weight:900}
+select{
+  width:100%;
+  padding:8px;
+  border-radius:12px;
+  background:#1b2330;
+  border:1px solid var(--stroke);
+  color:#fff;
+}
 
-  .btnrow{display:flex; gap:10px}
-  .btn{
-    flex:1; height:42px; border-radius:14px;
-    border:1px solid rgba(255,255,255,.12);
-    background:rgba(255,255,255,.08);
-    color:var(--txt); font-size:22px; font-weight:900;
-    touch-action:manipulation;
-  }
-  .btn.plus.m{ color:var(--male); border-color:rgba(116,215,255,.45); }
-  .btn.plus.f{ color:var(--female); border-color:rgba(255,134,200,.45); }
+.sexrow{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+}
 
-  .disabled{opacity:.35; pointer-events:none}
+.sex{
+  flex:1;
+  padding:8px;
+  border-radius:14px;
+  border:2px solid;
+}
 
-  /* ② 0のカードを圧縮 */
-  .collapsed{
-    padding:10px 12px;
-  }
-  .collapsed .controls{
-    display:none;
-  }
-  .collapsed .unitPrice{
-    opacity:.75;
-  }
+.sex.m{border-color:var(--male)}
+.sex.f{border-color:var(--female)}
+
+.sexhead{
+  display:flex;
+  justify-content:space-between;
+  font-size:13px;
+  font-weight:700;
+}
+
+.btns{
+  display:flex;
+  gap:8px;
+  margin-top:6px;
+}
+
+.btn{
+  flex:1;
+  height:36px;
+  border-radius:10px;
+  background:#1b2330;
+  border:1px solid var(--stroke);
+  color:#fff;
+  font-size:18px;
+  font-weight:800;
+}
 </style>
 </head>
+
 <body>
 
-<div class="topBar">
-  <div class="topRow">
+<div class="top">
+  <div class="row">
     <div class="search">
-      <div class="searchIcon">🔎</div>
-      <input id="q" placeholder="検索（ひらがなOK）" autocomplete="off" />
+      <input id="q" placeholder="検索（ひらがなOK）">
     </div>
-    <div class="total">合計 <b id="totalView">0円</b></div>
-    <button id="copyBtn" class="copyBtn" type="button">コピー</button>
+    <div class="total">合計 <b id="total">0円</b></div>
+    <button class="copy" id="copy">コピー</button>
   </div>
-  <textarea id="result" readonly placeholder="入力するとここに自動で出ます"></textarea>
+  <textarea id="out" readonly></textarea>
 </div>
 
-<div class="wrap" id="list"></div>
-<div class="spacer"></div>
+<div class="list" id="list"></div>
 
 <script>
-  // 単価
-  const prices = {"受精卵":30,"受精卵(指定)":50,"幼体":100,"胚":50,"胚(指定)":100,"成体":500};
+const prices={
+  "受精卵":30,
+  "受精卵(指定)":50,
+  "幼体":100,
+  "胚":50,
+  "胚(指定)":100,
+  "成体":500
+};
 
-  // ♂♀入力対象＆ペア判定対象（指定はいっさい表示に出さない）
-  const sexTypes  = new Set(["受精卵(指定)","胚(指定)","幼体","成体"]);
-  const pairTypes = new Set(["受精卵(指定)","胚(指定)","幼体","成体"]);
+const pairTypes=new Set(["受精卵","胚","幼体","成体"]);
+const dinos=[];
+const state=new Map();
 
-  let dinos = [];
-  const state = new Map();
-  const cardEls = new Map(); // name -> {card, norm}
+function hira(s){
+  return s.replace(/[\u30a1-\u30f6]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60))
+          .toLowerCase().replace(/[^\w]/g,"");
+}
 
-  const list = document.getElementById("list");
-  const totalView = document.getElementById("totalView");
-  const resultTa = document.getElementById("result");
-  const qInput = document.getElementById("q");
-  const copyBtn = document.getElementById("copyBtn");
-
-  function yen(n){ return `${Number(n).toLocaleString("ja-JP")}円`; }
-
-  // ひらがな検索：カタカナ→ひらがな、記号・空白除去、lower
-  function kataToHira(str){
-    return str.replace(/[\u30A1-\u30F6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
-  }
-  function normalize(str){
-    return kataToHira(String(str).toLowerCase())
-      .replace(/[\s　・()（）【】\[\]「」『』"'.\-_,/\\]/g,"");
-  }
-
-  async function loadDinos(){
-    const res = await fetch(`dinos.txt?ts=${Date.now()}`);
-    const text = await res.text();
-    dinos = text.split(/\r?\n/).map(s => s.trim().replace(/^・\s*/,"")).filter(Boolean);
-    dinos.forEach(d => state.set(d, { type:"受精卵", m:0, f:0 }));
-    renderAll();
-    refreshOutput(true);
-  }
-
-  function baseName(type){
-    // 表示に(指定)は出さない
-    return type.replace("(指定)", "");
-  }
-
-  function formatLine(type, m, f){
-    const qty = m + f;
-    if (qty <= 0) return "";
-
-    // ペア判定タイプ
-    if (pairTypes.has(type)){
-      const base = baseName(type);
-      if (m === f && m > 0){
-        return `${base}ペア${m > 1 ? "×" + m : ""}`;
-      }
-      const parts = [];
-      if (m > 0) parts.push(`♂×${m}`);
-      if (f > 0) parts.push(`♀×${f}`);
-      return `${base} ${parts.join(" ")}`.trim();
+async function load(){
+  const t=await fetch("dinos.txt").then(r=>r.text());
+  t.split(/\r?\n/).forEach(d=>{
+    d=d.replace(/^・/,"").trim();
+    if(d){
+      dinos.push(d);
+      state.set(d,{type:"受精卵",m:0,f:0});
     }
+  });
+  render();
+  update();
+}
 
-    // それ以外：合算のみ
-    return `${type}×${qty}`;
+function render(){
+  const list=document.getElementById("list");
+  list.innerHTML="";
+  dinos.forEach(name=>{
+    const s=state.get(name);
+    const card=document.createElement("div");
+    card.className="card";
+    card.dataset.key=hira(name);
+    card.innerHTML=`
+      <div class="head">
+        <div><b>${name}</b></div>
+        <div>
+          <div class="badge">${s.type}</div>
+          <div class="price">単価 ${prices[s.type]}円</div>
+        </div>
+      </div>
+      <div class="controls">
+        <select>
+          ${Object.keys(prices).map(t=>`<option ${t===s.type?"selected":""}>${t}</option>`).join("")}
+        </select>
+        <div class="sexrow">
+          <div class="sex m">
+            <div class="sexhead"><span>♂</span><span class="mc">${s.m}</span></div>
+            <div class="btns">
+              <button class="btn" data-s="m" data-d="-1">−</button>
+              <button class="btn" data-s="m" data-d="1">＋</button>
+            </div>
+          </div>
+          <div class="sex f">
+            <div class="sexhead"><span>♀</span><span class="fc">${s.f}</span></div>
+            <div class="btns">
+              <button class="btn" data-s="f" data-d="-1">−</button>
+              <button class="btn" data-s="f" data-d="1">＋</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    list.appendChild(card);
+
+    const sel=card.querySelector("select");
+    sel.onchange=()=>{s.type=sel.value; render();};
+
+    card.querySelectorAll(".btn").forEach(b=>{
+      b.onclick=()=>{
+        const sex=b.dataset.s;
+        s[sex]=Math.max(0,s[sex]+Number(b.dataset.d));
+        render();
+      };
+    });
+  });
+}
+
+function format(name,s){
+  const qty=s.m+s.f;
+  if(qty===0)return "";
+  const price=prices[s.type]*qty;
+  if(pairTypes.has(s.type)&&s.m===s.f){
+    const p=s.m;
+    return `${name} ${s.type}ペア${p>1?"×"+p:""} = ${price}円`;
   }
+  return `${name} ${s.type}×${qty} = ${price}円`;
+}
 
-  // ③ 合計アニメ（値が変わった時だけ）
-  let lastTotal = 0;
-  function animateTotal(){
-    totalView.classList.remove("pulse");
-    void totalView.offsetWidth; // reflow
-    totalView.classList.add("pulse");
-  }
-
-  function refreshOutput(force=false){
-    let lines = [];
-    let total = 0;
-    let idx = 1;
-
-    for (const name of dinos){
-      const s = state.get(name);
-      if (!s) continue;
-
-      const type = s.type;
-      const m = s.m;
-      const f = s.f; // sexTypes以外はUI側でf=0に寄せる
-      const qty = m + f;
-      // if (qty === 0) continue;
-
-      const price = (prices[type] || 0) * qty;
-      total += price;
-
-      lines.push(`${idx}. ${name} ${formatLine(type, m, f)} = ${price}円`);
-      idx++;
-    }
-
-    totalView.textContent = yen(total);
-    if (force || total !== lastTotal) animateTotal();
-    lastTotal = total;
-
-    resultTa.value =
+function update(){
+  let lines=[],sum=0;
+  dinos.forEach(d=>{
+    const s=state.get(d);
+    const q=s.m+s.f;
+    if(q===0)return;
+    const p=prices[s.type]*q;
+    sum+=p;
+    lines.push(format(d,s));
+  });
+  document.getElementById("out").value=
 `この度はご検討いただきありがとうございます！
-ご希望内容は以下となります👇🏻
 
 ${lines.join("\n")}
-ーーーーーーーーーーーーーーー
-計：${total}円
-最短納品目安 : 即納品可能
+--------------------
+計：${sum}円
+最短納品目安：即納可能`;
+  document.getElementById("total").textContent=sum+"円";
+}
 
-ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻
+document.getElementById("q").oninput=e=>{
+  const v=hira(e.target.value);
+  document.querySelectorAll(".card").forEach(c=>{
+    c.style.display=c.dataset.key.includes(v)?"":"none";
+  });
+};
 
-また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
+document.getElementById("copy").onclick=()=>{
+  navigator.clipboard.writeText(document.getElementById("out").value);
+};
 
-    // ② 0カード圧縮の同期
-    syncCollapse();
-  }
-
-  function syncCollapse(){
-    for (const name of dinos){
-      const s = state.get(name);
-      const ref = cardEls.get(name);
-      if (!s || !ref) continue;
-
-      const qty = s.m + s.f;
-      // 検索で一時展開しても、数量>0なら必ず展開
-      if (qty > 0) {
-        ref.card.classList.remove("collapsed");
-      } else {
-        ref.card.classList.add("collapsed");
-      }
-    }
-  }
-
-  function applySearch(){
-    const q = normalize(qInput.value || "");
-    for (const name of dinos){
-      const ref = cardEls.get(name);
-      if (!ref) continue;
-      if (!q || ref.norm.includes(q)){
-        ref.card.style.display = "";
-      } else {
-        ref.card.style.display = "none";
-      }
-    }
-  }
-
-  function renderAll(){
-    list.innerHTML = "";
-    cardEls.clear();
-
-    for (const name of dinos){
-      const s = state.get(name);
-
-      const card = document.createElement("div");
-      card.className = "card";
-      card.dataset.name = name;
-
-      card.innerHTML = `
-        <div class="toprow">
-          <div class="name">${name}</div>
-          <div class="rightInfo">
-            <div class="badge">${s.type}</div>
-            <div class="unitPrice">単価 ${yen(prices[s.type] || 0)}</div>
-          </div>
-        </div>
-
-        <div class="controls">
-          <select class="type">
-            <option ${s.type==="受精卵"?"selected":""}>受精卵</option>
-            <option ${s.type==="受精卵(指定)"?"selected":""}>受精卵(指定)</option>
-            <option ${s.type==="幼体"?"selected":""}>幼体</option>
-            <option ${s.type==="胚"?"selected":""}>胚</option>
-            <option ${s.type==="胚(指定)"?"selected":""}>胚(指定)</option>
-            <option ${s.type==="成体"?"selected":""}>成体</option>
-          </select>
-
-          <div class="sexrow">
-            <div class="sexbox male">
-              <div class="sexhead">
-                <div class="label m">♂ オス</div>
-                <div class="count mcnt">${s.m}</div>
-              </div>
-              <div class="btnrow">
-                <button class="btn" type="button" data-sex="m" data-d="-1">−</button>
-                <button class="btn plus m" type="button" data-sex="m" data-d="1">＋</button>
-              </div>
-            </div>
-
-            <div class="sexbox female">
-              <div class="sexhead">
-                <div class="label f">♀ メス</div>
-                <div class="count fcnt">${s.f}</div>
-              </div>
-              <div class="btnrow">
-                <button class="btn" type="button" data-sex="f" data-d="-1">−</button>
-                <button class="btn plus f" type="button" data-sex="f" data-d="1">＋</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-
-      list.appendChild(card);
-
-      // 正規化キャッシュ
-      cardEls.set(name, { card, norm: normalize(name) });
-
-      const sel = card.querySelector(".type");
-      const badge = card.querySelector(".badge");
-      const unitPriceEl = card.querySelector(".unitPrice");
-      const femaleBox = card.querySelector(".female");
-
-      function applyMode(){
-        const st = state.get(name);
-        badge.textContent = st.type;
-        unitPriceEl.textContent = `単価 ${yen(prices[st.type] || 0)}`;
-
-        // 性別不要タイプは♀無効化して0（出力は合算）
-        if (!sexTypes.has(st.type)){
-          st.f = 0;
-          card.querySelector(".fcnt").textContent = "0";
-          femaleBox.classList.add("disabled");
-        } else {
-          femaleBox.classList.remove("disabled");
-        }
-
-        refreshOutput();
-      }
-
-      sel.addEventListener("change", () => {
-        const st = state.get(name);
-        st.type = sel.value;
-        applyMode();
-      });
-
-      card.querySelectorAll("button[data-sex]").forEach(b => {
-        b.addEventListener("click", () => {
-          const st = state.get(name);
-          const sex = b.dataset.sex;
-          const d = Number(b.dataset.d);
-
-          if (!sexTypes.has(st.type) && sex === "f") return;
-
-          st[sex] = Math.max(0, st[sex] + d);
-          card.querySelector(sex==="m" ? ".mcnt" : ".fcnt").textContent = st[sex];
-
-          refreshOutput();
-        });
-      });
-
-      applyMode();
-    }
-
-    applySearch();
-    syncCollapse();
-  }
-
-  // ① コピー済みの静かなフィードバック（ボタン文言だけ）
-  let copyTimer = null;
-  async function copyText(){
-    const text = resultTa.value || "";
-    if (!text.trim()){
-      // 常に押せるが、空なら軽く知らせる
-      alert("まだ出力がありません");
-      return;
-    }
-    try{
-      await navigator.clipboard.writeText(text);
-    }catch(e){
-      resultTa.focus(); resultTa.select();
-      document.execCommand("copy");
-    }
-
-    // ボタン文言変更 → 自動で戻す
-    const prev = copyBtn.textContent;
-    copyBtn.textContent = "コピー済み ✓";
-    if (copyTimer) clearTimeout(copyTimer);
-    copyTimer = setTimeout(() => { copyBtn.textContent = prev; }, 1200);
-  }
-
-  // イベント
-  qInput.addEventListener("input", () => applySearch());
-  copyBtn.addEventListener("click", () => copyText());
-
-  loadDinos();
+load();
+setInterval(update,100);
 </script>
 
 </body>
