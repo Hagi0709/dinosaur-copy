@@ -237,19 +237,20 @@
     "成体":500
   };
 
-  // ♂♀内訳（&ペア判定）対象：指定＋幼体＋成体
-  const sexTypes = new Set(["受精卵(指定)","胚(指定)","幼体","成体"]);
-  const pairTypes = new Set(["受精卵(指定)","胚(指定)","幼体","成体"]); // 受精卵/胚(指定なし)は含めない
+  // ♂♀内訳（&ペア判定）対象
+  // 指定なしの「受精卵」「胚」は対象外（ペアにもならない）
+  const sexTypes  = new Set(["受精卵(指定)","胚(指定)","幼体","成体"]);
+  const pairTypes = new Set(["受精卵(指定)","胚(指定)","幼体","成体"]);
 
   const dinos = [];
   const state = new Map(); // name -> {type,m,f}
   const ui = new Map();    // name -> dom refs
 
-  const listEl = document.getElementById("list");
-  const outEl = document.getElementById("out");
+  const listEl  = document.getElementById("list");
+  const outEl   = document.getElementById("out");
   const totalEl = document.getElementById("total");
-  const qEl = document.getElementById("q");
-  const qClearEl = document.getElementById("qClear");
+  const qEl     = document.getElementById("q");
+  const qClearEl= document.getElementById("qClear");
   const copyBtn = document.getElementById("copy");
 
   function yen(n){ return Number(n).toLocaleString("ja-JP") + "円"; }
@@ -272,24 +273,30 @@
     return String(t).replace("(指定)", "");
   }
 
-  // 行の「中身」：生物名の後にスペースなし、=の両端は半角スペース
+  // 行（生物名の後スペースなし、=両端だけ半角スペース、金額は3桁区切り）
+  // sexTypes/pairTypes は "指定＋幼体＋成体" のみ
   function formatLine(name, s){
     const qty = s.m + s.f;
     const unit = prices[s.type] || 0;
     const price = unit * qty;
     const t = displayType(s.type);
 
-    // ペア/内訳対象
     if (pairTypes.has(s.type)){
+      // 同数ならペア（×N）
       if (s.m === s.f && s.m > 0){
         const p = s.m;
         return `${name}${t}ペア${p > 1 ? "×" + p : ""} = ${price.toLocaleString("ja-JP")}円`;
       }
-      // ♂×a ♀×b（どちらか0でも出す：現場で分かるため）
-      return `${name}${t} ♂×${s.m} ♀×${s.f} = ${price.toLocaleString("ja-JP")}円`;
+
+      // 同数じゃない：0は表示しない（♂1♀0 なら ♀×0は出さない）
+      const parts = [];
+      if (s.m > 0) parts.push(`♂×${s.m}`);
+      if (s.f > 0) parts.push(`♀×${s.f}`);
+
+      return `${name}${t} ${parts.join(" ")} = ${price.toLocaleString("ja-JP")}円`;
     }
 
-    // それ以外は合算（ペアにしない）
+    // それ以外（指定なし受精卵/胚を含む）は合算のみ、ペアにしない
     return `${name}${t}×${qty} = ${price.toLocaleString("ja-JP")}円`;
   }
 
@@ -306,7 +313,6 @@
       if (qty === 0) continue;
 
       sum += (prices[s.type] || 0) * qty;
-      // .のあと半角スペースあり
       lines.push(`${idx}. ${formatLine(name, s)}`);
       idx++;
     }
@@ -328,8 +334,11 @@ ${lines.join("\n")}
   }
 
   function applySearch(){
-    const q = normalize(qEl.value);
-    qClearEl.style.display = q ? "" : "none";
+    const raw = qEl.value || "";
+    const q = normalize(raw);
+
+    // ×は「入力があるか」で出す（正規化に依存しない）
+    qClearEl.style.display = raw.length ? "" : "none";
 
     for (const name of dinos){
       const ref = ui.get(name);
@@ -388,7 +397,7 @@ ${lines.join("\n")}
           <div class="sexrow">
             <div class="sex m">
               <div class="sexhead">
-                <div class="label m">♂ オス</div>
+                <div class="label m">♂</div>
                 <div class="count mcnt">0</div>
               </div>
               <div class="btns">
@@ -399,7 +408,7 @@ ${lines.join("\n")}
 
             <div class="sex f">
               <div class="sexhead">
-                <div class="label f">♀ メス</div>
+                <div class="label f">♀</div>
                 <div class="count fcnt">0</div>
               </div>
               <div class="btns">
@@ -413,11 +422,11 @@ ${lines.join("\n")}
       listEl.appendChild(card);
 
       const badge = card.querySelector(".badge");
-      const unit = card.querySelector(".unit");
-      const sel = card.querySelector(".type");
-      const mcnt = card.querySelector(".mcnt");
-      const fcnt = card.querySelector(".fcnt");
-      const fBox = card.querySelector(".sex.f");
+      const unit  = card.querySelector(".unit");
+      const sel   = card.querySelector(".type");
+      const mcnt  = card.querySelector(".mcnt");
+      const fcnt  = card.querySelector(".fcnt");
+      const fBox  = card.querySelector(".sex.f");
 
       const ref = {
         card,
@@ -431,7 +440,7 @@ ${lines.join("\n")}
       };
       ui.set(name, ref);
 
-      // 初期数値
+      // 初期表示
       mcnt.textContent = String(s.m);
       fcnt.textContent = String(s.f);
 
@@ -442,7 +451,7 @@ ${lines.join("\n")}
         rebuildOutput();
       });
 
-      // ±
+      // ±ボタン
       card.querySelectorAll("button[data-sex]").forEach(btn => {
         btn.addEventListener("click", () => {
           const sex = btn.dataset.sex;
@@ -455,13 +464,11 @@ ${lines.join("\n")}
           if (sex === "m") mcnt.textContent = String(s.m);
           else fcnt.textContent = String(s.f);
 
-          // モード適用（♀無効化など）
           setModeForCard(name);
           rebuildOutput();
         });
       });
 
-      // 初期モード
       setModeForCard(name);
     }
 
@@ -494,7 +501,7 @@ ${lines.join("\n")}
     }, 1200);
   }
 
-  // 検索入力/クリア
+  // 検索入力/クリア（×で確実にリセット）
   qEl.addEventListener("input", applySearch);
   qClearEl.addEventListener("click", () => {
     qEl.value = "";
