@@ -8,7 +8,6 @@
            maximum-scale=1,
            user-scalable=no,
            viewport-fit=cover">
-
 <title>恐竜販売コピー生成</title>
 
 <style>
@@ -75,7 +74,7 @@ button,select,input{touch-action:manipulation}
   background:rgba(255,255,255,.06);
   font-size:18px;
   color:#fff;
-  display:inline-block; /* ← 指定どおり固定 */
+  display:inline-block; /* これで固定 */
   line-height:1;
 }
 .delivery,.copy{
@@ -94,6 +93,7 @@ button,select,input{touch-action:manipulation}
   font-weight:900;
   white-space:nowrap;
 }
+
 textarea{
   width:100%;
   margin-top:8px;
@@ -119,27 +119,28 @@ textarea{
 }
 .card.hidden{display:none !important}
 
-/* 0のときは中身だけ畳む（ヘッダは残す） */
-.card.autoCollapsed .sexrow{display:none}
-.card.autoCollapsed{padding-bottom:10px}
+/* 畳み状態（入力欄だけ隠す） */
+.card.collapsed .sexrow{display:none}
 
 .head{
   display:flex;
   justify-content:space-between;
-  align-items:flex-start;
+  align-items:center;
   gap:10px;
+  cursor:pointer;
+  user-select:none;
 }
 .name{
   font-weight:900;
   line-height:1.2;
-  padding-top:2px;
 }
 .right{
   text-align:right;
   display:flex;
   flex-direction:column;
   gap:4px;
-  min-width:112px;
+  min-width:130px;
+  align-items:flex-end;
 }
 select.type{
   padding:6px 10px;
@@ -150,6 +151,21 @@ select.type{
   font-size:12px;
 }
 .unit{font-size:12px;color:var(--mut)}
+
+/* 開閉ボタン（見た目だけ、タップはhead全体でOK） */
+.chev{
+  width:22px;height:22px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+  color:rgba(255,255,255,.8);
+  font-size:12px;
+}
+.card:not(.collapsed) .chev{transform:rotate(180deg)}
 
 /* ===== compact steppers ===== */
 .sexrow{
@@ -252,6 +268,7 @@ const pairTypes=new Set([
 ]);
 
 const dinos=[], state=new Map();
+
 const listEl=document.getElementById("list");
 const outEl=document.getElementById("out");
 const totalEl=document.getElementById("total");
@@ -262,7 +279,7 @@ const copyBtn=document.getElementById("copy");
 
 function yen(n){return n.toLocaleString("ja-JP")+"円"}
 
-/* ひらがな検索 */
+/* ひらがな検索（カタカナ→ひらがな） */
 function toHira(str){
   return (str||"").replace(/[\u30a1-\u30f6]/g, ch =>
     String.fromCharCode(ch.charCodeAt(0) - 0x60)
@@ -272,7 +289,7 @@ function norm(str){
   return toHira((str||"").trim()).toLowerCase();
 }
 
-/* dinos.txt 1行のパース: 恐竜名|タイプ */
+/* dinos.txt 1行: 恐竜名|タイプ */
 function parseLine(line){
   line = (line||"").trim();
   if(!line) return null;
@@ -290,12 +307,10 @@ function parseLine(line){
   return {name, defType};
 }
 
-/* ===== UI helpers ===== */
 function applyFemaleDisabled(s){
   const card = s.card;
   const fbox = card.querySelector(".sex.f");
   const fc = card.querySelector(".fc");
-
   if(!sexTypes.has(s.type)){
     s.f = 0;
     fc.textContent = "0";
@@ -305,10 +320,10 @@ function applyFemaleDisabled(s){
   }
 }
 
-function updateCardAutoCollapse(s){
+function autoCollapseByQty(s){
+  // qty=0 は畳む（ただしタップで開ける）
   const qty = s.m + s.f;
-  // 入力なしは自動で畳む（ヘッダだけ）
-  s.card.classList.toggle("autoCollapsed", qty === 0);
+  s.card.classList.toggle("collapsed", qty === 0);
 }
 
 /* ===== rebuild ===== */
@@ -317,9 +332,9 @@ function rebuild(){
 
   for (const name of dinos){
     const s=state.get(name);
-    const qty=s.m+s.f;
-    updateCardAutoCollapse(s);
+    autoCollapseByQty(s);
 
+    const qty=s.m+s.f;
     if(qty===0) continue;
 
     const price=(prices[s.type]||0)*qty;
@@ -335,7 +350,6 @@ function rebuild(){
         const p=[];
         if(s.m>0) p.push(`♂×${s.m}`);
         if(s.f>0) p.push(`♀×${s.f}`);
-        // 片方0は表示しない（pが片方だけになる）
         line = `${name}${t}${p.length ? " " + p.join(" ") : ""} = ${price.toLocaleString("ja-JP")}円`;
       }
     }else{
@@ -362,26 +376,25 @@ ${lines.join("\n")}
 また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
 }
 
-/* ===== search（完全に作り直し） ===== */
+/* ===== search ===== */
 function applySearch(){
   const q = norm(qEl.value);
 
   for (const name of dinos){
     const s = state.get(name);
-    // cardに持ってる正規化キー（ひらがな化済み）で検索
     const hit = !q || s.key.includes(q);
     s.card.classList.toggle("hidden", !hit);
 
-    // 検索中はヒットしたカードだけ畳まない（入力しやすい）
+    // 検索中はヒットしたカードは展開（入力できるように）
     if(q && hit){
-      s.card.classList.remove("autoCollapsed");
+      s.card.classList.remove("collapsed");
     }else{
-      updateCardAutoCollapse(s);
+      autoCollapseByQty(s);
     }
   }
 }
 
-// iOS IME取りこぼし対策：全部つける
+// iOS IME対策（全部付ける）
 ["input","change","keyup","compositionend"].forEach(ev=>{
   qEl.addEventListener(ev, ()=>requestAnimationFrame(applySearch));
 });
@@ -404,15 +417,28 @@ copyBtn.addEventListener("click", async ()=>{
   }
   const prev = copyBtn.textContent;
   copyBtn.textContent="コピー済み✓";
-  copyBtn.style.opacity="0.8";
+  copyBtn.style.opacity="0.85";
   setTimeout(()=>{
     copyBtn.textContent=prev;
     copyBtn.style.opacity="";
   }, 1200);
 });
 
-/* ===== 重要：イベント委譲（stateズレを根絶） ===== */
+/* ===== イベント委譲（stateズレ防止） ===== */
 listEl.addEventListener("click", (e)=>{
+  // カード開閉（headタップ）
+  const head = e.target.closest(".head");
+  if(head){
+    const card = head.closest(".card");
+    if(card && !card.classList.contains("hidden")){
+      // セレクト操作はhead内でも誤爆しやすいので除外
+      if(e.target.closest("select")) return;
+      card.classList.toggle("collapsed");
+    }
+    return;
+  }
+
+  // +/- ボタン
   const btn = e.target.closest(".btn");
   if(!btn) return;
 
@@ -423,16 +449,18 @@ listEl.addEventListener("click", (e)=>{
   const s = state.get(name);
   if(!s) return;
 
-  const sex = btn.dataset.sex;   // "m" or "f"
+  const sex = btn.dataset.sex;
   const d = Number(btn.dataset.d);
 
   if(sex==="f" && !sexTypes.has(s.type)) return;
 
   s[sex] = Math.max(0, s[sex] + d);
 
-  // 表示更新
   card.querySelector(".mc").textContent = String(s.m);
   card.querySelector(".fc").textContent = String(s.f);
+
+  // 入力したら必ず展開維持
+  card.classList.remove("collapsed");
 
   rebuild();
 });
@@ -453,9 +481,11 @@ listEl.addEventListener("change", (e)=>{
   card.querySelector(".unit").textContent = `単価${prices[s.type]}円`;
   applyFemaleDisabled(s);
 
-  // 値表示（♀が0にされた場合も反映）
   card.querySelector(".mc").textContent = String(s.m);
   card.querySelector(".fc").textContent = String(s.f);
+
+  // 変更したカードは展開維持
+  card.classList.remove("collapsed");
 
   rebuild();
 });
@@ -471,21 +501,24 @@ async function load(){
       dinos.push(name);
 
       const s={type:defType,m:0,f:0};
-      s.key = norm(name); // ひらがな化キー
+      s.key = norm(name);
       state.set(name,s);
 
       const card=document.createElement("div");
-      card.className="card autoCollapsed";
-      card.dataset.name = name;
-      s.card = card;
+      card.className="card collapsed";
+      card.dataset.name=name;
+      s.card=card;
 
       card.innerHTML=`
         <div class="head">
           <div class="name">${name}</div>
           <div class="right">
-            <select class="type">
-              ${Object.keys(prices).map(t=>`<option value="${t}">${t}</option>`).join("")}
-            </select>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <select class="type">
+                ${Object.keys(prices).map(t=>`<option value="${t}">${t}</option>`).join("")}
+              </select>
+              <div class="chev">˅</div>
+            </div>
             <div class="unit">単価30円</div>
           </div>
         </div>
@@ -514,12 +547,11 @@ async function load(){
       // 初期値反映
       const sel = card.querySelector("select.type");
       sel.value = defType;
-
       s.type = defType;
-      card.querySelector(".unit").textContent = `単価${prices[s.type]}円`;
 
+      card.querySelector(".unit").textContent = `単価${prices[s.type]}円`;
       applyFemaleDisabled(s);
-      updateCardAutoCollapse(s);
+      autoCollapseByQty(s);
     });
 
   rebuild();
