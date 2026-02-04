@@ -6,88 +6,182 @@
 <title>恐竜販売コピー生成</title>
 <style>
   :root{
-    --bg:#0b0c10; --text:rgba(255,255,255,.92); --muted:rgba(255,255,255,.60);
-    --accent:#7cf2ff; --good:#78ffb3; --shadow:0 14px 40px rgba(0,0,0,.35); --r:18px;
+    --bg:#0b0f14;
+    --txt:rgba(255,255,255,.92);
+    --mut:rgba(255,255,255,.60);
+    --stroke:rgba(255,255,255,.10);
+    --shadow:0 14px 40px rgba(0,0,0,.30);
+    --r:18px;
+
+    /* ✅ 枠色（見た目はっきり） */
+    --male:#74d7ff;
+    --maleBg:rgba(116,215,255,.18);
+    --maleStroke:rgba(116,215,255,.40);
+
+    --female:#ff86c8;
+    --femaleBg:rgba(255,134,200,.18);
+    --femaleStroke:rgba(255,134,200,.40);
+
+    --good:#78ffb3;
   }
-  *{box-sizing:border-box;}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;color:var(--text);
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
     background:
-      radial-gradient(1200px 900px at 10% -10%, rgba(124,242,255,.22), transparent 55%),
-      radial-gradient(900px 900px at 110% 10%, rgba(120,255,179,.14), transparent 55%),
+      radial-gradient(900px 700px at 20% -10%, rgba(116,215,255,.18), transparent 55%),
+      radial-gradient(800px 700px at 120% 20%, rgba(255,134,200,.12), transparent 55%),
       var(--bg);
-    padding-bottom:120px;
+    padding-bottom:110px;
   }
-  .top{position:sticky;top:0;z-index:50;padding:14px 14px 10px;padding-top:calc(14px + env(safe-area-inset-top));
-    backdrop-filter:blur(18px);background:linear-gradient(to bottom, rgba(11,12,16,.78), rgba(11,12,16,.25));
+
+  header{
+    position:sticky; top:0; z-index:5;
+    padding:14px 14px 10px;
+    padding-top:calc(14px + env(safe-area-inset-top));
+    backdrop-filter:blur(18px);
+    background:linear-gradient(to bottom, rgba(11,15,20,.90), rgba(11,15,20,.35));
     border-bottom:1px solid rgba(255,255,255,.06);
   }
-  .title{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;}
-  .title h1{margin:0;font-size:18px;}
-  .pill{padding:8px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:var(--muted);font-size:12px;white-space:nowrap;}
-  .searchRow{margin-top:10px;display:flex;gap:10px;align-items:center;}
-  .search{flex:1;display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);}
-  .search input{width:100%;border:0;outline:none;background:transparent;color:var(--text);font-size:15px;}
-  .toggle{display:flex;align-items:center;gap:8px;padding:12px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);font-size:13px;color:var(--muted);user-select:none;}
-  .toggle input{width:18px;height:18px;}
-  .wrap{padding:12px 14px;}
-  .card{border-radius:var(--r);background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
-    border:1px solid rgba(255,255,255,.10);box-shadow:var(--shadow);overflow:hidden;margin-bottom:10px;}
-  .cardHead{padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
-  .name{font-weight:900;font-size:15px;}
-  .sub{color:var(--muted);font-size:12px;}
-  .badge{padding:5px 8px;border-radius:999px;font-size:12px;background:rgba(124,242,255,.10);border:1px solid rgba(124,242,255,.20);}
-  .controls{padding:10px 12px 12px;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:10px;}
-  select{border:0;outline:none;color:var(--text);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:10px 12px;font-size:15px;}
-  .sexBlock{display:flex;gap:10px;width:100%;}
-  .sexCard{flex:1;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);padding:10px;}
-  .sexTop{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-  .sexLabel{font-weight:900;font-size:13px;}
-  .sexLabel span{opacity:.75;font-weight:600;margin-left:6px;}
-  .count{font-variant-numeric:tabular-nums;font-size:20px;font-weight:900;}
-  .btnRow{display:flex;gap:10px;}
-  .btn{flex:1;height:42px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.08);color:var(--text);font-size:22px;font-weight:900;}
-  .btn.plus{color:var(--accent);border-color:rgba(124,242,255,.25);}
-  .disabled{opacity:.35;pointer-events:none;}
-  .sheet{border-radius:18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);padding:10px;}
-  .sheetTop{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
-  textarea{width:100%;height:220px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.22);color:var(--text);padding:12px;font-size:13px;line-height:1.55;outline:none;resize:none;}
-  .total{font-size:13px;color:var(--muted);} .total b{color:var(--good);}
-  .bottomBar{position:fixed;left:0;right:0;bottom:0;z-index:80;padding:10px 12px;padding-bottom:calc(10px + env(safe-area-inset-bottom));
-    background:linear-gradient(to top, rgba(11,12,16,.92), rgba(11,12,16,.25));backdrop-filter:blur(18px);border-top:1px solid rgba(255,255,255,.06);}
-  .barRow{display:flex;gap:10px;}
-  .action{flex:1;height:48px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:var(--text);font-size:16px;font-weight:900;}
-  .action.primary{background:linear-gradient(180deg, rgba(124,242,255,.25), rgba(124,242,255,.10));border-color:rgba(124,242,255,.28);}
+  h1{margin:0; font-size:18px}
+  .sub{margin-top:6px; color:var(--mut); font-size:12px; line-height:1.35}
+
+  .wrap{padding:12px 14px}
+
+  .card{
+    background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+    border:1px solid var(--stroke);
+    border-radius:var(--r);
+    padding:12px;
+    box-shadow:var(--shadow);
+    margin-bottom:10px;
+  }
+  .toprow{display:flex; align-items:flex-start; justify-content:space-between; gap:10px}
+  .name{font-weight:900; font-size:15px}
+
+  .rightInfo{display:flex; flex-direction:column; align-items:flex-end; gap:4px}
+  .badge{
+    font-size:12px;
+    padding:6px 10px; border-radius:999px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.06);
+    white-space:nowrap;
+  }
+  .unitPrice{font-size:12px; color:var(--mut)} /* ✅ ここだけ更新する */
+
+  .controls{margin-top:10px; display:flex; flex-direction:column; gap:10px}
+  select{
+    width:100%;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.06);
+    color:var(--txt);
+    border-radius:14px;
+    padding:10px 12px;
+    font-size:15px;
+    outline:none;
+  }
+
+  .sexrow{display:flex; gap:10px}
+  .sexbox{
+    flex:1;
+    border-radius:16px;
+    padding:10px;
+    border:2px solid rgba(255,255,255,.10);
+    background:rgba(255,255,255,.06);
+  }
+  /* ✅ 枠・背景を色分け */
+  .sexbox.male{ background:var(--maleBg); border-color:var(--maleStroke); }
+  .sexbox.female{ background:var(--femaleBg); border-color:var(--femaleStroke); }
+
+  .sexhead{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
+  .label{font-weight:900; font-size:13px}
+  .label.m{color:var(--male)}
+  .label.f{color:var(--female)}
+  .count{font-variant-numeric:tabular-nums; font-size:20px; font-weight:900}
+
+  .btnrow{display:flex; gap:10px}
+  .btn{
+    flex:1; height:42px; border-radius:14px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.08);
+    color:var(--txt); font-size:22px; font-weight:900;
+    touch-action:manipulation;
+  }
+  .btn.plus.m{ color:var(--male); border-color:rgba(116,215,255,.45); }
+  .btn.plus.f{ color:var(--female); border-color:rgba(255,134,200,.45); }
+
+  .disabled{opacity:.35; pointer-events:none}
+
+  .sheet{
+    margin-top:12px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:18px;
+    padding:10px;
+  }
+  .sheetTop{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px}
+  textarea{
+    width:100%; height:220px; resize:none;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.22);
+    color:var(--txt);
+    padding:12px;
+    font-size:13px;
+    line-height:1.55;
+    outline:none;
+  }
+  .total{font-size:12px; color:var(--mut)}
+  .total b{color:var(--good)}
+
+  .bar{
+    position:fixed; left:0; right:0; bottom:0; z-index:10;
+    padding:10px 12px;
+    padding-bottom:calc(10px + env(safe-area-inset-bottom));
+    backdrop-filter:blur(18px);
+    background:linear-gradient(to top, rgba(11,15,20,.92), rgba(11,15,20,.35));
+    border-top:1px solid rgba(255,255,255,.06);
+  }
+  .barrow{display:flex; gap:10px}
+  .action{
+    flex:1; height:48px; border-radius:16px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.08);
+    color:var(--txt); font-size:16px; font-weight:900;
+  }
+  .action.primary{
+    border-color:rgba(120,255,179,.25);
+    background:linear-gradient(180deg, rgba(120,255,179,.22), rgba(255,255,255,.06));
+  }
 </style>
 </head>
 <body>
 
-<div class="top">
-  <div class="title">
-    <h1>🦖 恐竜販売コピー生成</h1>
-    <div class="pill">iPhone最適化 / ±入力 / 自動整形</div>
+<header>
+  <h1>🦖 恐竜販売コピー生成</h1>
+  <div class="sub">
+    ・dinos.txt からリスト読込<br>
+    ・受精卵(指定)/胚(指定)/幼体/成体は ♂♀表記<br>
+    ・それ以外は合算で「受精卵×2」<br>
+    ・✅ 受精卵は ♂=♀ のとき「受精卵ペア / 受精卵ペア×N」
   </div>
-  <div class="searchRow">
-    <div class="search"><span style="opacity:.7">🔎</span>
-      <input id="q" placeholder="恐竜名で検索" oninput="render()"/>
-    </div>
-    <label class="toggle"><input id="onlyNonZero" type="checkbox" onchange="render()"/>0を隠す</label>
-  </div>
-</div>
+</header>
 
 <div class="wrap" id="list"></div>
 
 <div class="wrap">
   <div class="sheet">
     <div class="sheetTop">
-      <div class="sub">出力</div>
+      <div style="font-size:13px; font-weight:900;">出力</div>
       <div class="total">合計: <b id="totalView">0円</b></div>
     </div>
     <textarea id="result" readonly placeholder="下の「生成」で文章が出ます"></textarea>
   </div>
 </div>
 
-<div class="bottomBar">
-  <div class="barRow">
+<div class="bar">
+  <div class="barrow">
     <button class="action primary" onclick="generate()">生成</button>
     <button class="action" onclick="copyText()">コピー</button>
   </div>
@@ -100,125 +194,131 @@
   let dinos = [];
   const state = new Map();
 
+  const list = document.getElementById("list");
+  const totalView = document.getElementById("totalView");
+
   function yen(n){ return `${Number(n).toLocaleString("ja-JP")}円`; }
 
   async function loadDinos(){
-    // キャッシュ回避（更新が反映されない事故防止）
-    const res = await fetch(`dinos.txt?ts=${Date.now()}`);
+    const res = await fetch(`dinos.txt?ts=${Date.now()}`); // キャッシュ回避
     const text = await res.text();
-    dinos = text
-      .split(/\r?\n/)
-      .map(s => s.trim().replace(/^・\s*/,""))
-      .filter(Boolean);
-    dinos.forEach(d => state.set(d, {type:"受精卵", m:0, f:0}));
+    dinos = text.split(/\r?\n/).map(s => s.trim().replace(/^・\s*/,"")).filter(Boolean);
+    dinos.forEach(d => state.set(d, { type:"受精卵", m:0, f:0 }));
     render();
   }
 
-  function applyInputMode(card, type){
-    const femaleCard = card.querySelector(".femaleCard");
-    const maleLabel = card.querySelector(".maleLabel");
-    const femaleLabel = card.querySelector(".femaleLabel");
-    if (sexTypes.has(type)){
-      femaleCard.classList.remove("disabled");
-      maleLabel.innerHTML = "♂ <span>オス</span>";
-      femaleLabel.innerHTML = "♀ <span>メス</span>";
-    } else {
-      // 性別不要タイプ：合算入力（♂側だけ使う）
-      femaleCard.classList.add("disabled");
-      maleLabel.innerHTML = "個数 <span>合算</span>";
-      femaleLabel.innerHTML = "♀ <span>（未使用）</span>";
-      // 念のため♀は0に寄せる（値が残って誤解するのを防ぐ）
-      const name = card.dataset.name;
-      const s = state.get(name);
-      s.f = 0;
-      card.querySelector(".f").textContent = "0";
-    }
+  function isSexlessType(type){
+    // ✅ 受精卵だけはペア判定に♂♀が必要なので「性別入力を残す」
+    if (type === "受精卵") return false;
+    // 指定/幼体/成体は性別表記
+    if (sexTypes.has(type)) return false;
+    // それ以外（胚など）は性別不要
+    return true;
   }
 
   function render(){
-    const q = (document.getElementById("q").value || "").trim();
-    const onlyNonZero = document.getElementById("onlyNonZero").checked;
-    const root = document.getElementById("list");
-    root.innerHTML = "";
-
+    list.innerHTML = "";
     dinos.forEach(name => {
-      if (q && !name.includes(q)) return;
-
       const s = state.get(name);
-      const qty = s.m + s.f;
-      if (onlyNonZero && qty === 0) return;
 
       const card = document.createElement("div");
       card.className = "card";
       card.dataset.name = name;
+
       card.innerHTML = `
-        <div class="cardHead">
+        <div class="toprow">
           <div>
             <div class="name">${name}</div>
-            <div class="sub">タイプで表記が自動 / ±のみ</div>
+            <div class="sub" style="margin-top:4px;">♂枠=水色 / ♀枠=ピンク</div>
           </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          <div class="rightInfo">
             <div class="badge">${s.type}</div>
-            <div class="sub">単価 ${yen(prices[s.type]||0)}</div>
+            <div class="unitPrice">単価 ${yen(prices[s.type] || 0)}</div>
           </div>
         </div>
+
         <div class="controls">
-          <div class="row1">
-            <select class="type">
-              <option ${s.type==="受精卵"?"selected":""}>受精卵</option>
-              <option ${s.type==="受精卵(指定)"?"selected":""}>受精卵(指定)</option>
-              <option ${s.type==="幼体"?"selected":""}>幼体</option>
-              <option ${s.type==="胚"?"selected":""}>胚</option>
-              <option ${s.type==="胚(指定)"?"selected":""}>胚(指定)</option>
-              <option ${s.type==="成体"?"selected":""}>成体</option>
-            </select>
-          </div>
-          <div class="sexBlock">
-            <div class="sexCard maleCard">
-              <div class="sexTop"><div class="sexLabel maleLabel">♂ <span>オス</span></div><div class="count m">${s.m}</div></div>
-              <div class="btnRow">
-                <button class="btn" type="button" data-d="-1" data-sex="m">−</button>
-                <button class="btn plus" type="button" data-d="1" data-sex="m">＋</button>
+          <select class="type">
+            <option ${s.type==="受精卵"?"selected":""}>受精卵</option>
+            <option ${s.type==="受精卵(指定)"?"selected":""}>受精卵(指定)</option>
+            <option ${s.type==="幼体"?"selected":""}>幼体</option>
+            <option ${s.type==="胚"?"selected":""}>胚</option>
+            <option ${s.type==="胚(指定)"?"selected":""}>胚(指定)</option>
+            <option ${s.type==="成体"?"selected":""}>成体</option>
+          </select>
+
+          <div class="sexrow">
+            <div class="sexbox male">
+              <div class="sexhead">
+                <div class="label m">♂ オス</div>
+                <div class="count mcnt">${s.m}</div>
+              </div>
+              <div class="btnrow">
+                <button class="btn" type="button" data-sex="m" data-d="-1">−</button>
+                <button class="btn plus m" type="button" data-sex="m" data-d="1">＋</button>
               </div>
             </div>
-            <div class="sexCard femaleCard">
-              <div class="sexTop"><div class="sexLabel femaleLabel">♀ <span>メス</span></div><div class="count f">${s.f}</div></div>
-              <div class="btnRow">
-                <button class="btn" type="button" data-d="-1" data-sex="f">−</button>
-                <button class="btn plus" type="button" data-d="1" data-sex="f">＋</button>
+
+            <div class="sexbox female">
+              <div class="sexhead">
+                <div class="label f">♀ メス</div>
+                <div class="count fcnt">${s.f}</div>
+              </div>
+              <div class="btnrow">
+                <button class="btn" type="button" data-sex="f" data-d="-1">−</button>
+                <button class="btn plus f" type="button" data-sex="f" data-d="1">＋</button>
               </div>
             </div>
           </div>
+
+          <div class="sub">合計は ♂+♀（性別不要タイプは出力で合算表示）</div>
         </div>
       `;
-      root.appendChild(card);
+      list.appendChild(card);
 
-      // type change
       const sel = card.querySelector(".type");
+      const badge = card.querySelector(".badge");
+      const unitPriceEl = card.querySelector(".unitPrice");
+      const femaleBox = card.querySelector(".female");
+
+      function applyMode(){
+        const st = state.get(name);
+        badge.textContent = st.type;
+        unitPriceEl.textContent = `単価 ${yen(prices[st.type] || 0)}`; // ✅ 正しい要素だけ更新
+
+        if (isSexlessType(st.type)){
+          // 性別不要：出力は合算だが入力は残してOK（ただし混乱防止で♀を無効化してもいい）
+          // ここは「♀無効化」にして操作簡略化（胚など）
+          st.f = 0;
+          card.querySelector(".fcnt").textContent = "0";
+          femaleBox.classList.add("disabled");
+        } else {
+          // 受精卵(ペア判定)/性別表記タイプ：♀も使う
+          femaleBox.classList.remove("disabled");
+        }
+      }
+
       sel.addEventListener("change", () => {
         const st = state.get(name);
         st.type = sel.value;
-        card.querySelector(".badge").textContent = st.type;
-        card.querySelector(".sub").textContent = `単価 ${yen(prices[st.type]||0)}`;
-        applyInputMode(card, st.type);
+        applyMode();
       });
 
-      // +/- buttons
       card.querySelectorAll("button[data-sex]").forEach(b => {
         b.addEventListener("click", () => {
           const st = state.get(name);
           const sex = b.dataset.sex;
           const d = Number(b.dataset.d);
 
-          // 性別不要タイプは「mのみ」を合算カウンタとして使う
-          if (!sexTypes.has(st.type) && sex === "f") return;
+          // 性別不要タイプで♀は無効
+          if (isSexlessType(st.type) && sex === "f") return;
 
           st[sex] = Math.max(0, st[sex] + d);
-          card.querySelector("." + sex).textContent = st[sex];
+          card.querySelector(sex==="m" ? ".mcnt" : ".fcnt").textContent = st[sex];
         });
       });
 
-      applyInputMode(card, s.type);
+      applyMode();
     });
   }
 
@@ -230,12 +330,18 @@
       if (f>0) parts.push(`♀×${f}`);
       return `${type} ${parts.join(" ")}`.trim();
     }
-    // 性別不要タイプ（合算）
-    const qty = m + f;
-    if (type === "受精卵" && m === f && m > 0){
-      // ✅ ペア判定（ここが今回の修正の肝）
-      return `受精卵ペア${m > 1 ? "×" + m : ""}`;
+
+    // ✅ 受精卵：ペア判定
+    if (type === "受精卵"){
+      const qty = m + f;
+      if (m === f && m > 0){
+        return `受精卵ペア${m>1 ? "×"+m : ""}`;
+      }
+      return `受精卵×${qty}`;
     }
+
+    // その他：合算
+    const qty = m + f;
     return `${type}×${qty}`;
   }
 
@@ -248,10 +354,9 @@
       const s = state.get(name);
       if (!s) return;
 
-      // 性別不要タイプはmが合算カウンタ、fは常に0
       const type = s.type;
       const m = s.m;
-      const f = sexTypes.has(type) ? s.f : 0;
+      const f = isSexlessType(type) ? 0 : s.f; // 胚などは♀0固定
       const qty = m + f;
       if (qty === 0) return;
 
@@ -262,7 +367,7 @@
       idx++;
     });
 
-    document.getElementById("totalView").textContent = yen(total);
+    totalView.textContent = yen(total);
 
     document.getElementById("result").value =
 `この度はご検討いただきありがとうございます！
@@ -279,14 +384,12 @@ ${lines.join("\n")}
   }
 
   async function copyText(){
-    const text = document.getElementById("result").value;
-    if (!text) return alert("先に「生成」を押してください。");
+    const ta = document.getElementById("result");
+    if (!ta.value) return alert("先に「生成」を押してください。");
     try{
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(ta.value);
       alert("コピーしました");
     }catch(e){
-      // iOSで稀に失敗するためフォールバック
-      const ta = document.getElementById("result");
       ta.focus(); ta.select();
       document.execCommand("copy");
       alert("コピーしました");
