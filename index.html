@@ -14,7 +14,6 @@
 <style>
 :root{
   --bg:#0b0f14;
-  --card:#141a22;
   --txt:rgba(255,255,255,.92);
   --mut:rgba(255,255,255,.60);
   --male:#74d7ff;
@@ -48,7 +47,6 @@ button,select,input{touch-action:manipulation}
   align-items:center;
   flex-wrap:wrap;
 }
-
 .search{
   flex:1;
   display:flex;
@@ -74,8 +72,8 @@ button,select,input{touch-action:manipulation}
   background:rgba(255,255,255,.06);
   font-size:18px;
   color:#fff;
+  display:inline-block; /* ←あなたの安定設定 */
 }
-
 .delivery,.copy{
   height:36px;
   border-radius:14px;
@@ -85,7 +83,6 @@ button,select,input{touch-action:manipulation}
   padding:0 12px;
 }
 .copy{font-weight:900}
-
 .total{
   margin-left:auto;
   font-size:14px;
@@ -93,7 +90,6 @@ button,select,input{touch-action:manipulation}
   font-weight:900;
   white-space:nowrap;
 }
-
 textarea{
   width:100%;
   margin-top:8px;
@@ -109,7 +105,6 @@ textarea{
 
 /* ===== list ===== */
 .list{padding:12px}
-
 .card{
   background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
   border:1px solid rgba(255,255,255,.10);
@@ -124,7 +119,6 @@ textarea{
   align-items:flex-start;
 }
 .name{font-weight:900}
-
 .right{
   text-align:right;
   display:flex;
@@ -141,42 +135,60 @@ select.type{
 }
 .unit{font-size:12px;color:var(--mut)}
 
+/* ===== compact steppers ===== */
 .sexrow{
   display:flex;
   gap:10px;
-  margin-top:12px;
+  margin-top:10px;
 }
 .sex{
   flex:1;
-  padding:10px;
-  border-radius:16px;
+  padding:8px;
+  border-radius:14px;
   border:2px solid rgba(255,255,255,.10);
 }
-.sex.m{border-color:rgba(116,215,255,.45);background:rgba(116,215,255,.16)}
-.sex.f{border-color:rgba(255,134,200,.45);background:rgba(255,134,200,.16)}
+.sex.m{
+  border-color:rgba(116,215,255,.45);
+  background:rgba(116,215,255,.14);
+}
+.sex.f{
+  border-color:rgba(255,134,200,.45);
+  background:rgba(255,134,200,.14);
+}
 
-.sexhead{
+/* ♀無効時：見た目もグレーアウト */
+.sex.f.disabled{
+  border-color:rgba(255,255,255,.16);
+  background:rgba(255,255,255,.04);
+  filter:saturate(0);
+  opacity:.55;
+}
+.sex.f.disabled *{pointer-events:none}
+
+.stepper{
   display:flex;
-  justify-content:space-between;
   align-items:center;
-  font-weight:900;
-  margin-bottom:6px;
+  gap:10px;
 }
-.sym{width:18px;text-align:center}
-
-.btns{display:flex;gap:10px}
 .btn{
-  flex:1;
-  height:40px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.08);
+  width:46px;
+  height:32px;            /* ← 高さを詰める */
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.10);
   color:#fff;
-  font-size:22px;
+  font-size:18px;
   font-weight:900;
+  line-height:1;
 }
-
-.disabled{opacity:.35;pointer-events:none}
+.val{
+  flex:1;
+  text-align:center;       /* ← − と ＋ の間に数値 */
+  font-weight:900;
+  font-size:16px;
+  letter-spacing:.2px;
+  color:rgba(255,255,255,.92);
+}
 </style>
 </head>
 
@@ -292,6 +304,7 @@ async function load(){
   const t=await fetch("dinos.txt?ts="+Date.now()).then(r=>r.text());
   t.split(/\r?\n/).map(s=>s.replace(/^・/,"").trim()).filter(Boolean).forEach(name=>{
     dinos.push(name);
+
     const s={type:"受精卵",m:0,f:0};
     state.set(name,s);
 
@@ -312,16 +325,17 @@ async function load(){
 
       <div class="sexrow">
         <div class="sex m">
-          <div class="sexhead"><span class="sym">♂</span><span class="mc">0</span></div>
-          <div class="btns">
+          <div class="stepper">
             <button class="btn" data-sex="m" data-d="-1">−</button>
+            <div class="val mc">0</div>
             <button class="btn" data-sex="m" data-d="1">＋</button>
           </div>
         </div>
+
         <div class="sex f">
-          <div class="sexhead"><span class="sym">♀</span><span class="fc">0</span></div>
-          <div class="btns">
+          <div class="stepper">
             <button class="btn" data-sex="f" data-d="-1">−</button>
+            <div class="val fc">0</div>
             <button class="btn" data-sex="f" data-d="1">＋</button>
           </div>
         </div>
@@ -335,25 +349,38 @@ async function load(){
     const fc=card.querySelector(".fc");
     const fbox=card.querySelector(".sex.f");
 
+    function applyFemaleDisabled(){
+      if(!sexTypes.has(s.type)){
+        s.f=0;
+        fc.textContent="0";
+        fbox.classList.add("disabled");   // ← 見た目もグレーアウト
+      }else{
+        fbox.classList.remove("disabled");
+      }
+    }
+
     sel.onchange=()=>{
       s.type=sel.value;
       unit.textContent=`単価${prices[s.type]}円`;
-      if(!sexTypes.has(s.type)){
-        s.f=0;fc.textContent="0";fbox.classList.add("disabled");
-      }else fbox.classList.remove("disabled");
+      applyFemaleDisabled();
       rebuild();
     };
 
     card.querySelectorAll(".btn").forEach(b=>{
       b.onclick=()=>{
         const sex=b.dataset.sex;
-        if(sex==="f"&&!sexTypes.has(s.type))return;
-        s[sex]=Math.max(0,s[sex]+Number(b.dataset.d));
-        mc.textContent=s.m;fc.textContent=s.f;
+        if(sex==="f" && !sexTypes.has(s.type)) return;
+        s[sex]=Math.max(0, s[sex] + Number(b.dataset.d));
+        mc.textContent=s.m;
+        fc.textContent=s.f;
         rebuild();
       };
     });
+
+    // 初期状態の反映
+    applyFemaleDisabled();
   });
+
   rebuild();
 }
 load();
