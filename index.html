@@ -15,7 +15,6 @@
 :root{
   --bg:#0b0f14;
   --card:#141a22;
-  --stroke:rgba(255,255,255,.10);
   --txt:rgba(255,255,255,.92);
   --mut:rgba(255,255,255,.60);
   --male:#74d7ff;
@@ -118,7 +117,6 @@ textarea{
   padding:12px;
   margin-bottom:10px;
 }
-.card.collapsed .sexrow{display:none}
 
 .head{
   display:flex;
@@ -127,7 +125,6 @@ textarea{
 }
 .name{font-weight:900}
 
-/* 右上 */
 .right{
   text-align:right;
   display:flex;
@@ -191,13 +188,16 @@ select.type{
       <input id="q" placeholder="検索">
       <button id="qClear" class="qClear">×</button>
     </div>
+
     <select id="delivery" class="delivery">
       <option value="即納品可能">即納品可能</option>
       <option value="本日夜">本日夜</option>
     </select>
+
     <button id="copy" class="copy">コピー</button>
     <div id="total" class="total">0円</div>
   </div>
+
   <textarea id="out" readonly></textarea>
 </div>
 
@@ -224,17 +224,18 @@ function yen(n){return n.toLocaleString("ja-JP")+"円"}
 
 function rebuild(){
   let lines=[],sum=0,idx=1;
+
   dinos.forEach(name=>{
     const s=state.get(name);
     const qty=s.m+s.f;
-   
-    if(qty===0)return;
+    if(qty===0) return;
 
     const price=(prices[s.type]||0)*qty;
     sum+=price;
 
     const t=s.type.replace("(指定)","");
     let line="";
+
     if(pairTypes.has(s.type)){
       if(s.m===s.f){
         line=`${name}${t}ペア${s.m>1?"×"+s.m:""} = ${price.toLocaleString("ja-JP")}円`;
@@ -247,6 +248,7 @@ function rebuild(){
     }else{
       line=`${name}${t}×${qty} = ${price.toLocaleString("ja-JP")}円`;
     }
+
     lines.push(`${idx}. ${line}`);
     idx++;
   });
@@ -294,8 +296,8 @@ async function load(){
     state.set(name,s);
 
     const card=document.createElement("div");
-    card.className="card collapsed";
     s.card=card;
+    card.className="card";
 
     card.innerHTML=`
       <div class="head">
