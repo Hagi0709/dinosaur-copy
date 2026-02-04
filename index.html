@@ -72,7 +72,7 @@
     font-size:18px;
     line-height:24px;
     padding:0;
-    // /* 入力時のみ */
+    //display:none; /* 入力時のみ */
     display:inline-block;
 
   }
@@ -220,7 +220,22 @@
       <input id="q" placeholder="検索（ひらがなOK）" autocomplete="off">
       <button id="qClear" class="qClear" type="button" aria-label="検索をクリア">×</button>
     </div>
-    <div class="total">合計 <b id="total">0円</b></div>
+    <div class="total">合計 <b id="total">0円
+
+<select id="delivery" style="
+  height:36px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-size:13px;
+  padding:0 10px;
+">
+  <option value="即納品可能">即納品可能</option>
+  <option value="本日夜">本日夜</option>
+</select>
+
+</b></div>
     <button id="copy" class="copy" type="button">コピー</button>
   </div>
   <textarea id="out" readonly placeholder="数量を入れると自動で更新されます"></textarea>
@@ -251,6 +266,7 @@
   const listEl  = document.getElementById("list");
   const outEl   = document.getElementById("out");
   const totalEl = document.getElementById("total");
+const deliveryEl = document.getElementById("delivery");
   const qEl     = document.getElementById("q");
   const qClearEl= document.getElementById("qClear");
   const copyBtn = document.getElementById("copy");
@@ -328,7 +344,7 @@
 ${lines.join("\n")}
 ーーーーーーーーーーーーーーー
 計：${sum.toLocaleString("ja-JP")}円
-最短納品目安 : 即納品可能
+最短納品目安 : ${deliveryEl.value}
 
 ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻
 
