@@ -72,7 +72,7 @@ button,select,input{touch-action:manipulation}
   background:rgba(255,255,255,.06);
   font-size:18px;
   color:#fff;
-  display:inline-block; /* あなたの安定設定 */
+  display:inline-block;
 }
 .delivery,.copy{
   height:36px;
@@ -172,7 +172,7 @@ select.type{
 }
 .btn{
   width:46px;
-  height:32px;            /* 高さを低く */
+  height:32px;
   border-radius:12px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.10);
@@ -183,7 +183,7 @@ select.type{
 }
 .val{
   flex:1;
-  text-align:center;      /* − と ＋ の間に数値 */
+  text-align:center;
   font-weight:900;
   font-size:16px;
   letter-spacing:.2px;
@@ -219,10 +219,21 @@ select.type{
 /* ===== data ===== */
 const prices={
   "受精卵":30,"受精卵(指定)":50,
-  "幼体":100,"胚":50,"胚(指定)":100,"成体":500
+  "幼体":100,"胚":50,"胚(指定)":100,"成体":500,
+  "クローン":500,"クローン(指定)":300
 };
-const sexTypes=new Set(["受精卵(指定)","胚(指定)","幼体","成体"]);
-const pairTypes=new Set(["受精卵(指定)","胚(指定)","幼体","成体"]);
+
+// ♂♀区別するタイプ（成体相当 + クローンも含める）
+const sexTypes=new Set([
+  "受精卵(指定)","胚(指定)","幼体","成体",
+  "クローン","クローン(指定)"
+]);
+
+// ペア表記の対象（成体相当 + クローンも含める）
+const pairTypes=new Set([
+  "受精卵(指定)","胚(指定)","幼体","成体",
+  "クローン","クローン(指定)"
+]);
 
 const dinos=[], state=new Map();
 const listEl=document.getElementById("list");
@@ -243,8 +254,6 @@ function yen(n){return n.toLocaleString("ja-JP")+"円"}
 function parseLine(line){
   line = (line||"").trim();
   if(!line) return null;
-
-  // コメント行（任意）：# から始まる行は無視
   if(line.startsWith("#")) return null;
 
   line = line.replace(/^・/,"").trim();
@@ -253,7 +262,6 @@ function parseLine(line){
   const parts = line.split("|");
   const name = (parts[0]||"").trim();
   const rawType = (parts[1]||"").trim();
-
   if(!name) return null;
 
   const defType = (rawType && (rawType in prices)) ? rawType : "受精卵";
@@ -271,6 +279,7 @@ function rebuild(){
     const price=(prices[s.type]||0)*qty;
     sum+=price;
 
+    // "(指定)" は出力しない
     const t=s.type.replace("(指定)","");
     let line="";
 
@@ -336,7 +345,6 @@ async function load(){
     .forEach(({name, defType})=>{
       dinos.push(name);
 
-      // ★ dinos.txt の defType を初期値にする
       const s={type:defType,m:0,f:0};
       state.set(name,s);
 
@@ -391,7 +399,7 @@ async function load(){
         }
       }
 
-      // ★ 初期値（dinos.txt）を UI に反映
+      // 初期値（dinos.txt）を UI に反映
       sel.value = s.type;
       unit.textContent = `単価${prices[s.type]}円`;
       applyFemaleDisabled();
