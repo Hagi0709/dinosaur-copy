@@ -227,7 +227,7 @@ function rebuild(){
   dinos.forEach(name=>{
     const s=state.get(name);
     const qty=s.m+s.f;
-    s.card.classList.toggle("collapsed",qty===0);
+   
     if(qty===0)return;
 
     const price=(prices[s.type]||0)*qty;
