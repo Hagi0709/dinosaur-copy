@@ -2,26 +2,22 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-  content="width=device-width,
-           initial-scale=1,
-           maximum-scale=1,
-           user-scalable=no,
-           viewport-fit=cover">
-
-<title>恐竜販売コピー生成</title>
-
-<link rel="icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
-<link rel="apple-touch-icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>恐竜リスト</title>
 
 <style>
 :root{
   --bg:#0b0f14;
   --txt:rgba(255,255,255,.92);
   --mut:rgba(255,255,255,.60);
+  --ok:#78ffb3;
+
+  --card1:rgba(255,255,255,.10);
+  --card2:rgba(255,255,255,.06);
+  --stroke:rgba(255,255,255,.10);
+
   --male:#74d7ff;
   --female:#ff86c8;
-  --ok:#78ffb3;
 }
 *{box-sizing:border-box}
 body{
@@ -60,13 +56,16 @@ button,select,input{touch-action:manipulation}
   border-radius:14px;
   background:rgba(255,255,255,.07);
   border:1px solid rgba(255,255,255,.12);
+  min-width:0;
 }
 .search input{
   flex:1;
   border:0;
+  outline:0;
   background:transparent;
   color:var(--txt);
   font-size:14px;
+  min-width:0;
 }
 .qClear{
   width:26px;height:26px;
@@ -76,6 +75,7 @@ button,select,input{touch-action:manipulation}
   font-size:18px;
   color:#fff;
   display:inline-block;
+  line-height:1;
 }
 .delivery,.copy{
   height:36px;
@@ -84,6 +84,7 @@ button,select,input{touch-action:manipulation}
   background:rgba(255,255,255,.08);
   color:#fff;
   padding:0 12px;
+  font-size:13px;
 }
 .copy{font-weight:900}
 .total{
@@ -106,11 +107,32 @@ textarea{
   line-height:1.45;
 }
 
+/* ===== tabs ===== */
+.tabs{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+}
+.tab{
+  flex:1;
+  height:34px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  color:rgba(255,255,255,.75);
+  font-weight:900;
+  font-size:13px;
+}
+.tab.active{
+  background:rgba(255,255,255,.12);
+  color:#fff;
+}
+
 /* ===== list ===== */
 .list{padding:12px}
 .card{
-  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
-  border:1px solid rgba(255,255,255,.10);
+  background:linear-gradient(180deg,var(--card1),var(--card2));
+  border:1px solid var(--stroke);
   border-radius:16px;
   padding:12px;
   margin-bottom:10px;
@@ -122,14 +144,13 @@ textarea{
   justify-content:space-between;
   align-items:flex-start;
   gap:10px;
-  cursor:pointer;
 }
-.name{font-weight:900}
+.name{font-weight:900;font-size:18px}
 .right{
   text-align:right;
   display:flex;
   flex-direction:column;
-  gap:4px;
+  gap:6px;
 }
 select.type{
   padding:6px 10px;
@@ -142,18 +163,17 @@ select.type{
 .unit{font-size:12px;color:var(--mut)}
 
 .body{margin-top:10px}
-.sexrow{
-  display:flex;
-  gap:10px;
-}
-.sex{
+
+/* ===== steppers ===== */
+.row2{display:flex; gap:10px}
+.box{
   flex:1;
   padding:8px;
   border-radius:14px;
   border:2px solid rgba(255,255,255,.10);
 }
-.sex.m{border-color:rgba(116,215,255,.45);background:rgba(116,215,255,.14)}
-.sex.f{border-color:rgba(255,134,200,.45);background:rgba(255,134,200,.14)}
+.box.m{border-color:rgba(116,215,255,.45); background:rgba(116,215,255,.14)}
+.box.f{border-color:rgba(255,134,200,.45); background:rgba(255,134,200,.14)}
 
 .stepper{
   display:flex;
@@ -169,201 +189,465 @@ select.type{
   color:#fff;
   font-size:18px;
   font-weight:900;
+  line-height:1;
 }
 .val{
   flex:1;
   text-align:center;
   font-weight:900;
   font-size:16px;
+  letter-spacing:.2px;
+  color:rgba(255,255,255,.92);
+}
+
+/* アイテム（単一ステッパー） */
+.itemBox{
+  border-color:rgba(255,255,255,.16);
+  background:rgba(255,255,255,.06);
 }
 </style>
 </head>
 
 <body>
+  <div class="top">
+    <div class="row">
+      <div class="search">
+        <input id="q" placeholder="検索">
+        <button id="qClear" class="qClear">×</button>
+      </div>
 
-<div class="top">
-  <div class="row">
-    <div class="search">
-      <input id="q" placeholder="検索">
-      <button id="qClear" class="qClear">×</button>
+      <select id="delivery" class="delivery">
+        <option value="即納品可能">即納品可能</option>
+        <option value="本日夜">本日夜</option>
+      </select>
+
+      <button id="copy" class="copy">コピー</button>
+      <div id="total" class="total">0円</div>
     </div>
-    <select id="delivery" class="delivery">
-      <option value="即納品可能">即納品可能</option>
-      <option value="本日夜">本日夜</option>
-    </select>
-    <button id="copy" class="copy">コピー</button>
-    <div id="total" class="total">0円</div>
-  </div>
-  <textarea id="out" readonly></textarea>
-</div>
 
-<div class="list" id="list"></div>
+    <textarea id="out" readonly></textarea>
+
+    <div class="tabs">
+      <button id="tabDino" class="tab active">恐竜</button>
+      <button id="tabItem" class="tab">アイテム</button>
+    </div>
+  </div>
+
+  <div class="list" id="listDino"></div>
+  <div class="list" id="listItem" style="display:none"></div>
 
 <script>
-const prices={
-  "受精卵":30,"受精卵(指定)":50,
-  "幼体":100,"胚":50,"胚(指定)":100,
-  "成体":500,"クローン":500,"クローン(指定)":300
+/* ========= PRICES (恐竜) ========= */
+const dinoPrices = {
+  "受精卵":30, "受精卵(指定)":50,
+  "胚":50,   "胚(指定)":100,
+  "幼体":100,
+  "成体":500,
+  "クローン":500, "クローン(指定)":300
 };
-const pairBase=new Set(["受精卵","胚","幼体","成体","クローン"]);
 
-const dinos=[], state=new Map();
-const listEl=document.getElementById("list");
-const outEl=document.getElementById("out");
-const totalEl=document.getElementById("total");
-const qEl=document.getElementById("q");
-const qClear=document.getElementById("qClear");
-const delivery=document.getElementById("delivery");
+const pairTypes = new Set([
+  "受精卵","受精卵(指定)",
+  "胚","胚(指定)",
+  "幼体","成体",
+  "クローン","クローン(指定)"
+]);
 
-/* ===== search utils ===== */
-function kataToHira(str){
-  return (str||"").replace(/[\u30a1-\u30f6]/g,ch =>
-    String.fromCharCode(ch.charCodeAt(0)-0x60)
-  );
+/* 自動で(指定)に切り替える対象（ベース側） */
+const autoSpecifyBase = new Set(["受精卵","胚","クローン"]);
+function toSpecified(type){
+  if(type==="受精卵") return "受精卵(指定)";
+  if(type==="胚") return "胚(指定)";
+  if(type==="クローン") return "クローン(指定)";
+  return type;
 }
-function norm(str){
-  return kataToHira(str).replace(/[ 　・]/g,"");
+function toBase(type){
+  if(type==="受精卵(指定)") return "受精卵";
+  if(type==="胚(指定)") return "胚";
+  if(type==="クローン(指定)") return "クローン";
+  return type;
+}
+function stripSpecified(type){ return type.replace("(指定)",""); }
+
+/* ========= STATE ========= */
+const dinoOrder = [];
+const dinoState = new Map(); // name -> {type,m,f, card, sel, unitEl, mcEl, fcEl, manualOpen:boolean}
+
+const itemOrder = [];
+const itemState = new Map(); // name -> {unit, price, q, card, qEl, unitEl}
+
+const listDino = document.getElementById("listDino");
+const listItem = document.getElementById("listItem");
+
+const outEl = document.getElementById("out");
+const totalEl = document.getElementById("total");
+
+const qEl = document.getElementById("q");
+const qClear = document.getElementById("qClear");
+const delivery = document.getElementById("delivery");
+const copyBtn = document.getElementById("copy");
+
+const tabDino = document.getElementById("tabDino");
+const tabItem = document.getElementById("tabItem");
+
+let activeTab = "dino"; // 'dino' | 'item'
+
+function yen(n){ return n.toLocaleString("ja-JP")+"円"; }
+
+/* ========= PARSE ========= */
+function parseDinoLine(line){
+  line = (line||"").trim();
+  if(!line) return null;
+  if(line.startsWith("#")) return null;
+
+  line = line.replace(/^・/,"").trim();
+  if(!line) return null;
+
+  const parts = line.split("|").map(s=>s.trim());
+  const name = parts[0] || "";
+  const rawType = parts[1] || "";
+  if(!name) return null;
+
+  const defType = (rawType && (rawType in dinoPrices)) ? rawType : "受精卵";
+  return {name, defType};
 }
 
-/* ===== rebuild (出力専用) ===== */
+function parseItemLine(line){
+  line = (line||"").trim();
+  if(!line) return null;
+  if(line.startsWith("#")) return null;
+
+  const parts = line.split("|").map(s=>s.trim());
+  if(parts.length < 3) return null;
+
+  const name = parts[0];
+  const unit = Number(parts[1]);
+  const price = Number(parts[2]);
+  if(!name || !Number.isFinite(unit) || !Number.isFinite(price)) return null;
+  return {name, unit, price};
+}
+
+/* ========= OUTPUT ========= */
 function rebuild(){
-  let sum=0, lines=[], idx=1;
+  let lines = [];
+  let sum = 0;
+  let idx = 1;
 
-  dinos.forEach(name=>{
-    const s=state.get(name);
-    const qty=s.m+s.f;
-    if(qty===0) return;
+  // ---- 恐竜（上） ----
+  for(const name of dinoOrder){
+    const s = dinoState.get(name);
+    if(!s) continue;
 
-    const price=(prices[s.type]||0)*qty;
-    sum+=price;
+    const qty = (s.m||0) + (s.f||0);
+    // 自動折りたたみ：未入力なら閉じる（ただし手動で開いている時は維持）
+    if(qty===0 && !s.manualOpen){
+      s.card.classList.add("collapsed");
+    }
 
-    const t=s.type.replace("(指定)","");
-    let line="";
-    if(pairBase.has(t)){
-      if(s.m===s.f){
-        line=`${name}${t}ペア${s.m>1?"×"+s.m:""} = ${price.toLocaleString("ja-JP")}円`;
+    if(qty===0) continue;
+
+    const price = (dinoPrices[s.type]||0) * qty;
+    sum += price;
+
+    const t = stripSpecified(s.type);
+    let line = "";
+
+    if(pairTypes.has(s.type)){
+      if(s.m === s.f){
+        // ペア表記
+        line = `${name}${t}ペア${s.m>1 ? "×"+s.m : ""} = ${yen(price)}`;
       }else{
-        const p=[];
-        if(s.m>0)p.push(`♂×${s.m}`);
-        if(s.f>0)p.push(`♀×${s.f}`);
-        line=`${name}${t} ${p.join(" ")} = ${price.toLocaleString("ja-JP")}円`;
+        // ♂♀表記（0は出さない）
+        const p = [];
+        if(s.m>0) p.push(`♂×${s.m}`);
+        if(s.f>0) p.push(`♀×${s.f}`);
+        line = `${name}${t}${p.join("")} = ${yen(price)}`; // 生物名の後のスペース不要
       }
     }else{
-      line=`${name}${t}×${qty} = ${price.toLocaleString("ja-JP")}円`;
+      // 性別不要（合算）
+      line = `${name}${t}×${qty} = ${yen(price)}`;
     }
+
     lines.push(`${idx}. ${line}`);
     idx++;
-  });
+  }
 
-  totalEl.textContent=sum.toLocaleString("ja-JP")+"円";
-  outEl.value=
+  // ---- アイテム（下） ----
+  for(const name of itemOrder){
+    const it = itemState.get(name);
+    if(!it) continue;
+
+    if(it.q<=0) continue;
+
+    const realQty = it.unit * it.q;
+    const price = it.price * it.q;
+    sum += price;
+
+    lines.push(`${idx}. ${name}×${realQty} = ${yen(price)}`);
+    idx++;
+  }
+
+  totalEl.textContent = yen(sum);
+  outEl.value =
 `この度はご検討いただきありがとうございます！
 ご希望内容は以下となります👇🏻
 
 ${lines.join("\n")}
 ーーーーーーーーーーーーーーー
-計：${sum.toLocaleString("ja-JP")}円
-最短納品目安 : ${delivery.value}`;
+計：${yen(sum)}
+最短納品目安 : ${delivery.value}
+
+ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻
+
+また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
 }
 
-/* ===== search ===== */
+/* ========= SEARCH + TABS ========= */
 function applySearch(){
-  const q=norm(qEl.value);
-  dinos.forEach(name=>{
-    const s=state.get(name);
-    s.card.style.display = (!q || s.normName.includes(q)) ? "" : "none";
-  });
+  const q = (qEl.value||"").trim();
+  if(activeTab === "dino"){
+    for(const name of dinoOrder){
+      const s = dinoState.get(name);
+      if(!s) continue;
+      s.card.style.display = (!q || name.includes(q)) ? "" : "none";
+    }
+  }else{
+    for(const name of itemOrder){
+      const it = itemState.get(name);
+      if(!it) continue;
+      it.card.style.display = (!q || name.includes(q)) ? "" : "none";
+    }
+  }
 }
-qEl.oninput=applySearch;
-qClear.onclick=()=>{qEl.value="";applySearch();};
 
-/* ===== load ===== */
-async function load(){
-  const text=await fetch("dinos.txt?ts="+Date.now()).then(r=>r.text());
-  text.split(/\r?\n/).forEach(line=>{
-    if(!line.trim())return;
-    const name=line.replace(/^・/,"").split("|")[0].trim();
-    const defType=(line.split("|")[1]||"受精卵").trim();
+qEl.addEventListener("input", applySearch);
+qClear.addEventListener("click", ()=>{
+  qEl.value = "";
+  applySearch();
+});
 
-    dinos.push(name);
-    const baseType=defType.replace("(指定)","");
-    const s={type:defType,baseType,m:0,f:0,normName:norm(name)};
-    state.set(name,s);
+function setTab(next){
+  activeTab = next;
+  tabDino.classList.toggle("active", next==="dino");
+  tabItem.classList.toggle("active", next==="item");
+  listDino.style.display = (next==="dino") ? "" : "none";
+  listItem.style.display = (next==="item") ? "" : "none";
+  applySearch();
+}
+tabDino.addEventListener("click", ()=>setTab("dino"));
+tabItem.addEventListener("click", ()=>setTab("item"));
 
-    const card=document.createElement("div");
-    s.card=card;
-    card.className="card collapsed";
-    card.innerHTML=`
-      <div class="head">
-        <div class="name">${name}</div>
-        <div class="right">
-          <select class="type">${Object.keys(prices).map(t=>`<option>${t}</option>`).join("")}</select>
-          <div class="unit"></div>
+/* delivery は変更時に即反映 */
+delivery.addEventListener("change", rebuild);
+
+/* ========= COPY ========= */
+copyBtn.addEventListener("click", ()=>{
+  const text = outEl.value.trim();
+  if(!text) return;
+
+  navigator.clipboard.writeText(text).then(()=>{
+    const prev = copyBtn.textContent;
+    copyBtn.textContent = "コピー済み✓";
+    copyBtn.disabled = true;
+    setTimeout(()=>{
+      copyBtn.textContent = prev;
+      copyBtn.disabled = false;
+    }, 900);
+  });
+});
+
+/* ========= CARD BUILD: DINO ========= */
+function buildDinoCard(name, defType){
+  const s = { type:defType, m:0, f:0, manualOpen:false };
+  dinoState.set(name, s);
+
+  const card = document.createElement("div");
+  s.card = card;
+  card.className = "card collapsed";
+  card.innerHTML = `
+    <div class="head">
+      <div class="name">${name}</div>
+      <div class="right">
+        <select class="type">
+          ${Object.keys(dinoPrices).map(t=>`<option value="${t}">${t}</option>`).join("")}
+        </select>
+        <div class="unit">単価${dinoPrices[defType]}円</div>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="row2">
+        <div class="box m">
+          <div class="stepper">
+            <button class="btn" data-sex="m" data-d="-1">−</button>
+            <div class="val mc">0</div>
+            <button class="btn" data-sex="m" data-d="1">＋</button>
+          </div>
+        </div>
+        <div class="box f">
+          <div class="stepper">
+            <button class="btn" data-sex="f" data-d="-1">−</button>
+            <div class="val fc">0</div>
+            <button class="btn" data-sex="f" data-d="1">＋</button>
+          </div>
         </div>
       </div>
-      <div class="body">
-        <div class="sexrow">
-          <div class="sex m">
-            <div class="stepper">
-              <button class="btn" data-sex="m" data-d="-1">−</button>
-              <div class="val mc">0</div>
-              <button class="btn" data-sex="m" data-d="1">＋</button>
-            </div>
-          </div>
-          <div class="sex f">
-            <div class="stepper">
-              <button class="btn" data-sex="f" data-d="-1">−</button>
-              <div class="val fc">0</div>
-              <button class="btn" data-sex="f" data-d="1">＋</button>
-            </div>
-          </div>
-        </div>
-      </div>`;
-    listEl.appendChild(card);
+    </div>
+  `;
+  listDino.appendChild(card);
 
-    const sel=card.querySelector(".type");
-    const unit=card.querySelector(".unit");
-    const mc=card.querySelector(".mc");
-    const fc=card.querySelector(".fc");
+  const sel = card.querySelector(".type");
+  const unitEl = card.querySelector(".unit");
+  const mcEl = card.querySelector(".mc");
+  const fcEl = card.querySelector(".fc");
+  s.sel = sel; s.unitEl = unitEl; s.mcEl = mcEl; s.fcEl = fcEl;
 
-    sel.value=s.type;
-    unit.textContent=`単価${prices[s.type]}円`;
-
-    card.querySelector(".head").onclick=()=>{
-      card.classList.toggle("collapsed");
-    };
-
-    sel.onchange=()=>{
-      s.type=sel.value;
-      s.baseType=s.type.replace("(指定)","");
-      unit.textContent=`単価${prices[s.type]}円`;
-      rebuild();
-    };
-
-    card.querySelectorAll(".btn").forEach(b=>{
-      b.onclick=()=>{
-        const sex=b.dataset.sex;
-        s[sex]=Math.max(0,s[sex]+Number(b.dataset.d));
-        mc.textContent=s.m;
-        fc.textContent=s.f;
-
-        if(s.m>0 && s.f>0){
-          const cand=s.baseType+"(指定)";
-          if(prices[cand]) s.type=cand;
-        }else if(s.m===0 && s.f===0){
-          s.type=s.baseType;
-        }
-        sel.value=s.type;
-        unit.textContent=`単価${prices[s.type]}円`;
-        rebuild();
-      };
-    });
+  // ヘッダタップで折りたたみ切替
+  card.querySelector(".head").addEventListener("click", ()=>{
+    const isCollapsed = card.classList.contains("collapsed");
+    if(isCollapsed){
+      card.classList.remove("collapsed");
+      s.manualOpen = true;
+    }else{
+      card.classList.add("collapsed");
+      s.manualOpen = false;
+    }
   });
 
-  rebuild();
-}
-load();
-</script>
+  // 初期値
+  sel.value = defType;
+  unitEl.textContent = `単価${dinoPrices[sel.value]}円`;
 
+  sel.addEventListener("change", ()=>{
+    s.type = sel.value;
+    unitEl.textContent = `単価${dinoPrices[s.type]}円`;
+
+    // 「開いた状態で type 変えても閉じない」= 変更タイミングでは折りたたみ操作しない
+    // ただし「もう一度閉じたい」は head タップで可能（上で実装済）
+
+    rebuild();
+  });
+
+  function maybeAutoSpecify(){
+    // 両方に入力されたら自動で(指定)へ（対象はベースのみ）
+    if(autoSpecifyBase.has(s.type) && s.m>0 && s.f>0){
+      s.type = toSpecified(s.type);
+      sel.value = s.type;
+      unitEl.textContent = `単価${dinoPrices[s.type]}円`;
+    }
+    // 両方0になったら自動で(指定)解除（対象は指定のみ）
+    if((s.type==="受精卵(指定)" || s.type==="胚(指定)" || s.type==="クローン(指定)") && s.m===0 && s.f===0){
+      s.type = toBase(s.type);
+      sel.value = s.type;
+      unitEl.textContent = `単価${dinoPrices[s.type]}円`;
+    }
+  }
+
+  card.querySelectorAll(".btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      // 折りたたまれてても操作できるように、押されたら開く
+      if(card.classList.contains("collapsed")){
+        card.classList.remove("collapsed");
+        s.manualOpen = true;
+      }
+
+      const sex = btn.dataset.sex;
+      const d = Number(btn.dataset.d);
+      s[sex] = Math.max(0, (s[sex]||0) + d);
+
+      mcEl.textContent = s.m;
+      fcEl.textContent = s.f;
+
+      maybeAutoSpecify();
+      rebuild();
+    });
+  });
+}
+
+/* ========= CARD BUILD: ITEM ========= */
+function buildItemCard(name, unit, price){
+  const it = { unit, price, q:0 };
+  itemState.set(name, it);
+
+  const card = document.createElement("div");
+  it.card = card;
+  card.className = "card collapsed";
+  card.innerHTML = `
+    <div class="head">
+      <div class="name">${name}</div>
+      <div class="right">
+        <div class="unit">単位${unit} / 単価${price}円</div>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="box itemBox">
+        <div class="stepper">
+          <button class="btn" data-d="-1">−</button>
+          <div class="val qv">0</div>
+          <button class="btn" data-d="1">＋</button>
+        </div>
+      </div>
+    </div>
+  `;
+  listItem.appendChild(card);
+
+  const qv = card.querySelector(".qv");
+  it.qEl = qv;
+
+  // ヘッダタップで折りたたみ切替
+  card.querySelector(".head").addEventListener("click", ()=>{
+    const isCollapsed = card.classList.contains("collapsed");
+    if(isCollapsed) card.classList.remove("collapsed");
+    else card.classList.add("collapsed");
+  });
+
+  card.querySelectorAll(".btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      if(card.classList.contains("collapsed")) card.classList.remove("collapsed");
+
+      it.q = Math.max(0, it.q + Number(btn.dataset.d));
+      qv.textContent = it.q;
+
+      // 未入力なら自動で畳む（次回の rebuild で）
+      rebuild();
+      if(it.q===0) card.classList.add("collapsed");
+    });
+  });
+}
+
+/* ========= LOAD FILES ========= */
+async function loadAll(){
+  // dinos.txt
+  const dinoText = await fetch("dinos.txt?ts="+Date.now()).then(r=>r.text());
+  dinoText.split(/\r?\n/).map(parseDinoLine).filter(Boolean).forEach(({name, defType})=>{
+    if(dinoState.has(name)) return;
+    dinoOrder.push(name);
+    buildDinoCard(name, defType);
+  });
+
+  // items.txt
+  try{
+    const itemText = await fetch("items.txt?ts="+Date.now()).then(r=>{
+      if(!r.ok) throw new Error("items.txt not found");
+      return r.text();
+    });
+
+    itemText.split(/\r?\n/).map(parseItemLine).filter(Boolean).forEach(({name, unit, price})=>{
+      if(itemState.has(name)) return;
+      itemOrder.push(name);
+      buildItemCard(name, unit, price);
+    });
+  }catch(e){
+    // items.txt 無くても恐竜だけ動くようにする（落とさない）
+    console.warn(e);
+  }
+
+  rebuild();
+  applySearch();
+}
+
+loadAll();
+</script>
 </body>
 </html>
