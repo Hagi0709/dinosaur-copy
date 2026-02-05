@@ -4,6 +4,8 @@
    - 追加/編集/削除/並び替え/価格変更は localStorage 永続
    - カード複製は一時（リロードで消える）
    - 検索は「ひらがな/カタカナ」を揃えて部分一致（例: かる -> カルカロ）
+   - ★重要: リロード/復元時にモーダルが残って操作不能になるのを防ぐため
+            起動時にUIを強制リセット（hardResetUI）
 ========================= */
 
 const LS_KEY = "dinoList_v1_store";
@@ -32,7 +34,7 @@ const PAIR_TYPES = new Set([
   "受精卵(指定)", "胚(指定)", "幼体", "成体", "クローン", "クローン(指定)",
 ]);
 // ♂♀どちらも入力を許可（常に許可）
-const SEX_TYPES = new Set(Object.keys(DEFAULT_PRICES)); // ここは「常に♀も入力可」方針のため全部許可
+const SEX_TYPES = new Set(Object.keys(DEFAULT_PRICES));
 
 /* ===== DOM ===== */
 const listDinoEl = document.getElementById("listDino");
@@ -126,7 +128,7 @@ function loadStore() {
       if (!s.order.items) s.order.items = s.items.map(x => x.id);
       return s;
     }
-  } catch (e) { }
+  } catch (e) {}
   return null;
 }
 function saveStore() {
@@ -171,8 +173,31 @@ const itemStates = new Map();    // itemId -> { qty, open }
 
 let transientClones = []; // [{instanceId, baseId}]
 
+/* ===== UI hard reset (重要) ===== */
+function hardResetUI() {
+  // 1) モーダル表示状態を強制的に閉じる
+  if (manageModal) manageModal.hidden = true;
+  if (editModal) editModal.hidden = true;
+  if (confirmModal) confirmModal.hidden = true;
+  if (modalBackdrop) modalBackdrop.hidden = true;
+
+  // 2) body のロック解除
+  document.body.style.overflow = "";
+
+  // 3) 削除確認などの一時状態をクリア
+  pendingDelete = null;
+
+  // 4) iOSの変な復元時に focus が残るのを避ける
+  if (document.activeElement && typeof document.activeElement.blur === "function") {
+    document.activeElement.blur();
+  }
+}
+
 /* ===== init ===== */
 async function init() {
+  // ★最優先：起動直後に必ず UI を初期化（ここが今回の詰まりを潰す）
+  hardResetUI();
+
   store = loadStore();
   if (!store) {
     store = {
@@ -209,6 +234,7 @@ async function init() {
   rebuildOutput(); // initial
 }
 
+/* ===== top ===== */
 function bindTop() {
   qEl.oninput = () => applySearch();
   qClear.onclick = () => { qEl.value = ""; applySearch(); };
@@ -228,7 +254,6 @@ function bindTop() {
         copyBtn.disabled = false;
       }, 1200);
     } catch (e) {
-      // fallback
       outEl.focus();
       outEl.select();
       document.execCommand("copy");
@@ -236,6 +261,7 @@ function bindTop() {
   };
 }
 
+/* ===== tabs ===== */
 function bindTabs() {
   tabDino.onclick = () => setActiveTab("dino");
   tabItem.onclick = () => setActiveTab("item");
@@ -252,12 +278,14 @@ function setActiveTab(tab) {
   applySearch();
 }
 
+/* ===== Manage ===== */
+let pendingDelete = null;
+
 function bindManage() {
   openManage.onclick = () => openManageModal();
   closeManage.onclick = () => closeManageModal();
 
   modalBackdrop.onclick = () => {
-    // どれか開いてたら閉じる（優先: confirm > edit > manage）
     if (!confirmModal.hidden) closeConfirmModal();
     else if (!editModal.hidden) closeEditModal();
     else if (!manageModal.hidden) closeManageModal();
@@ -267,7 +295,6 @@ function bindManage() {
   mTabItem.onclick = () => { manageTab = "item"; renderManage(); };
 
   sortKanaBtn.onclick = () => sortKana();
-
   openAdd.onclick = () => openAddModal();
 
   closeEdit.onclick = () => closeEditModal();
@@ -277,10 +304,48 @@ function bindManage() {
   // 背面スクロール停止（iOS対策）
   document.addEventListener("touchmove", (e) => {
     if (!modalBackdrop.hidden) {
-      // モーダル外のスクロールを止める
       if (!e.target.closest(".modalBody")) e.preventDefault();
     }
   }, { passive: false });
+}
+
+function openManageModal() {
+  modalBackdrop.hidden = false;
+  manageModal.hidden = false;
+  document.body.style.overflow = "hidden";
+  renderManage();
+  renderPriceGrid();
+}
+function closeManageModal() {
+  manageModal.hidden = true;
+  if (editModal.hidden && confirmModal.hidden) {
+    modalBackdrop.hidden = true;
+    document.body.style.overflow = "";
+  }
+}
+function openEditModal() {
+  modalBackdrop.hidden = false;
+  editModal.hidden = false;
+  document.body.style.overflow = "hidden";
+}
+function closeEditModal() {
+  editModal.hidden = true;
+  if (manageModal.hidden && confirmModal.hidden) {
+    modalBackdrop.hidden = true;
+    document.body.style.overflow = "";
+  }
+}
+function openConfirmModal() {
+  modalBackdrop.hidden = false;
+  confirmModal.hidden = false;
+  document.body.style.overflow = "hidden";
+}
+function closeConfirmModal() {
+  confirmModal.hidden = true;
+  if (manageModal.hidden && editModal.hidden) {
+    modalBackdrop.hidden = true;
+    document.body.style.overflow = "";
+  }
 }
 
 /* ===== render ===== */
@@ -303,7 +368,7 @@ function renderAll() {
 
 function renderDinoList() {
   listDinoEl.innerHTML = "";
-  transientClones = []; // リロードで消える前提だが、再描画時も消す
+  transientClones = []; // 再描画時も消す
 
   orderedDinos().forEach(d => {
     const instanceId = makeOrGetDinoInstance(d.id, false);
@@ -325,7 +390,6 @@ function renderItemList() {
 
 /* ===== Dino instances ===== */
 function makeOrGetDinoInstance(baseId, isClone) {
-  // base instanceId is baseId itself, clones get a new id
   if (!isClone) {
     const id = baseId;
     if (!dinoInstances.has(id)) {
@@ -403,24 +467,21 @@ function buildDinoCard(d, instanceId, isClone) {
   const unit = card.querySelector(".unit");
   sel.value = s.type;
 
-  // open/collapse rule
   syncCollapsed(card, s);
 
-  // tap header toggles open
+  // header tap toggle
   card.querySelector(".head").onclick = () => {
     s.open = !s.open;
     syncCollapsed(card, s);
   };
 
-  // type change: keep open state (ここが「変更で勝手に閉じる」防止)
+  // type change: keep open state
   sel.onchange = () => {
     s.type = sel.value;
     unit.textContent = `単価${yen(store.prices[s.type] || 0)}`;
-    // autoSpecified リセットはしない（手動選択の意図を尊重）
     rebuildOutput();
   };
 
-  // quantity buttons
   const valM = card.querySelector(".valM");
   const valF = card.querySelector(".valF");
 
@@ -453,11 +514,9 @@ function buildDinoCard(d, instanceId, isClone) {
     syncCollapsed(card, s);
   };
 
-  // clone: clone base card only
   card.querySelector(".cloneBtn").onclick = () => {
     const cloneId = makeOrGetDinoInstance(d.id, true);
     const cloneCard = buildDinoCard(d, cloneId, true);
-    // insert right after this card
     card.insertAdjacentElement("afterend", cloneCard);
     applySearch();
   };
@@ -472,12 +531,11 @@ function syncCollapsed(card, s) {
 }
 
 function onSexInputChanged(s, sel, unit) {
-  // 「両方入力されたら自動で指定に」
   const both = s.m > 0 && s.f > 0;
   const none = s.m === 0 && s.f === 0;
 
   const current = s.type;
-  const base = UNSPEC_MAP[current] || current; // unspec base name
+  const base = UNSPEC_MAP[current] || current;
   const hasSpec = SPEC_MAP[base] != null;
 
   if (both && hasSpec) {
@@ -490,7 +548,6 @@ function onSexInputChanged(s, sel, unit) {
     }
   }
 
-  // 「自動で指定に変わった後、両方0になったら指定解除」
   if (none && s.autoSpecified) {
     const unspec = UNSPEC_MAP[s.type] || s.type;
     s.type = unspec;
@@ -557,7 +614,6 @@ function applySearch() {
       const key = card.dataset.search || "";
       const ok = !q || key.includes(q);
       card.style.display = ok ? "" : "none";
-      // 表示/非表示以外は触らない（ここで collapse をいじらない）
     });
   };
 
@@ -571,7 +627,7 @@ function rebuildOutput() {
   let sum = 0;
   let idx = 1;
 
-  // dinos: DOM順で拾う（複製も含む）
+  // dinos (DOM順)
   const dinoCards = Array.from(listDinoEl.querySelectorAll(".card"));
   dinoCards.forEach(card => {
     const instanceId = card.dataset.instanceId;
@@ -595,7 +651,6 @@ function rebuildOutput() {
 
     if (PAIR_TYPES.has(type)) {
       if (s.m === s.f) {
-        // ペア
         line = `${d.name}${t}ペア${s.m > 1 ? "×" + s.m : ""} = ${yen(price)}`;
       } else {
         const parts = [];
@@ -641,50 +696,10 @@ ${lines.join("\n")}
 また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
 }
 
-/* ===== Manage modal ===== */
-function openManageModal() {
-  modalBackdrop.hidden = false;
-  manageModal.hidden = false;
-  document.body.style.overflow = "hidden";
-  renderManage();
-  renderPriceGrid();
-}
-function closeManageModal() {
-  manageModal.hidden = true;
-  if (editModal.hidden && confirmModal.hidden) {
-    modalBackdrop.hidden = true;
-    document.body.style.overflow = "";
-  }
-}
-function openEditModal() {
-  modalBackdrop.hidden = false;
-  editModal.hidden = false;
-  document.body.style.overflow = "hidden";
-}
-function closeEditModal() {
-  editModal.hidden = true;
-  if (manageModal.hidden && confirmModal.hidden) {
-    modalBackdrop.hidden = true;
-    document.body.style.overflow = "";
-  }
-}
-function openConfirmModal() {
-  modalBackdrop.hidden = false;
-  confirmModal.hidden = false;
-  document.body.style.overflow = "hidden";
-}
-function closeConfirmModal() {
-  confirmModal.hidden = true;
-  if (manageModal.hidden && editModal.hidden) {
-    modalBackdrop.hidden = true;
-    document.body.style.overflow = "";
-  }
-}
-
+/* ===== Manage render/actions ===== */
 function renderManage() {
   mTabDino.classList.toggle("is-active", manageTab === "dino");
   mTabItem.classList.toggle("is-active", manageTab === "item");
-
   manageListEl.innerHTML = "";
 
   const rows = (manageTab === "dino") ? orderedDinos() : orderedItems();
@@ -752,7 +767,7 @@ function renderPriceGrid() {
     inp.onchange = () => {
       store.prices[k] = clampInt(inp.value);
       saveStore();
-      renderAll(); // 単価表示/計算反映
+      renderAll();
     };
 
     priceGridEl.appendChild(n);
@@ -855,8 +870,6 @@ function saveEditAction() {
 }
 
 /* ===== Delete confirm ===== */
-let pendingDelete = null;
-
 function confirmDelete(x) {
   pendingDelete = { kind: manageTab, id: x.id };
   confirmText.textContent = `「${x.name}」を削除しますか？`;
@@ -869,7 +882,6 @@ function doDelete() {
   if (pendingDelete.kind === "dino") {
     store.dinos = store.dinos.filter(x => x.id !== pendingDelete.id);
     store.order.dinos = store.order.dinos.filter(id => id !== pendingDelete.id);
-    // base instance cleanup
     dinoInstances.delete(pendingDelete.id);
   } else {
     store.items = store.items.filter(x => x.id !== pendingDelete.id);
@@ -894,7 +906,13 @@ function escapeHtml(s) {
 }
 
 /* ===== boot ===== */
+// iOS Safari: bfcache 復元で「モーダル開いたまま」が復活しやすい
+window.addEventListener("pageshow", () => {
+  hardResetUI();
+});
+
 init().catch(err => {
   console.error(err);
-  outEl.value = "初期化に失敗しました。dinos.txt / items.txt の場所と内容を確認してください。";
+  hardResetUI();
+  outEl.value = "初期化に失敗しました。dinos.txt / items.txt / localStorage の状態を確認してください。";
 });
