@@ -75,10 +75,9 @@ button,select,input{touch-action:manipulation}
   background:rgba(255,255,255,.06);
   font-size:18px;
   color:#fff;
-  display:inline-block; /* あなたの要望：これで固定 */
+  display:inline-block;
   line-height:1;
 }
-
 .delivery,.copy{
   height:36px;
   border-radius:14px;
@@ -95,7 +94,6 @@ button,select,input{touch-action:manipulation}
   font-weight:900;
   white-space:nowrap;
 }
-
 textarea{
   width:100%;
   margin-top:8px;
@@ -126,7 +124,6 @@ textarea{
   align-items:flex-start;
   gap:10px;
   cursor:pointer;
-  user-select:none;
 }
 .name{font-weight:900}
 .right{
@@ -145,7 +142,6 @@ select.type{
 }
 .unit{font-size:12px;color:var(--mut)}
 
-/* ===== compact steppers ===== */
 .body{margin-top:10px}
 .sexrow{
   display:flex;
@@ -159,15 +155,6 @@ select.type{
 }
 .sex.m{border-color:rgba(116,215,255,.45);background:rgba(116,215,255,.14)}
 .sex.f{border-color:rgba(255,134,200,.45);background:rgba(255,134,200,.14)}
-
-/* ♀無効時：グレーアウト＆操作不可 */
-.sex.f.disabled{
-  border-color:rgba(255,255,255,.16);
-  background:rgba(255,255,255,.04);
-  filter:saturate(0);
-  opacity:.55;
-  pointer-events:none;
-}
 
 .stepper{
   display:flex;
@@ -183,15 +170,12 @@ select.type{
   color:#fff;
   font-size:18px;
   font-weight:900;
-  line-height:1;
 }
 .val{
   flex:1;
   text-align:center;
   font-weight:900;
   font-size:16px;
-  letter-spacing:.2px;
-  color:rgba(255,255,255,.92);
 }
 </style>
 </head>
@@ -201,114 +185,44 @@ select.type{
 <div class="top">
   <div class="row">
     <div class="search">
-      <input id="q" placeholder="検索" autocomplete="off" autocapitalize="off" spellcheck="false">
-      <button id="qClear" class="qClear" type="button">×</button>
+      <input id="q" placeholder="検索">
+      <button id="qClear" class="qClear">×</button>
     </div>
-
     <select id="delivery" class="delivery">
       <option value="即納品可能">即納品可能</option>
       <option value="本日夜">本日夜</option>
     </select>
-
-    <button id="copy" class="copy" type="button">コピー</button>
+    <button id="copy" class="copy">コピー</button>
     <div id="total" class="total">0円</div>
   </div>
-
   <textarea id="out" readonly></textarea>
 </div>
 
 <div class="list" id="list"></div>
 
 <script>
-/* ===== data ===== */
 const prices={
   "受精卵":30,"受精卵(指定)":50,
-  "幼体":100,"胚":50,"胚(指定)":100,"成体":500,
-  "クローン":500,"クローン(指定)":300
+  "幼体":100,"胚":50,"胚(指定)":100,
+  "成体":500,"クローン":500,"クローン(指定)":300
 };
-
-// ♂♀区別するタイプ（成体相当 + クローン）
-const sexTypes=new Set([
-  "受精卵(指定)","胚(指定)","幼体","成体",
-  "クローン","クローン(指定)"
-]);
-
-// ペア表記の対象（上と同じ）
-const pairTypes=new Set([...sexTypes]);
+const pairBase=new Set(["受精卵","胚","幼体","成体","クローン"]);
 
 const dinos=[], state=new Map();
 const listEl=document.getElementById("list");
 const outEl=document.getElementById("out");
 const totalEl=document.getElementById("total");
-const qEl=document.getElementById("q");
-const qClear=document.getElementById("qClear");
 const delivery=document.getElementById("delivery");
-const copyBtn=document.getElementById("copy");
 
 function yen(n){return n.toLocaleString("ja-JP")+"円"}
 
-/* ひらがな検索用：カタカナ→ひらがな、空白等を除去 */
-function kataToHira(str){
-  return (str||"").replace(/[\u30a1-\u30f6]/g, ch =>
-    String.fromCharCode(ch.charCodeAt(0) - 0x60)
-  );
-}
-function norm(str){
-  return kataToHira((str||""))
-    .toLowerCase()
-    .replace(/[ 　・\-\(\)（）\[\]【】]/g,"")
-    .trim();
-}
-
-/* dinos.txt 1行のパース: "・名前 | タイプ"（タイプ省略は受精卵） */
-function parseLine(line){
-  line=(line||"").trim();
-  if(!line) return null;
-  if(line.startsWith("#")) return null;
-
-  line=line.replace(/^・/,"").trim();
-  if(!line) return null;
-
-  const parts=line.split("|");
-  const name=(parts[0]||"").trim();
-  const rawType=(parts[1]||"").trim();
-  if(!name) return null;
-
-  const defType=(rawType && (rawType in prices)) ? rawType : "受精卵";
-  return {name, defType};
-}
-
-/* ★ rebuild：タイプ変更直後だけ「畳まない」 */
+/* rebuild */
 function rebuild(){
-  const searching = qEl.value.trim() !== "";
-  const q = norm(qEl.value);
-
-  let lines=[], sum=0, idx=1;
+  let sum=0, lines=[], idx=1;
 
   dinos.forEach(name=>{
-    const s = state.get(name);
-    const qty = s.m + s.f;
-
-    // 検索表示
-    const hit = (q==="") ? true : s.normName.includes(q);
-    s.card.style.display = hit ? "" : "none";
-
-    // 自動折りたたみ（検索中はヒットは開く）
-    if(!searching){
-      // タイプ変更直後だけ keepOpenOnce を優先（qty=0でも閉じない）
-      if(qty===0 && !s.keepOpenOnce){
-        s.card.classList.add("collapsed");
-      }
-      if(qty>0){
-        s.card.classList.remove("collapsed");
-      }
-    }else{
-      if(hit){
-        // 検索中は入力しやすいように開く（ただし keepOpenOnce は邪魔しない）
-        s.card.classList.remove("collapsed");
-      }
-    }
-
+    const s=state.get(name);
+    const qty=s.m+s.f;
     if(qty===0) return;
 
     const price=(prices[s.type]||0)*qty;
@@ -317,13 +231,13 @@ function rebuild(){
     const t=s.type.replace("(指定)","");
     let line="";
 
-    if(pairTypes.has(s.type)){
+    if(pairBase.has(t)){
       if(s.m===s.f){
         line=`${name}${t}ペア${s.m>1?"×"+s.m:""} = ${price.toLocaleString("ja-JP")}円`;
       }else{
         const p=[];
         if(s.m>0)p.push(`♂×${s.m}`);
-        if(s.f>0)p.push(`♀×${s.f}`); // ♀0は出さない
+        if(s.f>0)p.push(`♀×${s.f}`);
         line=`${name}${t} ${p.join(" ")} = ${price.toLocaleString("ja-JP")}円`;
       }
     }else{
@@ -334,12 +248,6 @@ function rebuild(){
     idx++;
   });
 
-  // ★ keepOpenOnce は「1回だけ」なので、rebuild後に全て落とす
-  dinos.forEach(name=>{
-    const s=state.get(name);
-    if(s) s.keepOpenOnce = false;
-  });
-
   totalEl.textContent=yen(sum);
   outEl.value=
 `この度はご検討いただきありがとうございます！
@@ -348,163 +256,96 @@ function rebuild(){
 ${lines.join("\n")}
 ーーーーーーーーーーーーーーー
 計：${sum.toLocaleString("ja-JP")}円
-最短納品目安 : ${delivery.value}
-
-ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻
-
-また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
+最短納品目安 : ${delivery.value}`;
 }
 
-/* search */
-function applySearch(){
-  rebuild(); // rebuild内で表示制御まで完結
-}
-["input","change","keyup","compositionend"].forEach(ev=>{
-  qEl.addEventListener(ev, ()=>requestAnimationFrame(applySearch));
-});
-qClear.addEventListener("click", ()=>{
-  qEl.value="";
-  applySearch();
-});
-
-/* delivery：変更即反映 */
-delivery.addEventListener("change", rebuild);
-
-/* copy：演出あり */
-copyBtn.addEventListener("click", async ()=>{
-  const t=outEl.value.trim();
-  if(!t) return;
-  try{
-    await navigator.clipboard.writeText(t);
-  }catch(e){
-    outEl.focus();
-    outEl.select();
-    document.execCommand("copy");
-  }
-  const prev=copyBtn.textContent;
-  copyBtn.textContent="コピー済み✓";
-  copyBtn.disabled=true;
-  setTimeout(()=>{
-    copyBtn.textContent=prev;
-    copyBtn.disabled=false;
-  },1200);
-});
+delivery.onchange=rebuild;
 
 /* load */
 async function load(){
-  const text=await fetch("dinos.txt?ts="+Date.now(), {cache:"no-store"}).then(r=>r.text());
-  const seen=new Set();
+  const text=await fetch("dinos.txt?ts="+Date.now()).then(r=>r.text());
+  text.split(/\r?\n/).forEach(line=>{
+    if(!line.trim())return;
+    const name=line.replace(/^・/,"").split("|")[0].trim();
+    const defType=(line.split("|")[1]||"受精卵").trim();
+    dinos.push(name);
 
-  text.split(/\r?\n/)
-    .map(parseLine)
-    .filter(Boolean)
-    .forEach(({name, defType})=>{
-      if(seen.has(name)) return;
-      seen.add(name);
+    const s={type:defType,m:0,f:0};
+    state.set(name,s);
 
-      dinos.push(name);
-
-      const s={type:defType,m:0,f:0, keepOpenOnce:false, normName:norm(name)};
-      state.set(name,s);
-
-      const card=document.createElement("div");
-      s.card=card;
-      card.className="card collapsed";
-
-      card.innerHTML=`
-        <div class="head">
-          <div class="name">${name}</div>
-          <div class="right">
-            <select class="type">
-              ${Object.keys(prices).map(t=>`<option value="${t}">${t}</option>`).join("")}
-            </select>
-            <div class="unit">単価30円</div>
-          </div>
+    const card=document.createElement("div");
+    card.className="card collapsed";
+    card.innerHTML=`
+      <div class="head">
+        <div class="name">${name}</div>
+        <div class="right">
+          <select class="type">${Object.keys(prices).map(t=>`<option>${t}</option>`).join("")}</select>
+          <div class="unit"></div>
         </div>
-
-        <div class="body">
-          <div class="sexrow">
-            <div class="sex m">
-              <div class="stepper">
-                <button class="btn" data-sex="m" data-d="-1" type="button">−</button>
-                <div class="val mc">0</div>
-                <button class="btn" data-sex="m" data-d="1" type="button">＋</button>
-              </div>
+      </div>
+      <div class="body">
+        <div class="sexrow">
+          <div class="sex m">
+            <div class="stepper">
+              <button class="btn" data-sex="m" data-d="-1">−</button>
+              <div class="val mc">0</div>
+              <button class="btn" data-sex="m" data-d="1">＋</button>
             </div>
-
-            <div class="sex f">
-              <div class="stepper">
-                <button class="btn" data-sex="f" data-d="-1" type="button">−</button>
-                <div class="val fc">0</div>
-                <button class="btn" data-sex="f" data-d="1" type="button">＋</button>
-              </div>
+          </div>
+          <div class="sex f">
+            <div class="stepper">
+              <button class="btn" data-sex="f" data-d="-1">−</button>
+              <div class="val fc">0</div>
+              <button class="btn" data-sex="f" data-d="1">＋</button>
             </div>
           </div>
         </div>
-      `;
-      listEl.appendChild(card);
+      </div>`;
+    listEl.appendChild(card);
 
-      const head=card.querySelector(".head");
-      const sel=card.querySelector(".type");
-      const unit=card.querySelector(".unit");
-      const mc=card.querySelector(".mc");
-      const fc=card.querySelector(".fc");
-      const fbox=card.querySelector(".sex.f");
+    const sel=card.querySelector(".type");
+    const unit=card.querySelector(".unit");
+    const mc=card.querySelector(".mc");
+    const fc=card.querySelector(".fc");
 
-      function applyFemaleDisabled(){
-        if(!sexTypes.has(s.type)){
-          s.f=0;
-          fc.textContent="0";
-          fbox.classList.add("disabled");
-        }else{
-          fbox.classList.remove("disabled");
-        }
-      }
+    sel.value=s.type;
+    unit.textContent=`単価${prices[s.type]}円`;
 
-      // 初期値反映
-      sel.value=s.type;
+    // header toggle
+    card.querySelector(".head").onclick=()=>{
+      card.classList.toggle("collapsed");
+    };
+
+    // type change
+    sel.onchange=()=>{
+      s.type=sel.value;
       unit.textContent=`単価${prices[s.type]}円`;
-      applyFemaleDisabled();
+      card.classList.remove("collapsed");
+      rebuild();
+    };
 
-      // ヘッダタップで開閉（ユーザーが「もう一度閉じたい」を確実に実現）
-      head.addEventListener("click", (ev)=>{
-        if(ev.target.closest("select")) return;
-        card.classList.toggle("collapsed");
-      });
+    // quantity buttons
+    card.querySelectorAll(".btn").forEach(b=>{
+      b.onclick=()=>{
+        const sex=b.dataset.sex;
+        s[sex]=Math.max(0, s[sex]+Number(b.dataset.d));
+        mc.textContent=s.m;
+        fc.textContent=s.f;
 
-      // タイプ変更：この瞬間だけ「閉じない」を保証（keepOpenOnce）
-      sel.addEventListener("change", ()=>{
-        s.type=sel.value;
+        // ★ 両方入力されたら自動で(指定)
+        const base=s.type.replace("(指定)","");
+        if(pairBase.has(base) && s.m>0 && s.f>0){
+          const cand=base+"(指定)";
+          if(prices[cand]) s.type=cand;
+        }
+
+        sel.value=s.type;
         unit.textContent=`単価${prices[s.type]}円`;
-
-        // ♀無効化の反映
-        applyFemaleDisabled();
-
-        // ★タイプ変更直後だけ畳ませない（qty=0でも開いたまま）
-        s.keepOpenOnce = true;
         card.classList.remove("collapsed");
-
         rebuild();
-      });
-
-      // 数量ボタン
-      card.querySelectorAll(".btn").forEach(b=>{
-        b.addEventListener("click", ()=>{
-          const sex=b.dataset.sex;
-          if(sex==="f" && !sexTypes.has(s.type)) return;
-
-          s[sex]=Math.max(0, s[sex]+Number(b.dataset.d));
-          mc.textContent=String(s.m);
-          fc.textContent=String(s.f);
-
-          // 入力中は開いてていい（ただし「タイプ変更の特例」ではない）
-          card.classList.remove("collapsed");
-
-          rebuild();
-        });
-      });
+      };
     });
-
+  });
   rebuild();
 }
 load();
