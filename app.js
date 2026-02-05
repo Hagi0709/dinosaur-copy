@@ -1,918 +1,831 @@
-/* =========================
-   恐竜リスト / app.js
-   - dinos.txt / items.txt から初期読込
-   - 追加/編集/削除/並び替え/価格変更は localStorage 永続
-   - カード複製は一時（リロードで消える）
-   - 検索は「ひらがな/カタカナ」を揃えて部分一致（例: かる -> カルカロ）
-   - ★重要: リロード/復元時にモーダルが残って操作不能になるのを防ぐため
-            起動時にUIを強制リセット（hardResetUI）
-========================= */
+(() => {
+  'use strict';
 
-const LS_KEY = "dinoList_v1_store";
+  /* ========= utils ========= */
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const uid = () => Math.random().toString(36).slice(2, 10);
+  const yen = (n) => (Number(n) || 0).toLocaleString('ja-JP') + '円';
+  const toHira = (s) => (s || '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+  const norm = (s) => toHira(String(s || '').toLowerCase()).replace(/\s+/g, '');
 
-/* ===== price types ===== */
-const DEFAULT_PRICES = {
-  "受精卵": 30, "受精卵(指定)": 50,
-  "胚": 50, "胚(指定)": 100,
-  "幼体": 100,
-  "成体": 500,
-  "クローン": 500, "クローン(指定)": 300,
-};
+  /* ========= storage ========= */
+  const LS = {
+    DINO_CUSTOM: 'dino_custom_v1',
+    ITEM_CUSTOM: 'item_custom_v1',
+    DINO_HIDDEN: 'dino_hidden_v1',
+    ITEM_HIDDEN: 'item_hidden_v1',
+    DINO_ORDER: 'dino_order_v1',
+    ITEM_ORDER: 'item_order_v1',
+    PRICES: 'prices_v1',
+    DELIVERY: 'delivery_v1',
+  };
+  const loadJSON = (k, fb) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } };
+  const saveJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-const SPEC_MAP = {
-  "受精卵": "受精卵(指定)",
-  "胚": "胚(指定)",
-  "クローン": "クローン(指定)",
-};
-const UNSPEC_MAP = {
-  "受精卵(指定)": "受精卵",
-  "胚(指定)": "胚",
-  "クローン(指定)": "クローン",
-};
-// ♂♀入力で「ペア/♂♀表記」するタイプ（今までの仕様を踏襲）
-const PAIR_TYPES = new Set([
-  "受精卵(指定)", "胚(指定)", "幼体", "成体", "クローン", "クローン(指定)",
-]);
-// ♂♀どちらも入力を許可（常に許可）
-const SEX_TYPES = new Set(Object.keys(DEFAULT_PRICES));
+  /* ========= prices ========= */
+  const defaultPrices = {
+    '受精卵': 30, '受精卵(指定)': 50,
+    '胚': 50, '胚(指定)': 100,
+    '幼体': 100,
+    '成体': 500,
+    'クローン': 500, 'クローン(指定)': 300,
+  };
+  const prices = Object.assign({}, defaultPrices, loadJSON(LS.PRICES, {}));
+  const typeList = Object.keys(defaultPrices);
+  const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
 
-/* ===== DOM ===== */
-const listDinoEl = document.getElementById("listDino");
-const listItemEl = document.getElementById("listItem");
-const outEl = document.getElementById("out");
-const totalEl = document.getElementById("total");
-const qEl = document.getElementById("q");
-const qClear = document.getElementById("qClear");
-const deliveryEl = document.getElementById("delivery");
-const copyBtn = document.getElementById("copy");
+  /* ========= DOM ========= */
+  const el = {
+    q: $('#q'),
+    qClear: $('#qClear'),
+    delivery: $('#delivery'),
+    copy: $('#copy'),
+    total: $('#total'),
+    out: $('#out'),
+    tabDino: $('#tabDino'),
+    tabItem: $('#tabItem'),
+    listDino: $('#listDino'),
+    listItem: $('#listItem'),
+    manageBtn: $('#manageBtn'),
+    modalRoot: $('#modalRoot'),
+    modalTitle: $('#modalTitle'),
+    modalBody: $('#modalBody'),
+  };
 
-const tabDino = document.getElementById("tabDino");
-const tabItem = document.getElementById("tabItem");
-
-const openManage = document.getElementById("openManage");
-const closeManage = document.getElementById("closeManage");
-const manageModal = document.getElementById("manageModal");
-const modalBackdrop = document.getElementById("modalBackdrop");
-
-const mTabDino = document.getElementById("mTabDino");
-const mTabItem = document.getElementById("mTabItem");
-const sortKanaBtn = document.getElementById("sortKana");
-const manageListEl = document.getElementById("manageList");
-const priceGridEl = document.getElementById("priceGrid");
-const openAdd = document.getElementById("openAdd");
-
-const editModal = document.getElementById("editModal");
-const closeEdit = document.getElementById("closeEdit");
-const editTitle = document.getElementById("editTitle");
-const editName = document.getElementById("editName");
-const editDefault = document.getElementById("editDefault");
-const editDefaultWrap = document.getElementById("editDefaultWrap");
-const editItemWrap = document.getElementById("editItemWrap");
-const editUnit = document.getElementById("editUnit");
-const editPrice = document.getElementById("editPrice");
-const saveEdit = document.getElementById("saveEdit");
-
-const confirmModal = document.getElementById("confirmModal");
-const closeConfirm = document.getElementById("closeConfirm");
-const confirmText = document.getElementById("confirmText");
-const confirmNo = document.getElementById("confirmNo");
-const confirmYes = document.getElementById("confirmYes");
-
-/* ===== helpers ===== */
-const uid = () => Math.random().toString(36).slice(2, 10);
-
-function yen(n) {
-  return Number(n || 0).toLocaleString("ja-JP") + "円";
-}
-
-function clampInt(v) {
-  const n = Number(String(v || "").replace(/[^\d]/g, ""));
-  return Number.isFinite(n) ? n : 0;
-}
-
-/* かな検索安定化：カタカナ→ひらがな + 正規化 */
-function toHiragana(str) {
-  return (str || "").replace(/[ァ-ヶ]/g, ch =>
-    String.fromCharCode(ch.charCodeAt(0) - 0x60)
-  );
-}
-function normalizeKey(str) {
-  return toHiragana(String(str || ""))
-    .toLowerCase()
-    .replace(/\s+/g, "")
-    .replace(/[　]/g, "")
-    .replace(/[・]/g, "");
-}
-
-/* ===== store ===== */
-let store = null;
-/*
-store = {
-  prices: {type:price...},
-  dinos: [{id,name,defType}],
-  items: [{id,name,unit,price}],
-  order: { dinos:[id..], items:[id..] }
-}
-*/
-function loadStore() {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) {
-      const s = JSON.parse(raw);
-      // seed missing
-      s.prices ||= { ...DEFAULT_PRICES };
-      s.dinos ||= [];
-      s.items ||= [];
-      s.order ||= { dinos: s.dinos.map(x => x.id), items: s.items.map(x => x.id) };
-      if (!s.order.dinos) s.order.dinos = s.dinos.map(x => x.id);
-      if (!s.order.items) s.order.items = s.items.map(x => x.id);
-      return s;
-    }
-  } catch (e) {}
-  return null;
-}
-function saveStore() {
-  localStorage.setItem(LS_KEY, JSON.stringify(store));
-}
-
-/* ===== parse txt ===== */
-function parseDinoLine(line) {
-  line = (line || "").trim();
-  if (!line || line.startsWith("#")) return null;
-  line = line.replace(/^・/, "").trim();
-  if (!line) return null;
-
-  // format: name | defType
-  const parts = line.split("|").map(s => s.trim());
-  const name = parts[0] || "";
-  const rawType = parts[1] || "";
-  const defType = (rawType && store.prices[rawType] != null) ? rawType : "受精卵";
-  return { name, defType };
-}
-
-function parseItemLine(line) {
-  line = (line || "").trim();
-  if (!line || line.startsWith("#")) return null;
-
-  // format: name | unit | price
-  const parts = line.split("|").map(s => s.trim());
-  if (parts.length < 3) return null;
-  const name = parts[0] || "";
-  const unit = clampInt(parts[1]);
-  const price = clampInt(parts[2]);
-  if (!name) return null;
-  return { name, unit: unit || 1, price: price || 0 };
-}
-
-/* ===== runtime state ===== */
-let activeTab = "dino"; // dino | item
-let manageTab = "dino";
-
-const dinoInstances = new Map(); // instanceId -> { baseId, type, m, f, open, autoSpecified }
-const itemStates = new Map();    // itemId -> { qty, open }
-
-let transientClones = []; // [{instanceId, baseId}]
-
-/* ===== UI hard reset (重要) ===== */
-function hardResetUI() {
-  // 1) モーダル表示状態を強制的に閉じる
-  if (manageModal) manageModal.hidden = true;
-  if (editModal) editModal.hidden = true;
-  if (confirmModal) confirmModal.hidden = true;
-  if (modalBackdrop) modalBackdrop.hidden = true;
-
-  // 2) body のロック解除
-  document.body.style.overflow = "";
-
-  // 3) 削除確認などの一時状態をクリア
-  pendingDelete = null;
-
-  // 4) iOSの変な復元時に focus が残るのを避ける
-  if (document.activeElement && typeof document.activeElement.blur === "function") {
-    document.activeElement.blur();
-  }
-}
-
-/* ===== init ===== */
-async function init() {
-  // ★最優先：起動直後に必ず UI を初期化（ここが今回の詰まりを潰す）
-  hardResetUI();
-
-  store = loadStore();
-  if (!store) {
-    store = {
-      prices: { ...DEFAULT_PRICES },
-      dinos: [],
-      items: [],
-      order: { dinos: [], items: [] }
-    };
-
-    const [dinoText, itemText] = await Promise.all([
-      fetch("dinos.txt?ts=" + Date.now()).then(r => r.text()).catch(() => ""),
-      fetch("items.txt?ts=" + Date.now()).then(r => r.text()).catch(() => "")
-    ]);
-
-    dinoText.split(/\r?\n/).map(parseDinoLine).filter(Boolean).forEach(({ name, defType }) => {
-      const id = uid();
-      store.dinos.push({ id, name, defType });
-      store.order.dinos.push(id);
-    });
-
-    itemText.split(/\r?\n/).map(parseItemLine).filter(Boolean).forEach(({ name, unit, price }) => {
-      const id = uid();
-      store.items.push({ id, name, unit, price });
-      store.order.items.push(id);
-    });
-
-    saveStore();
+  /* ========= reset helper ========= */
+  if (new URL(location.href).searchParams.get('reset') === '1') {
+    Object.values(LS).forEach(k => localStorage.removeItem(k));
+    location.replace(location.pathname);
+    return;
   }
 
-  bindTop();
-  bindTabs();
-  bindManage();
-  renderAll();
-  rebuildOutput(); // initial
-}
+  /* ========= modal (single, never persisted) ========= */
+  const modal = (() => {
+    let open = false;
 
-/* ===== top ===== */
-function bindTop() {
-  qEl.oninput = () => applySearch();
-  qClear.onclick = () => { qEl.value = ""; applySearch(); };
-
-  deliveryEl.onchange = () => rebuildOutput(); // ← 変更即反映
-
-  copyBtn.onclick = async () => {
-    const text = outEl.value.trim();
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      const prev = copyBtn.textContent;
-      copyBtn.textContent = "コピー済み✓";
-      copyBtn.disabled = true;
-      setTimeout(() => {
-        copyBtn.textContent = prev;
-        copyBtn.disabled = false;
-      }, 1200);
-    } catch (e) {
-      outEl.focus();
-      outEl.select();
-      document.execCommand("copy");
-    }
-  };
-}
-
-/* ===== tabs ===== */
-function bindTabs() {
-  tabDino.onclick = () => setActiveTab("dino");
-  tabItem.onclick = () => setActiveTab("item");
-}
-
-function setActiveTab(tab) {
-  activeTab = tab;
-  tabDino.classList.toggle("is-active", tab === "dino");
-  tabItem.classList.toggle("is-active", tab === "item");
-  tabDino.setAttribute("aria-selected", tab === "dino" ? "true" : "false");
-  tabItem.setAttribute("aria-selected", tab === "item" ? "true" : "false");
-  listDinoEl.style.display = tab === "dino" ? "" : "none";
-  listItemEl.style.display = tab === "item" ? "" : "none";
-  applySearch();
-}
-
-/* ===== Manage ===== */
-let pendingDelete = null;
-
-function bindManage() {
-  openManage.onclick = () => openManageModal();
-  closeManage.onclick = () => closeManageModal();
-
-  modalBackdrop.onclick = () => {
-    if (!confirmModal.hidden) closeConfirmModal();
-    else if (!editModal.hidden) closeEditModal();
-    else if (!manageModal.hidden) closeManageModal();
-  };
-
-  mTabDino.onclick = () => { manageTab = "dino"; renderManage(); };
-  mTabItem.onclick = () => { manageTab = "item"; renderManage(); };
-
-  sortKanaBtn.onclick = () => sortKana();
-  openAdd.onclick = () => openAddModal();
-
-  closeEdit.onclick = () => closeEditModal();
-  closeConfirm.onclick = () => closeConfirmModal();
-  confirmNo.onclick = () => closeConfirmModal();
-
-  // 背面スクロール停止（iOS対策）
-  document.addEventListener("touchmove", (e) => {
-    if (!modalBackdrop.hidden) {
-      if (!e.target.closest(".modalBody")) e.preventDefault();
-    }
-  }, { passive: false });
-}
-
-function openManageModal() {
-  modalBackdrop.hidden = false;
-  manageModal.hidden = false;
-  document.body.style.overflow = "hidden";
-  renderManage();
-  renderPriceGrid();
-}
-function closeManageModal() {
-  manageModal.hidden = true;
-  if (editModal.hidden && confirmModal.hidden) {
-    modalBackdrop.hidden = true;
-    document.body.style.overflow = "";
-  }
-}
-function openEditModal() {
-  modalBackdrop.hidden = false;
-  editModal.hidden = false;
-  document.body.style.overflow = "hidden";
-}
-function closeEditModal() {
-  editModal.hidden = true;
-  if (manageModal.hidden && confirmModal.hidden) {
-    modalBackdrop.hidden = true;
-    document.body.style.overflow = "";
-  }
-}
-function openConfirmModal() {
-  modalBackdrop.hidden = false;
-  confirmModal.hidden = false;
-  document.body.style.overflow = "hidden";
-}
-function closeConfirmModal() {
-  confirmModal.hidden = true;
-  if (manageModal.hidden && editModal.hidden) {
-    modalBackdrop.hidden = true;
-    document.body.style.overflow = "";
-  }
-}
-
-/* ===== render ===== */
-function orderedDinos() {
-  const map = new Map(store.dinos.map(x => [x.id, x]));
-  return store.order.dinos.map(id => map.get(id)).filter(Boolean);
-}
-function orderedItems() {
-  const map = new Map(store.items.map(x => [x.id, x]));
-  return store.order.items.map(id => map.get(id)).filter(Boolean);
-}
-
-function renderAll() {
-  renderDinoList();
-  renderItemList();
-  renderManage();
-  renderPriceGrid();
-  applySearch();
-}
-
-function renderDinoList() {
-  listDinoEl.innerHTML = "";
-  transientClones = []; // 再描画時も消す
-
-  orderedDinos().forEach(d => {
-    const instanceId = makeOrGetDinoInstance(d.id, false);
-    const card = buildDinoCard(d, instanceId, false);
-    listDinoEl.appendChild(card);
-  });
-}
-
-function renderItemList() {
-  listItemEl.innerHTML = "";
-  orderedItems().forEach(it => {
-    if (!itemStates.has(it.id)) {
-      itemStates.set(it.id, { qty: 0, open: false });
-    }
-    const card = buildItemCard(it);
-    listItemEl.appendChild(card);
-  });
-}
-
-/* ===== Dino instances ===== */
-function makeOrGetDinoInstance(baseId, isClone) {
-  if (!isClone) {
-    const id = baseId;
-    if (!dinoInstances.has(id)) {
-      const base = store.dinos.find(x => x.id === baseId);
-      dinoInstances.set(id, {
-        baseId,
-        type: base?.defType || "受精卵",
-        m: 0, f: 0,
-        open: false,
-        autoSpecified: false
-      });
-    }
-    return id;
-  } else {
-    const cloneId = "c_" + uid();
-    const base = store.dinos.find(x => x.id === baseId);
-    dinoInstances.set(cloneId, {
-      baseId,
-      type: base?.defType || "受精卵",
-      m: 0, f: 0,
-      open: true,
-      autoSpecified: false
-    });
-    transientClones.push({ instanceId: cloneId, baseId });
-    return cloneId;
-  }
-}
-
-function buildDinoCard(d, instanceId, isClone) {
-  const s = dinoInstances.get(instanceId);
-
-  const card = document.createElement("div");
-  card.className = "card collapsed";
-  card.dataset.kind = "dino";
-  card.dataset.baseId = d.id;
-  card.dataset.instanceId = instanceId;
-  card.dataset.search = normalizeKey(d.name);
-
-  const typeOptions = Object.keys(store.prices)
-    .map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`)
-    .join("");
-
-  card.innerHTML = `
-    <div class="head">
-      <div class="name">${escapeHtml(d.name)}${isClone ? " (複製)" : ""}</div>
-      <div class="right">
-        <select class="typeSelect">${typeOptions}</select>
-        <div class="unit">単価${yen(store.prices[s.type] || 0)}</div>
-      </div>
-    </div>
-
-    <div class="body">
-      <div class="steppers">
-        <div class="step m">
-          <div class="stepRow">
-            <button class="btn decM" type="button">−</button>
-            <div class="val valM">${s.m}</div>
-            <button class="btn incM" type="button">＋</button>
-            <button class="cloneBtn" type="button">複製</button>
-          </div>
-        </div>
-
-        <div class="step f">
-          <div class="stepRow" style="grid-template-columns:48px 1fr 48px;">
-            <button class="btn decF" type="button">−</button>
-            <div class="val valF">${s.f}</div>
-            <button class="btn incF" type="button">＋</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  const sel = card.querySelector(".typeSelect");
-  const unit = card.querySelector(".unit");
-  sel.value = s.type;
-
-  syncCollapsed(card, s);
-
-  // header tap toggle
-  card.querySelector(".head").onclick = () => {
-    s.open = !s.open;
-    syncCollapsed(card, s);
-  };
-
-  // type change: keep open state
-  sel.onchange = () => {
-    s.type = sel.value;
-    unit.textContent = `単価${yen(store.prices[s.type] || 0)}`;
-    rebuildOutput();
-  };
-
-  const valM = card.querySelector(".valM");
-  const valF = card.querySelector(".valF");
-
-  card.querySelector(".incM").onclick = () => {
-    s.m++;
-    onSexInputChanged(s, sel, unit);
-    valM.textContent = s.m;
-    rebuildOutput();
-    syncCollapsed(card, s);
-  };
-  card.querySelector(".decM").onclick = () => {
-    s.m = Math.max(0, s.m - 1);
-    onSexInputChanged(s, sel, unit);
-    valM.textContent = s.m;
-    rebuildOutput();
-    syncCollapsed(card, s);
-  };
-  card.querySelector(".incF").onclick = () => {
-    s.f++;
-    onSexInputChanged(s, sel, unit);
-    valF.textContent = s.f;
-    rebuildOutput();
-    syncCollapsed(card, s);
-  };
-  card.querySelector(".decF").onclick = () => {
-    s.f = Math.max(0, s.f - 1);
-    onSexInputChanged(s, sel, unit);
-    valF.textContent = s.f;
-    rebuildOutput();
-    syncCollapsed(card, s);
-  };
-
-  card.querySelector(".cloneBtn").onclick = () => {
-    const cloneId = makeOrGetDinoInstance(d.id, true);
-    const cloneCard = buildDinoCard(d, cloneId, true);
-    card.insertAdjacentElement("afterend", cloneCard);
-    applySearch();
-  };
-
-  return card;
-}
-
-function syncCollapsed(card, s) {
-  const qty = s.m + s.f;
-  const shouldCollapse = (qty === 0 && !s.open);
-  card.classList.toggle("collapsed", shouldCollapse);
-}
-
-function onSexInputChanged(s, sel, unit) {
-  const both = s.m > 0 && s.f > 0;
-  const none = s.m === 0 && s.f === 0;
-
-  const current = s.type;
-  const base = UNSPEC_MAP[current] || current;
-  const hasSpec = SPEC_MAP[base] != null;
-
-  if (both && hasSpec) {
-    const spec = SPEC_MAP[base];
-    if (current !== spec) {
-      s.type = spec;
-      s.autoSpecified = true;
-      sel.value = s.type;
-      unit.textContent = `単価${yen(store.prices[s.type] || 0)}`;
-    }
-  }
-
-  if (none && s.autoSpecified) {
-    const unspec = UNSPEC_MAP[s.type] || s.type;
-    s.type = unspec;
-    s.autoSpecified = false;
-    sel.value = s.type;
-    unit.textContent = `単価${yen(store.prices[s.type] || 0)}`;
-  }
-}
-
-/* ===== Item card ===== */
-function buildItemCard(it) {
-  const s = itemStates.get(it.id);
-
-  const card = document.createElement("div");
-  card.className = "card";
-  card.dataset.kind = "item";
-  card.dataset.itemId = it.id;
-  card.dataset.search = normalizeKey(it.name);
-
-  card.innerHTML = `
-    <div class="head">
-      <div class="name">${escapeHtml(it.name)}</div>
-      <div class="right">
-        <div class="unit">単価${yen(it.price)}</div>
-      </div>
-    </div>
-
-    <div class="body">
-      <div class="step" style="background:rgba(255,255,255,.05)">
-        <div class="itemStepRow">
-          <button class="btn dec" type="button">−</button>
-          <div class="val v">${s.qty}</div>
-          <button class="btn inc" type="button">＋</button>
-        </div>
-        <div class="itemInfo">
-          <div>個数単位×${it.unit}</div>
-          <div id="shown-${it.id}">×${it.unit * s.qty}</div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  const v = card.querySelector(".v");
-  const shown = card.querySelector(`#shown-${CSS.escape(it.id)}`);
-
-  const sync = () => {
-    v.textContent = s.qty;
-    shown.textContent = `×${it.unit * s.qty}`;
-  };
-
-  card.querySelector(".inc").onclick = () => { s.qty++; sync(); rebuildOutput(); };
-  card.querySelector(".dec").onclick = () => { s.qty = Math.max(0, s.qty - 1); sync(); rebuildOutput(); };
-
-  return card;
-}
-
-/* ===== Search ===== */
-function applySearch() {
-  const qRaw = qEl.value || "";
-  const q = normalizeKey(qRaw);
-
-  const apply = (rootEl) => {
-    Array.from(rootEl.children).forEach(card => {
-      const key = card.dataset.search || "";
-      const ok = !q || key.includes(q);
-      card.style.display = ok ? "" : "none";
-    });
-  };
-
-  if (activeTab === "dino") apply(listDinoEl);
-  else apply(listItemEl);
-}
-
-/* ===== Output ===== */
-function rebuildOutput() {
-  const lines = [];
-  let sum = 0;
-  let idx = 1;
-
-  // dinos (DOM順)
-  const dinoCards = Array.from(listDinoEl.querySelectorAll(".card"));
-  dinoCards.forEach(card => {
-    const instanceId = card.dataset.instanceId;
-    const s = dinoInstances.get(instanceId);
-    if (!s) return;
-
-    const baseId = card.dataset.baseId;
-    const d = store.dinos.find(x => x.id === baseId);
-    if (!d) return;
-
-    const qty = s.m + s.f;
-    if (qty === 0) return;
-
-    const type = s.type;
-    const unitPrice = store.prices[type] || 0;
-    const price = unitPrice * qty;
-    sum += price;
-
-    const t = type.replace("(指定)", "");
-    let line = "";
-
-    if (PAIR_TYPES.has(type)) {
-      if (s.m === s.f) {
-        line = `${d.name}${t}ペア${s.m > 1 ? "×" + s.m : ""} = ${yen(price)}`;
+    function lockScroll(on) {
+      if (on) {
+        const y = window.scrollY || 0;
+        document.body.dataset.lockY = String(y);
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${y}px`;
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.width = '100%';
       } else {
-        const parts = [];
-        if (s.m > 0) parts.push(`♂×${s.m}`);
-        if (s.f > 0) parts.push(`♀×${s.f}`);
-        line = `${d.name}${t}${parts.length ? " " + parts.join(" ") : ""} = ${yen(price)}`;
+        const y = Number(document.body.dataset.lockY || '0');
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
+        delete document.body.dataset.lockY;
+        window.scrollTo(0, y);
       }
-    } else {
-      line = `${d.name}${t}×${qty} = ${yen(price)}`;
     }
 
-    lines.push(`${idx}. ${line}`);
-    idx++;
-  });
+    function show(title, node) {
+      el.modalTitle.textContent = title || '管理';
+      el.modalBody.innerHTML = '';
+      if (node) el.modalBody.appendChild(node);
+      el.modalRoot.classList.add('open');
+      el.modalRoot.setAttribute('aria-hidden', 'false');
+      open = true;
+      lockScroll(true);
+    }
 
-  // items
-  orderedItems().forEach(it => {
-    const s = itemStates.get(it.id);
-    if (!s || s.qty === 0) return;
+    function hide() {
+      el.modalRoot.classList.remove('open');
+      el.modalRoot.setAttribute('aria-hidden', 'true');
+      el.modalBody.innerHTML = '';
+      open = false;
+      lockScroll(false);
+    }
 
-    const shownQty = it.unit * s.qty;
-    const price = it.price * s.qty;
-    sum += price;
+    el.modalRoot.addEventListener('click', (e) => {
+      const t = e.target;
+      if (t && t.dataset && t.dataset.act === 'close') hide();
+    });
+    document.addEventListener('keydown', (e) => { if (open && e.key === 'Escape') hide(); });
 
-    const line = `${it.name}×${shownQty} = ${yen(price)}`;
-    lines.push(`${idx}. ${line}`);
-    idx++;
-  });
+    // always closed on boot
+    hide();
+    return { show, hide, get open() { return open; } };
+  })();
 
-  totalEl.textContent = yen(sum);
+  /* ========= data ========= */
+  const hidden = {
+    dino: new Set(loadJSON(LS.DINO_HIDDEN, [])),
+    item: new Set(loadJSON(LS.ITEM_HIDDEN, [])),
+  };
+  const order = {
+    dino: loadJSON(LS.DINO_ORDER, []),
+    item: loadJSON(LS.ITEM_ORDER, []),
+  };
+  const custom = {
+    dino: loadJSON(LS.DINO_CUSTOM, []), // [{id,name,defType}]
+    item: loadJSON(LS.ITEM_CUSTOM, []), // [{id,name,unit,price}]
+  };
 
-  outEl.value =
+  let dinos = [];
+  let items = [];
+  let activeTab = 'dino';
+
+  // inputState: key -> {type,m,f} or {qty}
+  const inputState = new Map();
+  // duplicated cards are ephemeral
+  const ephemeralKeys = new Set();
+
+  /* ========= fetch & parse ========= */
+  async function fetchTextSafe(path) {
+    try {
+      const r = await fetch(path + '?ts=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return '';
+      return await r.text();
+    } catch { return ''; }
+  }
+
+  function parseDinoLine(line) {
+    line = (line || '').trim();
+    if (!line || line.startsWith('#')) return null;
+    line = line.replace(/^・/, '').trim();
+    if (!line) return null;
+    const [nameRaw, defRaw] = line.split('|').map(s => (s || '').trim());
+    if (!nameRaw) return null;
+    const defType = (defRaw && prices[defRaw] != null) ? defRaw : '受精卵';
+    return { id: 'd_' + uid(), name: nameRaw, defType, kind: 'dino' };
+  }
+
+  function parseItemLine(line) {
+    line = (line || '').trim();
+    if (!line || line.startsWith('#')) return null;
+    const parts = line.split('|').map(s => (s || '').trim());
+    if (parts.length < 3) return null;
+    const name = parts[0];
+    const unit = Number(parts[1]);
+    const price = Number(parts[2]);
+    if (!name || !Number.isFinite(unit) || !Number.isFinite(price)) return null;
+    return { id: 'i_' + uid(), name, unit, price, kind: 'item' };
+  }
+
+  /* ========= ordering ========= */
+  function ensureOrderList(list, kind) {
+    const ids = list.map(x => x.id);
+    const ord = (order[kind] || []).filter(id => ids.includes(id));
+    ids.forEach(id => { if (!ord.includes(id)) ord.push(id); });
+    order[kind] = ord;
+    saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
+  }
+
+  function sortByOrder(list, kind) {
+    const ord = order[kind] || [];
+    const idx = new Map(ord.map((id, i) => [id, i]));
+    return list.slice().sort((a, b) => {
+      const ai = idx.has(a.id) ? idx.get(a.id) : 1e9;
+      const bi = idx.has(b.id) ? idx.get(b.id) : 1e9;
+      if (ai !== bi) return ai - bi;
+      return a.name.localeCompare(b.name, 'ja');
+    });
+  }
+
+  /* ========= behavior rules ========= */
+  function ensureDinoState(key, defType) {
+    if (!inputState.has(key)) inputState.set(key, { type: defType || '受精卵', m: 0, f: 0 });
+    return inputState.get(key);
+  }
+  function ensureItemState(key) {
+    if (!inputState.has(key)) inputState.set(key, { qty: 0 });
+    return inputState.get(key);
+  }
+
+  // ♀入力OK、両方>0なら(指定)へ。両方0なら(指定)解除。
+  function autoSpecify(s) {
+    const m = Number(s.m || 0), f = Number(s.f || 0);
+    const base = String(s.type || '受精卵').replace('(指定)', '');
+    const hasSpecified = /\(指定\)$/.test(String(s.type || ''));
+    if (m > 0 && f > 0) {
+      s.type = specifiedMap[base] || (base + '(指定)');
+      return;
+    }
+    if (m === 0 && f === 0 && hasSpecified) {
+      s.type = base;
+    }
+  }
+
+  /* ========= output ========= */
+  function rebuildOutput() {
+    const lines = [];
+    let sum = 0;
+    let idx = 1;
+
+    // dinos first
+    const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
+    for (const d of dList) {
+      const baseKey = d.id;
+      const keys = [baseKey, ...Array.from(ephemeralKeys).filter(k => k.startsWith(baseKey + '__dup'))];
+
+      for (const k of keys) {
+        const s = inputState.get(k);
+        if (!s) continue;
+
+        const type = s.type || d.defType || '受精卵';
+        const m = Number(s.m || 0);
+        const f = Number(s.f || 0);
+        const qty = m + f;
+        if (qty <= 0) continue;
+
+        const unitPrice = prices[type] || 0;
+        const price = unitPrice * qty;
+        sum += price;
+
+        const tOut = String(type).replace('(指定)', '');
+        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+
+        let line = '';
+        if (isPair) {
+          if (m === f) {
+            line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+          } else {
+            const p = [];
+            if (m > 0) p.push(`♂×${m}`);
+            if (f > 0) p.push(`♀×${f}`);
+            line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+          }
+        } else {
+          line = `${d.name}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+        }
+
+        lines.push(`${idx}. ${line}`);
+        idx++;
+      }
+    }
+
+    // items next
+    const iList = sortByOrder(items.filter(it => !hidden.item.has(it.id)), 'item');
+    for (const it of iList) {
+      const s = inputState.get(it.id);
+      if (!s) continue;
+      const qty = Number(s.qty || 0);
+      if (qty <= 0) continue;
+
+      const totalCount = qty * Number(it.unit || 1);
+      const price = qty * Number(it.price || 0);
+      sum += price;
+
+      lines.push(`${idx}. ${it.name} × ${totalCount} = ${price.toLocaleString('ja-JP')}円`);
+      idx++;
+    }
+
+    el.total.textContent = yen(sum);
+
+    el.out.value =
 `この度はご検討いただきありがとうございます！
 ご希望内容は以下となります👇🏻
 
-${lines.join("\n")}
+${lines.join('\n')}
 ーーーーーーーーーーーーーーー
-計：${yen(sum)}
-最短納品目安 : ${deliveryEl.value}
+計：${sum.toLocaleString('ja-JP')}円
+最短納品目安 : ${el.delivery.value}
 
 ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻
 
 また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
-}
+  }
 
-/* ===== Manage render/actions ===== */
-function renderManage() {
-  mTabDino.classList.toggle("is-active", manageTab === "dino");
-  mTabItem.classList.toggle("is-active", manageTab === "item");
-  manageListEl.innerHTML = "";
+  /* ========= collapse & search ========= */
+  function applyCollapseAndSearch() {
+    const q = norm(el.q.value);
+    const root = activeTab === 'dino' ? el.listDino : el.listItem;
 
-  const rows = (manageTab === "dino") ? orderedDinos() : orderedItems();
+    $$('[data-card="1"]', root).forEach(card => {
+      const name = card.dataset.name || '';
+      const show = !q || norm(name).includes(q);
+      card.style.display = show ? '' : 'none';
 
-  rows.forEach((x, i) => {
-    const row = document.createElement("div");
-    row.className = "manageRow";
+      const key = card.dataset.key;
+      let qty = 0;
 
-    row.innerHTML = `
-      <div class="mName">${escapeHtml(x.name)}</div>
-      <button class="iconBtn up" type="button">↑</button>
-      <button class="iconBtn down" type="button">↓</button>
-      <button class="smallBtn edit" type="button">編集</button>
-      <button class="smallBtn d del" type="button">削除</button>
+      if (activeTab === 'dino') {
+        const s = inputState.get(key);
+        qty = s ? (Number(s.m || 0) + Number(s.f || 0)) : 0;
+      } else {
+        const s = inputState.get(key);
+        qty = s ? Number(s.qty || 0) : 0;
+      }
+
+      // 通常: qty==0なら畳む / 検索中: ヒット以外畳む
+      const collapsed = q ? !show : (qty === 0);
+      card.classList.toggle('collapsed', collapsed);
+    });
+  }
+
+  /* ========= cards ========= */
+  function buildDinoCard(d) {
+    const key = d.id;
+    const s = ensureDinoState(key, d.defType);
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.card = '1';
+    card.dataset.key = key;
+    card.dataset.name = d.name;
+
+    card.innerHTML = `
+      <div class="head">
+        <div class="name"></div>
+        <div class="right">
+          <select class="type"></select>
+          <div class="unit"></div>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="steppers">
+          <div class="step">
+            <div class="stepRow">
+              <button class="btn" data-act="m-" type="button">−</button>
+              <div class="val js-m">0</div>
+              <button class="btn" data-act="m+" type="button">＋</button>
+              <button class="dupBtn" data-act="dup" type="button">⎘</button>
+            </div>
+          </div>
+          <div class="step">
+            <div class="stepRow">
+              <button class="btn" data-act="f-" type="button">−</button>
+              <div class="val js-f">0</div>
+              <button class="btn" data-act="f+" type="button">＋</button>
+            </div>
+          </div>
+        </div>
+      </div>
     `;
 
-    row.querySelector(".up").onclick = () => moveRow(i, -1);
-    row.querySelector(".down").onclick = () => moveRow(i, +1);
-    row.querySelector(".edit").onclick = () => startEdit(x);
-    row.querySelector(".del").onclick = () => confirmDelete(x);
+    $('.name', card).textContent = d.name;
 
-    manageListEl.appendChild(row);
-  });
-}
+    const sel = $('.type', card);
+    sel.innerHTML = typeList.map(t => `<option value="${t}">${t}</option>`).join('');
+    sel.value = s.type;
 
-function moveRow(index, delta) {
-  const key = manageTab === "dino" ? "dinos" : "items";
-  const arr = store.order[key];
-  const j = index + delta;
-  if (j < 0 || j >= arr.length) return;
-  [arr[index], arr[j]] = [arr[j], arr[index]];
-  saveStore();
-  renderAll();
-}
+    const unit = $('.unit', card);
+    unit.textContent = `単価${prices[s.type] || 0}円`;
 
-function sortKana() {
-  const key = manageTab === "dino" ? "dinos" : "items";
-  const list = (manageTab === "dino") ? store.dinos : store.items;
-  const map = new Map(list.map(x => [x.id, x]));
-  const ids = store.order[key].slice().filter(id => map.has(id));
+    const mEl = $('.js-m', card);
+    const fEl = $('.js-f', card);
+    mEl.textContent = String(s.m || 0);
+    fEl.textContent = String(s.f || 0);
 
-  ids.sort((a, b) => {
-    const A = normalizeKey(map.get(a).name);
-    const B = normalizeKey(map.get(b).name);
-    return A.localeCompare(B, "ja");
-  });
+    sel.addEventListener('change', () => {
+      s.type = sel.value;
+      autoSpecify(s);
+      sel.value = s.type;
+      unit.textContent = `単価${prices[s.type] || 0}円`;
+      rebuildOutput();
+      applyCollapseAndSearch();
+    });
 
-  store.order[key] = ids;
-  saveStore();
-  renderAll();
-}
-
-function renderPriceGrid() {
-  priceGridEl.innerHTML = "";
-  const keys = Object.keys(store.prices);
-
-  keys.forEach(k => {
-    const n = document.createElement("div");
-    n.className = "pName";
-    n.textContent = k;
-
-    const inp = document.createElement("input");
-    inp.value = String(store.prices[k] ?? 0);
-    inp.inputMode = "numeric";
-    inp.onchange = () => {
-      store.prices[k] = clampInt(inp.value);
-      saveStore();
-      renderAll();
-    };
-
-    priceGridEl.appendChild(n);
-    priceGridEl.appendChild(inp);
-  });
-}
-
-/* ===== Add/Edit ===== */
-let editMode = null; // {kind:'dino'|'item', id:null|existingId}
-
-function openAddModal() {
-  editMode = { kind: manageTab, id: null };
-  editTitle.textContent = (manageTab === "dino") ? "恐竜を追加" : "アイテムを追加";
-  editName.value = "";
-
-  if (manageTab === "dino") {
-    editDefaultWrap.hidden = false;
-    editItemWrap.hidden = true;
-    fillDefaultSelect();
-    editDefault.value = "受精卵";
-  } else {
-    editDefaultWrap.hidden = true;
-    editItemWrap.hidden = false;
-    editUnit.value = "1";
-    editPrice.value = "0";
-  }
-
-  saveEdit.onclick = () => saveEditAction();
-  openEditModal();
-}
-
-function startEdit(x) {
-  editMode = { kind: manageTab, id: x.id };
-  editTitle.textContent = "編集";
-
-  editName.value = x.name;
-
-  if (manageTab === "dino") {
-    editDefaultWrap.hidden = false;
-    editItemWrap.hidden = true;
-    fillDefaultSelect();
-    editDefault.value = x.defType || "受精卵";
-  } else {
-    editDefaultWrap.hidden = true;
-    editItemWrap.hidden = false;
-    editUnit.value = String(x.unit || 1);
-    editPrice.value = String(x.price || 0);
-  }
-
-  saveEdit.onclick = () => saveEditAction();
-  openEditModal();
-}
-
-function fillDefaultSelect() {
-  editDefault.innerHTML = Object.keys(store.prices)
-    .map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`)
-    .join("");
-}
-
-function saveEditAction() {
-  const name = (editName.value || "").trim();
-  if (!name) {
-    editName.focus();
-    return;
-  }
-
-  if (editMode.kind === "dino") {
-    const defType = editDefault.value || "受精卵";
-
-    if (editMode.id) {
-      const d = store.dinos.find(x => x.id === editMode.id);
-      if (!d) return;
-      d.name = name;
-      d.defType = defType;
-    } else {
-      const id = uid();
-      store.dinos.push({ id, name, defType });
-      store.order.dinos.push(id);
+    function step(sex, delta) {
+      if (sex === 'm') s.m = Math.max(0, Number(s.m || 0) + delta);
+      if (sex === 'f') s.f = Math.max(0, Number(s.f || 0) + delta);
+      autoSpecify(s);
+      sel.value = s.type;
+      unit.textContent = `単価${prices[s.type] || 0}円`;
+      mEl.textContent = String(s.m || 0);
+      fEl.textContent = String(s.f || 0);
+      rebuildOutput();
+      applyCollapseAndSearch();
     }
-  } else {
-    const unit = clampInt(editUnit.value) || 1;
-    const price = clampInt(editPrice.value) || 0;
 
-    if (editMode.id) {
-      const it = store.items.find(x => x.id === editMode.id);
-      if (!it) return;
-      it.name = name;
-      it.unit = unit;
-      it.price = price;
-    } else {
-      const id = uid();
-      store.items.push({ id, name, unit, price });
-      store.order.items.push(id);
+    card.addEventListener('click', (e) => {
+      const act = e.target?.dataset?.act;
+      if (!act) return;
+
+      if (act === 'm-') step('m', -1);
+      if (act === 'm+') step('m', +1);
+      if (act === 'f-') step('f', -1);
+      if (act === 'f+') step('f', +1);
+
+      if (act === 'dup') {
+        const dupKey = `${key}__dup_${uid()}`;
+        ephemeralKeys.add(dupKey);
+        inputState.set(dupKey, { type: s.type, m: 0, f: 0 });
+
+        const dupCard = buildDinoCard({ ...d, id: dupKey });
+        dupCard.dataset.name = d.name;
+        dupCard.dataset.key = dupKey;
+
+        card.after(dupCard);
+        rebuildOutput();
+        applyCollapseAndSearch();
+      }
+    });
+
+    return card;
+  }
+
+  function buildItemCard(it) {
+    const s = ensureItemState(it.id);
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.card = '1';
+    card.dataset.key = it.id;
+    card.dataset.name = it.name;
+
+    card.innerHTML = `
+      <div class="head">
+        <div class="name"></div>
+        <div class="right">
+          <div class="unit"></div>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="steppers">
+          <div class="step" style="flex:1">
+            <div class="stepRow">
+              <button class="btn" data-act="-" type="button">−</button>
+              <div class="val js-q">0</div>
+              <button class="btn" data-act="+" type="button">＋</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    $('.name', card).textContent = it.name;
+    $('.unit', card).textContent = `単価${it.price}円`;
+
+    const qEl = $('.js-q', card);
+    qEl.textContent = String(s.qty || 0);
+
+    card.addEventListener('click', (e) => {
+      const act = e.target?.dataset?.act;
+      if (!act) return;
+      if (act === '-') s.qty = Math.max(0, Number(s.qty || 0) - 1);
+      if (act === '+') s.qty = Math.max(0, Number(s.qty || 0) + 1);
+      qEl.textContent = String(s.qty || 0);
+      rebuildOutput();
+      applyCollapseAndSearch();
+    });
+
+    return card;
+  }
+
+  /* ========= render ========= */
+  function renderAll() {
+    el.listDino.innerHTML = '';
+    el.listItem.innerHTML = '';
+
+    const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
+    const iList = sortByOrder(items.filter(i => !hidden.item.has(i.id)), 'item');
+
+    dList.forEach(d => el.listDino.appendChild(buildDinoCard(d)));
+    iList.forEach(it => el.listItem.appendChild(buildItemCard(it)));
+
+    rebuildOutput();
+    applyCollapseAndSearch();
+  }
+
+  /* ========= tabs ========= */
+  function setTab(tab) {
+    activeTab = tab;
+    el.tabDino.classList.toggle('active', tab === 'dino');
+    el.tabItem.classList.toggle('active', tab === 'item');
+    el.listDino.style.display = tab === 'dino' ? '' : 'none';
+    el.listItem.style.display = tab === 'item' ? '' : 'none';
+    applyCollapseAndSearch();
+  }
+  el.tabDino.addEventListener('click', () => setTab('dino'));
+  el.tabItem.addEventListener('click', () => setTab('item'));
+
+  /* ========= search ========= */
+  el.q.addEventListener('input', applyCollapseAndSearch);
+  el.qClear.addEventListener('click', () => { el.q.value = ''; applyCollapseAndSearch(); });
+
+  /* ========= delivery ========= */
+  const savedDelivery = localStorage.getItem(LS.DELIVERY);
+  if (savedDelivery) el.delivery.value = savedDelivery;
+  el.delivery.addEventListener('change', () => {
+    localStorage.setItem(LS.DELIVERY, el.delivery.value);
+    rebuildOutput();
+  });
+
+  /* ========= copy ========= */
+  el.copy.addEventListener('click', async () => {
+    const text = el.out.value.trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      const prev = el.copy.textContent;
+      el.copy.textContent = 'コピー済み✓';
+      el.copy.disabled = true;
+      setTimeout(() => { el.copy.textContent = prev; el.copy.disabled = false; }, 1100);
+    } catch {
+      el.out.focus();
+      el.out.select();
+      document.execCommand('copy');
     }
+  });
+
+  /* ========= manage ========= */
+  function confirmDialog({ title = '確認', message = '', okText = '削除', cancelText = 'キャンセル' }) {
+    return new Promise((resolve) => {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = `
+        <div style="font-weight:900;margin-bottom:10px;">${title}</div>
+        <div style="color:rgba(255,255,255,.75);line-height:1.5;margin-bottom:12px;">${message}</div>
+        <div class="mActions">
+          <button type="button" data-act="cancel">${cancelText}</button>
+          <button type="button" class="danger" data-act="ok">${okText}</button>
+        </div>
+      `;
+      wrap.addEventListener('click', (e) => {
+        const a = e.target?.dataset?.act;
+        if (a === 'cancel') { modal.hide(); resolve(false); }
+        if (a === 'ok') { modal.hide(); resolve(true); }
+      });
+      modal.show('確認', wrap);
+    });
   }
 
-  saveStore();
-  closeEditModal();
-  renderAll();
-}
+  function openManage() {
+    const kind = activeTab; // manage current tab
 
-/* ===== Delete confirm ===== */
-function confirmDelete(x) {
-  pendingDelete = { kind: manageTab, id: x.id };
-  confirmText.textContent = `「${x.name}」を削除しますか？`;
-  confirmYes.onclick = () => doDelete();
-  openConfirmModal();
-}
-function doDelete() {
-  if (!pendingDelete) return;
+    const content = document.createElement('div');
 
-  if (pendingDelete.kind === "dino") {
-    store.dinos = store.dinos.filter(x => x.id !== pendingDelete.id);
-    store.order.dinos = store.order.dinos.filter(id => id !== pendingDelete.id);
-    dinoInstances.delete(pendingDelete.id);
-  } else {
-    store.items = store.items.filter(x => x.id !== pendingDelete.id);
-    store.order.items = store.order.items.filter(id => id !== pendingDelete.id);
-    itemStates.delete(pendingDelete.id);
+    // price editor
+    const priceBox = document.createElement('div');
+    priceBox.className = 'card';
+    priceBox.innerHTML = `<div class="name" style="font-size:16px;margin-bottom:10px;">価格設定</div>`;
+    const grid = document.createElement('div');
+    grid.className = 'mGrid';
+    typeList.forEach(t => {
+      const f = document.createElement('div');
+      f.className = 'mField';
+      f.innerHTML = `
+        <label>${t}</label>
+        <input type="number" inputmode="numeric" value="${prices[t] || 0}" data-type="${t}">
+      `;
+      grid.appendChild(f);
+    });
+    priceBox.appendChild(grid);
+    const priceSave = document.createElement('div');
+    priceSave.className = 'mActions';
+    priceSave.innerHTML = `<button type="button" data-act="savePrices">保存</button>`;
+    priceBox.appendChild(priceSave);
+    content.appendChild(priceBox);
+
+    // list manager
+    const listBox = document.createElement('div');
+    listBox.className = 'card';
+    listBox.innerHTML = `<div class="name" style="font-size:16px;margin-bottom:10px;">${kind === 'dino' ? '恐竜' : 'アイテム'}管理</div>`;
+
+    // add form (inside manage)
+    const add = document.createElement('div');
+    add.innerHTML = (kind === 'dino')
+      ? `
+        <div class="mGrid">
+          <div class="mField">
+            <label>名前</label>
+            <input id="addName" type="text" placeholder="例：カルカロ">
+          </div>
+          <div class="mField">
+            <label>デフォルト</label>
+            <select id="addDef">
+              ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="mActions"><button type="button" data-act="addOne">追加</button></div>
+      `
+      : `
+        <div class="mGrid">
+          <div class="mField">
+            <label>名前</label>
+            <input id="addName" type="text" placeholder="例：TEK天井">
+          </div>
+          <div class="mField">
+            <label>個数単位</label>
+            <input id="addUnit" type="number" inputmode="numeric" placeholder="例：100">
+          </div>
+        </div>
+        <div class="mGrid" style="margin-top:10px;">
+          <div class="mField" style="grid-column:1 / -1;">
+            <label>単価</label>
+            <input id="addPrice" type="number" inputmode="numeric" placeholder="例：100">
+          </div>
+        </div>
+        <div class="mActions"><button type="button" data-act="addOne">追加</button></div>
+      `;
+    listBox.appendChild(add);
+
+    const sortBar = document.createElement('div');
+    sortBar.className = 'mActions';
+    sortBar.innerHTML = `<button type="button" data-act="sortKana">50音並び替え</button>`;
+    listBox.appendChild(sortBar);
+
+    const rows = document.createElement('div');
+    const currentList = (kind === 'dino')
+      ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
+      : sortByOrder(items.filter(x => !hidden.item.has(x.id)), 'item');
+
+    currentList.forEach(obj => {
+      const r = document.createElement('div');
+      r.className = 'mRow';
+      r.innerHTML = `
+        <div class="mName">${obj.name}</div>
+        <button class="mBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
+        <button class="mBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
+        <button class="mBtn" type="button" data-act="edit" data-id="${obj.id}">編集</button>
+        <button class="mBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
+      `;
+      rows.appendChild(r);
+    });
+
+    listBox.appendChild(rows);
+    content.appendChild(listBox);
+
+    content.addEventListener('click', async (e) => {
+      const act = e.target?.dataset?.act;
+      if (!act) return;
+
+      if (act === 'savePrices') {
+        $$('input[data-type]', content).forEach(inp => {
+          const t = inp.dataset.type;
+          prices[t] = Number(inp.value || 0);
+        });
+        saveJSON(LS.PRICES, prices);
+        renderAll();
+        modal.hide();
+        return;
+      }
+
+      if (act === 'sortKana') {
+        const list = kind === 'dino' ? dinos : items;
+        const hset = kind === 'dino' ? hidden.dino : hidden.item;
+        const visible = list.filter(x => !hset.has(x.id));
+        visible.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+        order[kind] = visible.map(x => x.id);
+        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, order[kind]);
+        renderAll();
+        modal.hide();
+        return;
+      }
+
+      if (act === 'up' || act === 'down') {
+        const id = e.target.dataset.id;
+        const ord = (order[kind] || []).slice();
+        const i = ord.indexOf(id);
+        if (i === -1) return;
+        const ni = act === 'up' ? i - 1 : i + 1;
+        if (ni < 0 || ni >= ord.length) return;
+        [ord[i], ord[ni]] = [ord[ni], ord[i]];
+        order[kind] = ord;
+        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
+        renderAll();
+        modal.hide();
+        return;
+      }
+
+      if (act === 'del') {
+        const id = e.target.dataset.id;
+        const list = kind === 'dino' ? dinos : items;
+        const obj = list.find(x => x.id === id);
+        const ok = await confirmDialog({ message: `「${obj?.name || ''}」を削除しますか？` });
+        if (!ok) return;
+        (kind === 'dino' ? hidden.dino : hidden.item).add(id);
+        saveJSON(kind === 'dino' ? LS.DINO_HIDDEN : LS.ITEM_HIDDEN,
+          Array.from(kind === 'dino' ? hidden.dino : hidden.item)
+        );
+        renderAll();
+        modal.hide();
+        return;
+      }
+
+      if (act === 'edit') {
+        const id = e.target.dataset.id;
+        const list = kind === 'dino' ? dinos : items;
+        const obj = list.find(x => x.id === id);
+        if (!obj) return;
+
+        const form = document.createElement('div');
+        if (kind === 'dino') {
+          form.innerHTML = `
+            <div class="mGrid">
+              <div class="mField">
+                <label>名前</label>
+                <input id="eName" type="text" value="${obj.name}">
+              </div>
+              <div class="mField">
+                <label>デフォルト</label>
+                <select id="eDef">
+                  ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div class="mActions"><button type="button" data-act="saveEdit">保存</button></div>
+          `;
+          $('#eDef', form).value = obj.defType || '受精卵';
+        } else {
+          form.innerHTML = `
+            <div class="mGrid">
+              <div class="mField">
+                <label>名前</label>
+                <input id="eName" type="text" value="${obj.name}">
+              </div>
+              <div class="mField">
+                <label>個数単位</label>
+                <input id="eUnit" type="number" inputmode="numeric" value="${obj.unit}">
+              </div>
+            </div>
+            <div class="mGrid" style="margin-top:10px;">
+              <div class="mField" style="grid-column:1 / -1;">
+                <label>単価</label>
+                <input id="ePrice" type="number" inputmode="numeric" value="${obj.price}">
+              </div>
+            </div>
+            <div class="mActions"><button type="button" data-act="saveEdit">保存</button></div>
+          `;
+        }
+
+        form.addEventListener('click', (ev) => {
+          if (ev.target?.dataset?.act !== 'saveEdit') return;
+
+          const newName = $('#eName', form).value.trim();
+          if (!newName) return;
+          obj.name = newName;
+
+          if (kind === 'dino') obj.defType = $('#eDef', form).value;
+          else {
+            obj.unit = Number($('#eUnit', form).value || 1);
+            obj.price = Number($('#ePrice', form).value || 0);
+          }
+
+          if (kind === 'dino') {
+            const c = custom.dino.find(x => x.id === id);
+            if (c) { c.name = obj.name; c.defType = obj.defType; }
+            else custom.dino.push({ id, name: obj.name, defType: obj.defType });
+            saveJSON(LS.DINO_CUSTOM, custom.dino);
+          } else {
+            const c = custom.item.find(x => x.id === id);
+            if (c) { c.name = obj.name; c.unit = obj.unit; c.price = obj.price; }
+            else custom.item.push({ id, name: obj.name, unit: obj.unit, price: obj.price });
+            saveJSON(LS.ITEM_CUSTOM, custom.item);
+          }
+
+          renderAll();
+          modal.hide();
+        });
+
+        modal.show('編集', form);
+        return;
+      }
+
+      if (act === 'addOne') {
+        const name = ($('#addName', content)?.value || '').trim();
+        if (!name) return;
+
+        if (kind === 'dino') {
+          const defType = $('#addDef', content).value;
+          const id = 'd_c_' + uid();
+          custom.dino.push({ id, name, defType });
+          saveJSON(LS.DINO_CUSTOM, custom.dino);
+        } else {
+          const unit = Number($('#addUnit', content).value || 1);
+          const price = Number($('#addPrice', content).value || 0);
+          const id = 'i_c_' + uid();
+          custom.item.push({ id, name, unit, price });
+          saveJSON(LS.ITEM_CUSTOM, custom.item);
+        }
+
+        init().then(() => modal.hide());
+      }
+    });
+
+    modal.show('管理', content);
   }
 
-  saveStore();
-  pendingDelete = null;
-  closeConfirmModal();
-  renderAll();
-}
+  el.manageBtn.addEventListener('click', openManage);
 
-/* ===== escape ===== */
-function escapeHtml(s) {
-  return String(s || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
+  /* ========= init ========= */
+  async function init() {
+    const dText = await fetchTextSafe('./dinos.txt');
+    const iText = await fetchTextSafe('./items.txt');
 
-/* ===== boot ===== */
-// iOS Safari: bfcache 復元で「モーダル開いたまま」が復活しやすい
-window.addEventListener("pageshow", () => {
-  hardResetUI();
-});
+    const baseD = dText.split(/\r?\n/).map(parseDinoLine).filter(Boolean);
+    const baseI = iText.split(/\r?\n/).map(parseItemLine).filter(Boolean);
 
-init().catch(err => {
-  console.error(err);
-  hardResetUI();
-  outEl.value = "初期化に失敗しました。dinos.txt / items.txt / localStorage の状態を確認してください。";
-});
+    dinos = baseD.concat(custom.dino.map(x => ({ id: x.id, name: x.name, defType: x.defType, kind: 'dino' })));
+    items = baseI.concat(custom.item.map(x => ({ id: x.id, name: x.name, unit: x.unit, price: x.price, kind: 'item' })));
+
+    ensureOrderList(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
+    ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
+
+    const savedDelivery = localStorage.getItem(LS.DELIVERY);
+    if (savedDelivery) el.delivery.value = savedDelivery;
+
+    renderAll();
+    setTab(activeTab);
+  }
+
+  init();
+})();
