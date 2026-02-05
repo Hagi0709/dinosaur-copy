@@ -62,8 +62,6 @@
     color:var(--txt);
     font-size:14px;
   }
-
-  /* ×は常時表示（Safari/GHPキャッシュ対策） */
   .qClear{
     width:26px;
     height:26px;
@@ -74,7 +72,7 @@
     font-size:18px;
     line-height:24px;
     padding:0;
-    display:inline-block;
+    display:none; /* 入力時のみ */
   }
   .qClear:active{transform:scale(.98);}
 
@@ -100,20 +98,6 @@
     white-space:nowrap;
   }
   .copy:active{transform:scale(.99);}
-
-  .delivery{
-    height:36px;
-    border-radius:14px;
-    border:1px solid rgba(255,255,255,.14);
-    background:rgba(255,255,255,.08);
-    color:#fff;
-    font-size:13px;
-    padding:0 10px;
-    outline:none;
-    -webkit-appearance:none;
-    appearance:none;
-    white-space:nowrap;
-  }
 
   textarea{
     width:100%;
@@ -176,7 +160,7 @@
     gap:10px;
   }
 
-  select.type{
+  select{
     width:100%;
     padding:10px 12px;
     border-radius:14px;
@@ -197,8 +181,6 @@
   }
   .sex.m{border-color:rgba(116,215,255,.45); background:rgba(116,215,255,.16);}
   .sex.f{border-color:rgba(255,134,200,.45); background:rgba(255,134,200,.16);}
-
-  /* ♂♀ズレ対策 */
   .sexhead{
     display:flex;
     justify-content:space-between;
@@ -206,14 +188,8 @@
     margin-bottom:8px;
     font-weight:900;
   }
-  .sexhead .sym{
-    width:18px;
-    display:inline-flex;
-    justify-content:center;
-    align-items:center;
-    line-height:1;
-  }
-
+  .sexhead .label.m{color:var(--male)}
+  .sexhead .label.f{color:var(--female)}
   .count{
     font-variant-numeric:tabular-nums;
     font-size:20px;
@@ -230,8 +206,6 @@
     font-weight:900;
     touch-action:manipulation;
   }
-
-  /* グレーアウト */
   .disabled{opacity:.35; pointer-events:none;}
 </style>
 </head>
@@ -241,20 +215,12 @@
 <div class="top">
   <div class="row">
     <div class="search">
-      <input id="q" placeholder="検索" autocomplete="off">
+      <input id="q" placeholder="検索（ひらがなOK）" autocomplete="off">
       <button id="qClear" class="qClear" type="button" aria-label="検索をクリア">×</button>
     </div>
-
     <div class="total">合計 <b id="total">0円</b></div>
-
-    <select id="delivery" class="delivery">
-      <option value="即納品可能">即納品可能</option>
-      <option value="本日夜">本日夜</option>
-    </select>
-
     <button id="copy" class="copy" type="button">コピー</button>
   </div>
-
   <textarea id="out" readonly placeholder="数量を入れると自動で更新されます"></textarea>
 </div>
 
@@ -280,13 +246,12 @@
   const state = new Map(); // name -> {type,m,f}
   const ui = new Map();    // name -> dom refs
 
-  const listEl   = document.getElementById("list");
-  const outEl    = document.getElementById("out");
-  const totalEl  = document.getElementById("total");
-  const qEl      = document.getElementById("q");
-  const qClearEl = document.getElementById("qClear");
-  const copyBtn  = document.getElementById("copy");
-  const deliveryEl = document.getElementById("delivery");
+  const listEl  = document.getElementById("list");
+  const outEl   = document.getElementById("out");
+  const totalEl = document.getElementById("total");
+  const qEl     = document.getElementById("q");
+  const qClearEl= document.getElementById("qClear");
+  const copyBtn = document.getElementById("copy");
 
   function yen(n){ return Number(n).toLocaleString("ja-JP") + "円"; }
 
@@ -361,7 +326,7 @@
 ${lines.join("\n")}
 ーーーーーーーーーーーーーーー
 計：${sum.toLocaleString("ja-JP")}円
-最短納品目安 : ${deliveryEl.value}
+最短納品目安 : 即納品可能
 
 ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻
 
@@ -369,7 +334,12 @@ ${lines.join("\n")}
   }
 
   function applySearch(){
-    const q = normalize(qEl.value || "");
+    const raw = qEl.value || "";
+    const q = normalize(raw);
+
+    // ×は「入力があるか」で出す（正規化に依存しない）
+    qClearEl.style.display = raw.length ? "" : "none";
+
     for (const name of dinos){
       const ref = ui.get(name);
       if (!ref) continue;
@@ -378,43 +348,23 @@ ${lines.join("\n")}
     }
   }
 
-  // コピー演出
-  let copyTimer = null;
-  async function copyOut(){
-    const text = outEl.value.trim();
-    if (!text){
-      alert("まだ出力がありません");
-      return;
-    }
-    try{
-      await navigator.clipboard.writeText(text);
-    }catch(e){
-      outEl.focus(); outEl.select();
-      document.execCommand("copy");
-    }
+  function setModeForCard(name){
+    const s = state.get(name);
+    const ref = ui.get(name);
+    if (!s || !ref) return;
 
-    const prev = copyBtn.textContent;
-    copyBtn.textContent = "コピー済み ✓";
-    copyBtn.disabled = true;
-    if (copyTimer) clearTimeout(copyTimer);
-    copyTimer = setTimeout(() => {
-      copyBtn.textContent = prev;
-      copyBtn.disabled = false;
-    }, 1200);
+    ref.badge.textContent = displayType(s.type);
+    ref.unit.textContent = `単価 ${yen(prices[s.type] || 0)}`;
+
+    // sexTypes以外は♀を無効化して0へ寄せる（合算表示用）
+    if (!sexTypes.has(s.type)){
+      s.f = 0;
+      ref.fcnt.textContent = "0";
+      ref.fBox.classList.add("disabled");
+    } else {
+      ref.fBox.classList.remove("disabled");
+    }
   }
-
-  // 検索入力/クリア
-  qEl.addEventListener("input", applySearch);
-  qClearEl.addEventListener("click", () => {
-    qEl.value = "";
-    applySearch();
-    qEl.focus();
-  });
-
-  // 納品目安：即反映
-  deliveryEl.addEventListener("change", rebuildOutput);
-
-  copyBtn.addEventListener("click", copyOut);
 
   function render(){
     listEl.innerHTML = "";
@@ -447,8 +397,8 @@ ${lines.join("\n")}
           <div class="sexrow">
             <div class="sex m">
               <div class="sexhead">
-                <span class="sym">♂</span>
-                <span class="count mcnt">0</span>
+                <div class="label m">♂</div>
+                <div class="count mcnt">0</div>
               </div>
               <div class="btns">
                 <button class="btn" type="button" data-sex="m" data-d="-1">−</button>
@@ -458,12 +408,12 @@ ${lines.join("\n")}
 
             <div class="sex f">
               <div class="sexhead">
-                <span class="sym">♀</span>
-                <span class="count fcnt">0</span>
+                <div class="label f">♀</div>
+                <div class="count fcnt">0</div>
               </div>
               <div class="btns">
-                <button class="btn fbtn" type="button" data-sex="f" data-d="-1">−</button>
-                <button class="btn fbtn" type="button" data-sex="f" data-d="1">＋</button>
+                <button class="btn" type="button" data-sex="f" data-d="-1">−</button>
+                <button class="btn" type="button" data-sex="f" data-d="1">＋</button>
               </div>
             </div>
           </div>
@@ -472,12 +422,11 @@ ${lines.join("\n")}
       listEl.appendChild(card);
 
       const badge = card.querySelector(".badge");
-      const unit = card.querySelector(".unit");
-      const sel = card.querySelector(".type");
-      const mcnt = card.querySelector(".mcnt");
-      const fcnt = card.querySelector(".fcnt");
-      const fBox = card.querySelector(".sex.f");
-      const fBtns = card.querySelectorAll(".fbtn");
+      const unit  = card.querySelector(".unit");
+      const sel   = card.querySelector(".type");
+      const mcnt  = card.querySelector(".mcnt");
+      const fcnt  = card.querySelector(".fcnt");
+      const fBox  = card.querySelector(".sex.f");
 
       const ref = {
         card,
@@ -487,42 +436,22 @@ ${lines.join("\n")}
         mcnt,
         fcnt,
         fBox,
-        fBtns,
         norm: normalize(name)
       };
       ui.set(name, ref);
 
-      // UI更新（単価/バッジ/♀無効化含む）
-      const applyMode = () => {
-        ref.badge.textContent = displayType(s.type);
-        ref.unit.textContent = `単価 ${yen(prices[s.type] || 0)}`;
-
-        if (!sexTypes.has(s.type)){
-          // ✅ 受精卵/胚（指定なし）など：♀は常に0＋操作不可＋グレーアウト
-          s.f = 0;
-          ref.fcnt.textContent = "0";
-          ref.fBox.classList.add("disabled");
-          ref.fBtns.forEach(b => b.disabled = true);
-        } else {
-          ref.fBox.classList.remove("disabled");
-          ref.fBtns.forEach(b => b.disabled = false);
-        }
-      };
-
       // 初期表示
-      ref.mcnt.textContent = String(s.m);
-      ref.fcnt.textContent = String(s.f);
-      applyMode();
+      mcnt.textContent = String(s.m);
+      fcnt.textContent = String(s.f);
 
       // タイプ変更
       sel.addEventListener("change", () => {
         s.type = sel.value;
-        if (!sexTypes.has(s.type)) s.f = 0; // 念のため
-        applyMode();
+        setModeForCard(name);
         rebuildOutput();
       });
 
-      // ±
+      // ±ボタン
       card.querySelectorAll("button[data-sex]").forEach(btn => {
         btn.addEventListener("click", () => {
           const sex = btn.dataset.sex;
@@ -532,18 +461,55 @@ ${lines.join("\n")}
           if (!sexTypes.has(s.type) && sex === "f") return;
 
           s[sex] = Math.max(0, s[sex] + d);
-          if (sex === "m") ref.mcnt.textContent = String(s.m);
-          else ref.fcnt.textContent = String(s.f);
+          if (sex === "m") mcnt.textContent = String(s.m);
+          else fcnt.textContent = String(s.f);
 
-          applyMode();
+          setModeForCard(name);
           rebuildOutput();
         });
       });
+
+      setModeForCard(name);
     }
 
     applySearch();
     rebuildOutput();
   }
+
+  // コピー演出
+  let copyTimer = null;
+  async function copyOut(){
+    const text = outEl.value.trim();
+    if (!text){
+      alert("まだ出力がありません");
+      return;
+    }
+    try{
+      await navigator.clipboard.writeText(text);
+    }catch(e){
+      outEl.focus(); outEl.select();
+      document.execCommand("copy");
+    }
+
+    const prev = copyBtn.textContent;
+    copyBtn.textContent = "コピー済み ✓";
+    copyBtn.disabled = true;
+    if (copyTimer) clearTimeout(copyTimer);
+    copyTimer = setTimeout(() => {
+      copyBtn.textContent = prev;
+      copyBtn.disabled = false;
+    }, 1200);
+  }
+
+  // 検索入力/クリア（×で確実にリセット）
+  qEl.addEventListener("input", applySearch);
+  qClearEl.addEventListener("click", () => {
+    qEl.value = "";
+    applySearch();
+    qEl.focus();
+  });
+
+  copyBtn.addEventListener("click", copyOut);
 
   async function load(){
     const res = await fetch(`dinos.txt?ts=${Date.now()}`);
