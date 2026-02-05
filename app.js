@@ -3,7 +3,6 @@
 ====================== */
 function yen(n){ return Number(n||0).toLocaleString("ja-JP") + "円"; }
 
-// カタカナ→ひらがな（検索/50音ソート安定）
 function kataToHira(str){
   return (str||"").replace(/[\u30A1-\u30F6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
 }
@@ -15,9 +14,9 @@ function normHira(str){
 }
 
 /* ======================
-   Pricing / Types
+   Base prices (fallback)
 ====================== */
-const prices = {
+const BASE_PRICES = {
   "受精卵":30, "受精卵(指定)":50,
   "胚":50,   "胚(指定)":100,
   "幼体":100,
@@ -61,22 +60,23 @@ function loadStore(){
       itemsDeleted: Array.isArray(obj.itemsDeleted) ? obj.itemsDeleted : [],
       delivery: typeof obj.delivery === "string" ? obj.delivery : "即納品可能",
 
-      // 並び順（名前配列）
       dinoOrder: Array.isArray(obj.dinoOrder) ? obj.dinoOrder : [],
       itemOrder: Array.isArray(obj.itemOrder) ? obj.itemOrder : [],
 
-      // 名称変更（old -> new）
       dinoRenames: safeObj(obj.dinoRenames, {}),
-      itemRenames: safeObj(obj.itemRenames, {})
+      itemRenames: safeObj(obj.itemRenames, {}),
+
+      priceOverrides: safeObj(obj.priceOverrides, {}) // ← 追加：価格上書き
     };
   }catch{
     return {
       dinosAdded:[], dinosDeleted:[], itemsAdded:[], itemsDeleted:[],
       delivery:"即納品可能", dinoOrder:[], itemOrder:[],
-      dinoRenames:{}, itemRenames:{}
+      dinoRenames:{}, itemRenames:{}, priceOverrides:{}
     };
   }
 }
+
 const store = loadStore();
 
 function saveStore(){
@@ -91,8 +91,19 @@ function saveStore(){
     itemOrder: store.itemOrder,
 
     dinoRenames: store.dinoRenames,
-    itemRenames: store.itemRenames
+    itemRenames: store.itemRenames,
+
+    priceOverrides: store.priceOverrides
   }));
+}
+
+/* effective prices */
+function getPrices(){
+  return { ...BASE_PRICES, ...(store.priceOverrides||{}) };
+}
+function priceOf(type){
+  const p = getPrices();
+  return Number(p[type] ?? 0);
 }
 
 /* ======================
@@ -115,8 +126,7 @@ const manageBtn = document.getElementById("manage");
 const modalBack = document.getElementById("modalBack");
 const modalTitle = document.getElementById("modalTitle");
 const modalBody = document.getElementById("modalBody");
-const modalOk = document.getElementById("modalOk");
-const modalNote = document.getElementById("modalNote");
+const modalClose = document.getElementById("modalClose");
 
 /* ======================
    Models
@@ -142,6 +152,7 @@ function parseDinoLine(line){
   const rawType = parts[1] || "";
   if(!name) return null;
 
+  const prices = getPrices();
   const defType = (rawType && (rawType in prices)) ? rawType : "受精卵";
   return { name, defType };
 }
@@ -169,7 +180,6 @@ function parseItemLine(line){
    Rename apply helpers
 ====================== */
 function applyRenamesToName(name, map){
-  // 連鎖していたら辿る（無限ループ防止で最大10回）
   let cur = name;
   for(let i=0;i<10;i++){
     const next = map[cur];
@@ -189,11 +199,13 @@ function mergeDinos(base){
   const ren = store.dinoRenames || {};
   const map = new Map();
 
+  const prices = getPrices();
+
   for(const rec of base){
     const renamed = applyRenamesToName(rec.name, ren);
     if(deleted.has(renamed)) continue;
 
-    const defType = rec.defType;
+    const defType = (rec.defType && (rec.defType in prices)) ? rec.defType : "受精卵";
     map.set(renamed, { name: renamed, defType });
   }
 
@@ -251,20 +263,10 @@ function applyOrder(list, order){
       set.delete(n);
     }
   }
-  // orderにない新規は末尾へ（元順）
   for(const x of list){
     if(set.has(x.name)) ordered.push(x);
   }
   return ordered;
-}
-
-function saveCurrentOrder(){
-  if(activeTab==="dino"){
-    store.dinoOrder = [...dinos];
-  }else{
-    store.itemOrder = [...items];
-  }
-  saveStore();
 }
 
 function sortKana(){
@@ -364,10 +366,8 @@ function hideModal(){
   modalBack.classList.remove("show");
   document.body.classList.remove("modalOpen");
   modalBody.innerHTML = "";
-  modalNote.textContent = "";
-  modalOk.onclick = null;
 }
-modalOk.onclick = hideModal;
+modalClose.onclick = hideModal;
 modalBack.addEventListener("click", (e)=>{
   if(e.target === modalBack) hideModal();
 });
@@ -409,7 +409,9 @@ function rebuildOutput(){
   let sum = 0;
   let idx = 1;
 
-  // dinos first
+  const prices = getPrices();
+
+  // dinos
   for(const name of dinos){
     const s = dinoState.get(name);
     const qty = (s.m||0) + (s.f||0);
@@ -436,7 +438,7 @@ function rebuildOutput(){
     idx++;
   }
 
-  // items next
+  // items
   for(const name of items){
     const s = itemState.get(name);
     const q = s.qty || 0;
@@ -467,18 +469,33 @@ ${lines.join("\n")}
 }
 
 /* ======================
+   Card helpers
+====================== */
+function updateDinoUnitUI(s){
+  const unit = s.card.querySelector(".unit");
+  if(unit) unit.textContent = `単価${priceOf(s.type)}円`;
+}
+function updateAllDinoUnits(){
+  for(const name of dinos){
+    const s = dinoState.get(name);
+    if(s) updateDinoUnitUI(s);
+  }
+}
+
+/* ======================
    Card builders
 ====================== */
 function makeDinoCard(name, defType){
+  const prices = getPrices();
+
   const s = {
     name,
     defType,
-    type: defType,
+    type: (defType in prices) ? defType : "受精卵",
     m:0,
     f:0,
     open:false,
     autoSpecified:false,
-    userChangedType:false,
     normName: normHira(name),
     card:null
   };
@@ -492,9 +509,9 @@ function makeDinoCard(name, defType){
       <div class="name">${name}</div>
       <div class="right">
         <select class="type">
-          ${Object.keys(prices).map(t=>`<option value="${t}">${t}</option>`).join("")}
+          ${Object.keys(getPrices()).map(t=>`<option value="${t}">${t}</option>`).join("")}
         </select>
-        <div class="unit">単価${prices[defType]}円</div>
+        <div class="unit">単価${priceOf(s.type)}円</div>
       </div>
     </div>
 
@@ -521,12 +538,10 @@ function makeDinoCard(name, defType){
 
   const header = card.querySelector(".cardHeader");
   const sel = card.querySelector("select.type");
-  const unit = card.querySelector(".unit");
   const mc = card.querySelector(".mc");
   const fc = card.querySelector(".fc");
 
   sel.value = s.type;
-  unit.textContent = `単価${prices[s.type]}円`;
 
   header.onclick = (e)=>{
     if(e.target && (e.target.tagName === "SELECT" || e.target.closest("select"))) return;
@@ -536,9 +551,8 @@ function makeDinoCard(name, defType){
 
   sel.onchange = ()=>{
     s.type = sel.value;
-    s.userChangedType = true;
     s.autoSpecified = false;
-    unit.textContent = `単価${prices[s.type]}円`;
+    updateDinoUnitUI(s);
 
     if(s.open) card.classList.remove("collapsed");
 
@@ -552,11 +566,11 @@ function makeDinoCard(name, defType){
       const d = Number(b.dataset.d);
 
       s[sex] = Math.max(0, (s[sex]||0) + d);
-
       applyAutoSpecified(s);
 
       sel.value = s.type;
-      unit.textContent = `単価${prices[s.type]}円`;
+      updateDinoUnitUI(s);
+
       mc.textContent = s.m;
       fc.textContent = s.f;
 
@@ -641,82 +655,104 @@ function makeItemCard(name, unitCount, unitPrice){
 }
 
 /* ======================
-   Rebuild list DOM by current order
+   DOM rebuild
 ====================== */
 function rebuildListsDOM(){
-  // dinos
   secDino.innerHTML = "";
   for(const name of dinos){
     const s = dinoState.get(name);
-    if(s){
-      // 既存カードを再利用できるなら移動
-      secDino.appendChild(s.card);
-    }else{
-      // 念のため（通常ここは来ない）
-      makeDinoCard(name, "受精卵");
-    }
+    if(s) secDino.appendChild(s.card);
   }
 
-  // items
   secItem.innerHTML = "";
   for(const name of items){
     const s = itemState.get(name);
-    if(s){
-      secItem.appendChild(s.card);
-    }else{
-      // 念のため
-      makeItemCard(name, 1, 0);
-    }
+    if(s) secItem.appendChild(s.card);
   }
 }
 
 /* ======================
-   Add / Manage
+   Manage (List / Prices)
 ====================== */
 manageBtn.onclick = ()=> openManage();
 
 function openManage(){
   modalTitle.textContent = "管理";
-  modalOk.textContent = "閉じる";
+  modalBody.innerHTML = `
+    <div class="mSeg">
+      <button id="segList" class="pill active" type="button">一覧</button>
+      <button id="segPrice" class="pill" type="button">価格</button>
+    </div>
+    <div id="managePane"></div>
+  `;
 
-  const addLabel = (activeTab==="dino") ? "＋恐竜を追加" : "＋アイテムを追加";
+  showModal();
+
+  const segList = document.getElementById("segList");
+  const segPrice = document.getElementById("segPrice");
+  const pane = document.getElementById("managePane");
+
+  function setSeg(which){
+    segList.classList.toggle("active", which==="list");
+    segPrice.classList.toggle("active", which==="price");
+    if(which==="list") renderManageList(pane);
+    else renderManagePrices(pane);
+  }
+
+  segList.onclick = ()=>setSeg("list");
+  segPrice.onclick = ()=>setSeg("price");
+
+  setSeg("list");
+}
+
+function renderManageList(pane){
   const list = (activeTab==="dino") ? dinos : items;
 
-  modalBody.innerHTML = `
+  pane.innerHTML = `
     <div class="mToolbar">
-      <button id="mAdd" class="addBtn" type="button">${addLabel}</button>
-      <button id="mSort" class="sortBtn" type="button">50音で並び替え</button>
+      <button id="mAdd" class="pillBtn" type="button">＋追加</button>
+      <button id="mSort" class="pillBtn" type="button">50音</button>
     </div>
     <div id="mList" class="mList"></div>
   `;
 
-  modalNote.textContent = "並び替え：左の「≡」を押したまま上下にドラッグ / 名称変更：編集 / 削除は確認後に反映";
-
-  const mList = document.getElementById("mList");
+  const mList = pane.querySelector("#mList");
   mList.innerHTML = list.map((name, i)=>{
+    const upDisabled = (i===0) ? "disabled" : "";
+    const downDisabled = (i===list.length-1) ? "disabled" : "";
     return `
       <div class="mRow" data-name="${name}" data-index="${i}">
         <div class="mLeft">
-          <div class="mHandle" data-handle="1" aria-label="drag">≡</div>
           <div class="mName">${name}</div>
         </div>
         <div class="mBtns">
+          <button class="moveBtn" data-move="up" data-name="${name}" ${upDisabled} type="button">↑</button>
+          <button class="moveBtn" data-move="down" data-name="${name}" ${downDisabled} type="button">↓</button>
           <button class="editBtn" data-name="${name}" type="button">編集</button>
           <button class="delBtn" data-name="${name}" type="button">削除</button>
         </div>
       </div>
     `;
-  }).join("") || `<div class="smallNote">一覧がありません</div>`;
+  }).join("") || "";
 
-  // actions
-  document.getElementById("mAdd").onclick = ()=>{
+  pane.querySelector("#mAdd").onclick = ()=>{
     if(activeTab==="dino") openAddDino();
     else openAddItem();
   };
-  document.getElementById("mSort").onclick = ()=>{
+
+  pane.querySelector("#mSort").onclick = ()=>{
     sortKana();
-    openManage(); // 管理画面の表示も更新
+    openManage();
   };
+
+  mList.querySelectorAll(".moveBtn").forEach(btn=>{
+    btn.onclick = ()=>{
+      const name = btn.dataset.name;
+      const dir = btn.dataset.move;
+      moveRow(name, dir);
+      openManage();
+    };
+  });
 
   mList.querySelectorAll(".delBtn").forEach(btn=>{
     btn.onclick = ()=>{
@@ -732,12 +768,11 @@ function openManage(){
     btn.onclick = ()=>{
       const oldName = btn.dataset.name;
       const newName = (prompt("新しい名称を入力", oldName) || "").trim();
-      if(!newName) return;
-      if(newName === oldName) return;
+      if(!newName || newName===oldName) return;
 
       const targetList = (activeTab==="dino") ? dinos : items;
       if(targetList.includes(newName)){
-        alert("同じ名称が既に存在します。別名にしてください。");
+        alert("同名が既に存在します。");
         return;
       }
 
@@ -749,138 +784,73 @@ function openManage(){
       rebuildOutput();
     };
   });
-
-  // drag reorder
-  attachDragReorder(mList);
-
-  showModal();
-  modalOk.onclick = hideModal;
 }
 
-/* ===== drag reorder (PointerEvents, iOS-safe) ===== */
-function attachDragReorder(container){
-  let draggingEl = null;
-  let placeholder = null;
-  let startY = 0;
-  let offsetY = 0;
-  let pointerId = null;
+function renderManagePrices(pane){
+  const prices = getPrices();
+  const keys = Object.keys(prices);
 
-  function onPointerMove(e){
-    if(!draggingEl) return;
-    if(pointerId !== null && e.pointerId !== pointerId) return;
+  pane.innerHTML = `
+    <div class="priceList">
+      ${keys.map(k=>{
+        const v = prices[k];
+        return `
+          <div class="priceRow">
+            <div class="pName">${k}</div>
+            <input data-pricekey="${k}" inputmode="numeric" value="${v}" />
+            <div class="yen">円</div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
 
-    const y = e.clientY - offsetY;
-    draggingEl.style.transform = `translateY(${y}px)`;
+  pane.querySelectorAll("input[data-pricekey]").forEach(inp=>{
+    inp.addEventListener("input", ()=>{
+      const key = inp.dataset.pricekey;
+      const n = Number(String(inp.value||"").replace(/[^\d]/g,""));
+      // 空は0扱いにする（変な文字は除去）
+      const val = Number.isFinite(n) ? n : 0;
+      store.priceOverrides = store.priceOverrides || {};
+      store.priceOverrides[key] = val;
+      inp.value = String(val);
 
-    // placeholder position calc (within visible rows)
-    const rows = Array.from(container.querySelectorAll(".mRow")).filter(r=>r!==draggingEl);
-    const phRect = placeholder.getBoundingClientRect();
-    const midY = phRect.top + phRect.height/2;
-
-    for(const row of rows){
-      const r = row.getBoundingClientRect();
-      const rowMid = r.top + r.height/2;
-      if(midY < rowMid){
-        container.insertBefore(placeholder, row);
-        return;
-      }
-    }
-    container.appendChild(placeholder);
-  }
-
-  function onPointerUp(e){
-    if(!draggingEl) return;
-    if(pointerId !== null && e.pointerId !== pointerId) return;
-
-    window.removeEventListener("pointermove", onPointerMove);
-    window.removeEventListener("pointerup", onPointerUp);
-
-    // place back
-    draggingEl.classList.remove("dragging");
-    draggingEl.style.transform = "";
-    draggingEl.style.position = "";
-    draggingEl.style.left = "";
-    draggingEl.style.right = "";
-    draggingEl.style.top = "";
-    draggingEl.style.zIndex = "";
-    draggingEl.style.width = "";
-
-    // insert at placeholder position
-    container.insertBefore(draggingEl, placeholder);
-    placeholder.remove();
-
-    // update arrays by DOM order
-    const newOrder = Array.from(container.querySelectorAll(".mRow")).map(r=>r.dataset.name);
-    if(activeTab==="dino"){
-      dinos.length = 0;
-      dinos.push(...newOrder);
-      store.dinoOrder = [...dinos];
-    }else{
-      items.length = 0;
-      items.push(...newOrder);
-      store.itemOrder = [...items];
-    }
-    saveStore();
-    rebuildListsDOM();
-    applyFilter();
-    rebuildOutput();
-
-    draggingEl = null;
-    placeholder = null;
-    pointerId = null;
-  }
-
-  container.querySelectorAll(".mHandle").forEach(handle=>{
-    handle.onpointerdown = (e)=>{
-      const row = e.target.closest(".mRow");
-      if(!row) return;
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      draggingEl = row;
-      pointerId = e.pointerId;
-      row.setPointerCapture(pointerId);
-
-      const rect = row.getBoundingClientRect();
-      const crect = container.getBoundingClientRect();
-
-      startY = e.clientY;
-      offsetY = startY - rect.top; // pointer offset inside element
-
-      placeholder = document.createElement("div");
-      placeholder.className = "mPlaceholder";
-      placeholder.style.height = rect.height + "px";
-
-      // take the element out of normal flow visually (but keep in DOM until placeholder placed)
-      row.classList.add("dragging");
-      row.style.width = rect.width + "px";
-      row.style.position = "relative";
-      row.style.zIndex = "5";
-
-      // put placeholder where it was
-      container.insertBefore(placeholder, row.nextSibling);
-
-      // now move row as overlay with translateY
-      const initialTop = rect.top - crect.top;
-      row.style.transform = `translateY(${initialTop}px)`;
-
-      window.addEventListener("pointermove", onPointerMove, {passive:false});
-      window.addEventListener("pointerup", onPointerUp, {passive:false});
-    };
+      saveStore();
+      updateAllDinoUnits();     // ← カードの単価を即反映
+      rebuildOutput();          // ← 合計・出力も即反映
+    });
   });
 }
 
+function moveRow(name, dir){
+  const list = (activeTab==="dino") ? dinos : items;
+  const idx = list.indexOf(name);
+  if(idx < 0) return;
+
+  if(dir==="up" && idx>0){
+    [list[idx-1], list[idx]] = [list[idx], list[idx-1]];
+  }
+  if(dir==="down" && idx<list.length-1){
+    [list[idx+1], list[idx]] = [list[idx], list[idx+1]];
+  }
+
+  if(activeTab==="dino") store.dinoOrder = [...dinos];
+  else store.itemOrder = [...items];
+
+  saveStore();
+  rebuildListsDOM();
+  applyFilter();
+  rebuildOutput();
+}
+
 /* ======================
-   Add screens
+   Add screens (balanced, no extra notes)
 ====================== */
 function openAddDino(){
   modalTitle.textContent = "恐竜を追加";
-  modalOk.textContent = "追加";
-  modalNote.textContent = "※追加はこの端末に保存されます（リロードしても残ります）";
 
   modalBody.innerHTML = `
-    <div class="form">
+    <div class="formGrid">
       <div class="field">
         <label>名前</label>
         <input id="newName" placeholder="例：カルカロ" />
@@ -888,20 +858,22 @@ function openAddDino(){
       <div class="field">
         <label>デフォルト</label>
         <select id="newType">
-          ${Object.keys(prices).map(t=>`<option value="${t}">${t}</option>`).join("")}
+          ${Object.keys(getPrices()).map(t=>`<option value="${t}">${t}</option>`).join("")}
         </select>
+      </div>
+      <div class="actionWide">
+        <button id="addDo" type="button">追加</button>
       </div>
     </div>
   `;
 
   showModal();
 
-  modalOk.onclick = ()=>{
-    const name = (document.getElementById("newName").value || "").trim();
-    const defType = document.getElementById("newType").value;
+  modalBody.querySelector("#addDo").onclick = ()=>{
+    const name = (modalBody.querySelector("#newName").value || "").trim();
+    const defType = modalBody.querySelector("#newType").value;
     if(!name) return;
 
-    // 既存チェック（rename適用後の実名ベース）
     if(dinos.includes(name)){
       alert("同名が既に存在します。");
       return;
@@ -921,44 +893,45 @@ function openAddDino(){
 
     saveStore();
 
-    makeDinoCard(name, (defType in prices) ? defType : "受精卵");
+    makeDinoCard(name, defType);
     rebuildListsDOM();
     applyFilter();
     rebuildOutput();
 
-    hideModal();
+    // 追加後は管理に戻す
     openManage();
   };
 }
 
 function openAddItem(){
   modalTitle.textContent = "アイテムを追加";
-  modalOk.textContent = "追加";
-  modalNote.textContent = "商品名 / 個数単位 / 値段 を入力（この端末に保存されます）";
 
   modalBody.innerHTML = `
-    <div class="form">
+    <div class="formGrid">
       <div class="field">
         <label>商品名</label>
         <input id="newItemName" placeholder="例：TEK天井" />
       </div>
       <div class="field">
-        <label>個数単位</label>
+        <label>単位</label>
         <input id="newUnitCount" inputmode="numeric" placeholder="例：100" />
       </div>
       <div class="field">
         <label>値段</label>
         <input id="newUnitPrice" inputmode="numeric" placeholder="例：100" />
       </div>
+      <div class="actionWide">
+        <button id="addDo" type="button">追加</button>
+      </div>
     </div>
   `;
 
   showModal();
 
-  modalOk.onclick = ()=>{
-    const name = (document.getElementById("newItemName").value || "").trim();
-    const unitCount = Number((document.getElementById("newUnitCount").value || "").trim());
-    const unitPrice = Number((document.getElementById("newUnitPrice").value || "").trim());
+  modalBody.querySelector("#addDo").onclick = ()=>{
+    const name = (modalBody.querySelector("#newItemName").value || "").trim();
+    const unitCount = Number((modalBody.querySelector("#newUnitCount").value || "").trim());
+    const unitPrice = Number((modalBody.querySelector("#newUnitPrice").value || "").trim());
 
     if(!name) return;
     if(items.includes(name)){
@@ -987,7 +960,6 @@ function openAddItem(){
     applyFilter();
     rebuildOutput();
 
-    hideModal();
     openManage();
   };
 }
@@ -1034,18 +1006,14 @@ function deleteItem(name){
 }
 
 function renameDino(oldName, newName){
-  // rename map更新（将来読み込み時にも反映）
   store.dinoRenames = store.dinoRenames || {};
   store.dinoRenames[oldName] = newName;
 
-  // arrays / states 置換
   const idx = dinos.indexOf(oldName);
   if(idx >= 0) dinos[idx] = newName;
 
-  // orderも置換
   store.dinoOrder = (store.dinoOrder||[]).map(n=> n===oldName ? newName : n);
 
-  // state移植
   const s = dinoState.get(oldName);
   if(s){
     dinoState.delete(oldName);
@@ -1054,12 +1022,8 @@ function renameDino(oldName, newName){
     const nameEl = s.card.querySelector(".name");
     if(nameEl) nameEl.textContent = newName;
     dinoState.set(newName, s);
-  }else{
-    // 万一なければ追加扱い
-    makeDinoCard(newName, "受精卵");
   }
 
-  // addedの名前も置換（ローカル追加分の保持）
   store.dinosAdded = (store.dinosAdded||[]).map(r=>{
     if(!r) return r;
     if(r.name === oldName) return {...r, name:newName};
@@ -1087,8 +1051,6 @@ function renameItem(oldName, newName){
     const nameEl = s.card.querySelector(".name");
     if(nameEl) nameEl.textContent = newName;
     itemState.set(newName, s);
-  }else{
-    makeItemCard(newName, 1, 0);
   }
 
   store.itemsAdded = (store.itemsAdded||[]).map(r=>{
@@ -1116,7 +1078,6 @@ async function loadAll(){
   let mergedDinos = mergeDinos(baseDinos);
   let mergedItems = mergeItems(baseItems);
 
-  // 並び順適用（なければファイル順）
   mergedDinos = applyOrder(mergedDinos, store.dinoOrder);
   mergedItems = applyOrder(mergedItems, store.itemOrder);
 
@@ -1130,7 +1091,6 @@ async function loadAll(){
     makeItemCard(name, unitCount, unitPrice);
   });
 
-  // 初回はorderが空なら現状を保存して固定化
   if(!store.dinoOrder || store.dinoOrder.length===0) store.dinoOrder = [...dinos];
   if(!store.itemOrder || store.itemOrder.length===0) store.itemOrder = [...items];
   saveStore();
