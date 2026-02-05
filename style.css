@@ -167,10 +167,7 @@ select.type{
 .card.collapsed .cardBody{ display:none; }
 
 /* steppers */
-.stepRow{
-  display:flex;
-  gap:10px;
-}
+.stepRow{ display:flex; gap:10px; }
 .box{
   flex:1;
   padding:8px;
@@ -189,7 +186,6 @@ select.type{
   border-color:rgba(255,255,255,.18);
   background:rgba(255,255,255,.06);
 }
-
 .stepper{
   display:flex;
   align-items:center;
@@ -247,15 +243,12 @@ select.type{
   gap:10px;
   margin-bottom:10px;
 }
-.modal h3{
-  margin:0;
-  font-size:16px;
-}
+.modal h3{ margin:0; font-size:16px; }
 
 #modalBody{
   overflow:auto;
   -webkit-overflow-scrolling: touch;
-  max-height: calc(100dvh - 210px - env(safe-area-inset-top));
+  max-height: calc(100dvh - 190px - env(safe-area-inset-top));
   padding-right:2px;
 }
 
@@ -287,6 +280,20 @@ body.modalOpen{
 }
 
 /* manage list row */
+.mToolbar{
+  display:flex;
+  gap:10px;
+  margin-bottom:10px;
+}
+.mToolbar button{ flex:1; }
+
+.mList{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  position:relative;
+}
+
 .mRow{
   display:flex;
   align-items:center;
@@ -297,40 +304,58 @@ body.modalOpen{
   border-radius:14px;
   background:rgba(0,0,0,.18);
 }
-.mRow .mLeft{
+
+.mLeft{
   display:flex;
   align-items:center;
   gap:10px;
-  min-width:0;
   flex:1;
+  min-width:0;
 }
-.mRow .mName{
+.mHandle{
+  width:34px;
+  height:34px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+  user-select:none;
+  touch-action:none;
+}
+.mName{
   font-weight:900;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
 }
-.mRow .mBtns{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  justify-content:flex-end;
-}
-.mRow .mBtns button{
+.mBtns{ display:flex; gap:8px; }
+.mBtns button{
   height:34px;
-  padding:0 10px;
+  padding:0 12px;
   border-radius:12px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
   color:#fff;
   font-weight:900;
-  font-size:12px;
 }
-.mRow .mBtns .delBtn{
+.mBtns .delBtn{
   background:rgba(255,80,80,.10);
   border-color:rgba(255,80,80,.25);
 }
-.mRow .mBtns .moveBtn{
-  width:44px;
-  padding:0;
+
+/* drag visuals */
+.mRow.dragging{
+  opacity:.85;
+  transform:scale(1.01);
+  box-shadow:0 12px 28px rgba(0,0,0,.35);
+  border-color:rgba(255,255,255,.18);
+}
+.mPlaceholder{
+  height:56px;
+  border-radius:14px;
+  border:1px dashed rgba(255,255,255,.22);
+  background:rgba(255,255,255,.06);
 }
