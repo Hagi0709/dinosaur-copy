@@ -13,10 +13,8 @@
 
   <title>恐竜リスト</title>
 
-  <!-- iPhone ホーム画面アイコン（同階層の画像を使用） -->
   <link rel="apple-touch-icon" href="./56379E4F-8771-431A-B2A6-4B3EE3136504.png" />
-
-  <link rel="stylesheet" href="./style.css?v=1" />
+  <link rel="stylesheet" href="./style.css?v=2" />
 </head>
 
 <body>
@@ -39,7 +37,7 @@
     <textarea id="out" readonly></textarea>
 
     <div class="row row2">
-      <button id="add" class="addBtn" type="button">＋追加</button>
+      <!-- 追加は管理へ移動 -->
       <button id="manage" class="manageBtn" type="button">管理</button>
     </div>
 
@@ -58,22 +56,20 @@
   <div id="modalBack" class="modalBack" role="dialog" aria-modal="true">
     <div class="modal">
       <div class="modalTopRow">
-        <h3 id="modalTitle">追加</h3>
-        <button id="modalX" class="modalX" aria-label="close" type="button">×</button>
+        <h3 id="modalTitle">管理</h3>
+        <!-- ×は廃止（閉じるボタンは1つに統一） -->
       </div>
 
       <div id="modalBody"></div>
 
       <div class="modalBtns">
-        <button id="modalCancel" type="button">閉じる</button>
-        <button id="modalOk" type="button">追加</button>
+        <button id="modalOk" type="button">閉じる</button>
       </div>
 
       <div id="modalNote" class="smallNote"></div>
     </div>
   </div>
 
-  <!-- app.js（キャッシュ回避のため ?v を上げる運用推奨） -->
-  <script src="./app.js?v=1" defer></script>
+  <script src="./app.js?v=2" defer></script>
 </body>
 </html>
