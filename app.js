@@ -1,9 +1,7 @@
 (() => {
   'use strict';
 
-  /* =======================
-   * Utils
-   * ======================= */
+  /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const uid = () => Math.random().toString(36).slice(2, 10);
@@ -11,9 +9,7 @@
   const toHira = (s) => (s || '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
   const norm = (s) => toHira(String(s || '').toLowerCase()).replace(/\s+/g, '');
 
-  /* =======================
-   * Storage keys
-   * ======================= */
+  /* ========= storage ========= */
   const LS = {
     DINO_CUSTOM: 'dino_custom_v1',
     ITEM_CUSTOM: 'item_custom_v1',
@@ -24,20 +20,10 @@
     PRICES: 'prices_v1',
     DELIVERY: 'delivery_v1',
   };
-
-  const loadJSON = (k, fb) => {
-    try {
-      const v = localStorage.getItem(k);
-      return v ? JSON.parse(v) : fb;
-    } catch {
-      return fb;
-    }
-  };
+  const loadJSON = (k, fb) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } };
   const saveJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-  /* =======================
-   * Prices
-   * ======================= */
+  /* ========= prices ========= */
   const defaultPrices = {
     '受精卵': 30, '受精卵(指定)': 50,
     '胚': 50, '胚(指定)': 100,
@@ -45,14 +31,11 @@
     '成体': 500,
     'クローン': 500, 'クローン(指定)': 300,
   };
+  const prices = Object.assign({}, defaultPrices, loadJSON(LS.PRICES, {}));
   const typeList = Object.keys(defaultPrices);
   const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
 
-  const prices = Object.assign({}, defaultPrices, loadJSON(LS.PRICES, {}));
-
-  /* =======================
-   * DOM (index.html IDs)
-   * ======================= */
+  /* ========= DOM (index.htmlのIDに合わせて固定) ========= */
   const el = {
     q: $('#q'),
     qClear: $('#qClear'),
@@ -61,106 +44,47 @@
     total: $('#total'),
     out: $('#out'),
 
-    openManage: $('#openManage'),
-
     tabDinos: $('#tabDinos'),
     tabItems: $('#tabItems'),
-
     list: $('#list'),
 
-    // Manage modal
+    openManage: $('#openManage'),
     modalOverlay: $('#modalOverlay'),
     closeManage: $('#closeManage'),
     modalBody: $('#modalBody'),
+
     mTabCatalog: $('#mTabCatalog'),
     mTabPrices: $('#mTabPrices'),
 
-    // Confirm modal
     confirmOverlay: $('#confirmOverlay'),
     confirmText: $('#confirmText'),
     confirmCancel: $('#confirmCancel'),
     confirmOk: $('#confirmOk'),
 
-    // Edit modal
     editOverlay: $('#editOverlay'),
     editTitle: $('#editTitle'),
     editBody: $('#editBody'),
     editClose: $('#editClose'),
   };
 
-  /* =======================
-   * Safety: required elements
-   * ======================= */
-  const required = [
-    'q','qClear','delivery','copy','total','out',
-    'openManage','tabDinos','tabItems','list',
-    'modalOverlay','closeManage','modalBody','mTabCatalog','mTabPrices',
-    'confirmOverlay','confirmText','confirmCancel','confirmOk',
-    'editOverlay','editTitle','editBody','editClose'
-  ];
-  for (const k of required) {
-    if (!el[k]) {
-      console.error('[恐竜リスト] Missing element:', k);
-      // ここで落ちると「全部消える/ボタン効かない」になるので、あえてreturnして暴走を止める
-      return;
-    }
-  }
-
-  /* =======================
-   * Optional reset
-   * ======================= */
+  /* ========= reset helper ========= */
   if (new URL(location.href).searchParams.get('reset') === '1') {
     Object.values(LS).forEach(k => localStorage.removeItem(k));
     location.replace(location.pathname);
     return;
   }
 
-  /* =======================
-   * Global state
-   * ======================= */
-  const hidden = {
-    dino: new Set(loadJSON(LS.DINO_HIDDEN, [])),
-    item: new Set(loadJSON(LS.ITEM_HIDDEN, [])),
+  /* ========= modal helpers ========= */
+  const showOverlay = (node) => {
+    node.classList.remove('isHidden');
+    node.setAttribute('aria-hidden', 'false');
   };
-  const order = {
-    dino: loadJSON(LS.DINO_ORDER, []),
-    item: loadJSON(LS.ITEM_ORDER, []),
-  };
-  const custom = {
-    dino: loadJSON(LS.DINO_CUSTOM, []), // [{id,name,defType}]
-    item: loadJSON(LS.ITEM_CUSTOM, []), // [{id,name,unit,price}]
+  const hideOverlay = (node) => {
+    node.classList.add('isHidden');
+    node.setAttribute('aria-hidden', 'true');
   };
 
-  let dinos = [];
-  let items = [];
-  let activeTab = 'dino'; // 'dino' | 'item'
-  let manageTab = 'catalog'; // 'catalog' | 'prices'
-
-  // inputState: key -> dino {type,m,f} / item {qty}
-  const inputState = new Map();
-
-  // duplicates (ephemeral): baseId -> [{key}]
-  const dupMap = new Map(); // baseId => array of dupKeys (in-memory only)
-
-  /* =======================
-   * Modal helpers
-   * ======================= */
-  function showOverlay(overlayEl) {
-    overlayEl.classList.remove('isHidden');
-    overlayEl.setAttribute('aria-hidden', 'false');
-  }
-  function hideOverlay(overlayEl) {
-    overlayEl.classList.add('isHidden');
-    overlayEl.setAttribute('aria-hidden', 'true');
-  }
-  function closeAllOverlays() {
-    hideOverlay(el.modalOverlay);
-    hideOverlay(el.confirmOverlay);
-    hideOverlay(el.editOverlay);
-  }
-
-  // Prevent background scroll when modal open
-  function lockScroll(on) {
+  const lockScroll = (on) => {
     if (on) {
       const y = window.scrollY || 0;
       document.body.dataset.lockY = String(y);
@@ -179,89 +103,69 @@
       delete document.body.dataset.lockY;
       window.scrollTo(0, y);
     }
-  }
+  };
 
-  function openManageModal() {
-    manageTab = 'catalog';
-    el.mTabCatalog.classList.add('isActive');
-    el.mTabPrices.classList.remove('isActive');
-    renderManageBody();
-    showOverlay(el.modalOverlay);
-    lockScroll(true);
-  }
-  function closeManageModal() {
-    hideOverlay(el.modalOverlay);
-    el.modalBody.innerHTML = '';
-    lockScroll(false);
-  }
+  const openManageModal = () => { showOverlay(el.modalOverlay); lockScroll(true); };
+  const closeManageModal = () => { hideOverlay(el.modalOverlay); lockScroll(false); };
 
-  // Confirm
-  let confirmResolve = null;
-  function openConfirm(message, okText = '削除') {
-    el.confirmText.textContent = message || '削除しますか？';
-    el.confirmOk.textContent = okText;
+  const openConfirm = (msg) => {
+    el.confirmText.textContent = msg || '削除しますか？';
     showOverlay(el.confirmOverlay);
-    lockScroll(true);
-    return new Promise(res => { confirmResolve = res; });
-  }
-  function closeConfirm(result) {
-    hideOverlay(el.confirmOverlay);
-    lockScroll(false);
-    if (confirmResolve) {
-      const r = confirmResolve;
-      confirmResolve = null;
-      r(!!result);
-    }
-  }
+  };
+  const closeConfirm = () => hideOverlay(el.confirmOverlay);
 
-  // Edit/Add
-  function openEditModal(title, node) {
+  const openEdit = (title, node) => {
     el.editTitle.textContent = title || '追加 / 編集';
     el.editBody.innerHTML = '';
-    if (node) el.editBody.appendChild(node);
+    el.editBody.appendChild(node);
     showOverlay(el.editOverlay);
-    lockScroll(true);
-  }
-  function closeEditModal() {
-    hideOverlay(el.editOverlay);
-    el.editBody.innerHTML = '';
-    lockScroll(false);
-  }
+  };
+  const closeEdit = () => hideOverlay(el.editOverlay);
 
-  // Overlay click close (only when clicking background)
-  el.modalOverlay.addEventListener('click', (e) => {
-    if (e.target === el.modalOverlay) closeManageModal();
-  });
-  el.confirmOverlay.addEventListener('click', (e) => {
-    if (e.target === el.confirmOverlay) closeConfirm(false);
-  });
-  el.editOverlay.addEventListener('click', (e) => {
-    if (e.target === el.editOverlay) closeEditModal();
-  });
-
+  // close wiring
   el.closeManage.addEventListener('click', closeManageModal);
-  el.confirmCancel.addEventListener('click', () => closeConfirm(false));
-  el.confirmOk.addEventListener('click', () => closeConfirm(true));
-  el.editClose.addEventListener('click', closeEditModal);
-
+  el.modalOverlay.addEventListener('click', (e) => { if (e.target === el.modalOverlay) closeManageModal(); });
+  el.editClose.addEventListener('click', closeEdit);
+  el.editOverlay.addEventListener('click', (e) => { if (e.target === el.editOverlay) closeEdit(); });
+  el.confirmOverlay.addEventListener('click', (e) => { if (e.target === el.confirmOverlay) closeConfirm(); });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (!el.editOverlay.classList.contains('isHidden')) return closeEditModal();
-    if (!el.confirmOverlay.classList.contains('isHidden')) return closeConfirm(false);
-    if (!el.modalOverlay.classList.contains('isHidden')) return closeManageModal();
+    if (!el.confirmOverlay.classList.contains('isHidden')) closeConfirm();
+    else if (!el.editOverlay.classList.contains('isHidden')) closeEdit();
+    else if (!el.modalOverlay.classList.contains('isHidden')) closeManageModal();
   });
 
-  /* =======================
-   * Fetch & parse
-   * ======================= */
+  /* ========= data ========= */
+  const hidden = {
+    dino: new Set(loadJSON(LS.DINO_HIDDEN, [])),
+    item: new Set(loadJSON(LS.ITEM_HIDDEN, [])),
+  };
+  const order = {
+    dino: loadJSON(LS.DINO_ORDER, []),
+    item: loadJSON(LS.ITEM_ORDER, []),
+  };
+  const custom = {
+    dino: loadJSON(LS.DINO_CUSTOM, []), // [{id,name,defType}]
+    item: loadJSON(LS.ITEM_CUSTOM, []), // [{id,name,unit,price}]
+  };
+
+  let dinos = [];
+  let items = [];
+  let activeTab = 'dino'; // 'dino' | 'item'
+  let manageTab = 'catalog'; // 'catalog' | 'prices'
+
+  // inputState: key -> {type,m,f} or {qty}
+  const inputState = new Map();
+  // duplicated cards are ephemeral (reloadで消える)
+  const ephemeralKeys = new Set();
+
+  /* ========= fetch & parse ========= */
   async function fetchTextSafe(path) {
     try {
       const r = await fetch(path + '?ts=' + Date.now(), { cache: 'no-store' });
       if (!r.ok) return '';
       return await r.text();
-    } catch {
-      return '';
-    }
+    } catch { return ''; }
   }
 
   function parseDinoLine(line) {
@@ -287,9 +191,7 @@
     return { id: 'i_' + uid(), name, unit, price, kind: 'item' };
   }
 
-  /* =======================
-   * Ordering
-   * ======================= */
+  /* ========= ordering ========= */
   function ensureOrderList(list, kind) {
     const ids = list.map(x => x.id);
     const ord = (order[kind] || []).filter(id => ids.includes(id));
@@ -309,9 +211,7 @@
     });
   }
 
-  /* =======================
-   * Input state helpers
-   * ======================= */
+  /* ========= behavior rules ========= */
   function ensureDinoState(key, defType) {
     if (!inputState.has(key)) inputState.set(key, { type: defType || '受精卵', m: 0, f: 0 });
     return inputState.get(key);
@@ -321,7 +221,7 @@
     return inputState.get(key);
   }
 
-  // ♀入力OK、両方>0なら(指定)、両方0なら(指定)解除
+  // ♀入力OK、両方>0なら(指定)へ。両方0なら(指定)解除。
   function autoSpecify(s) {
     const m = Number(s.m || 0), f = Number(s.f || 0);
     const base = String(s.type || '受精卵').replace('(指定)', '');
@@ -335,9 +235,7 @@
     }
   }
 
-  /* =======================
-   * Output builder
-   * ======================= */
+  /* ========= output ========= */
   function rebuildOutput() {
     const lines = [];
     let sum = 0;
@@ -345,13 +243,9 @@
 
     // dinos first
     const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
-
     for (const d of dList) {
       const baseKey = d.id;
-
-      // base + duplicates (ephemeral)
-      const dupKeys = dupMap.get(baseKey) || [];
-      const keys = [baseKey, ...dupKeys];
+      const keys = [baseKey, ...Array.from(ephemeralKeys).filter(k => k.startsWith(baseKey + '__dup'))];
 
       for (const k of keys) {
         const s = inputState.get(k);
@@ -421,10 +315,7 @@ ${lines.join('\n')}
 また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
   }
 
-  /* =======================
-   * Collapse & search
-   *  - 初期は畳む（qty==0で畳む）
-   * ======================= */
+  /* ========= collapse & search ========= */
   function applyCollapseAndSearch() {
     const q = norm(el.q.value);
 
@@ -433,10 +324,11 @@ ${lines.join('\n')}
       const show = !q || norm(name).includes(q);
       card.style.display = show ? '' : 'none';
 
-      const key = card.dataset.key || '';
-      let qty = 0;
+      const key = card.dataset.key;
+      const kind = card.dataset.kind;
 
-      if (card.dataset.kind === 'dino') {
+      let qty = 0;
+      if (kind === 'dino') {
         const s = inputState.get(key);
         qty = s ? (Number(s.m || 0) + Number(s.f || 0)) : 0;
       } else {
@@ -444,57 +336,48 @@ ${lines.join('\n')}
         qty = s ? Number(s.qty || 0) : 0;
       }
 
-      // 検索中はヒットだけ開く。それ以外は畳む
-      // 非検索時は qty==0 を畳む（初期は全部畳まれる）
+      // 通常: qty==0なら畳む / 検索中: ヒット以外畳む（ただし初期畳みを維持）
       const collapsed = q ? !show : (qty === 0);
-
       card.classList.toggle('isCollapsed', collapsed);
     });
   }
 
-  /* =======================
-   * Cards
-   * ======================= */
-  function buildDinoCard(d, keyOverride = null) {
-    const key = keyOverride || d.id;
+  /* ========= cards ========= */
+  function buildDinoCard(d) {
+    const key = d.id;
     const s = ensureDinoState(key, d.defType);
 
     const card = document.createElement('div');
     card.className = 'card isCollapsed';
     card.dataset.card = '1';
-    card.dataset.kind = 'dino';
     card.dataset.key = key;
     card.dataset.name = d.name;
+    card.dataset.kind = 'dino';
 
-    // NOTE:
-    // - ♂/♀ を色で分ける → CSS側で .btn.male / .btn.female を色付け想定
-    // - 複製ボタンは外に出して右端
     card.innerHTML = `
-      <div class="cardHead">
+      <div class="cardHead" data-act="toggle">
         <div class="name"></div>
         <div class="right">
-          <select class="type"></select>
+          <select class="type" data-act="type"></select>
           <div class="unit"></div>
         </div>
       </div>
 
       <div class="controls">
-        <div class="grid2">
-          <div class="stepper">
-            <button class="btn male" data-act="m-" type="button">−</button>
+        <div class="grid3">
+          <div class="stepper male">
+            <button class="btn" data-act="m-" type="button">−</button>
             <div class="val js-m">0</div>
-            <button class="btn male" data-act="m+" type="button">＋</button>
+            <button class="btn" data-act="m+" type="button">＋</button>
           </div>
 
-          <div class="stepper">
-            <button class="btn female" data-act="f-" type="button">−</button>
+          <div class="stepper female">
+            <button class="btn" data-act="f-" type="button">−</button>
             <div class="val js-f">0</div>
-            <button class="btn female" data-act="f+" type="button">＋</button>
+            <button class="btn" data-act="f+" type="button">＋</button>
           </div>
-        </div>
 
-        <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-          <button class="mini" data-act="dup" type="button">複製</button>
+          <button class="dupBtn" data-act="dup" type="button">複製</button>
         </div>
       </div>
     `;
@@ -513,65 +396,63 @@ ${lines.join('\n')}
     mEl.textContent = String(s.m || 0);
     fEl.textContent = String(s.f || 0);
 
-    // 折りたたみタップ（コントロール以外）
-    card.addEventListener('click', (e) => {
-      const act = e.target?.dataset?.act;
-      const isControl = !!act || e.target?.closest('select');
-      if (isControl) return;
-
-      card.classList.toggle('isCollapsed');
-    });
-
-    sel.addEventListener('change', () => {
-      s.type = sel.value;
+    const updateUI = () => {
       autoSpecify(s);
-      sel.value = s.type;
-      unit.textContent = `単価${prices[s.type] || 0}円`;
-      rebuildOutput();
-      applyCollapseAndSearch();
-    });
-
-    function step(sex, delta) {
-      if (sex === 'm') s.m = Math.max(0, Number(s.m || 0) + delta);
-      if (sex === 'f') s.f = Math.max(0, Number(s.f || 0) + delta);
-      autoSpecify(s);
-
       sel.value = s.type;
       unit.textContent = `単価${prices[s.type] || 0}円`;
       mEl.textContent = String(s.m || 0);
       fEl.textContent = String(s.f || 0);
-
       rebuildOutput();
       applyCollapseAndSearch();
-    }
+    };
 
-    // delegate
     card.addEventListener('click', (e) => {
       const act = e.target?.dataset?.act;
       if (!act) return;
 
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (act === 'm-') return step('m', -1);
-      if (act === 'm+') return step('m', +1);
-      if (act === 'f-') return step('f', -1);
-      if (act === 'f+') return step('f', +1);
-
-      if (act === 'dup') {
-        const baseId = d.id;
-        const dupKey = `${baseId}__dup_${uid()}`;
-        const list = dupMap.get(baseId) || [];
-        list.push(dupKey);
-        dupMap.set(baseId, list);
-
-        // dup state (same type, qty 0)
-        inputState.set(dupKey, { type: s.type, m: 0, f: 0 });
-
-        // re-render to keep consistent order/filters
-        renderAll();
+      // 折りたたみトグル（ヘッダを押した時だけ）
+      if (act === 'toggle') {
+        card.classList.toggle('isCollapsed');
         return;
       }
+
+      // select changeはclickでは拾わないので無視
+      if (act === 'type') return;
+
+      if (act === 'm-') s.m = Math.max(0, Number(s.m || 0) - 1);
+      if (act === 'm+') s.m = Math.max(0, Number(s.m || 0) + 1);
+      if (act === 'f-') s.f = Math.max(0, Number(s.f || 0) - 1);
+      if (act === 'f+') s.f = Math.max(0, Number(s.f || 0) + 1);
+
+      if (act === 'dup') {
+        const dupKey = `${key}__dup_${uid()}`;
+        ephemeralKeys.add(dupKey);
+        inputState.set(dupKey, { type: s.type, m: 0, f: 0 });
+
+        const dupCard = buildDinoCard({ ...d, id: dupKey });
+        dupCard.dataset.name = d.name;
+        dupCard.dataset.key = dupKey;
+        dupCard.dataset.kind = 'dino';
+
+        // 複製したカードは「開いた状態」で出すと使いやすい
+        dupCard.classList.remove('isCollapsed');
+
+        card.after(dupCard);
+        rebuildOutput();
+        applyCollapseAndSearch();
+        return;
+      }
+
+      // 数量変更時は勝手に閉じない（開いてるなら開いたまま）
+      card.classList.remove('isCollapsed');
+      updateUI();
+    });
+
+    sel.addEventListener('change', () => {
+      s.type = sel.value;
+      // 種別変更では勝手に閉じない
+      card.classList.remove('isCollapsed');
+      updateUI();
     });
 
     return card;
@@ -583,12 +464,12 @@ ${lines.join('\n')}
     const card = document.createElement('div');
     card.className = 'card isCollapsed';
     card.dataset.card = '1';
-    card.dataset.kind = 'item';
     card.dataset.key = it.id;
     card.dataset.name = it.name;
+    card.dataset.kind = 'item';
 
     card.innerHTML = `
-      <div class="cardHead">
+      <div class="cardHead" data-act="toggle">
         <div class="name"></div>
         <div class="right">
           <div class="unit"></div>
@@ -596,10 +477,12 @@ ${lines.join('\n')}
       </div>
 
       <div class="controls">
-        <div class="stepper">
-          <button class="btn" data-act="-" type="button">−</button>
-          <div class="val js-q">0</div>
-          <button class="btn" data-act="+" type="button">＋</button>
+        <div class="grid1">
+          <div class="stepper">
+            <button class="btn" data-act="-" type="button">−</button>
+            <div class="val js-q">0</div>
+            <button class="btn" data-act="+" type="button">＋</button>
+          </div>
         </div>
       </div>
     `;
@@ -610,51 +493,38 @@ ${lines.join('\n')}
     const qEl = $('.js-q', card);
     qEl.textContent = String(s.qty || 0);
 
-    // 折りたたみタップ（コントロール以外）
-    card.addEventListener('click', (e) => {
-      const act = e.target?.dataset?.act;
-      const isControl = !!act;
-      if (isControl) return;
-      card.classList.toggle('isCollapsed');
-    });
+    const updateUI = () => {
+      qEl.textContent = String(s.qty || 0);
+      rebuildOutput();
+      applyCollapseAndSearch();
+    };
 
     card.addEventListener('click', (e) => {
       const act = e.target?.dataset?.act;
       if (!act) return;
 
-      e.preventDefault();
-      e.stopPropagation();
+      if (act === 'toggle') {
+        card.classList.toggle('isCollapsed');
+        return;
+      }
 
       if (act === '-') s.qty = Math.max(0, Number(s.qty || 0) - 1);
       if (act === '+') s.qty = Math.max(0, Number(s.qty || 0) + 1);
 
-      qEl.textContent = String(s.qty || 0);
-      rebuildOutput();
-      applyCollapseAndSearch();
+      card.classList.remove('isCollapsed');
+      updateUI();
     });
 
     return card;
   }
 
-  /* =======================
-   * Render
-   * ======================= */
-  function renderAll() {
+  /* ========= render ========= */
+  function renderList() {
     el.list.innerHTML = '';
 
     if (activeTab === 'dino') {
       const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
-
-      for (const d of dList) {
-        // base
-        el.list.appendChild(buildDinoCard(d, d.id));
-
-        // duplicates (ephemeral)
-        const dupKeys = dupMap.get(d.id) || [];
-        for (const k of dupKeys) {
-          el.list.appendChild(buildDinoCard(d, k));
-        }
-      }
+      dList.forEach(d => el.list.appendChild(buildDinoCard(d)));
     } else {
       const iList = sortByOrder(items.filter(i => !hidden.item.has(i.id)), 'item');
       iList.forEach(it => el.list.appendChild(buildItemCard(it)));
@@ -664,52 +534,34 @@ ${lines.join('\n')}
     applyCollapseAndSearch();
   }
 
-  /* =======================
-   * Tabs
-   * ======================= */
+  /* ========= tabs ========= */
   function setTab(tab) {
     activeTab = tab;
-
-    // UI
     el.tabDinos.classList.toggle('isActive', tab === 'dino');
     el.tabItems.classList.toggle('isActive', tab === 'item');
-
     el.tabDinos.setAttribute('aria-selected', tab === 'dino' ? 'true' : 'false');
     el.tabItems.setAttribute('aria-selected', tab === 'item' ? 'true' : 'false');
-
-    renderAll();
+    renderList();
   }
-
   el.tabDinos.addEventListener('click', () => setTab('dino'));
   el.tabItems.addEventListener('click', () => setTab('item'));
 
-  /* =======================
-   * Search
-   * ======================= */
+  /* ========= search ========= */
   el.q.addEventListener('input', applyCollapseAndSearch);
-  el.qClear.addEventListener('click', () => {
-    el.q.value = '';
-    applyCollapseAndSearch();
-  });
+  el.qClear.addEventListener('click', () => { el.q.value = ''; applyCollapseAndSearch(); });
 
-  /* =======================
-   * Delivery
-   * ======================= */
+  /* ========= delivery ========= */
   const savedDelivery = localStorage.getItem(LS.DELIVERY);
   if (savedDelivery) el.delivery.value = savedDelivery;
-
   el.delivery.addEventListener('change', () => {
     localStorage.setItem(LS.DELIVERY, el.delivery.value);
     rebuildOutput();
   });
 
-  /* =======================
-   * Copy
-   * ======================= */
+  /* ========= copy ========= */
   el.copy.addEventListener('click', async () => {
     const text = el.out.value.trim();
     if (!text) return;
-
     try {
       await navigator.clipboard.writeText(text);
       const prev = el.copy.textContent;
@@ -723,137 +575,115 @@ ${lines.join('\n')}
     }
   });
 
-  /* =======================
-   * Manage UI rendering
-   * ======================= */
-  function renderManageBody() {
-    el.modalBody.innerHTML = '';
+  /* ========= manage ========= */
+  let pendingConfirm = null; // {resolve, id, kind}
 
-    // tab buttons
-    el.mTabCatalog.classList.toggle('isActive', manageTab === 'catalog');
-    el.mTabPrices.classList.toggle('isActive', manageTab === 'prices');
-
-    if (manageTab === 'prices') {
-      el.modalBody.appendChild(buildManagePrices());
-      return;
-    }
-    el.modalBody.appendChild(buildManageCatalog());
-  }
-
-  el.mTabCatalog.addEventListener('click', () => {
-    manageTab = 'catalog';
-    renderManageBody();
+  el.confirmCancel.addEventListener('click', () => {
+    closeConfirm();
+    if (pendingConfirm?.resolve) pendingConfirm.resolve(false);
+    pendingConfirm = null;
   });
-  el.mTabPrices.addEventListener('click', () => {
-    manageTab = 'prices';
-    renderManageBody();
+  el.confirmOk.addEventListener('click', () => {
+    closeConfirm();
+    if (pendingConfirm?.resolve) pendingConfirm.resolve(true);
+    pendingConfirm = null;
   });
 
-  function buildManagePrices() {
-    const wrap = document.createElement('div');
-
-    const grid = document.createElement('div');
-    grid.className = 'priceGrid';
-
-    for (const t of typeList) {
-      const key = document.createElement('div');
-      key.className = 'pKey';
-      key.textContent = t;
-
-      const val = document.createElement('div');
-      val.className = 'pVal';
-      val.innerHTML = `<input type="number" inputmode="numeric" value="${Number(prices[t] || 0)}" data-type="${t}">`;
-
-      grid.appendChild(key);
-      grid.appendChild(val);
-    }
-
-    const btnRow = document.createElement('div');
-    btnRow.style.marginTop = '12px';
-    btnRow.innerHTML = `<button class="primary" type="button" data-act="savePrices">保存</button>`;
-
-    wrap.appendChild(grid);
-    wrap.appendChild(btnRow);
-
-    wrap.addEventListener('click', (e) => {
-      if (e.target?.dataset?.act !== 'savePrices') return;
-
-      $$('input[data-type]', wrap).forEach(inp => {
-        const t = inp.dataset.type;
-        prices[t] = Number(inp.value || 0);
-      });
-      saveJSON(LS.PRICES, prices);
-
-      renderAll();
-      // 価格保存後は閉じない（作業継続しやすく）
+  function confirmDelete(message) {
+    return new Promise((resolve) => {
+      pendingConfirm = { resolve };
+      openConfirm(message);
     });
-
-    return wrap;
   }
 
-  function buildManageCatalog() {
-    const kind = activeTab; // dino/item を管理対象にする
+  function renderManageCatalog() {
+    const kind = activeTab;
 
-    const wrap = document.createElement('div');
+    const box = document.createElement('div');
 
-    // Add button (open edit modal)
-    const bar = document.createElement('div');
-    bar.className = 'mBar';
-    bar.innerHTML = `
-      <button class="primary" type="button" data-act="add">追加</button>
-      <button class="primary" type="button" data-act="sortKana">50音並び替え</button>
-    `;
-    wrap.appendChild(bar);
+    // add
+    const addCard = document.createElement('div');
+    addCard.className = 'card';
+    addCard.innerHTML = `<div class="name" style="font-size:16px;margin-bottom:10px;">追加</div>`;
 
-    const list = document.createElement('div');
+    const addGrid = document.createElement('div');
+    addGrid.className = 'mGrid';
 
+    if (kind === 'dino') {
+      addGrid.innerHTML = `
+        <div class="mField">
+          <label>名前</label>
+          <input id="addName" type="text" placeholder="例：カルカロ">
+        </div>
+        <div class="mField">
+          <label>デフォルト</label>
+          <select id="addDef">${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
+        </div>
+      `;
+    } else {
+      addGrid.innerHTML = `
+        <div class="mField">
+          <label>名前</label>
+          <input id="addName" type="text" placeholder="例：TEK天井">
+        </div>
+        <div class="mField">
+          <label>個数単位</label>
+          <input id="addUnit" type="number" inputmode="numeric" placeholder="例：100">
+        </div>
+      `;
+    }
+
+    addCard.appendChild(addGrid);
+
+    const addActions = document.createElement('div');
+    addActions.className = 'mActions';
+    addActions.innerHTML = `<button type="button" data-act="addOne">追加</button>`;
+    addCard.appendChild(addActions);
+
+    box.appendChild(addCard);
+
+    // sort
+    const sortActions = document.createElement('div');
+    sortActions.className = 'mActions';
+    sortActions.innerHTML = `<button type="button" data-act="sortKana">50音並び替え</button>`;
+    box.appendChild(sortActions);
+
+    // rows
     const currentList = (kind === 'dino')
       ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
       : sortByOrder(items.filter(x => !hidden.item.has(x.id)), 'item');
 
     currentList.forEach(obj => {
-      const row = document.createElement('div');
-      row.className = 'mRow';
-      row.innerHTML = `
+      const r = document.createElement('div');
+      r.className = 'mRow';
+      r.innerHTML = `
         <div class="mName">${obj.name}</div>
-        <div class="mBtns">
-          <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
-          <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
-          <button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">編集</button>
-          <button class="sBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
-        </div>
+        <button class="mBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
+        <button class="mBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
+        <button class="mBtn" type="button" data-act="edit" data-id="${obj.id}">編集</button>
+        <button class="mBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
       `;
-      list.appendChild(row);
+      box.appendChild(r);
     });
 
-    wrap.appendChild(list);
-
-    wrap.addEventListener('click', async (e) => {
+    box.addEventListener('click', async (e) => {
       const act = e.target?.dataset?.act;
       if (!act) return;
 
-      const id = e.target?.dataset?.id;
-
-      if (act === 'add') {
-        openAddForm(kind);
-        return;
-      }
-
       if (act === 'sortKana') {
-        const baseList = kind === 'dino' ? dinos : items;
+        const list = kind === 'dino' ? dinos : items;
         const hset = kind === 'dino' ? hidden.dino : hidden.item;
-        const visible = baseList.filter(x => !hset.has(x.id));
-
+        const visible = list.filter(x => !hset.has(x.id));
         visible.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
         order[kind] = visible.map(x => x.id);
         saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, order[kind]);
-
-        renderAll();
-        renderManageBody();
+        renderList();
+        closeManageModal();
         return;
       }
 
       if (act === 'up' || act === 'down') {
+        const id = e.target.dataset.id;
         const ord = (order[kind] || []).slice();
         const i = ord.indexOf(id);
         if (i === -1) return;
@@ -862,220 +692,204 @@ ${lines.join('\n')}
         [ord[i], ord[ni]] = [ord[ni], ord[i]];
         order[kind] = ord;
         saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
-
-        renderAll();
-        renderManageBody();
+        renderList();
+        closeManageModal();
         return;
       }
 
       if (act === 'del') {
-        const baseList = kind === 'dino' ? dinos : items;
-        const obj = baseList.find(x => x.id === id);
-        const ok = await openConfirm(`「${obj?.name || ''}」を削除しますか？`, '削除');
-        closeConfirm(false); // overlay is managed by button too; ensure closed
+        const id = e.target.dataset.id;
+        const list = kind === 'dino' ? dinos : items;
+        const obj = list.find(x => x.id === id);
+        const ok = await confirmDelete(`「${obj?.name || ''}」を削除しますか？`);
         if (!ok) return;
 
-        if (kind === 'dino') {
-          hidden.dino.add(id);
-          saveJSON(LS.DINO_HIDDEN, Array.from(hidden.dino));
-        } else {
-          hidden.item.add(id);
-          saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item));
-        }
-
-        renderAll();
-        renderManageBody();
+        (kind === 'dino' ? hidden.dino : hidden.item).add(id);
+        saveJSON(kind === 'dino' ? LS.DINO_HIDDEN : LS.ITEM_HIDDEN,
+          Array.from(kind === 'dino' ? hidden.dino : hidden.item)
+        );
+        renderList();
+        closeManageModal();
         return;
       }
 
       if (act === 'edit') {
-        openEditForm(kind, id);
+        const id = e.target.dataset.id;
+        const list = kind === 'dino' ? dinos : items;
+        const obj = list.find(x => x.id === id);
+        if (!obj) return;
+
+        const form = document.createElement('div');
+
+        if (kind === 'dino') {
+          form.innerHTML = `
+            <div class="mGrid">
+              <div class="mField">
+                <label>名前</label>
+                <input id="eName" type="text" value="${obj.name}">
+              </div>
+              <div class="mField">
+                <label>デフォルト</label>
+                <select id="eDef">${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
+              </div>
+            </div>
+            <div class="mActions">
+              <button type="button" data-act="saveEdit">保存</button>
+            </div>
+          `;
+          $('#eDef', form).value = obj.defType || '受精卵';
+        } else {
+          form.innerHTML = `
+            <div class="mGrid">
+              <div class="mField">
+                <label>名前</label>
+                <input id="eName" type="text" value="${obj.name}">
+              </div>
+              <div class="mField">
+                <label>個数単位</label>
+                <input id="eUnit" type="number" inputmode="numeric" value="${obj.unit}">
+              </div>
+            </div>
+            <div class="mGrid" style="margin-top:10px;">
+              <div class="mField" style="grid-column:1 / -1;">
+                <label>単価</label>
+                <input id="ePrice" type="number" inputmode="numeric" value="${obj.price}">
+              </div>
+            </div>
+            <div class="mActions">
+              <button type="button" data-act="saveEdit">保存</button>
+            </div>
+          `;
+        }
+
+        form.addEventListener('click', (ev) => {
+          if (ev.target?.dataset?.act !== 'saveEdit') return;
+
+          const newName = $('#eName', form).value.trim();
+          if (!newName) return;
+          obj.name = newName;
+
+          if (kind === 'dino') obj.defType = $('#eDef', form).value;
+          else {
+            obj.unit = Number($('#eUnit', form).value || 1);
+            obj.price = Number($('#ePrice', form).value || 0);
+          }
+
+          if (kind === 'dino') {
+            const c = custom.dino.find(x => x.id === id);
+            if (c) { c.name = obj.name; c.defType = obj.defType; }
+            else custom.dino.push({ id, name: obj.name, defType: obj.defType });
+            saveJSON(LS.DINO_CUSTOM, custom.dino);
+          } else {
+            const c = custom.item.find(x => x.id === id);
+            if (c) { c.name = obj.name; c.unit = obj.unit; c.price = obj.price; }
+            else custom.item.push({ id, name: obj.name, unit: obj.unit, price: obj.price });
+            saveJSON(LS.ITEM_CUSTOM, custom.item);
+          }
+
+          renderList();
+          closeEdit();
+          closeManageModal();
+        });
+
+        openEdit('編集', form);
         return;
       }
-    });
 
-    return wrap;
-  }
-
-  function openAddForm(kind) {
-    const form = document.createElement('div');
-    form.className = 'form';
-
-    if (kind === 'dino') {
-      form.innerHTML = `
-        <div class="field">
-          <label>名前</label>
-          <input id="aName" type="text" placeholder="例：カルカロ">
-        </div>
-        <div class="field">
-          <label>デフォルト</label>
-          <select id="aDef">
-            ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
-          </select>
-        </div>
-        <div class="formBtns">
-          <button class="ghost" type="button" data-act="cancel">キャンセル</button>
-          <button class="primary" type="button" data-act="save">追加</button>
-        </div>
-      `;
-    } else {
-      form.innerHTML = `
-        <div class="field">
-          <label>名前</label>
-          <input id="aName" type="text" placeholder="例：TEK天井">
-        </div>
-        <div class="field">
-          <label>個数単位</label>
-          <input id="aUnit" type="number" inputmode="numeric" placeholder="例：100">
-        </div>
-        <div class="field">
-          <label>単価</label>
-          <input id="aPrice" type="number" inputmode="numeric" placeholder="例：100">
-        </div>
-        <div class="formBtns">
-          <button class="ghost" type="button" data-act="cancel">キャンセル</button>
-          <button class="primary" type="button" data-act="save">追加</button>
-        </div>
-      `;
-    }
-
-    form.addEventListener('click', (e) => {
-      const act = e.target?.dataset?.act;
-      if (!act) return;
-
-      if (act === 'cancel') {
-        closeEditModal();
-        return;
-      }
-
-      if (act === 'save') {
-        const name = ($('#aName', form).value || '').trim();
+      if (act === 'addOne') {
+        const name = ($('#addName', box)?.value || '').trim();
         if (!name) return;
 
         if (kind === 'dino') {
-          const defType = $('#aDef', form).value;
+          const defType = $('#addDef', box).value;
           const id = 'd_c_' + uid();
           custom.dino.push({ id, name, defType });
           saveJSON(LS.DINO_CUSTOM, custom.dino);
         } else {
-          const unit = Number($('#aUnit', form).value || 1);
-          const price = Number($('#aPrice', form).value || 0);
+          const unit = Number($('#addUnit', box).value || 1);
+          const price = 0; // itemsは追加後に編集で価格入れる運用でもOK。必要なら後で足す
           const id = 'i_c_' + uid();
           custom.item.push({ id, name, unit, price });
           saveJSON(LS.ITEM_CUSTOM, custom.item);
         }
 
-        closeEditModal();
-        init(); // reload base + custom and re-render
+        init().then(() => closeManageModal());
       }
     });
 
-    openEditModal(kind === 'dino' ? '恐竜を追加' : 'アイテムを追加', form);
+    return box;
   }
 
-  function openEditForm(kind, id) {
-    const baseList = kind === 'dino' ? dinos : items;
-    const obj = baseList.find(x => x.id === id);
-    if (!obj) return;
+  function renderManagePrices() {
+    const box = document.createElement('div');
 
-    const form = document.createElement('div');
-    form.className = 'form';
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<div class="name" style="font-size:16px;margin-bottom:10px;">価格設定</div>`;
 
-    if (kind === 'dino') {
-      form.innerHTML = `
-        <div class="field">
-          <label>名前</label>
-          <input id="eName" type="text" value="${obj.name}">
-        </div>
-        <div class="field">
-          <label>デフォルト</label>
-          <select id="eDef">
-            ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
-          </select>
-        </div>
-        <div class="formBtns">
-          <button class="ghost" type="button" data-act="cancel">キャンセル</button>
-          <button class="primary" type="button" data-act="save">保存</button>
-        </div>
+    const grid = document.createElement('div');
+    grid.className = 'mGrid';
+    typeList.forEach(t => {
+      const f = document.createElement('div');
+      f.className = 'mField';
+      f.innerHTML = `
+        <label>${t}</label>
+        <input type="number" inputmode="numeric" value="${prices[t] || 0}" data-type="${t}">
       `;
-      $('#eDef', form).value = obj.defType || '受精卵';
-    } else {
-      form.innerHTML = `
-        <div class="field">
-          <label>名前</label>
-          <input id="eName" type="text" value="${obj.name}">
-        </div>
-        <div class="field">
-          <label>個数単位</label>
-          <input id="eUnit" type="number" inputmode="numeric" value="${Number(obj.unit || 1)}">
-        </div>
-        <div class="field">
-          <label>単価</label>
-          <input id="ePrice" type="number" inputmode="numeric" value="${Number(obj.price || 0)}">
-        </div>
-        <div class="formBtns">
-          <button class="ghost" type="button" data-act="cancel">キャンセル</button>
-          <button class="primary" type="button" data-act="save">保存</button>
-        </div>
-      `;
-    }
+      grid.appendChild(f);
+    });
+    card.appendChild(grid);
 
-    form.addEventListener('click', (e) => {
-      const act = e.target?.dataset?.act;
-      if (!act) return;
+    const actions = document.createElement('div');
+    actions.className = 'mActions';
+    actions.innerHTML = `<button type="button" data-act="savePrices">保存</button>`;
+    card.appendChild(actions);
 
-      if (act === 'cancel') {
-        closeEditModal();
-        return;
-      }
+    box.appendChild(card);
 
-      if (act === 'save') {
-        const newName = ($('#eName', form).value || '').trim();
-        if (!newName) return;
-
-        obj.name = newName;
-
-        if (kind === 'dino') {
-          obj.defType = $('#eDef', form).value;
-
-          const c = custom.dino.find(x => x.id === id);
-          if (c) { c.name = obj.name; c.defType = obj.defType; }
-          else custom.dino.push({ id, name: obj.name, defType: obj.defType });
-
-          saveJSON(LS.DINO_CUSTOM, custom.dino);
-        } else {
-          obj.unit = Number($('#eUnit', form).value || 1);
-          obj.price = Number($('#ePrice', form).value || 0);
-
-          const c = custom.item.find(x => x.id === id);
-          if (c) { c.name = obj.name; c.unit = obj.unit; c.price = obj.price; }
-          else custom.item.push({ id, name: obj.name, unit: obj.unit, price: obj.price });
-
-          saveJSON(LS.ITEM_CUSTOM, custom.item);
-        }
-
-        closeEditModal();
-        renderAll();
-        renderManageBody();
-      }
+    box.addEventListener('click', (e) => {
+      if (e.target?.dataset?.act !== 'savePrices') return;
+      $$('input[data-type]', box).forEach(inp => {
+        const t = inp.dataset.type;
+        prices[t] = Number(inp.value || 0);
+      });
+      saveJSON(LS.PRICES, prices);
+      renderList();
+      closeManageModal();
     });
 
-    openEditModal('編集', form);
+    return box;
   }
 
-  /* =======================
-   * Manage button
-   * ======================= */
-  el.openManage.addEventListener('click', openManageModal);
+  function renderManage() {
+    el.modalBody.innerHTML = '';
+    if (manageTab === 'catalog') el.modalBody.appendChild(renderManageCatalog());
+    else el.modalBody.appendChild(renderManagePrices());
+  }
 
-  /* =======================
-   * Init
-   * ======================= */
+  el.mTabCatalog.addEventListener('click', () => {
+    manageTab = 'catalog';
+    el.mTabCatalog.classList.add('isActive');
+    el.mTabPrices.classList.remove('isActive');
+    renderManage();
+  });
+  el.mTabPrices.addEventListener('click', () => {
+    manageTab = 'prices';
+    el.mTabPrices.classList.add('isActive');
+    el.mTabCatalog.classList.remove('isActive');
+    renderManage();
+  });
+
+  el.openManage.addEventListener('click', () => {
+    manageTab = 'catalog';
+    el.mTabCatalog.classList.add('isActive');
+    el.mTabPrices.classList.remove('isActive');
+    renderManage();
+    openManageModal();
+  });
+
+  /* ========= init ========= */
   async function init() {
-    // Always close overlays on boot (「リロードしたらモーダルから始まる」防止)
-    closeAllOverlays();
-    lockScroll(false);
-
     const dText = await fetchTextSafe('./dinos.txt');
     const iText = await fetchTextSafe('./items.txt');
 
@@ -1091,8 +905,13 @@ ${lines.join('\n')}
     const savedDelivery = localStorage.getItem(LS.DELIVERY);
     if (savedDelivery) el.delivery.value = savedDelivery;
 
-    // default tab
-    setTab(activeTab);
+    // 起動時は管理/確認/編集は必ず閉じる（前回の事故防止）
+    hideOverlay(el.modalOverlay);
+    hideOverlay(el.confirmOverlay);
+    hideOverlay(el.editOverlay);
+    lockScroll(false);
+
+    renderList();
   }
 
   init();
