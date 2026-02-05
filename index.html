@@ -3,21 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+
   <title>恐竜リスト</title>
 
-  <!-- PWA / iOS icon -->
-  <link rel="icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
-  <link rel="apple-touch-icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
+  <!-- App Icon -->
+  <link rel="icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png" />
+  <link rel="apple-touch-icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png" />
 
-  <link rel="stylesheet" href="./styles.css?v=1">
+  <!-- CSS -->
+  <link rel="stylesheet" href="./styles.css?v=1" />
 </head>
+
 <body>
   <header class="top">
     <div class="row">
       <div class="search">
-        <input id="q" type="text" placeholder="検索" autocomplete="off" />
-        <button id="qClear" class="qClear" type="button" aria-label="clear">×</button>
+        <input id="q" placeholder="検索" autocomplete="off" />
+        <button id="qClear" class="qClear" type="button">×</button>
       </div>
 
       <select id="delivery" class="delivery">
@@ -31,8 +34,9 @@
 
     <textarea id="out" readonly></textarea>
 
-    <div class="row2">
-      <button id="manageBtn" class="ghost" type="button">管理</button>
+    <div class="subrow">
+      <button id="manageBtn" class="manageBtn" type="button">管理</button>
+
       <div class="tabs">
         <button id="tabDino" class="tab active" type="button">恐竜</button>
         <button id="tabItem" class="tab" type="button">アイテム</button>
@@ -45,21 +49,20 @@
     <div id="listItem" class="list" style="display:none;"></div>
   </main>
 
-  <!-- modal root (single instance) -->
+  <!-- Modal -->
   <div id="modalRoot" class="modalRoot" aria-hidden="true">
     <div class="modalBackdrop" data-act="close"></div>
-    <div class="modalPanel" role="dialog" aria-modal="true" aria-label="管理">
-      <div class="modalTop">
+
+    <div class="modalSheet" role="dialog" aria-modal="true">
+      <div class="modalHead">
         <div id="modalTitle" class="modalTitle">管理</div>
-        <button class="modalX" type="button" data-act="close">×</button>
-      </div>
-      <div id="modalBody" class="modalBody"></div>
-      <div class="modalBottom">
         <button class="modalClose" type="button" data-act="close">閉じる</button>
       </div>
+      <div id="modalBody" class="modalBody"></div>
     </div>
   </div>
 
+  <!-- JS -->
   <script src="./app.js?v=1"></script>
 </body>
 </html>
