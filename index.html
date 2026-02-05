@@ -9,12 +9,9 @@
            user-scalable=no,
            viewport-fit=cover">
 
-<title>恐竜管理</title>
+<title>恐竜販売コピー生成</title>
 
-<!-- PWA / Home Screen Icon -->
 <link rel="icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
-
-<!-- iOS ホーム画面用（最重要） -->
 <link rel="apple-touch-icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
 
 <style>
@@ -55,7 +52,6 @@ button,select,input{touch-action:manipulation}
 }
 .search{
   flex:1;
-  min-width:0;
   display:flex;
   align-items:center;
   gap:8px;
@@ -67,9 +63,7 @@ button,select,input{touch-action:manipulation}
 }
 .search input{
   flex:1;
-  min-width:0;
   border:0;
-  outline:none;
   background:transparent;
   color:var(--txt);
   font-size:14px;
@@ -82,7 +76,6 @@ button,select,input{touch-action:manipulation}
   font-size:18px;
   color:#fff;
   display:inline-block;
-  line-height:1;
 }
 .delivery,.copy{
   height:36px;
@@ -222,10 +215,8 @@ const delivery=document.getElementById("delivery");
 
 function yen(n){return n.toLocaleString("ja-JP")+"円"}
 
-/* rebuild */
 function rebuild(){
   let sum=0, lines=[], idx=1;
-
   dinos.forEach(name=>{
     const s=state.get(name);
     const qty=s.m+s.f;
@@ -236,7 +227,6 @@ function rebuild(){
 
     const t=s.type.replace("(指定)","");
     let line="";
-
     if(pairBase.has(t)){
       if(s.m===s.f){
         line=`${name}${t}ペア${s.m>1?"×"+s.m:""} = ${price.toLocaleString("ja-JP")}円`;
@@ -249,7 +239,6 @@ function rebuild(){
     }else{
       line=`${name}${t}×${qty} = ${price.toLocaleString("ja-JP")}円`;
     }
-
     lines.push(`${idx}. ${line}`);
     idx++;
   });
@@ -267,7 +256,6 @@ ${lines.join("\n")}
 
 delivery.onchange=rebuild;
 
-/* load */
 async function load(){
   const text=await fetch("dinos.txt?ts="+Date.now()).then(r=>r.text());
   text.split(/\r?\n/).forEach(line=>{
@@ -276,7 +264,8 @@ async function load(){
     const defType=(line.split("|")[1]||"受精卵").trim();
     dinos.push(name);
 
-    const s={type:defType,m:0,f:0};
+    const baseType=defType.replace("(指定)","");
+    const s={type:defType, baseType, m:0, f:0};
     state.set(name,s);
 
     const card=document.createElement("div");
@@ -317,20 +306,18 @@ async function load(){
     sel.value=s.type;
     unit.textContent=`単価${prices[s.type]}円`;
 
-    // header toggle
     card.querySelector(".head").onclick=()=>{
       card.classList.toggle("collapsed");
     };
 
-    // type change
     sel.onchange=()=>{
       s.type=sel.value;
+      s.baseType=s.type.replace("(指定)","");
       unit.textContent=`単価${prices[s.type]}円`;
       card.classList.remove("collapsed");
       rebuild();
     };
 
-    // quantity buttons
     card.querySelectorAll(".btn").forEach(b=>{
       b.onclick=()=>{
         const sex=b.dataset.sex;
@@ -338,11 +325,12 @@ async function load(){
         mc.textContent=s.m;
         fc.textContent=s.f;
 
-        // ★ 両方入力されたら自動で(指定)
-        const base=s.type.replace("(指定)","");
-        if(pairBase.has(base) && s.m>0 && s.f>0){
-          const cand=base+"(指定)";
+        // ★ 自動 指定 / 指定解除
+        if(s.m>0 && s.f>0){
+          const cand=s.baseType+"(指定)";
           if(prices[cand]) s.type=cand;
+        }else if(s.m===0 && s.f===0){
+          s.type=s.baseType;
         }
 
         sel.value=s.type;
