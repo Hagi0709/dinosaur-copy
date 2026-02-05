@@ -2,11 +2,7 @@
   --bg:#0b0f14;
   --txt:rgba(255,255,255,.92);
   --mut:rgba(255,255,255,.60);
-  --stroke:rgba(255,255,255,.12);
   --ok:#78ffb3;
-
-  --male:#74d7ff;
-  --female:#ff86c8;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -39,6 +35,7 @@ input,select,button{outline:none}
   flex-wrap:wrap;
 }
 .row2{ margin-top:10px; }
+
 .search{
   flex:1;
   display:flex;
@@ -66,9 +63,10 @@ input,select,button{outline:none}
   background:rgba(255,255,255,.06);
   font-size:18px;
   color:#fff;
-  display:inline-block; /* これでズレにくい */
+  display:inline-block;
   line-height:24px;
 }
+
 .delivery,.copy,.addBtn,.manageBtn{
   height:36px;
   border-radius:14px;
@@ -79,6 +77,7 @@ input,select,button{outline:none}
   font-size:13px;
 }
 .copy{ font-weight:900; }
+
 .total{
   margin-left:auto;
   font-size:14px;
@@ -122,10 +121,10 @@ textarea{
   color:#fff;
 }
 
-/* ===== list ===== */
+/* list */
 .list{padding:12px}
-.section{ display:none; }
-.section.active{ display:block; }
+.section{display:none}
+.section.active{display:block}
 
 .card{
   background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
@@ -144,7 +143,6 @@ textarea{
 .name{
   font-weight:900;
   font-size:16px;
-  letter-spacing:.2px;
 }
 .right{
   text-align:right;
@@ -163,35 +161,21 @@ select.type{
 }
 .unit{font-size:12px;color:var(--mut)}
 
-/* collapsible body */
 .cardBody{ margin-top:10px; }
 .card.collapsed .cardBody{ display:none; }
 
-/* ===== steppers ===== */
-.stepRow{
-  display:flex;
-  gap:10px;
-}
+/* stepper */
+.stepRow{ display:flex; gap:10px; }
 .box{
   flex:1;
   padding:8px;
   border-radius:14px;
   border:2px solid rgba(255,255,255,.10);
-}
-.box.m{
-  border-color:rgba(116,215,255,.45);
-  background:rgba(116,215,255,.14);
-}
-.box.f{
-  border-color:rgba(255,134,200,.45);
-  background:rgba(255,134,200,.14);
+  background:rgba(255,255,255,.06);
 }
 .box.item{
   border-color:rgba(255,255,255,.18);
-  background:rgba(255,255,255,.06);
 }
-
-/* buttons (low height) */
 .stepper{
   display:flex;
   align-items:center;
@@ -214,7 +198,6 @@ select.type{
   font-weight:900;
   font-size:16px;
   letter-spacing:.2px;
-  color:rgba(255,255,255,.92);
 }
 
 /* modal */
@@ -229,7 +212,6 @@ select.type{
   padding-top:calc(18px + env(safe-area-inset-top));
 }
 .modalBack.show{display:block}
-
 .modal{
   max-width:520px;
   margin:0 auto;
@@ -237,12 +219,10 @@ select.type{
   border:1px solid rgba(255,255,255,.14);
   background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.06));
   padding:14px;
-
   max-height: calc(100dvh - 36px - env(safe-area-inset-top));
   display:flex;
   flex-direction:column;
 }
-
 .modalTopRow{
   display:flex;
   align-items:center;
@@ -250,10 +230,7 @@ select.type{
   gap:10px;
   margin-bottom:10px;
 }
-.modal h3{
-  margin:0;
-  font-size:16px;
-}
+.modal h3{ margin:0; font-size:16px; }
 .modalX{
   width:40px;
   height:40px;
@@ -268,30 +245,6 @@ select.type{
   overflow:auto;
   -webkit-overflow-scrolling: touch;
   max-height: calc(100dvh - 220px - env(safe-area-inset-top));
-  padding-right:2px;
-}
-.form{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.field{
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-}
-.field label{
-  font-size:12px;
-  color:rgba(255,255,255,.72);
-}
-.field input,.field select{
-  height:40px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(0,0,0,.22);
-  color:#fff;
-  padding:0 12px;
-  font-size:14px;
 }
 .modalBtns{
   display:flex;
@@ -313,13 +266,4 @@ select.type{
   line-height:1.4;
   margin-top:10px;
 }
-.danger{
-  background:rgba(255,80,80,.10)!important;
-  border-color:rgba(255,80,80,.25)!important;
-}
-
-/* background scroll lock */
-body.modalOpen{
-  overflow:hidden;
-  touch-action:none;
-}
+body.modalOpen{ overflow:hidden; touch-action:none; }
