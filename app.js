@@ -43,16 +43,46 @@
     copy: $('#copy'),
     total: $('#total'),
     out: $('#out'),
-    tabDino: $('#tabDino'),
-    tabItem: $('#tabItem'),
-    listDino: $('#listDino'),
-    listItem: $('#listItem'),
-    manageBtn: $('#manageBtn'),
-    modalRoot: $('#modalRoot'),
-    modalTitle: $('#modalTitle'),
+
+    // tabs (HTMLに合わせる)
+    tabDino: $('#tabDinos'),
+    tabItem: $('#tabItems'),
+
+    // list: HTMLは #list 1つなので、JS側で2つに分けて作る
+    listWrap: $('#list'),
+    listDino: null,
+    listItem: null,
+
+    // manage modal (HTMLに合わせる)
+    openManage: $('#openManage'),
+    modalOverlay: $('#modalOverlay'),
+    closeManage: $('#closeManage'),
     modalBody: $('#modalBody'),
+
+    // confirm modal (HTMLに合わせる)
+    confirmOverlay: $('#confirmOverlay'),
+    confirmText: $('#confirmText'),
+    confirmCancel: $('#confirmCancel'),
+    confirmOk: $('#confirmOk'),
   };
 
+  // listを2ペイン化（HTMLをいじらずに対応）
+  (function ensureLists(){
+    if (!el.listWrap) throw new Error('Missing element: #list');
+
+    const d = document.createElement('div');
+    d.id = 'listDino';
+    const i = document.createElement('div');
+    i.id = 'listItem';
+
+    el.listWrap.innerHTML = '';
+    el.listWrap.appendChild(d);
+    el.listWrap.appendChild(i);
+
+    el.listDino = d;
+    el.listItem = i;
+  })();
+  
   /* ========= reset helper ========= */
   if (new URL(location.href).searchParams.get('reset') === '1') {
     Object.values(LS).forEach(k => localStorage.removeItem(k));
@@ -60,7 +90,7 @@
     return;
   }
 
-  /* ========= modal (single, never persisted) ========= */
+    /* ========= modal (HTMLの #modalOverlay を使う) ========= */
   const modal = (() => {
     let open = false;
 
@@ -85,35 +115,41 @@
       }
     }
 
-    function show(title, node) {
-      el.modalTitle.textContent = title || '管理';
+    function show(node) {
       el.modalBody.innerHTML = '';
       if (node) el.modalBody.appendChild(node);
-      el.modalRoot.classList.add('open');
-      el.modalRoot.setAttribute('aria-hidden', 'false');
+
+      el.modalOverlay.classList.remove('isHidden');
+      el.modalOverlay.setAttribute('aria-hidden', 'false');
       open = true;
       lockScroll(true);
     }
 
     function hide() {
-      el.modalRoot.classList.remove('open');
-      el.modalRoot.setAttribute('aria-hidden', 'true');
+      el.modalOverlay.classList.add('isHidden');
+      el.modalOverlay.setAttribute('aria-hidden', 'true');
       el.modalBody.innerHTML = '';
       open = false;
       lockScroll(false);
     }
 
-    el.modalRoot.addEventListener('click', (e) => {
-      const t = e.target;
-      if (t && t.dataset && t.dataset.act === 'close') hide();
+    // close button
+    el.closeManage.addEventListener('click', hide);
+
+    // overlay click to close (外側だけ)
+    el.modalOverlay.addEventListener('click', (e) => {
+      if (e.target === el.modalOverlay) hide();
     });
-    document.addEventListener('keydown', (e) => { if (open && e.key === 'Escape') hide(); });
 
-    // always closed on boot
+    document.addEventListener('keydown', (e) => {
+      if (open && e.key === 'Escape') hide();
+    });
+
+    // boot時は必ず閉じる
     hide();
-    return { show, hide, get open() { return open; } };
-  })();
 
+    return { show, hide, get open(){ return open; } };
+  })();
   /* ========= data ========= */
   const hidden = {
     dino: new Set(loadJSON(LS.DINO_HIDDEN, [])),
@@ -316,7 +352,7 @@ ${lines.join('\n')}
 
       // 通常: qty==0なら畳む / 検索中: ヒット以外畳む
       const collapsed = q ? !show : (qty === 0);
-      card.classList.toggle('collapsed', collapsed);
+      card.classList.toggle('isCollapsed', collapsed);
     });
   }
 
@@ -488,12 +524,19 @@ ${lines.join('\n')}
   /* ========= tabs ========= */
   function setTab(tab) {
     activeTab = tab;
-    el.tabDino.classList.toggle('active', tab === 'dino');
-    el.tabItem.classList.toggle('active', tab === 'item');
+
+    el.tabDino.classList.toggle('isActive', tab === 'dino');
+    el.tabItem.classList.toggle('isActive', tab === 'item');
+
+    el.tabDino.setAttribute('aria-selected', tab === 'dino' ? 'true' : 'false');
+    el.tabItem.setAttribute('aria-selected', tab === 'item' ? 'true' : 'false');
+
     el.listDino.style.display = tab === 'dino' ? '' : 'none';
     el.listItem.style.display = tab === 'item' ? '' : 'none';
+
     applyCollapseAndSearch();
   }
+
   el.tabDino.addEventListener('click', () => setTab('dino'));
   el.tabItem.addEventListener('click', () => setTab('item'));
 
@@ -527,26 +570,34 @@ ${lines.join('\n')}
   });
 
   /* ========= manage ========= */
-  function confirmDialog({ title = '確認', message = '', okText = '削除', cancelText = 'キャンセル' }) {
+  function confirmDialog({ message = '削除しますか？' }) {
     return new Promise((resolve) => {
-      const wrap = document.createElement('div');
-      wrap.innerHTML = `
-        <div style="font-weight:900;margin-bottom:10px;">${title}</div>
-        <div style="color:rgba(255,255,255,.75);line-height:1.5;margin-bottom:12px;">${message}</div>
-        <div class="mActions">
-          <button type="button" data-act="cancel">${cancelText}</button>
-          <button type="button" class="danger" data-act="ok">${okText}</button>
-        </div>
-      `;
-      wrap.addEventListener('click', (e) => {
-        const a = e.target?.dataset?.act;
-        if (a === 'cancel') { modal.hide(); resolve(false); }
-        if (a === 'ok') { modal.hide(); resolve(true); }
-      });
-      modal.show('確認', wrap);
+      el.confirmText.textContent = message;
+
+      el.confirmOverlay.classList.remove('isHidden');
+      el.confirmOverlay.setAttribute('aria-hidden', 'false');
+
+      const close = (v) => {
+        el.confirmOverlay.classList.add('isHidden');
+        el.confirmOverlay.setAttribute('aria-hidden', 'true');
+        resolve(v);
+      };
+
+      const onCancel = () => { cleanup(); close(false); };
+      const onOk = () => { cleanup(); close(true); };
+      const onOverlay = (e) => { if (e.target === el.confirmOverlay) { cleanup(); close(false); } };
+
+      function cleanup(){
+        el.confirmCancel.removeEventListener('click', onCancel);
+        el.confirmOk.removeEventListener('click', onOk);
+        el.confirmOverlay.removeEventListener('click', onOverlay);
+      }
+
+      el.confirmCancel.addEventListener('click', onCancel);
+      el.confirmOk.addEventListener('click', onOk);
+      el.confirmOverlay.addEventListener('click', onOverlay);
     });
   }
-
   function openManage() {
     const kind = activeTab; // manage current tab
 
@@ -804,7 +855,7 @@ ${lines.join('\n')}
     modal.show('管理', content);
   }
 
-  el.manageBtn.addEventListener('click', openManage);
+  el.openManage.addEventListener('click', openManage);
 
   /* ========= init ========= */
   async function init() {
