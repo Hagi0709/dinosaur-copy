@@ -3,24 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport"
-    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>恐竜リスト</title>
 
-  <!-- App Icon -->
-  <link rel="icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png" />
-  <link rel="apple-touch-icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png" />
+  <!-- PWA / iOS icon -->
+  <link rel="apple-touch-icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
+  <link rel="icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
 
-  <!-- CSS -->
-  <link rel="stylesheet" href="./styles.css?v=1" />
+  <link rel="stylesheet" href="style.css" />
+  <script defer src="app.js"></script>
 </head>
 
 <body>
   <header class="top">
     <div class="row">
       <div class="search">
-        <input id="q" placeholder="検索" autocomplete="off" />
-        <button id="qClear" class="qClear" type="button">×</button>
+        <input id="q" type="text" placeholder="検索" autocomplete="off" />
+        <button id="qClear" class="qClear" type="button" aria-label="検索をクリア">×</button>
       </div>
 
       <select id="delivery" class="delivery">
@@ -32,37 +31,63 @@
       <div id="total" class="total">0円</div>
     </div>
 
-    <textarea id="out" readonly></textarea>
+    <textarea id="out" class="out" readonly></textarea>
 
     <div class="subrow">
-      <button id="manageBtn" class="manageBtn" type="button">管理</button>
+      <button id="openManage" class="ghost" type="button">管理</button>
 
-      <div class="tabs">
-        <button id="tabDino" class="tab active" type="button">恐竜</button>
-        <button id="tabItem" class="tab" type="button">アイテム</button>
+      <div class="tabs" role="tablist" aria-label="表示切替">
+        <button id="tabDinos" class="tab isActive" type="button" role="tab" aria-selected="true">恐竜</button>
+        <button id="tabItems" class="tab" type="button" role="tab" aria-selected="false">アイテム</button>
       </div>
     </div>
   </header>
 
-  <main class="listWrap">
-    <div id="listDino" class="list"></div>
-    <div id="listItem" class="list" style="display:none;"></div>
-  </main>
+  <main class="list" id="list"></main>
 
-  <!-- Modal -->
-  <div id="modalRoot" class="modalRoot" aria-hidden="true">
-    <div class="modalBackdrop" data-act="close"></div>
-
-    <div class="modalSheet" role="dialog" aria-modal="true">
+  <!-- Manage Modal -->
+  <div id="modalOverlay" class="modalOverlay isHidden" aria-hidden="true">
+    <div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="管理">
       <div class="modalHead">
-        <div id="modalTitle" class="modalTitle">管理</div>
-        <button class="modalClose" type="button" data-act="close">閉じる</button>
+        <div class="modalTitle">管理</div>
+        <button id="closeManage" class="iconBtn" type="button" aria-label="閉じる">×</button>
       </div>
-      <div id="modalBody" class="modalBody"></div>
+
+      <div class="modalTabs">
+        <button id="mTabCatalog" class="mTab isActive" type="button">一覧</button>
+        <button id="mTabPrices" class="mTab" type="button">価格</button>
+      </div>
+
+      <div class="modalBody" id="modalBody">
+        <!-- injected -->
+      </div>
     </div>
   </div>
 
-  <!-- JS -->
-  <script src="./app.js?v=1"></script>
+  <!-- Confirm Modal -->
+  <div id="confirmOverlay" class="modalOverlay isHidden" aria-hidden="true">
+    <div class="confirm" role="dialog" aria-modal="true" aria-label="確認">
+      <div class="confirmTitle">確認</div>
+      <div class="confirmText" id="confirmText">削除しますか？</div>
+      <div class="confirmBtns">
+        <button id="confirmCancel" class="ghost" type="button">キャンセル</button>
+        <button id="confirmOk" class="danger" type="button">削除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit/Add Modal -->
+  <div id="editOverlay" class="modalOverlay isHidden" aria-hidden="true">
+    <div class="edit" role="dialog" aria-modal="true" aria-label="編集">
+      <div class="editHead">
+        <div class="editTitle" id="editTitle">追加 / 編集</div>
+        <button id="editClose" class="iconBtn" type="button" aria-label="閉じる">×</button>
+      </div>
+
+      <div class="editBody" id="editBody">
+        <!-- injected -->
+      </div>
+    </div>
+  </div>
 </body>
 </html>
