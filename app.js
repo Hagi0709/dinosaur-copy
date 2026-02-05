@@ -3,7 +3,7 @@
 ====================== */
 function yen(n){ return Number(n||0).toLocaleString("ja-JP") + "円"; }
 
-// カタカナ→ひらがな（検索安定：かる → カルカロ）
+// カタカナ→ひらがな（検索/50音ソート安定）
 function kataToHira(str){
   return (str||"").replace(/[\u30A1-\u30F6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
 }
@@ -36,7 +36,6 @@ const BASE_FOR_SPEC = {
   "クローン(指定)":"クローン"
 };
 
-// ペア表記対象（同数時のみ）
 const pairTypes = new Set([
   "受精卵(指定)","胚(指定)","幼体","成体","クローン","クローン(指定)"
 ]);
@@ -50,6 +49,8 @@ function displayType(t){
 ====================== */
 const LS_KEY = "dinoList_v1_storage";
 
+function safeObj(v, fallback){ return (v && typeof v==="object") ? v : fallback; }
+
 function loadStore(){
   try{
     const obj = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
@@ -58,10 +59,22 @@ function loadStore(){
       dinosDeleted: Array.isArray(obj.dinosDeleted) ? obj.dinosDeleted : [],
       itemsAdded: Array.isArray(obj.itemsAdded) ? obj.itemsAdded : [],
       itemsDeleted: Array.isArray(obj.itemsDeleted) ? obj.itemsDeleted : [],
-      delivery: typeof obj.delivery === "string" ? obj.delivery : "即納品可能"
+      delivery: typeof obj.delivery === "string" ? obj.delivery : "即納品可能",
+
+      // 並び順（名前配列）
+      dinoOrder: Array.isArray(obj.dinoOrder) ? obj.dinoOrder : [],
+      itemOrder: Array.isArray(obj.itemOrder) ? obj.itemOrder : [],
+
+      // 名称変更（old -> new）
+      dinoRenames: safeObj(obj.dinoRenames, {}),
+      itemRenames: safeObj(obj.itemRenames, {})
     };
   }catch{
-    return { dinosAdded:[], dinosDeleted:[], itemsAdded:[], itemsDeleted:[], delivery:"即納品可能" };
+    return {
+      dinosAdded:[], dinosDeleted:[], itemsAdded:[], itemsDeleted:[],
+      delivery:"即納品可能", dinoOrder:[], itemOrder:[],
+      dinoRenames:{}, itemRenames:{}
+    };
   }
 }
 const store = loadStore();
@@ -72,7 +85,13 @@ function saveStore(){
     dinosDeleted: store.dinosDeleted,
     itemsAdded: store.itemsAdded,
     itemsDeleted: store.itemsDeleted,
-    delivery: deliveryEl.value
+    delivery: deliveryEl.value,
+
+    dinoOrder: store.dinoOrder,
+    itemOrder: store.itemOrder,
+
+    dinoRenames: store.dinoRenames,
+    itemRenames: store.itemRenames
   }));
 }
 
@@ -102,8 +121,6 @@ const modalNote = document.getElementById("modalNote");
 /* ======================
    Models
 ====================== */
-// dino: {name, defType, type, m, f, card, open, normName, autoSpecified:boolean, userChangedType:boolean}
-// item: {name, unitCount, unitPrice, qty, card, open, normName}
 const dinos = [];
 const items = [];
 const dinoState = new Map();
@@ -117,7 +134,6 @@ function parseDinoLine(line){
   line = (line||"").trim();
   if(!line) return null;
   if(line.startsWith("#")) return null;
-
   line = line.replace(/^・/,"").trim();
   if(!line) return null;
 
@@ -150,47 +166,119 @@ function parseItemLine(line){
 }
 
 /* ======================
+   Rename apply helpers
+====================== */
+function applyRenamesToName(name, map){
+  // 連鎖していたら辿る（無限ループ防止で最大10回）
+  let cur = name;
+  for(let i=0;i<10;i++){
+    const next = map[cur];
+    if(!next) break;
+    if(next === cur) break;
+    cur = next;
+  }
+  return cur;
+}
+
+/* ======================
    Merge base + local
 ====================== */
 function mergeDinos(base){
   const deleted = new Set(store.dinosDeleted || []);
   const added = store.dinosAdded || [];
+  const ren = store.dinoRenames || {};
   const map = new Map();
 
   for(const rec of base){
-    if(deleted.has(rec.name)) continue;
-    map.set(rec.name, rec);
+    const renamed = applyRenamesToName(rec.name, ren);
+    if(deleted.has(renamed)) continue;
+
+    const defType = rec.defType;
+    map.set(renamed, { name: renamed, defType });
   }
+
   for(const rec of added){
     if(!rec || !rec.name) continue;
-    if(deleted.has(rec.name)) continue;
+    const renamed = applyRenamesToName(rec.name, ren);
+    if(deleted.has(renamed)) continue;
+
     const defType = (rec.defType && (rec.defType in prices)) ? rec.defType : "受精卵";
-    map.set(rec.name, { name: rec.name, defType });
+    map.set(renamed, { name: renamed, defType });
   }
+
   return Array.from(map.values());
 }
 
 function mergeItems(base){
   const deleted = new Set(store.itemsDeleted || []);
   const added = store.itemsAdded || [];
+  const ren = store.itemRenames || {};
   const map = new Map();
 
   for(const rec of base){
-    if(deleted.has(rec.name)) continue;
-    map.set(rec.name, rec);
+    const renamed = applyRenamesToName(rec.name, ren);
+    if(deleted.has(renamed)) continue;
+    map.set(renamed, { name: renamed, unitCount: rec.unitCount, unitPrice: rec.unitPrice });
   }
+
   for(const rec of added){
     if(!rec || !rec.name) continue;
-    if(deleted.has(rec.name)) continue;
+    const renamed = applyRenamesToName(rec.name, ren);
+    if(deleted.has(renamed)) continue;
 
     const unitCount = Number(rec.unitCount);
     const unitPrice = Number(rec.unitPrice);
     if(!Number.isFinite(unitCount) || unitCount<=0) continue;
     if(!Number.isFinite(unitPrice) || unitPrice<0) continue;
 
-    map.set(rec.name, { name: rec.name, unitCount, unitPrice });
+    map.set(renamed, { name: renamed, unitCount, unitPrice });
   }
+
   return Array.from(map.values());
+}
+
+/* ======================
+   Ordering
+====================== */
+function applyOrder(list, order){
+  if(!order || order.length===0) return list;
+
+  const set = new Set(list.map(x=>x.name));
+  const ordered = [];
+  for(const n of order){
+    if(set.has(n)){
+      ordered.push(list.find(x=>x.name===n));
+      set.delete(n);
+    }
+  }
+  // orderにない新規は末尾へ（元順）
+  for(const x of list){
+    if(set.has(x.name)) ordered.push(x);
+  }
+  return ordered;
+}
+
+function saveCurrentOrder(){
+  if(activeTab==="dino"){
+    store.dinoOrder = [...dinos];
+  }else{
+    store.itemOrder = [...items];
+  }
+  saveStore();
+}
+
+function sortKana(){
+  if(activeTab==="dino"){
+    dinos.sort((a,b)=> normHira(a).localeCompare(normHira(b), "ja"));
+    store.dinoOrder = [...dinos];
+  }else{
+    items.sort((a,b)=> normHira(a).localeCompare(normHira(b), "ja"));
+    store.itemOrder = [...items];
+  }
+  saveStore();
+  rebuildListsDOM();
+  applyFilter();
+  rebuildOutput();
 }
 
 /* ======================
@@ -266,7 +354,7 @@ copyBtn.onclick = ()=>{
 };
 
 /* ======================
-   Modal helpers (scroll lock)
+   Modal helpers
 ====================== */
 function showModal(){
   modalBack.classList.add("show");
@@ -277,7 +365,6 @@ function hideModal(){
   document.body.classList.remove("modalOpen");
   modalBody.innerHTML = "";
   modalNote.textContent = "";
-  // modalOk の onclick は都度上書きするので念のため解除
   modalOk.onclick = null;
 }
 modalOk.onclick = hideModal;
@@ -554,7 +641,37 @@ function makeItemCard(name, unitCount, unitPrice){
 }
 
 /* ======================
-   Add / Manage (ADD is inside Manage)
+   Rebuild list DOM by current order
+====================== */
+function rebuildListsDOM(){
+  // dinos
+  secDino.innerHTML = "";
+  for(const name of dinos){
+    const s = dinoState.get(name);
+    if(s){
+      // 既存カードを再利用できるなら移動
+      secDino.appendChild(s.card);
+    }else{
+      // 念のため（通常ここは来ない）
+      makeDinoCard(name, "受精卵");
+    }
+  }
+
+  // items
+  secItem.innerHTML = "";
+  for(const name of items){
+    const s = itemState.get(name);
+    if(s){
+      secItem.appendChild(s.card);
+    }else{
+      // 念のため
+      makeItemCard(name, 1, 0);
+    }
+  }
+}
+
+/* ======================
+   Add / Manage
 ====================== */
 manageBtn.onclick = ()=> openManage();
 
@@ -562,58 +679,201 @@ function openManage(){
   modalTitle.textContent = "管理";
   modalOk.textContent = "閉じる";
 
-  // 追加ボタンを管理画面内へ
   const addLabel = (activeTab==="dino") ? "＋恐竜を追加" : "＋アイテムを追加";
-
   const list = (activeTab==="dino") ? dinos : items;
 
-  const rows = list.map(name=>{
+  modalBody.innerHTML = `
+    <div class="mToolbar">
+      <button id="mAdd" class="addBtn" type="button">${addLabel}</button>
+      <button id="mSort" class="sortBtn" type="button">50音で並び替え</button>
+    </div>
+    <div id="mList" class="mList"></div>
+  `;
+
+  modalNote.textContent = "並び替え：左の「≡」を押したまま上下にドラッグ / 名称変更：編集 / 削除は確認後に反映";
+
+  const mList = document.getElementById("mList");
+  mList.innerHTML = list.map((name, i)=>{
     return `
-      <div class="mRow">
-        <div class="mName">${name}</div>
+      <div class="mRow" data-name="${name}" data-index="${i}">
+        <div class="mLeft">
+          <div class="mHandle" data-handle="1" aria-label="drag">≡</div>
+          <div class="mName">${name}</div>
+        </div>
         <div class="mBtns">
+          <button class="editBtn" data-name="${name}" type="button">編集</button>
           <button class="delBtn" data-name="${name}" type="button">削除</button>
         </div>
       </div>
     `;
-  }).join("");
+  }).join("") || `<div class="smallNote">一覧がありません</div>`;
 
-  modalBody.innerHTML = `
-    <div style="display:flex;gap:10px;margin-bottom:10px;">
-      <button id="mAdd" class="addBtn" type="button" style="flex:1;">${addLabel}</button>
-    </div>
-    <div class="form" style="gap:10px;">
-      ${rows || `<div class="smallNote">一覧がありません</div>`}
-    </div>
-  `;
+  // actions
+  document.getElementById("mAdd").onclick = ()=>{
+    if(activeTab==="dino") openAddDino();
+    else openAddItem();
+  };
+  document.getElementById("mSort").onclick = ()=>{
+    sortKana();
+    openManage(); // 管理画面の表示も更新
+  };
 
-  modalNote.textContent = "削除はこの端末での表示/保存から外します（後で再追加できます）";
-
-  // 削除は確認
-  modalBody.querySelectorAll(".delBtn").forEach(btn=>{
+  mList.querySelectorAll(".delBtn").forEach(btn=>{
     btn.onclick = ()=>{
       const name = btn.dataset.name;
       if(!confirm(`「${name}」を削除しますか？`)) return;
-
       if(activeTab==="dino") deleteDino(name);
       else deleteItem(name);
-
-      // 再描画
       openManage();
     };
   });
 
-  // 追加
-  const addBtnIn = document.getElementById("mAdd");
-  addBtnIn.onclick = ()=>{
-    if(activeTab==="dino") openAddDino();
-    else openAddItem();
-  };
+  mList.querySelectorAll(".editBtn").forEach(btn=>{
+    btn.onclick = ()=>{
+      const oldName = btn.dataset.name;
+      const newName = (prompt("新しい名称を入力", oldName) || "").trim();
+      if(!newName) return;
+      if(newName === oldName) return;
+
+      const targetList = (activeTab==="dino") ? dinos : items;
+      if(targetList.includes(newName)){
+        alert("同じ名称が既に存在します。別名にしてください。");
+        return;
+      }
+
+      if(activeTab==="dino") renameDino(oldName, newName);
+      else renameItem(oldName, newName);
+
+      openManage();
+      applyFilter();
+      rebuildOutput();
+    };
+  });
+
+  // drag reorder
+  attachDragReorder(mList);
 
   showModal();
   modalOk.onclick = hideModal;
 }
 
+/* ===== drag reorder (PointerEvents, iOS-safe) ===== */
+function attachDragReorder(container){
+  let draggingEl = null;
+  let placeholder = null;
+  let startY = 0;
+  let offsetY = 0;
+  let pointerId = null;
+
+  function onPointerMove(e){
+    if(!draggingEl) return;
+    if(pointerId !== null && e.pointerId !== pointerId) return;
+
+    const y = e.clientY - offsetY;
+    draggingEl.style.transform = `translateY(${y}px)`;
+
+    // placeholder position calc (within visible rows)
+    const rows = Array.from(container.querySelectorAll(".mRow")).filter(r=>r!==draggingEl);
+    const phRect = placeholder.getBoundingClientRect();
+    const midY = phRect.top + phRect.height/2;
+
+    for(const row of rows){
+      const r = row.getBoundingClientRect();
+      const rowMid = r.top + r.height/2;
+      if(midY < rowMid){
+        container.insertBefore(placeholder, row);
+        return;
+      }
+    }
+    container.appendChild(placeholder);
+  }
+
+  function onPointerUp(e){
+    if(!draggingEl) return;
+    if(pointerId !== null && e.pointerId !== pointerId) return;
+
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
+
+    // place back
+    draggingEl.classList.remove("dragging");
+    draggingEl.style.transform = "";
+    draggingEl.style.position = "";
+    draggingEl.style.left = "";
+    draggingEl.style.right = "";
+    draggingEl.style.top = "";
+    draggingEl.style.zIndex = "";
+    draggingEl.style.width = "";
+
+    // insert at placeholder position
+    container.insertBefore(draggingEl, placeholder);
+    placeholder.remove();
+
+    // update arrays by DOM order
+    const newOrder = Array.from(container.querySelectorAll(".mRow")).map(r=>r.dataset.name);
+    if(activeTab==="dino"){
+      dinos.length = 0;
+      dinos.push(...newOrder);
+      store.dinoOrder = [...dinos];
+    }else{
+      items.length = 0;
+      items.push(...newOrder);
+      store.itemOrder = [...items];
+    }
+    saveStore();
+    rebuildListsDOM();
+    applyFilter();
+    rebuildOutput();
+
+    draggingEl = null;
+    placeholder = null;
+    pointerId = null;
+  }
+
+  container.querySelectorAll(".mHandle").forEach(handle=>{
+    handle.onpointerdown = (e)=>{
+      const row = e.target.closest(".mRow");
+      if(!row) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      draggingEl = row;
+      pointerId = e.pointerId;
+      row.setPointerCapture(pointerId);
+
+      const rect = row.getBoundingClientRect();
+      const crect = container.getBoundingClientRect();
+
+      startY = e.clientY;
+      offsetY = startY - rect.top; // pointer offset inside element
+
+      placeholder = document.createElement("div");
+      placeholder.className = "mPlaceholder";
+      placeholder.style.height = rect.height + "px";
+
+      // take the element out of normal flow visually (but keep in DOM until placeholder placed)
+      row.classList.add("dragging");
+      row.style.width = rect.width + "px";
+      row.style.position = "relative";
+      row.style.zIndex = "5";
+
+      // put placeholder where it was
+      container.insertBefore(placeholder, row.nextSibling);
+
+      // now move row as overlay with translateY
+      const initialTop = rect.top - crect.top;
+      row.style.transform = `translateY(${initialTop}px)`;
+
+      window.addEventListener("pointermove", onPointerMove, {passive:false});
+      window.addEventListener("pointerup", onPointerUp, {passive:false});
+    };
+  });
+}
+
+/* ======================
+   Add screens
+====================== */
 function openAddDino(){
   modalTitle.textContent = "恐竜を追加";
   modalOk.textContent = "追加";
@@ -641,6 +901,12 @@ function openAddDino(){
     const defType = document.getElementById("newType").value;
     if(!name) return;
 
+    // 既存チェック（rename適用後の実名ベース）
+    if(dinos.includes(name)){
+      alert("同名が既に存在します。");
+      return;
+    }
+
     store.dinosDeleted = (store.dinosDeleted||[]).filter(n=>n!==name);
 
     const added = store.dinosAdded || [];
@@ -650,17 +916,17 @@ function openAddDino(){
     else added.push(rec);
     store.dinosAdded = added;
 
+    dinos.push(name);
+    store.dinoOrder = [...dinos];
+
     saveStore();
 
-    if(!dinos.includes(name)){
-      dinos.push(name);
-      makeDinoCard(name, (defType in prices) ? defType : "受精卵");
-      applyFilter();
-      rebuildOutput();
-    }
+    makeDinoCard(name, (defType in prices) ? defType : "受精卵");
+    rebuildListsDOM();
+    applyFilter();
+    rebuildOutput();
 
     hideModal();
-    // 追加後は管理に戻す
     openManage();
   };
 }
@@ -668,7 +934,7 @@ function openAddDino(){
 function openAddItem(){
   modalTitle.textContent = "アイテムを追加";
   modalOk.textContent = "追加";
-  modalNote.textContent = "形式：商品名 | 個数単位 | 値段（例：TEK天井 / 100 / 100）";
+  modalNote.textContent = "商品名 / 個数単位 / 値段 を入力（この端末に保存されます）";
 
   modalBody.innerHTML = `
     <div class="form">
@@ -695,6 +961,10 @@ function openAddItem(){
     const unitPrice = Number((document.getElementById("newUnitPrice").value || "").trim());
 
     if(!name) return;
+    if(items.includes(name)){
+      alert("同名が既に存在します。");
+      return;
+    }
     if(!Number.isFinite(unitCount) || unitCount<=0) return;
     if(!Number.isFinite(unitPrice) || unitPrice<0) return;
 
@@ -707,20 +977,24 @@ function openAddItem(){
     else added.push(rec);
     store.itemsAdded = added;
 
+    items.push(name);
+    store.itemOrder = [...items];
+
     saveStore();
 
-    if(!items.includes(name)){
-      items.push(name);
-      makeItemCard(name, unitCount, unitPrice);
-      applyFilter();
-      rebuildOutput();
-    }
+    makeItemCard(name, unitCount, unitPrice);
+    rebuildListsDOM();
+    applyFilter();
+    rebuildOutput();
 
     hideModal();
     openManage();
   };
 }
 
+/* ======================
+   Delete + Rename
+====================== */
 function deleteDino(name){
   const s = dinoState.get(name);
   if(s && s.card) s.card.remove();
@@ -730,11 +1004,12 @@ function deleteDino(name){
   if(!(store.dinosDeleted||[]).includes(name)){
     store.dinosDeleted = [...(store.dinosDeleted||[]), name];
   }
-  saveStore();
 
   const i = dinos.indexOf(name);
   if(i>=0) dinos.splice(i,1);
+  store.dinoOrder = [...dinos];
 
+  saveStore();
   rebuildOutput();
   applyFilter();
 }
@@ -748,13 +1023,82 @@ function deleteItem(name){
   if(!(store.itemsDeleted||[]).includes(name)){
     store.itemsDeleted = [...(store.itemsDeleted||[]), name];
   }
-  saveStore();
 
   const i = items.indexOf(name);
   if(i>=0) items.splice(i,1);
+  store.itemOrder = [...items];
 
+  saveStore();
   rebuildOutput();
   applyFilter();
+}
+
+function renameDino(oldName, newName){
+  // rename map更新（将来読み込み時にも反映）
+  store.dinoRenames = store.dinoRenames || {};
+  store.dinoRenames[oldName] = newName;
+
+  // arrays / states 置換
+  const idx = dinos.indexOf(oldName);
+  if(idx >= 0) dinos[idx] = newName;
+
+  // orderも置換
+  store.dinoOrder = (store.dinoOrder||[]).map(n=> n===oldName ? newName : n);
+
+  // state移植
+  const s = dinoState.get(oldName);
+  if(s){
+    dinoState.delete(oldName);
+    s.name = newName;
+    s.normName = normHira(newName);
+    const nameEl = s.card.querySelector(".name");
+    if(nameEl) nameEl.textContent = newName;
+    dinoState.set(newName, s);
+  }else{
+    // 万一なければ追加扱い
+    makeDinoCard(newName, "受精卵");
+  }
+
+  // addedの名前も置換（ローカル追加分の保持）
+  store.dinosAdded = (store.dinosAdded||[]).map(r=>{
+    if(!r) return r;
+    if(r.name === oldName) return {...r, name:newName};
+    return r;
+  });
+
+  saveStore();
+  rebuildListsDOM();
+}
+
+function renameItem(oldName, newName){
+  store.itemRenames = store.itemRenames || {};
+  store.itemRenames[oldName] = newName;
+
+  const idx = items.indexOf(oldName);
+  if(idx >= 0) items[idx] = newName;
+
+  store.itemOrder = (store.itemOrder||[]).map(n=> n===oldName ? newName : n);
+
+  const s = itemState.get(oldName);
+  if(s){
+    itemState.delete(oldName);
+    s.name = newName;
+    s.normName = normHira(newName);
+    const nameEl = s.card.querySelector(".name");
+    if(nameEl) nameEl.textContent = newName;
+    itemState.set(newName, s);
+  }else{
+    makeItemCard(newName, 1, 0);
+  }
+
+  store.itemsAdded = (store.itemsAdded||[]).map(r=>{
+    if(!r) return r;
+    if(r.name === oldName) return {...r, name:newName};
+    return r;
+  });
+
+  saveStore();
+  rebuildListsDOM();
 }
 
 /* ======================
@@ -769,8 +1113,12 @@ async function loadAll(){
   const baseDinos = dinoText.split(/\r?\n/).map(parseDinoLine).filter(Boolean);
   const baseItems = itemText.split(/\r?\n/).map(parseItemLine).filter(Boolean);
 
-  const mergedDinos = mergeDinos(baseDinos);
-  const mergedItems = mergeItems(baseItems);
+  let mergedDinos = mergeDinos(baseDinos);
+  let mergedItems = mergeItems(baseItems);
+
+  // 並び順適用（なければファイル順）
+  mergedDinos = applyOrder(mergedDinos, store.dinoOrder);
+  mergedItems = applyOrder(mergedItems, store.itemOrder);
 
   mergedDinos.forEach(({name, defType})=>{
     dinos.push(name);
@@ -781,6 +1129,11 @@ async function loadAll(){
     items.push(name);
     makeItemCard(name, unitCount, unitPrice);
   });
+
+  // 初回はorderが空なら現状を保存して固定化
+  if(!store.dinoOrder || store.dinoOrder.length===0) store.dinoOrder = [...dinos];
+  if(!store.itemOrder || store.itemOrder.length===0) store.itemOrder = [...items];
+  saveStore();
 
   applyFilter();
   rebuildOutput();
