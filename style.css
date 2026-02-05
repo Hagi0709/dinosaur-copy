@@ -1,13 +1,15 @@
 :root{
   --bg:#0b0f14;
+  --card:#141a22;
+  --stroke:rgba(255,255,255,.12);
   --txt:rgba(255,255,255,.92);
   --mut:rgba(255,255,255,.60);
   --ok:#78ffb3;
-  --stroke:rgba(255,255,255,.10);
-  --card1:rgba(255,255,255,.10);
-  --card2:rgba(255,255,255,.06);
+  --danger:#ff5d5d;
 }
+
 *{box-sizing:border-box}
+html,body{height:100%}
 body{
   margin:0;
   font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
@@ -15,13 +17,14 @@ body{
   color:var(--txt);
   padding-bottom:120px;
 }
-button,select,input{touch-action:manipulation}
+button,select,input,textarea{touch-action:manipulation}
 button{cursor:pointer}
 
+/* ===== top ===== */
 .top{
   position:sticky;
   top:0;
-  z-index:10;
+  z-index:20;
   background:rgba(11,15,20,.95);
   backdrop-filter:blur(14px);
   padding:10px;
@@ -34,15 +37,9 @@ button{cursor:pointer}
   align-items:center;
   flex-wrap:wrap;
 }
-.row2{
-  margin-top:8px;
-  display:flex;
-  gap:8px;
-  align-items:center;
-  justify-content:space-between;
-}
 .search{
   flex:1;
+  min-width:0;
   display:flex;
   align-items:center;
   gap:8px;
@@ -51,27 +48,26 @@ button{cursor:pointer}
   border-radius:14px;
   background:rgba(255,255,255,.07);
   border:1px solid rgba(255,255,255,.12);
-  min-width:0;
 }
 .search input{
   flex:1;
+  min-width:0;
   border:0;
+  outline:0;
   background:transparent;
   color:var(--txt);
   font-size:14px;
-  outline:none;
-  min-width:0;
 }
 .qClear{
   width:26px;height:26px;
   border-radius:999px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.06);
-  font-size:18px;
   color:#fff;
-  display:inline-block;
+  font-size:18px;
+  line-height:1;
 }
-.delivery,.copy,.ghost{
+.delivery,.copy{
   height:36px;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.14);
@@ -87,6 +83,7 @@ button{cursor:pointer}
   font-weight:900;
   white-space:nowrap;
 }
+
 textarea{
   width:100%;
   margin-top:8px;
@@ -98,37 +95,55 @@ textarea{
   padding:10px;
   font-size:12px;
   line-height:1.45;
-  outline:none;
+  outline:0;
 }
 
-.tabs{
+.subrow{
   display:flex;
-  gap:8px;
+  gap:10px;
+  align-items:center;
+  margin-top:10px;
+}
+.manageBtn{
+  height:34px;
+  padding:0 14px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-weight:900;
+}
+.tabs{
   flex:1;
-  justify-content:flex-end;
+  display:flex;
+  gap:10px;
 }
 .tab{
   flex:1;
-  height:40px;
-  border-radius:16px;
+  height:44px;
+  border-radius:18px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.06);
-  color:rgba(255,255,255,.80);
+  color:#fff;
   font-weight:900;
+  font-size:15px;
 }
 .tab.active{
-  background:rgba(255,255,255,.12);
-  color:#fff;
+  background:rgba(255,255,255,.10);
+  box-shadow:0 0 0 1px rgba(255,255,255,.14) inset;
 }
 
+/* ===== list ===== */
 .listWrap{padding:12px}
-.list{display:flex;flex-direction:column;gap:10px}
+.list{display:block}
 
 .card{
-  background:linear-gradient(180deg,var(--card1),var(--card2));
-  border:1px solid var(--stroke);
-  border-radius:16px;
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:18px;
   padding:12px;
+  margin-bottom:10px;
+  overflow:hidden;
 }
 .card.collapsed .controls{display:none}
 
@@ -140,78 +155,75 @@ textarea{
 }
 .name{
   font-weight:900;
-  font-size:18px;
-  line-height:1.2;
-  word-break:break-word;
+  font-size:22px;
+  line-height:1.15;
 }
 .right{
   text-align:right;
   display:flex;
   flex-direction:column;
-  gap:4px;
-  align-items:flex-end;
-  min-width:120px;
+  gap:6px;
+  flex-shrink:0;
 }
 select.type{
-  padding:6px 10px;
+  padding:7px 12px;
   border-radius:999px;
   background:rgba(255,255,255,.10);
-  border:1px solid rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.16);
   color:#fff;
+  font-size:13px;
+  outline:0;
+}
+.unit{
   font-size:12px;
+  color:var(--mut);
 }
-.unit{font-size:12px;color:var(--mut)}
 
-.controls{
-  margin-top:10px;
-}
+/* controls */
+.controls{margin-top:10px}
 .steppers{
   display:flex;
   gap:10px;
 }
-.step{
-  flex:1;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.04);
-  padding:8px;
-}
+.step{flex:1}
 .stepRow{
   display:flex;
   align-items:center;
   gap:10px;
+  padding:10px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.04);
 }
 .btn{
   width:44px;
-  height:32px;
+  height:34px;
   border-radius:12px;
   border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.12);
+  background:rgba(255,255,255,.10);
   color:#fff;
-  font-size:18px;
   font-weight:900;
+  font-size:18px;
   line-height:1;
 }
 .val{
   flex:1;
   text-align:center;
   font-weight:900;
-  font-size:16px;
+  font-size:18px;
   letter-spacing:.2px;
 }
 .dupBtn{
   width:44px;
-  height:32px;
+  height:34px;
   border-radius:12px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
   color:#fff;
-  font-size:14px;
   font-weight:900;
-  line-height:1;
 }
 
-/* modal */
+/* ===== modal ===== */
 .modalRoot{
   position:fixed;
   inset:0;
@@ -219,84 +231,57 @@ select.type{
   display:none;
 }
 .modalRoot.open{display:block}
+
 .modalBackdrop{
-  position:absolute;inset:0;
-  background:rgba(0,0,0,.45);
-  backdrop-filter:blur(10px);
-}
-.modalPanel{
   position:absolute;
-  left:12px; right:12px;
-  top:calc(12px + env(safe-area-inset-top));
-  bottom:calc(12px + env(safe-area-inset-bottom));
+  inset:0;
+  background:rgba(0,0,0,.55);
+  backdrop-filter:blur(2px);
+}
+
+.modalSheet{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  top:calc(10px + env(safe-area-inset-top));
+  width:min(680px, calc(100% - 20px));
+  max-height:calc(100% - 20px - env(safe-area-inset-top));
   border-radius:20px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(20,26,34,.92);
+  background:linear-gradient(180deg,rgba(30,36,46,.96),rgba(18,22,30,.92));
+  border:1px solid rgba(255,255,255,.10);
+  overflow:hidden;
   display:flex;
   flex-direction:column;
-  overflow:hidden;
 }
-.modalTop{
+
+.modalHead{
   display:flex;
-  align-items:center;
   justify-content:space-between;
-  padding:12px;
-  border-bottom:1px solid rgba(255,255,255,.10);
+  align-items:center;
+  padding:14px 14px;
+  border-bottom:1px solid rgba(255,255,255,.08);
 }
-.modalTitle{font-weight:900;font-size:16px}
-.modalX{
-  width:40px;height:40px;border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;font-size:20px;font-weight:900;
-}
-.modalBody{
-  padding:12px;
-  overflow:auto;
-  -webkit-overflow-scrolling:touch;
-}
-.modalBottom{
-  padding:12px;
-  border-top:1px solid rgba(255,255,255,.10);
+.modalTitle{
+  font-weight:900;
+  font-size:16px;
 }
 .modalClose{
-  width:100%;
-  height:44px;
-  border-radius:16px;
+  height:34px;
+  padding:0 12px;
+  border-radius:14px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
   color:#fff;
   font-weight:900;
 }
 
-/* manage list row */
-.mRow{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:10px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.04);
-  margin-bottom:10px;
-}
-.mName{
-  flex:1;
-  font-weight:900;
-  white-space:normal;
-  word-break:break-word;
-}
-.mBtn{
-  width:42px;height:36px;border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;font-weight:900;
-}
-.mBtn.danger{
-  background:rgba(255,80,80,.15);
-  border-color:rgba(255,80,80,.35);
+.modalBody{
+  padding:12px;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
 }
 
+/* manage UI bits inside modal */
 .mGrid{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -305,19 +290,21 @@ select.type{
 .mField label{
   display:block;
   font-size:12px;
-  color:var(--mut);
+  color:rgba(255,255,255,.7);
   margin-bottom:6px;
+  font-weight:700;
 }
-.mField input, .mField select{
+.mField input,.mField select{
   width:100%;
   height:40px;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.06);
   color:#fff;
-  padding:0 10px;
-  outline:none;
+  padding:0 12px;
+  outline:0;
 }
+
 .mActions{
   display:flex;
   gap:10px;
@@ -325,7 +312,7 @@ select.type{
 }
 .mActions button{
   flex:1;
-  height:42px;
+  height:44px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
@@ -333,6 +320,37 @@ select.type{
   font-weight:900;
 }
 .mActions .danger{
-  background:rgba(255,80,80,.15);
-  border-color:rgba(255,80,80,.35);
+  border-color:rgba(255,93,93,.35);
+  background:rgba(255,93,93,.18);
+}
+
+.mRow{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  padding:10px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.04);
+  margin-top:10px;
+}
+.mName{
+  flex:1;
+  font-weight:900;
+  font-size:16px;
+  line-height:1.2;
+  word-break:break-word; /* ← これで名前が省略されず判断しやすい */
+}
+.mBtn{
+  height:36px;
+  padding:0 12px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-weight:900;
+}
+.mBtn.danger{
+  border-color:rgba(255,93,93,.35);
+  background:rgba(255,93,93,.18);
 }
