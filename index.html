@@ -264,10 +264,21 @@ select.type{
   border:1px solid rgba(255,255,255,.14);
   background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.06));
   padding:14px;
+
+  /* scroll fix */
+  max-height: calc(100dvh - 36px - env(safe-area-inset-top));
+  display:flex;
+  flex-direction:column;
 }
 .modal h3{
-  margin:0 0 10px 0;
+  margin:0;
   font-size:16px;
+}
+#modalBody{
+  overflow:auto; /* モーダル内スクロール */
+  -webkit-overflow-scrolling: touch;
+  max-height: calc(100dvh - 220px - env(safe-area-inset-top));
+  padding-right:2px;
 }
 .form{
   display:flex;
@@ -315,6 +326,31 @@ select.type{
   background:rgba(255,80,80,.10)!important;
   border-color:rgba(255,80,80,.25)!important;
 }
+
+/* body scroll lock */
+body.modalOpen{
+  overflow:hidden;
+  touch-action:none;
+}
+
+/* modal header row with close X */
+.modalTopRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+.modalX{
+  width:40px;
+  height:40px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-weight:900;
+  font-size:18px;
+}
 </style>
 </head>
 
@@ -356,12 +392,15 @@ select.type{
   <!-- Modal -->
   <div id="modalBack" class="modalBack" role="dialog" aria-modal="true">
     <div class="modal">
-      <h3 id="modalTitle">追加</h3>
+      <div class="modalTopRow">
+        <h3 id="modalTitle">追加</h3>
+        <button id="modalX" class="modalX" aria-label="close">×</button>
+      </div>
 
       <div id="modalBody"></div>
 
       <div class="modalBtns">
-        <button id="modalCancel">キャンセル</button>
+        <button id="modalCancel">閉じる</button>
         <button id="modalOk">追加</button>
       </div>
 
@@ -484,13 +523,11 @@ const modalBody = document.getElementById("modalBody");
 const modalOk = document.getElementById("modalOk");
 const modalCancel = document.getElementById("modalCancel");
 const modalNote = document.getElementById("modalNote");
+const modalX = document.getElementById("modalX");
 
 /* ======================
    Data Models
 ====================== */
-// dino: {name, defType, type, m, f, card, open, normName, autoSpecified:boolean}
-// item: {name, unitCount, unitPrice, qty, card, open, normName}
-
 const dinos = [];
 const items = [];
 const dinoState = new Map();
@@ -547,8 +584,6 @@ function setTab(next){
   tabItem.classList.toggle("active", next==="item");
   secDino.classList.toggle("active", next==="dino");
   secItem.classList.toggle("active", next==="item");
-
-  // 検索はそのまま。表示だけ更新
   applyFilter();
 }
 tabDino.onclick = ()=>setTab("dino");
@@ -566,7 +601,7 @@ function applyFilter(){
       const hit = !q || s.normName.includes(q);
       s.card.style.display = hit ? "" : "none";
 
-      // 検索中：ヒット以外は折りたたみ（「全部開きっぱなし」を防ぐ）
+      // 検索中：ヒット以外は折りたたみ
       if(q && !hit){
         s.open = false;
         s.card.classList.add("collapsed");
@@ -617,15 +652,12 @@ deliveryEl.onchange = ()=>{
 };
 
 /* ======================
-   Collapsing rules (stable)
-   - 自動折りたたみ：数量0のカード（検索中以外）
-   - 手動で開いたカードは、タイプ変更では閉じない
-   - もう一度閉じたい時：ヘッダーをタップで開閉
+   Collapsing rules
 ====================== */
 function autoCollapseIfEmptyDino(s){
   const q = norm(qEl.value);
   const qty = (s.m||0) + (s.f||0);
-  if(q) return; // 検索中は applyFilter 側で制御
+  if(q) return;
   if(qty === 0 && !s.open){
     s.card.classList.add("collapsed");
   }
@@ -640,35 +672,23 @@ function autoCollapseIfEmptyItem(s){
 
 /* ======================
    Auto (指定) logic for dinos
-   - ♂と♀の両方に入力がある場合：自動で(指定)へ
-   - 両方0になったら：自動(指定)解除（元のベースへ戻す）
-   - 自動で変えた場合のみ解除する（手動指定は維持）
 ====================== */
 function updateAutoSpecified(s){
   const both = (s.m>0 && s.f>0);
-
-  // 解除条件（両方0）
   const allZero = (s.m===0 && s.f===0);
 
-  const hasSpec = !!hasSpecified[s.type];
   const isSpecified = s.type.endsWith("(指定)");
   const base = baseFromSpecified[s.type];
 
   if(both){
-    // baseタイプに指定があるなら指定へ
     if(hasSpecified[s.type]){
       s.type = hasSpecified[s.type];
       s.autoSpecified = true;
     }else if(!isSpecified && base && hasSpecified[base]){
-      // すでに指定の可能性は少ないが保険
       s.type = hasSpecified[base];
       s.autoSpecified = true;
-    }else{
-      // 受精卵/胚/クローン 以外はそのまま（幼体/成体は指定概念なし）
-      // 何もしない
     }
   }else if(allZero){
-    // 自動で指定にしたものだけ解除
     if(s.autoSpecified && isSpecified && base){
       s.type = base;
       s.autoSpecified = false;
@@ -678,8 +698,6 @@ function updateAutoSpecified(s){
 
 /* ======================
    Output builder (shared)
-   - 上：恐竜（入力があるもの）
-   - 下：アイテム（入力があるもの）
 ====================== */
 function rebuildOutput(){
   let lines = [];
@@ -698,11 +716,9 @@ function rebuildOutput(){
     const t = displayType(s.type);
     let line = "";
 
-    // ペア表記：♂=♀ のとき
     if(pairTypes.has(s.type) && s.m === s.f && s.m > 0){
       line = `${name}${t}ペア${s.m>1 ? "×"+s.m : ""} = ${yen(price)}`;
     }else if(pairTypes.has(s.type)){
-      // ♂ or ♀ を0なら出さない
       const parts = [];
       if(s.m>0) parts.push(`♂×${s.m}`);
       if(s.f>0) parts.push(`♀×${s.f}`);
@@ -725,7 +741,6 @@ function rebuildOutput(){
     const price = q * s.unitPrice;
     sum += price;
 
-    // 表記例: TEK天井 × 300 = 300円
     const line = `${name} × ${totalCount} = ${yen(price)}`;
     lines.push(`${idx}. ${line}`);
     idx++;
@@ -804,56 +819,44 @@ function makeDinoCard(name, defType){
   const mc = card.querySelector(".mc");
   const fc = card.querySelector(".fc");
 
-  // initial
   sel.value = s.type;
   unit.textContent = `単価${prices[s.type]}円`;
 
-  // header toggle open/close
   header.onclick = (e)=>{
-    // select操作は除外
     if(e.target && (e.target.tagName === "SELECT" || e.target.closest("select"))) return;
     s.open = !s.open;
     card.classList.toggle("collapsed", !s.open);
-    // 開いたら検索結果以外は折り畳まない（ただし検索中はapplyFilter側）
   };
 
-  // type change should NOT auto-close
   sel.onchange = ()=>{
     s.type = sel.value;
     unit.textContent = `単価${prices[s.type]}円`;
 
-    // open状態は維持（ここが本題）
     if(s.open){
       card.classList.remove("collapsed");
     }
 
-    // 入力0なら自動解除判定（指定）
     updateAutoSpecified(s);
-    sel.value = s.type; // 自動指定で変わった場合反映
+    sel.value = s.type;
     unit.textContent = `単価${prices[s.type]}円`;
 
     rebuildOutput();
     saveStore();
   };
 
-  // buttons
   card.querySelectorAll(".btn").forEach(b=>{
     b.onclick = ()=>{
       const sex = b.dataset.sex;
       const d = Number(b.dataset.d);
       s[sex] = Math.max(0, (s[sex]||0) + d);
 
-      // 自動指定ロジック
       updateAutoSpecified(s);
 
-      // UI反映
       sel.value = s.type;
       unit.textContent = `単価${prices[s.type]}円`;
       mc.textContent = s.m;
       fc.textContent = s.f;
 
-      // qty==0なら（自動で畳む用に open=false に戻すのはしない。ユーザーが開いたら開いたまま。）
-      // ただしユーザーが開いてない場合は畳む
       if(!s.open){
         card.classList.add("collapsed");
       }
@@ -867,7 +870,6 @@ function makeDinoCard(name, defType){
   dinoState.set(name, s);
   secDino.appendChild(card);
 
-  // 初期は数量0なので自動で畳む（collapsed）
   return s;
 }
 
@@ -910,7 +912,7 @@ function makeItemCard(name, unitCount, unitPrice){
   const header = card.querySelector(".cardHeader");
   const vc = card.querySelector(".vc");
 
-  header.onclick = (e)=>{
+  header.onclick = ()=>{
     s.open = !s.open;
     card.classList.toggle("collapsed", !s.open);
   };
@@ -939,9 +941,6 @@ function makeItemCard(name, unitCount, unitPrice){
 /* ======================
    Merge base + user changes
 ====================== */
-function keyOfDino(rec){ return rec.name; }
-function keyOfItem(rec){ return rec.name; }
-
 function mergeDinos(base){
   const deleted = new Set(store.dinosDeleted || []);
   const added = store.dinosAdded || [];
@@ -984,20 +983,24 @@ function mergeItems(base){
 }
 
 /* ======================
-   Modal helpers
+   Modal helpers (scroll lock)
 ====================== */
 let modalMode = null; // "addDino" | "addItem" | "manage"
 function showModal(mode){
   modalMode = mode;
   modalBack.classList.add("show");
+  document.body.classList.add("modalOpen"); // 背景スクロール停止
 }
 function hideModal(){
   modalBack.classList.remove("show");
+  document.body.classList.remove("modalOpen");
   modalBody.innerHTML = "";
   modalNote.textContent = "";
   modalMode = null;
 }
 modalCancel.onclick = hideModal;
+modalX.onclick = hideModal;
+
 modalBack.addEventListener("click", (e)=>{
   if(e.target === modalBack) hideModal();
 });
@@ -1043,28 +1046,24 @@ function openAddDino(){
 
     if(!name) return;
 
-    // 追加済みなら上書き（defType）
-    const existsBaseOrAdded = dinos.includes(name);
+    const exists = dinos.includes(name);
 
-    // store: delete解除
     store.dinosDeleted = (store.dinosDeleted||[]).filter(n=>n!==name);
 
-    // store add/update
     const added = store.dinosAdded || [];
-    const idx = added.findIndex(r=>r && r.name===name);
+    const i = added.findIndex(r=>r && r.name===name);
     const rec = { name, defType };
-    if(idx >= 0) added[idx] = rec;
+    if(i >= 0) added[i] = rec;
     else added.push(rec);
     store.dinosAdded = added;
 
     saveStore();
 
-    if(!existsBaseOrAdded){
+    if(!exists){
       dinos.push(name);
       makeDinoCard(name, (defType in prices) ? defType : "受精卵");
       applyFilter();
     }else{
-      // 既存カードがある場合、デフォルトだけ更新（現在のtypeは維持）
       const s = dinoState.get(name);
       if(s){
         s.defType = (defType in prices) ? defType : "受精卵";
@@ -1124,9 +1123,9 @@ function openAddItem(){
     store.itemsDeleted = (store.itemsDeleted||[]).filter(n=>n!==name);
 
     const added = store.itemsAdded || [];
-    const idx = added.findIndex(r=>r && r.name===name);
+    const i = added.findIndex(r=>r && r.name===name);
     const rec = { name, unitCount, unitPrice };
-    if(idx >= 0) added[idx] = rec;
+    if(i >= 0) added[i] = rec;
     else added.push(rec);
     store.itemsAdded = added;
 
@@ -1178,8 +1177,7 @@ function openManage(){
       const name = btn.dataset.name;
       if(activeTab==="dino") deleteDino(name);
       else deleteItem(name);
-      // 再描画：モーダルも更新
-      openManage();
+      openManage(); // 更新
     };
   });
 
@@ -1189,19 +1187,16 @@ function openManage(){
 }
 
 function deleteDino(name){
-  // stateから削除（画面から消す）
   const s = dinoState.get(name);
   if(s && s.card) s.card.remove();
   dinoState.delete(name);
 
-  // store: addedからも消し、deletedへ
   store.dinosAdded = (store.dinosAdded||[]).filter(r=>r && r.name!==name);
   if(!(store.dinosDeleted||[]).includes(name)){
     store.dinosDeleted = [...(store.dinosDeleted||[]), name];
   }
   saveStore();
 
-  // list からも消す
   const i = dinos.indexOf(name);
   if(i>=0) dinos.splice(i,1);
 
@@ -1231,7 +1226,6 @@ function deleteItem(name){
    Load base files + build
 ====================== */
 async function loadAll(){
-  // base fetch
   const [dinoText, itemText] = await Promise.all([
     fetch("dinos.txt?ts="+Date.now()).then(r=>r.ok ? r.text() : ""),
     fetch("items.txt?ts="+Date.now()).then(r=>r.ok ? r.text() : "")
@@ -1240,23 +1234,19 @@ async function loadAll(){
   const baseDinos = dinoText.split(/\r?\n/).map(parseDinoLine).filter(Boolean);
   const baseItems = itemText.split(/\r?\n/).map(parseItemLine).filter(Boolean);
 
-  // merge with localStorage
   const mergedDinos = mergeDinos(baseDinos);
   const mergedItems = mergeItems(baseItems);
 
-  // build dinos
   mergedDinos.forEach(({name, defType})=>{
     dinos.push(name);
     makeDinoCard(name, defType);
   });
 
-  // build items
   mergedItems.forEach(({name, unitCount, unitPrice})=>{
     items.push(name);
     makeItemCard(name, unitCount, unitPrice);
   });
 
-  // initial filter + output
   applyFilter();
   rebuildOutput();
 }
