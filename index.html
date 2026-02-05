@@ -10,14 +10,10 @@
              user-scalable=no,
              viewport-fit=cover"
   />
-
   <title>恐竜リスト</title>
 
-  <!-- iPhone ホーム画面アイコン（同階層の画像を使用） -->
-  <link rel="apple-touch-icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png" />
-
-  <link rel="stylesheet" href="style.css" />
-  <script src="app.js" defer></script>
+  <link rel="apple-touch-icon" href="./56379E4F-8771-431A-B2A6-4B3EE3136504.png" />
+  <link rel="stylesheet" href="./style.css?v=1" />
 </head>
 
 <body>
@@ -73,5 +69,28 @@
       <div id="modalNote" class="smallNote"></div>
     </div>
   </div>
+
+  <!-- app.js 読み込み（失敗したら out に表示） -->
+  <script>
+    (function(){
+      const out = document.getElementById("out");
+      function show(msg){
+        out.value =
+`【読み込みエラー】
+${msg}
+
+チェック:
+1) app.js / style.css が index.html と同じ階層にある
+2) ファイル名の大小文字が一致 (app.js と App.js は別物)
+3) GitHub Pages の反映/キャッシュ（Safariで再読み込み）`;
+      }
+      const s = document.createElement("script");
+      s.src = "./app.js?v=1";
+      s.defer = true;
+      s.onerror = () => show("app.js が読み込めません（ファイル名/階層/存在を確認）");
+      document.head.appendChild(s);
+      window.addEventListener("error", (e)=> show(e.message || String(e.error || e)));
+    })();
+  </script>
 </body>
 </html>
