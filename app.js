@@ -1,330 +1,361 @@
-(() => {
-  "use strict";
+/* ======================
+   Utils
+====================== */
+function yen(n){ return Number(n||0).toLocaleString("ja-JP") + "円"; }
 
-  /* ===== Utils ===== */
-  const $ = (id) => document.getElementById(id);
-  const yen = (n) => Number(n || 0).toLocaleString("ja-JP") + "円";
+// カタカナ→ひらがな（検索安定：かる → カルカロ）
+function kataToHira(str){
+  return (str||"").replace(/[\u30A1-\u30F6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+}
+function normHira(str){
+  return kataToHira(String(str||""))
+    .toLowerCase()
+    .replace(/\s+/g,"")
+    .trim();
+}
 
-  // カタカナ→ひらがな（かる で カルカロ が出る）
-  const kataToHira = (str) =>
-    String(str || "").replace(/[\u30A1-\u30F6]/g, (ch) =>
-      String.fromCharCode(ch.charCodeAt(0) - 0x60)
-    );
+/* ======================
+   Pricing / Types
+====================== */
+const prices = {
+  "受精卵":30, "受精卵(指定)":50,
+  "胚":50,   "胚(指定)":100,
+  "幼体":100,
+  "成体":500,
+  "クローン":500, "クローン(指定)":300
+};
 
-  const norm = (str) =>
-    kataToHira(String(str || ""))
-      .toLowerCase()
-      .replace(/\s+/g, "")
-      .trim();
+const SPEC_FOR_BASE = {
+  "受精卵":"受精卵(指定)",
+  "胚":"胚(指定)",
+  "クローン":"クローン(指定)"
+};
+const BASE_FOR_SPEC = {
+  "受精卵(指定)":"受精卵",
+  "胚(指定)":"胚",
+  "クローン(指定)":"クローン"
+};
 
-  /* ===== DOM ===== */
-  const qEl = $("q");
-  const qClear = $("qClear");
-  const deliveryEl = $("delivery");
-  const copyBtn = $("copy");
-  const totalEl = $("total");
-  const outEl = $("out");
+// ペア表記対象（同数時のみ）
+const pairTypes = new Set([
+  "受精卵(指定)","胚(指定)","幼体","成体","クローン","クローン(指定)"
+]);
 
-  const tabDino = $("tabDino");
-  const tabItem = $("tabItem");
-  const secDino = $("secDino");
-  const secItem = $("secItem");
+function displayType(t){
+  return String(t||"").replace("(指定)","");
+}
 
-  const addBtn = $("add");
-  const manageBtn = $("manage");
+/* ======================
+   Storage (A)
+====================== */
+const LS_KEY = "dinoList_v1_storage";
 
-  const modalBack = $("modalBack");
-  const modalTitle = $("modalTitle");
-  const modalBody = $("modalBody");
-  const modalOk = $("modalOk");
-  const modalCancel = $("modalCancel");
-  const modalNote = $("modalNote");
-  const modalX = $("modalX");
-
-  /* ===== Guard: DOM must exist ===== */
-  if (!qEl || !secDino || !secItem) {
-    outEl.value = "【致命エラー】DOM が見つかりません。index.html を全置換してください。";
-    return;
+function loadStore(){
+  try{
+    const obj = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+    return {
+      dinosAdded: Array.isArray(obj.dinosAdded) ? obj.dinosAdded : [],
+      dinosDeleted: Array.isArray(obj.dinosDeleted) ? obj.dinosDeleted : [],
+      itemsAdded: Array.isArray(obj.itemsAdded) ? obj.itemsAdded : [],
+      itemsDeleted: Array.isArray(obj.itemsDeleted) ? obj.itemsDeleted : [],
+      delivery: typeof obj.delivery === "string" ? obj.delivery : "即納品可能"
+    };
+  }catch{
+    return { dinosAdded:[], dinosDeleted:[], itemsAdded:[], itemsDeleted:[], delivery:"即納品可能" };
   }
+}
+const store = loadStore();
 
-  /* ===== Pricing ===== */
-  const prices = {
-    "受精卵": 30,
-    "受精卵(指定)": 50,
-    "胚": 50,
-    "胚(指定)": 100,
-    "幼体": 100,
-    "成体": 500,
-    "クローン": 500,
-    "クローン(指定)": 300,
-  };
+function saveStore(){
+  localStorage.setItem(LS_KEY, JSON.stringify({
+    dinosAdded: store.dinosAdded,
+    dinosDeleted: store.dinosDeleted,
+    itemsAdded: store.itemsAdded,
+    itemsDeleted: store.itemsDeleted,
+    delivery: deliveryEl.value
+  }));
+}
 
-  const pairTypes = new Set([
-    "受精卵", "受精卵(指定)",
-    "胚", "胚(指定)",
-    "幼体", "成体",
-    "クローン", "クローン(指定)",
-  ]);
+/* ======================
+   DOM
+====================== */
+const qEl = document.getElementById("q");
+const qClear = document.getElementById("qClear");
+const deliveryEl = document.getElementById("delivery");
+const copyBtn = document.getElementById("copy");
+const totalEl = document.getElementById("total");
+const outEl = document.getElementById("out");
 
-  const hasSpecified = { "受精卵": "受精卵(指定)", "胚": "胚(指定)", "クローン": "クローン(指定)" };
-  const baseFromSpecified = { "受精卵(指定)": "受精卵", "胚(指定)": "胚", "クローン(指定)": "クローン" };
-  const displayType = (t) => String(t || "").replace("(指定)", "");
+const tabDino = document.getElementById("tabDino");
+const tabItem = document.getElementById("tabItem");
+const secDino = document.getElementById("secDino");
+const secItem = document.getElementById("secItem");
 
-  /* ===== Storage ===== */
-  const LS_KEY = "dinoList_v1_storage";
-  const store = (() => {
-    try {
-      const obj = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
-      return {
-        dinosAdded: Array.isArray(obj.dinosAdded) ? obj.dinosAdded : [],
-        dinosDeleted: Array.isArray(obj.dinosDeleted) ? obj.dinosDeleted : [],
-        itemsAdded: Array.isArray(obj.itemsAdded) ? obj.itemsAdded : [],
-        itemsDeleted: Array.isArray(obj.itemsDeleted) ? obj.itemsDeleted : [],
-        delivery: typeof obj.delivery === "string" ? obj.delivery : "即納品可能",
-      };
-    } catch {
-      return { dinosAdded: [], dinosDeleted: [], itemsAdded: [], itemsDeleted: [], delivery: "即納品可能" };
-    }
-  })();
+const addBtn = document.getElementById("add");
+const manageBtn = document.getElementById("manage");
 
-  const saveStore = () => {
-    localStorage.setItem(
-      LS_KEY,
-      JSON.stringify({
-        dinosAdded: store.dinosAdded,
-        dinosDeleted: store.dinosDeleted,
-        itemsAdded: store.itemsAdded,
-        itemsDeleted: store.itemsDeleted,
-        delivery: deliveryEl.value,
-      })
-    );
-  };
+const modalBack = document.getElementById("modalBack");
+const modalTitle = document.getElementById("modalTitle");
+const modalBody = document.getElementById("modalBody");
+const modalOk = document.getElementById("modalOk");
+const modalCancel = document.getElementById("modalCancel");
+const modalNote = document.getElementById("modalNote");
+const modalX = document.getElementById("modalX");
 
-  deliveryEl.value = store.delivery || "即納品可能";
+/* ======================
+   Models
+====================== */
+// dino: {name, defType, type, m, f, card, open, normName, autoSpecified:boolean, userChangedType:boolean}
+// item: {name, unitCount, unitPrice, qty, card, open, normName}
+const dinos = [];
+const items = [];
+const dinoState = new Map();
+const itemState = new Map();
+let activeTab = "dino";
 
-  /* ===== Data ===== */
-  const dinos = [];
-  const items = [];
-  const dinoState = new Map(); // name -> state
-  const itemState = new Map();
+/* ======================
+   Parsers
+====================== */
+function parseDinoLine(line){
+  line = (line||"").trim();
+  if(!line) return null;
+  if(line.startsWith("#")) return null;
 
-  let activeTab = "dino";
+  line = line.replace(/^・/,"").trim();
+  if(!line) return null;
 
-  /* ===== Parsers ===== */
-  function parseDinoLine(line) {
-    line = (line || "").trim();
-    if (!line) return null;
-    if (line.startsWith("#")) return null;
-    line = line.replace(/^・/, "").trim();
-    if (!line) return null;
+  const parts = line.split("|").map(s=>s.trim());
+  const name = parts[0] || "";
+  const rawType = parts[1] || "";
+  if(!name) return null;
 
-    const parts = line.split("|").map((s) => s.trim());
-    const name = parts[0] || "";
-    const rawType = parts[1] || "";
-    if (!name) return null;
-    const defType = rawType && rawType in prices ? rawType : "受精卵";
-    return { name, defType };
+  const defType = (rawType && (rawType in prices)) ? rawType : "受精卵";
+  return { name, defType };
+}
+
+function parseItemLine(line){
+  line = (line||"").trim();
+  if(!line) return null;
+  if(line.startsWith("#")) return null;
+
+  // 商品名 | 個数単位 | 値段
+  const parts = line.split("|").map(s=>s.trim());
+  if(parts.length < 3) return null;
+
+  const name = parts[0];
+  const unitCount = Number(parts[1]);
+  const unitPrice = Number(parts[2]);
+
+  if(!name) return null;
+  if(!Number.isFinite(unitCount) || unitCount <= 0) return null;
+  if(!Number.isFinite(unitPrice) || unitPrice < 0) return null;
+
+  return { name, unitCount, unitPrice };
+}
+
+/* ======================
+   Merge base + local
+====================== */
+function mergeDinos(base){
+  const deleted = new Set(store.dinosDeleted || []);
+  const added = store.dinosAdded || [];
+  const map = new Map();
+
+  for(const rec of base){
+    if(deleted.has(rec.name)) continue;
+    map.set(rec.name, rec);
   }
-
-  function parseItemLine(line) {
-    line = (line || "").trim();
-    if (!line) return null;
-    if (line.startsWith("#")) return null;
-
-    const parts = line.split("|").map((s) => s.trim());
-    if (parts.length < 3) return null;
-
-    const name = parts[0];
-    const unitCount = Number(parts[1]);
-    const unitPrice = Number(parts[2]);
-    if (!name) return null;
-    if (!Number.isFinite(unitCount) || unitCount <= 0) return null;
-    if (!Number.isFinite(unitPrice) || unitPrice < 0) return null;
-
-    return { name, unitCount, unitPrice };
+  for(const rec of added){
+    if(!rec || !rec.name) continue;
+    if(deleted.has(rec.name)) continue;
+    const defType = (rec.defType && (rec.defType in prices)) ? rec.defType : "受精卵";
+    map.set(rec.name, { name: rec.name, defType });
   }
+  return Array.from(map.values());
+}
 
-  /* ===== Merge base + local ===== */
-  function mergeDinos(base) {
-    const deleted = new Set(store.dinosDeleted || []);
-    const added = store.dinosAdded || [];
-    const map = new Map();
+function mergeItems(base){
+  const deleted = new Set(store.itemsDeleted || []);
+  const added = store.itemsAdded || [];
+  const map = new Map();
 
-    for (const rec of base) {
-      if (deleted.has(rec.name)) continue;
-      map.set(rec.name, rec);
-    }
-    for (const rec of added) {
-      if (!rec || !rec.name) continue;
-      if (deleted.has(rec.name)) continue;
-      const defType = rec.defType && rec.defType in prices ? rec.defType : "受精卵";
-      map.set(rec.name, { name: rec.name, defType });
-    }
-    return Array.from(map.values());
+  for(const rec of base){
+    if(deleted.has(rec.name)) continue;
+    map.set(rec.name, rec);
   }
+  for(const rec of added){
+    if(!rec || !rec.name) continue;
+    if(deleted.has(rec.name)) continue;
 
-  function mergeItems(base) {
-    const deleted = new Set(store.itemsDeleted || []);
-    const added = store.itemsAdded || [];
-    const map = new Map();
+    const unitCount = Number(rec.unitCount);
+    const unitPrice = Number(rec.unitPrice);
+    if(!Number.isFinite(unitCount) || unitCount<=0) continue;
+    if(!Number.isFinite(unitPrice) || unitPrice<0) continue;
 
-    for (const rec of base) {
-      if (deleted.has(rec.name)) continue;
-      map.set(rec.name, rec);
-    }
-    for (const rec of added) {
-      if (!rec || !rec.name) continue;
-      if (deleted.has(rec.name)) continue;
-      const unitCount = Number(rec.unitCount);
-      const unitPrice = Number(rec.unitPrice);
-      if (!Number.isFinite(unitCount) || unitCount <= 0) continue;
-      if (!Number.isFinite(unitPrice) || unitPrice < 0) continue;
-      map.set(rec.name, { name: rec.name, unitCount, unitPrice });
-    }
-    return Array.from(map.values());
+    map.set(rec.name, { name: rec.name, unitCount, unitPrice });
   }
+  return Array.from(map.values());
+}
 
-  /* ===== Tabs ===== */
-  function setTab(next) {
-    activeTab = next;
-    tabDino.classList.toggle("active", next === "dino");
-    tabItem.classList.toggle("active", next === "item");
-    secDino.classList.toggle("active", next === "dino");
-    secItem.classList.toggle("active", next === "item");
-    applyFilter();
-  }
-  tabDino.onclick = () => setTab("dino");
-  tabItem.onclick = () => setTab("item");
+/* ======================
+   Tabs
+====================== */
+function setTab(next){
+  activeTab = next;
+  tabDino.classList.toggle("active", next==="dino");
+  tabItem.classList.toggle("active", next==="item");
+  secDino.classList.toggle("active", next==="dino");
+  secItem.classList.toggle("active", next==="item");
+  applyFilter();
+}
+tabDino.onclick = ()=>setTab("dino");
+tabItem.onclick = ()=>setTab("item");
 
-  /* ===== Filter ===== */
-  function applyFilter() {
-    const q = norm(qEl.value);
+/* ======================
+   Search
+====================== */
+function applyFilter(){
+  const q = normHira(qEl.value);
 
-    if (activeTab === "dino") {
-      for (const name of dinos) {
-        const s = dinoState.get(name);
-        if (!s) continue;
-        const hit = !q || s.normName.includes(q);
-        s.card.style.display = hit ? "" : "none";
-        if (q && !hit) {
-          s.open = false;
-          s.card.classList.add("collapsed");
-        }
+  if(activeTab === "dino"){
+    for(const name of dinos){
+      const s = dinoState.get(name);
+      const hit = !q || s.normName.includes(q);
+      s.card.style.display = hit ? "" : "none";
+      if(q && !hit){
+        s.open = false;
+        s.card.classList.add("collapsed");
       }
-    } else {
-      for (const name of items) {
-        const s = itemState.get(name);
-        if (!s) continue;
-        const hit = !q || s.normName.includes(q);
-        s.card.style.display = hit ? "" : "none";
-        if (q && !hit) {
-          s.open = false;
-          s.card.classList.add("collapsed");
-        }
+    }
+  }else{
+    for(const name of items){
+      const s = itemState.get(name);
+      const hit = !q || s.normName.includes(q);
+      s.card.style.display = hit ? "" : "none";
+      if(q && !hit){
+        s.open = false;
+        s.card.classList.add("collapsed");
       }
     }
   }
-  qEl.addEventListener("input", applyFilter);
-  qClear.onclick = () => {
-    qEl.value = "";
-    applyFilter();
-  };
+}
+qEl.addEventListener("input", applyFilter);
+qClear.onclick = ()=>{
+  qEl.value = "";
+  applyFilter();
+};
 
-  /* ===== Copy & delivery reflect ===== */
-  copyBtn.onclick = () => {
-    const t = outEl.value.trim();
-    if (!t) return;
-    navigator.clipboard.writeText(t).then(() => {
-      const prev = copyBtn.textContent;
-      copyBtn.textContent = "コピー済み✓";
-      copyBtn.disabled = true;
-      setTimeout(() => {
-        copyBtn.textContent = prev;
-        copyBtn.disabled = false;
-      }, 1200);
-    });
-  };
+/* ======================
+   Copy + delivery immediate
+====================== */
+deliveryEl.value = store.delivery || "即納品可能";
+deliveryEl.onchange = ()=>{
+  saveStore();
+  rebuildOutput();
+};
 
-  deliveryEl.onchange = () => {
-    saveStore();
-    rebuildOutput();
-  };
+copyBtn.onclick = ()=>{
+  const t = outEl.value.trim();
+  if(!t) return;
 
-  /* ===== Auto 지정 logic ===== */
-  function updateAutoSpecified(s) {
-    const both = s.m > 0 && s.f > 0;
-    const allZero = s.m === 0 && s.f === 0;
-    const isSpecified = s.type.endsWith("(指定)");
-    const base = baseFromSpecified[s.type];
+  navigator.clipboard.writeText(t).then(()=>{
+    const prev = copyBtn.textContent;
+    copyBtn.textContent = "コピー済み✓";
+    copyBtn.disabled = true;
+    setTimeout(()=>{
+      copyBtn.textContent = prev;
+      copyBtn.disabled = false;
+    }, 1200);
+  });
+};
 
-    if (both) {
-      const to = hasSpecified[s.type] || (base && hasSpecified[base]);
-      if (to && !isSpecified) {
-        s.type = to;
-        s.autoSpecified = true;
-      } else if (to && isSpecified) {
-        s.type = to;
-        s.autoSpecified = true;
-      }
-    } else if (allZero) {
-      if (s.autoSpecified && isSpecified && base) {
-        s.type = base;
+/* ======================
+   Auto (指定)
+   - ♀グレーアウト無し（常に入力可）
+   - ♂>0 && ♀>0 なら「受精卵/胚/クローン」は自動で(指定)へ
+   - 自動で(指定)になった後、♂♀が両方0なら自動解除
+====================== */
+function applyAutoSpecified(s){
+  const both = (s.m > 0 && s.f > 0);
+  const allZero = (s.m === 0 && s.f === 0);
+
+  // 手動でタイプを変えた後も「両方入力されたら自動指定」は働かせる
+  // ただし、解除は “自動で指定にした場合のみ”
+  const isSpecified = s.type.endsWith("(指定)");
+  const base = isSpecified ? (BASE_FOR_SPEC[s.type] || s.type) : s.type;
+
+  if(both){
+    const to = SPEC_FOR_BASE[base];
+    if(to && s.type !== to){
+      s.type = to;
+      s.autoSpecified = true;
+    }
+  }
+
+  if(allZero){
+    if(s.autoSpecified && isSpecified){
+      const back = BASE_FOR_SPEC[s.type];
+      if(back){
+        s.type = back;
         s.autoSpecified = false;
       }
     }
   }
+}
 
-  /* ===== Output ===== */
-  function rebuildOutput() {
-    let lines = [];
-    let sum = 0;
-    let idx = 1;
+/* ======================
+   Output (shared)
+====================== */
+function rebuildOutput(){
+  let lines = [];
+  let sum = 0;
+  let idx = 1;
 
-    // dinos first
-    for (const name of dinos) {
-      const s = dinoState.get(name);
-      if (!s) continue;
-      const qty = (s.m || 0) + (s.f || 0);
-      if (qty === 0) continue;
+  // dinos first
+  for(const name of dinos){
+    const s = dinoState.get(name);
+    const qty = (s.m||0) + (s.f||0);
+    if(qty === 0) continue;
 
-      const price = (prices[s.type] || 0) * qty;
-      sum += price;
+    const price = (prices[s.type]||0) * qty;
+    sum += price;
 
-      const t = displayType(s.type);
-      let line = "";
+    const t = displayType(s.type);
+    let line = "";
 
-      if (pairTypes.has(s.type) && s.m === s.f && s.m > 0) {
-        line = `${name}${t}ペア${s.m > 1 ? "×" + s.m : ""} = ${yen(price)}`;
-      } else if (pairTypes.has(s.type)) {
-        const parts = [];
-        if (s.m > 0) parts.push(`♂×${s.m}`);
-        if (s.f > 0) parts.push(`♀×${s.f}`);
-        line = `${name}${t} ${parts.join(" ")} = ${yen(price)}`.replace(/\s+ =/, " =");
-      } else {
-        line = `${name}${t}×${qty} = ${yen(price)}`;
-      }
-
-      lines.push(`${idx}. ${line}`);
-      idx++;
+    if(pairTypes.has(s.type) && s.m === s.f && s.m > 0){
+      line = `${name}${t}ペア${s.m>1 ? "×"+s.m : ""} = ${yen(price)}`;
+    }else if(pairTypes.has(s.type)){
+      const parts = [];
+      if(s.m>0) parts.push(`♂×${s.m}`);
+      if(s.f>0) parts.push(`♀×${s.f}`);
+      line = `${name}${t} ${parts.join(" ")} = ${yen(price)}`.replace(/\s+ =/," =");
+    }else{
+      // 受精卵/胚/クローンの “非指定” は合算表記
+      line = `${name}${t}×${qty} = ${yen(price)}`;
     }
 
-    // items next
-    for (const name of items) {
-      const s = itemState.get(name);
-      if (!s) continue;
-      const q = s.qty || 0;
-      if (q === 0) continue;
+    lines.push(`${idx}. ${line}`);
+    idx++;
+  }
 
-      const totalCount = q * s.unitCount;
-      const price = q * s.unitPrice;
-      sum += price;
+  // items next
+  for(const name of items){
+    const s = itemState.get(name);
+    const q = s.qty || 0;
+    if(q === 0) continue;
 
-      lines.push(`${idx}. ${name} × ${totalCount} = ${yen(price)}`);
-      idx++;
-    }
+    const totalCount = q * s.unitCount;
+    const price = q * s.unitPrice;
+    sum += price;
 
-    totalEl.textContent = yen(sum);
-    outEl.value =
+    lines.push(`${idx}. ${name} × ${totalCount} = ${yen(price)}`);
+    idx++;
+  }
+
+  totalEl.textContent = yen(sum);
+
+  outEl.value =
 `この度はご検討いただきありがとうございます！
 ご希望内容は以下となります👇🏻
 
@@ -336,249 +367,414 @@ ${lines.join("\n")}
 ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻
 
 また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
-  }
+}
 
-  /* ===== Cards ===== */
-  function makeDinoCard(name, defType) {
-    const s = {
-      name,
-      defType,
-      type: defType,
-      m: 0,
-      f: 0,
-      open: false,
-      autoSpecified: false,
-      normName: norm(name),
-      card: null,
-    };
+/* ======================
+   Card builders
+====================== */
+function makeDinoCard(name, defType){
+  const s = {
+    name,
+    defType,
+    type: defType,
+    m:0,
+    f:0,
+    open:false,
+    autoSpecified:false,
+    userChangedType:false,
+    normName: normHira(name),
+    card:null
+  };
 
-    const card = document.createElement("div");
-    s.card = card;
-    card.className = "card collapsed";
+  const card = document.createElement("div");
+  s.card = card;
+  card.className = "card collapsed";
 
-    card.innerHTML = `
-      <div class="cardHeader">
-        <div class="name">${name}</div>
-        <div class="right">
-          <select class="type">
-            ${Object.keys(prices).map(t => `<option value="${t}">${t}</option>`).join("")}
-          </select>
-          <div class="unit">単価${prices[defType]}円</div>
-        </div>
+  card.innerHTML = `
+    <div class="cardHeader">
+      <div class="name">${name}</div>
+      <div class="right">
+        <select class="type">
+          ${Object.keys(prices).map(t=>`<option value="${t}">${t}</option>`).join("")}
+        </select>
+        <div class="unit">単価${prices[defType]}円</div>
       </div>
+    </div>
 
-      <div class="cardBody">
-        <div class="stepRow">
-          <div class="box">
-            <div class="stepper">
-              <button class="btn" data-sex="m" data-d="-1">−</button>
-              <div class="val mc">0</div>
-              <button class="btn" data-sex="m" data-d="1">＋</button>
-            </div>
-          </div>
-
-          <div class="box">
-            <div class="stepper">
-              <button class="btn" data-sex="f" data-d="-1">−</button>
-              <div class="val fc">0</div>
-              <button class="btn" data-sex="f" data-d="1">＋</button>
-            </div>
+    <div class="cardBody">
+      <div class="stepRow">
+        <div class="box m">
+          <div class="stepper">
+            <button class="btn" data-sex="m" data-d="-1" type="button">−</button>
+            <div class="val mc">0</div>
+            <button class="btn" data-sex="m" data-d="1" type="button">＋</button>
           </div>
         </div>
+
+        <div class="box f">
+          <div class="stepper">
+            <button class="btn" data-sex="f" data-d="-1" type="button">−</button>
+            <div class="val fc">0</div>
+            <button class="btn" data-sex="f" data-d="1" type="button">＋</button>
+          </div>
+        </div>
       </div>
-    `;
+    </div>
+  `;
 
-    const header = card.querySelector(".cardHeader");
-    const sel = card.querySelector("select.type");
-    const unit = card.querySelector(".unit");
-    const mc = card.querySelector(".mc");
-    const fc = card.querySelector(".fc");
+  const header = card.querySelector(".cardHeader");
+  const sel = card.querySelector("select.type");
+  const unit = card.querySelector(".unit");
+  const mc = card.querySelector(".mc");
+  const fc = card.querySelector(".fc");
 
-    sel.value = s.type;
+  sel.value = s.type;
+  unit.textContent = `単価${prices[s.type]}円`;
+
+  // ヘッダーだけで開閉（ボタン操作を巻き込まない）
+  header.onclick = (e)=>{
+    if(e.target && (e.target.tagName === "SELECT" || e.target.closest("select"))) return;
+    s.open = !s.open;
+    card.classList.toggle("collapsed", !s.open);
+  };
+
+  sel.onchange = ()=>{
+    s.type = sel.value;
+    s.userChangedType = true;
+    s.autoSpecified = false; // 手動変更したら「自動指定状態」は解除扱い
     unit.textContent = `単価${prices[s.type]}円`;
 
-    header.onclick = (e) => {
-      if (e.target && (e.target.tagName === "SELECT" || e.target.closest("select"))) return;
-      s.open = !s.open;
-      card.classList.toggle("collapsed", !s.open);
-    };
+    // 開いてるなら閉じない（デグレ防止）
+    if(s.open) card.classList.remove("collapsed");
 
-    sel.onchange = () => {
-      s.type = sel.value;
-      unit.textContent = `単価${prices[s.type]}円`;
+    rebuildOutput();
+    saveStore();
+  };
 
-      // 開いてる状態なら閉じない
-      if (s.open) card.classList.remove("collapsed");
+  // +/- ボタン
+  card.querySelectorAll(".btn").forEach(b=>{
+    b.onclick = ()=>{
+      const sex = b.dataset.sex;
+      const d = Number(b.dataset.d);
 
-      updateAutoSpecified(s);
+      s[sex] = Math.max(0, (s[sex]||0) + d);
+
+      applyAutoSpecified(s);
+
+      // UI反映
       sel.value = s.type;
       unit.textContent = `単価${prices[s.type]}円`;
+      mc.textContent = s.m;
+      fc.textContent = s.f;
+
+      // 0なら閉じる（自動畳み）
+      if((s.m+s.f) === 0){
+        s.open = false;
+        card.classList.add("collapsed");
+      }
 
       rebuildOutput();
       saveStore();
     };
+  });
 
-    card.querySelectorAll(".btn").forEach((b) => {
-      b.onclick = () => {
-        const sex = b.dataset.sex;
-        const d = Number(b.dataset.d);
-        s[sex] = Math.max(0, (s[sex] || 0) + d);
+  dinoState.set(name, s);
+  secDino.appendChild(card);
+  return s;
+}
 
-        updateAutoSpecified(s);
+function makeItemCard(name, unitCount, unitPrice){
+  const s = {
+    name,
+    unitCount,
+    unitPrice,
+    qty:0,
+    open:false,
+    normName: normHira(name),
+    card:null
+  };
 
-        sel.value = s.type;
-        unit.textContent = `単価${prices[s.type]}円`;
-        mc.textContent = s.m;
-        fc.textContent = s.f;
+  const card = document.createElement("div");
+  s.card = card;
+  card.className = "card collapsed";
 
-        rebuildOutput();
-        saveStore();
-      };
-    });
-
-    dinoState.set(name, s);
-    secDino.appendChild(card);
-    return s;
-  }
-
-  function makeItemCard(name, unitCount, unitPrice) {
-    const s = {
-      name,
-      unitCount,
-      unitPrice,
-      qty: 0,
-      open: false,
-      normName: norm(name),
-      card: null,
-    };
-
-    const card = document.createElement("div");
-    s.card = card;
-    card.className = "card collapsed";
-
-    card.innerHTML = `
-      <div class="cardHeader">
-        <div class="name">${name}</div>
-        <div class="right">
-          <div class="unit">単位${unitCount} / 単価${unitPrice}円</div>
-        </div>
+  card.innerHTML = `
+    <div class="cardHeader">
+      <div class="name">${name}</div>
+      <div class="right">
+        <div class="unit">単位${unitCount} / 単価${unitPrice}円</div>
       </div>
+    </div>
 
-      <div class="cardBody">
-        <div class="stepRow">
-          <div class="box item">
-            <div class="stepper">
-              <button class="btn" data-d="-1">−</button>
-              <div class="val vc">0</div>
-              <button class="btn" data-d="1">＋</button>
-            </div>
+    <div class="cardBody">
+      <div class="stepRow">
+        <div class="box item">
+          <div class="stepper">
+            <button class="btn" data-d="-1" type="button">−</button>
+            <div class="val vc">0</div>
+            <button class="btn" data-d="1" type="button">＋</button>
           </div>
         </div>
       </div>
-    `;
+    </div>
+  `;
 
-    const header = card.querySelector(".cardHeader");
-    const vc = card.querySelector(".vc");
+  const header = card.querySelector(".cardHeader");
+  const vc = card.querySelector(".vc");
 
-    header.onclick = () => {
-      s.open = !s.open;
-      card.classList.toggle("collapsed", !s.open);
+  header.onclick = ()=>{
+    s.open = !s.open;
+    card.classList.toggle("collapsed", !s.open);
+  };
+
+  card.querySelectorAll(".btn").forEach(b=>{
+    b.onclick = ()=>{
+      const d = Number(b.dataset.d);
+      s.qty = Math.max(0, (s.qty||0) + d);
+      vc.textContent = s.qty;
+
+      if(s.qty === 0){
+        s.open = false;
+        card.classList.add("collapsed");
+      }
+
+      rebuildOutput();
+      saveStore();
     };
-
-    card.querySelectorAll(".btn").forEach((b) => {
-      b.onclick = () => {
-        const d = Number(b.dataset.d);
-        s.qty = Math.max(0, (s.qty || 0) + d);
-        vc.textContent = s.qty;
-        rebuildOutput();
-        saveStore();
-      };
-    });
-
-    itemState.set(name, s);
-    secItem.appendChild(card);
-    return s;
-  }
-
-  /* ===== Modal minimal (今は閉じるだけ動けばOK) ===== */
-  function showModal() {
-    modalBack.classList.add("show");
-    document.body.classList.add("modalOpen");
-  }
-  function hideModal() {
-    modalBack.classList.remove("show");
-    document.body.classList.remove("modalOpen");
-    modalBody.innerHTML = "";
-    modalNote.textContent = "";
-  }
-  modalCancel.onclick = hideModal;
-  modalX.onclick = hideModal;
-  modalBack.addEventListener("click", (e) => {
-    if (e.target === modalBack) hideModal();
   });
 
-  // 仮：ボタン反応確認（ここが反応しないなら JS が死んでる）
-  addBtn.onclick = () => {
-    modalTitle.textContent = "動作確認";
-    modalOk.textContent = "閉じる";
-    modalBody.innerHTML = `<div class="smallNote">JS は動作しています。次は追加UIを載せます。</div>`;
-    modalNote.textContent = "";
-    modalOk.onclick = hideModal;
-    showModal();
-  };
-  manageBtn.onclick = addBtn.onclick;
+  itemState.set(name, s);
+  secItem.appendChild(card);
+  return s;
+}
 
-  /* ===== Load files ===== */
-  async function loadAll() {
-    // ここに来てる時点で JS は生きてる
-    outEl.value = "読み込み中…";
+/* ======================
+   Modal helpers (scroll lock)
+====================== */
+function showModal(){
+  modalBack.classList.add("show");
+  document.body.classList.add("modalOpen");
+}
+function hideModal(){
+  modalBack.classList.remove("show");
+  document.body.classList.remove("modalOpen");
+  modalBody.innerHTML = "";
+  modalNote.textContent = "";
+}
+modalCancel.onclick = hideModal;
+modalX.onclick = hideModal;
+modalBack.addEventListener("click", (e)=>{
+  if(e.target === modalBack) hideModal();
+});
 
-    const [dinoText, itemText] = await Promise.all([
-      fetch("./dinos.txt?ts=" + Date.now()).then((r) => (r.ok ? r.text() : "")),
-      fetch("./items.txt?ts=" + Date.now()).then((r) => (r.ok ? r.text() : "")),
-    ]);
+/* ======================
+   Add / Manage
+====================== */
+addBtn.onclick = ()=>{
+  if(activeTab==="dino") openAddDino();
+  else openAddItem();
+};
+manageBtn.onclick = ()=> openManage();
 
-    const baseDinos = dinoText.split(/\r?\n/).map(parseDinoLine).filter(Boolean);
-    const baseItems = itemText.split(/\r?\n/).map(parseItemLine).filter(Boolean);
+function openAddDino(){
+  modalTitle.textContent = "恐竜を追加";
+  modalOk.textContent = "追加";
+  modalNote.textContent = "※追加はこの端末に保存されます（リロードしても残ります）";
 
-    const mergedDinos = mergeDinos(baseDinos);
-    const mergedItems = mergeItems(baseItems);
+  modalBody.innerHTML = `
+    <div class="form">
+      <div class="field">
+        <label>名前</label>
+        <input id="newName" placeholder="例：カルカロ" />
+      </div>
+      <div class="field">
+        <label>デフォルト</label>
+        <select id="newType">
+          ${Object.keys(prices).map(t=>`<option value="${t}">${t}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+  `;
 
-    secDino.innerHTML = "";
-    secItem.innerHTML = "";
-    dinos.length = 0;
-    items.length = 0;
-    dinoState.clear();
-    itemState.clear();
+  showModal();
 
-    mergedDinos.forEach(({ name, defType }) => {
+  modalOk.onclick = ()=>{
+    const name = (document.getElementById("newName").value || "").trim();
+    const defType = document.getElementById("newType").value;
+    if(!name) return;
+
+    // delete解除
+    store.dinosDeleted = (store.dinosDeleted||[]).filter(n=>n!==name);
+
+    const added = store.dinosAdded || [];
+    const i = added.findIndex(r=>r && r.name===name);
+    const rec = { name, defType };
+    if(i >= 0) added[i] = rec;
+    else added.push(rec);
+    store.dinosAdded = added;
+
+    saveStore();
+
+    if(!dinos.includes(name)){
       dinos.push(name);
-      makeDinoCard(name, defType);
-    });
-    mergedItems.forEach(({ name, unitCount, unitPrice }) => {
+      makeDinoCard(name, (defType in prices) ? defType : "受精卵");
+      applyFilter();
+      rebuildOutput();
+    }
+
+    hideModal();
+  };
+}
+
+function openAddItem(){
+  modalTitle.textContent = "アイテムを追加";
+  modalOk.textContent = "追加";
+  modalNote.textContent = "形式：個数単位（例：100） / 値段（例：100）";
+
+  modalBody.innerHTML = `
+    <div class="form">
+      <div class="field">
+        <label>商品名</label>
+        <input id="newItemName" placeholder="例：TEK天井" />
+      </div>
+      <div class="field">
+        <label>個数単位</label>
+        <input id="newUnitCount" inputmode="numeric" placeholder="例：100" />
+      </div>
+      <div class="field">
+        <label>値段</label>
+        <input id="newUnitPrice" inputmode="numeric" placeholder="例：100" />
+      </div>
+    </div>
+  `;
+
+  showModal();
+
+  modalOk.onclick = ()=>{
+    const name = (document.getElementById("newItemName").value || "").trim();
+    const unitCount = Number((document.getElementById("newUnitCount").value || "").trim());
+    const unitPrice = Number((document.getElementById("newUnitPrice").value || "").trim());
+
+    if(!name) return;
+    if(!Number.isFinite(unitCount) || unitCount<=0) return;
+    if(!Number.isFinite(unitPrice) || unitPrice<0) return;
+
+    store.itemsDeleted = (store.itemsDeleted||[]).filter(n=>n!==name);
+
+    const added = store.itemsAdded || [];
+    const i = added.findIndex(r=>r && r.name===name);
+    const rec = { name, unitCount, unitPrice };
+    if(i >= 0) added[i] = rec;
+    else added.push(rec);
+    store.itemsAdded = added;
+
+    saveStore();
+
+    if(!items.includes(name)){
       items.push(name);
       makeItemCard(name, unitCount, unitPrice);
-    });
-
-    applyFilter();
-    rebuildOutput();
-
-    if (dinos.length === 0 && items.length === 0) {
-      outEl.value =
-`【データが0件】
-dinos.txt / items.txt が読み込めていない可能性があります。
-
-確認:
-- dinos.txt / items.txt が index.html と同じ階層
-- GitHub Pages に反映されている
-- ファイル名の大小文字一致`;
+      applyFilter();
+      rebuildOutput();
     }
-  }
 
-  // 起動
-  try {
-    loadAll();
-  } catch (e) {
-    outEl.value = "【起動エラー】" + (e && e.message ? e.message : String(e));
+    hideModal();
+  };
+}
+
+function openManage(){
+  modalTitle.textContent = "管理";
+  modalOk.textContent = "閉じる";
+  modalNote.textContent = "削除はこの端末での表示/保存から外します（後で再追加できます）";
+
+  const list = (activeTab==="dino") ? dinos : items;
+
+  const rows = list.map(name=>{
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border:1px solid rgba(255,255,255,.10);border-radius:14px;background:rgba(0,0,0,.18);">
+        <div style="font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</div>
+        <button class="delOne danger" data-name="${name}" style="height:34px;padding:0 12px;border-radius:12px;" type="button">削除</button>
+      </div>
+    `;
+  }).join("");
+
+  modalBody.innerHTML = `<div class="form" style="gap:10px;">${rows || `<div class="smallNote">一覧がありません</div>`}</div>`;
+
+  modalBody.querySelectorAll(".delOne").forEach(btn=>{
+    btn.onclick = ()=>{
+      const name = btn.dataset.name;
+      if(activeTab==="dino") deleteDino(name);
+      else deleteItem(name);
+      openManage();
+    };
+  });
+
+  showModal();
+  modalOk.onclick = hideModal;
+}
+
+function deleteDino(name){
+  const s = dinoState.get(name);
+  if(s && s.card) s.card.remove();
+  dinoState.delete(name);
+
+  store.dinosAdded = (store.dinosAdded||[]).filter(r=>r && r.name!==name);
+  if(!(store.dinosDeleted||[]).includes(name)){
+    store.dinosDeleted = [...(store.dinosDeleted||[]), name];
   }
-})();
+  saveStore();
+
+  const i = dinos.indexOf(name);
+  if(i>=0) dinos.splice(i,1);
+
+  rebuildOutput();
+  applyFilter();
+}
+
+function deleteItem(name){
+  const s = itemState.get(name);
+  if(s && s.card) s.card.remove();
+  itemState.delete(name);
+
+  store.itemsAdded = (store.itemsAdded||[]).filter(r=>r && r.name!==name);
+  if(!(store.itemsDeleted||[]).includes(name)){
+    store.itemsDeleted = [...(store.itemsDeleted||[]), name];
+  }
+  saveStore();
+
+  const i = items.indexOf(name);
+  if(i>=0) items.splice(i,1);
+
+  rebuildOutput();
+  applyFilter();
+}
+
+/* ======================
+   Load base files + build
+====================== */
+async function loadAll(){
+  const [dinoText, itemText] = await Promise.all([
+    fetch("./dinos.txt?ts="+Date.now()).then(r=>r.ok ? r.text() : ""),
+    fetch("./items.txt?ts="+Date.now()).then(r=>r.ok ? r.text() : "")
+  ]);
+
+  const baseDinos = dinoText.split(/\r?\n/).map(parseDinoLine).filter(Boolean);
+  const baseItems = itemText.split(/\r?\n/).map(parseItemLine).filter(Boolean);
+
+  const mergedDinos = mergeDinos(baseDinos);
+  const mergedItems = mergeItems(baseItems);
+
+  mergedDinos.forEach(({name, defType})=>{
+    dinos.push(name);
+    makeDinoCard(name, defType);
+  });
+
+  mergedItems.forEach(({name, unitCount, unitPrice})=>{
+    items.push(name);
+    makeItemCard(name, unitCount, unitPrice);
+  });
+
+  applyFilter();
+  rebuildOutput();
+}
+
+loadAll();
