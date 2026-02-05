@@ -46,7 +46,7 @@ function displayType(t){
 }
 
 /* ======================
-   Storage (A)
+   Storage
 ====================== */
 const LS_KEY = "dinoList_v1_storage";
 
@@ -91,16 +91,13 @@ const tabItem = document.getElementById("tabItem");
 const secDino = document.getElementById("secDino");
 const secItem = document.getElementById("secItem");
 
-const addBtn = document.getElementById("add");
 const manageBtn = document.getElementById("manage");
 
 const modalBack = document.getElementById("modalBack");
 const modalTitle = document.getElementById("modalTitle");
 const modalBody = document.getElementById("modalBody");
 const modalOk = document.getElementById("modalOk");
-const modalCancel = document.getElementById("modalCancel");
 const modalNote = document.getElementById("modalNote");
-const modalX = document.getElementById("modalX");
 
 /* ======================
    Models
@@ -138,7 +135,6 @@ function parseItemLine(line){
   if(!line) return null;
   if(line.startsWith("#")) return null;
 
-  // 商品名 | 個数単位 | 値段
   const parts = line.split("|").map(s=>s.trim());
   if(parts.length < 3) return null;
 
@@ -270,17 +266,32 @@ copyBtn.onclick = ()=>{
 };
 
 /* ======================
+   Modal helpers (scroll lock)
+====================== */
+function showModal(){
+  modalBack.classList.add("show");
+  document.body.classList.add("modalOpen");
+}
+function hideModal(){
+  modalBack.classList.remove("show");
+  document.body.classList.remove("modalOpen");
+  modalBody.innerHTML = "";
+  modalNote.textContent = "";
+  // modalOk の onclick は都度上書きするので念のため解除
+  modalOk.onclick = null;
+}
+modalOk.onclick = hideModal;
+modalBack.addEventListener("click", (e)=>{
+  if(e.target === modalBack) hideModal();
+});
+
+/* ======================
    Auto (指定)
-   - ♀グレーアウト無し（常に入力可）
-   - ♂>0 && ♀>0 なら「受精卵/胚/クローン」は自動で(指定)へ
-   - 自動で(指定)になった後、♂♀が両方0なら自動解除
 ====================== */
 function applyAutoSpecified(s){
   const both = (s.m > 0 && s.f > 0);
   const allZero = (s.m === 0 && s.f === 0);
 
-  // 手動でタイプを変えた後も「両方入力されたら自動指定」は働かせる
-  // ただし、解除は “自動で指定にした場合のみ”
   const isSpecified = s.type.endsWith("(指定)");
   const base = isSpecified ? (BASE_FOR_SPEC[s.type] || s.type) : s.type;
 
@@ -331,7 +342,6 @@ function rebuildOutput(){
       if(s.f>0) parts.push(`♀×${s.f}`);
       line = `${name}${t} ${parts.join(" ")} = ${yen(price)}`.replace(/\s+ =/," =");
     }else{
-      // 受精卵/胚/クローンの “非指定” は合算表記
       line = `${name}${t}×${qty} = ${yen(price)}`;
     }
 
@@ -431,7 +441,6 @@ function makeDinoCard(name, defType){
   sel.value = s.type;
   unit.textContent = `単価${prices[s.type]}円`;
 
-  // ヘッダーだけで開閉（ボタン操作を巻き込まない）
   header.onclick = (e)=>{
     if(e.target && (e.target.tagName === "SELECT" || e.target.closest("select"))) return;
     s.open = !s.open;
@@ -441,17 +450,15 @@ function makeDinoCard(name, defType){
   sel.onchange = ()=>{
     s.type = sel.value;
     s.userChangedType = true;
-    s.autoSpecified = false; // 手動変更したら「自動指定状態」は解除扱い
+    s.autoSpecified = false;
     unit.textContent = `単価${prices[s.type]}円`;
 
-    // 開いてるなら閉じない（デグレ防止）
     if(s.open) card.classList.remove("collapsed");
 
     rebuildOutput();
     saveStore();
   };
 
-  // +/- ボタン
   card.querySelectorAll(".btn").forEach(b=>{
     b.onclick = ()=>{
       const sex = b.dataset.sex;
@@ -461,13 +468,11 @@ function makeDinoCard(name, defType){
 
       applyAutoSpecified(s);
 
-      // UI反映
       sel.value = s.type;
       unit.textContent = `単価${prices[s.type]}円`;
       mc.textContent = s.m;
       fc.textContent = s.f;
 
-      // 0なら閉じる（自動畳み）
       if((s.m+s.f) === 0){
         s.open = false;
         card.classList.add("collapsed");
@@ -549,32 +554,65 @@ function makeItemCard(name, unitCount, unitPrice){
 }
 
 /* ======================
-   Modal helpers (scroll lock)
+   Add / Manage (ADD is inside Manage)
 ====================== */
-function showModal(){
-  modalBack.classList.add("show");
-  document.body.classList.add("modalOpen");
-}
-function hideModal(){
-  modalBack.classList.remove("show");
-  document.body.classList.remove("modalOpen");
-  modalBody.innerHTML = "";
-  modalNote.textContent = "";
-}
-modalCancel.onclick = hideModal;
-modalX.onclick = hideModal;
-modalBack.addEventListener("click", (e)=>{
-  if(e.target === modalBack) hideModal();
-});
-
-/* ======================
-   Add / Manage
-====================== */
-addBtn.onclick = ()=>{
-  if(activeTab==="dino") openAddDino();
-  else openAddItem();
-};
 manageBtn.onclick = ()=> openManage();
+
+function openManage(){
+  modalTitle.textContent = "管理";
+  modalOk.textContent = "閉じる";
+
+  // 追加ボタンを管理画面内へ
+  const addLabel = (activeTab==="dino") ? "＋恐竜を追加" : "＋アイテムを追加";
+
+  const list = (activeTab==="dino") ? dinos : items;
+
+  const rows = list.map(name=>{
+    return `
+      <div class="mRow">
+        <div class="mName">${name}</div>
+        <div class="mBtns">
+          <button class="delBtn" data-name="${name}" type="button">削除</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  modalBody.innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:10px;">
+      <button id="mAdd" class="addBtn" type="button" style="flex:1;">${addLabel}</button>
+    </div>
+    <div class="form" style="gap:10px;">
+      ${rows || `<div class="smallNote">一覧がありません</div>`}
+    </div>
+  `;
+
+  modalNote.textContent = "削除はこの端末での表示/保存から外します（後で再追加できます）";
+
+  // 削除は確認
+  modalBody.querySelectorAll(".delBtn").forEach(btn=>{
+    btn.onclick = ()=>{
+      const name = btn.dataset.name;
+      if(!confirm(`「${name}」を削除しますか？`)) return;
+
+      if(activeTab==="dino") deleteDino(name);
+      else deleteItem(name);
+
+      // 再描画
+      openManage();
+    };
+  });
+
+  // 追加
+  const addBtnIn = document.getElementById("mAdd");
+  addBtnIn.onclick = ()=>{
+    if(activeTab==="dino") openAddDino();
+    else openAddItem();
+  };
+
+  showModal();
+  modalOk.onclick = hideModal;
+}
 
 function openAddDino(){
   modalTitle.textContent = "恐竜を追加";
@@ -603,7 +641,6 @@ function openAddDino(){
     const defType = document.getElementById("newType").value;
     if(!name) return;
 
-    // delete解除
     store.dinosDeleted = (store.dinosDeleted||[]).filter(n=>n!==name);
 
     const added = store.dinosAdded || [];
@@ -623,13 +660,15 @@ function openAddDino(){
     }
 
     hideModal();
+    // 追加後は管理に戻す
+    openManage();
   };
 }
 
 function openAddItem(){
   modalTitle.textContent = "アイテムを追加";
   modalOk.textContent = "追加";
-  modalNote.textContent = "形式：個数単位（例：100） / 値段（例：100）";
+  modalNote.textContent = "形式：商品名 | 個数単位 | 値段（例：TEK天井 / 100 / 100）";
 
   modalBody.innerHTML = `
     <div class="form">
@@ -678,38 +717,8 @@ function openAddItem(){
     }
 
     hideModal();
+    openManage();
   };
-}
-
-function openManage(){
-  modalTitle.textContent = "管理";
-  modalOk.textContent = "閉じる";
-  modalNote.textContent = "削除はこの端末での表示/保存から外します（後で再追加できます）";
-
-  const list = (activeTab==="dino") ? dinos : items;
-
-  const rows = list.map(name=>{
-    return `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border:1px solid rgba(255,255,255,.10);border-radius:14px;background:rgba(0,0,0,.18);">
-        <div style="font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</div>
-        <button class="delOne danger" data-name="${name}" style="height:34px;padding:0 12px;border-radius:12px;" type="button">削除</button>
-      </div>
-    `;
-  }).join("");
-
-  modalBody.innerHTML = `<div class="form" style="gap:10px;">${rows || `<div class="smallNote">一覧がありません</div>`}</div>`;
-
-  modalBody.querySelectorAll(".delOne").forEach(btn=>{
-    btn.onclick = ()=>{
-      const name = btn.dataset.name;
-      if(activeTab==="dino") deleteDino(name);
-      else deleteItem(name);
-      openManage();
-    };
-  });
-
-  showModal();
-  modalOk.onclick = hideModal;
 }
 
 function deleteDino(name){
