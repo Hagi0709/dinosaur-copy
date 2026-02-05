@@ -236,4 +236,593 @@ function autoCollapseIfEmptyDino(s){
   const q = norm(qEl.value);
   const qty = (s.m||0) + (s.f||0);
   if(q) return;
-  if(qty === 0 && !s
+  if(qty === 0 && !s.open){
+    s.card.classList.add("collapsed");
+  }
+}
+function autoCollapseIfEmptyItem(s){
+  const q = norm(qEl.value);
+  if(q) return;
+  if((s.qty||0) === 0 && !s.open){
+    s.card.classList.add("collapsed");
+  }
+}
+
+/* ======================
+   Auto (指定) logic for dinos
+====================== */
+function updateAutoSpecified(s){
+  const both = (s.m>0 && s.f>0);
+  const allZero = (s.m===0 && s.f===0);
+
+  const isSpecified = s.type.endsWith("(指定)");
+  const base = baseFromSpecified[s.type];
+
+  if(both){
+    if(hasSpecified[s.type]){
+      s.type = hasSpecified[s.type];
+      s.autoSpecified = true;
+    }else if(!isSpecified && base && hasSpecified[base]){
+      s.type = hasSpecified[base];
+      s.autoSpecified = true;
+    }
+  }else if(allZero){
+    if(s.autoSpecified && isSpecified && base){
+      s.type = base;
+      s.autoSpecified = false;
+    }
+  }
+}
+
+/* ======================
+   Output builder (shared)
+====================== */
+function rebuildOutput(){
+  let lines = [];
+  let sum = 0;
+  let idx = 1;
+
+  // dinos first
+  for(const name of dinos){
+    const s = dinoState.get(name);
+    const qty = (s.m||0) + (s.f||0);
+    if(qty === 0) continue;
+
+    const price = (prices[s.type]||0) * qty;
+    sum += price;
+
+    const t = displayType(s.type);
+    let line = "";
+
+    if(pairTypes.has(s.type) && s.m === s.f && s.m > 0){
+      line = `${name}${t}ペア${s.m>1 ? "×"+s.m : ""} = ${yen(price)}`;
+    }else if(pairTypes.has(s.type)){
+      const parts = [];
+      if(s.m>0) parts.push(`♂×${s.m}`);
+      if(s.f>0) parts.push(`♀×${s.f}`);
+      line = `${name}${t} ${parts.join(" ")} = ${yen(price)}`.replace(/\s+ =/," =");
+    }else{
+      line = `${name}${t}×${qty} = ${yen(price)}`;
+    }
+
+    lines.push(`${idx}. ${line}`);
+    idx++;
+  }
+
+  // items next
+  for(const name of items){
+    const s = itemState.get(name);
+    const q = s.qty||0;
+    if(q === 0) continue;
+
+    const totalCount = q * s.unitCount;
+    const price = q * s.unitPrice;
+    sum += price;
+
+    const line = `${name} × ${totalCount} = ${yen(price)}`;
+    lines.push(`${idx}. ${line}`);
+    idx++;
+  }
+
+  totalEl.textContent = yen(sum);
+
+  outEl.value =
+`この度はご検討いただきありがとうございます！
+ご希望内容は以下となります👇🏻
+
+${lines.join("\n")}
+ーーーーーーーーーーーーーーー
+計：${yen(sum)}
+最短納品目安 : ${deliveryEl.value}
+
+ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻
+
+また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
+}
+
+/* ======================
+   Card builders
+====================== */
+function makeDinoCard(name, defType){
+  const s = {
+    name,
+    defType,
+    type: defType,
+    m:0,
+    f:0,
+    open:false,
+    autoSpecified:false,
+    normName: norm(name),
+    card:null
+  };
+
+  const card = document.createElement("div");
+  s.card = card;
+  card.className = "card collapsed";
+
+  card.innerHTML = `
+    <div class="cardHeader">
+      <div class="name">${name}</div>
+      <div class="right">
+        <select class="type">
+          ${Object.keys(prices).map(t=>`<option value="${t}">${t}</option>`).join("")}
+        </select>
+        <div class="unit">単価${prices[defType]}円</div>
+      </div>
+    </div>
+
+    <div class="cardBody">
+      <div class="stepRow">
+        <div class="box m">
+          <div class="stepper">
+            <button class="btn" data-sex="m" data-d="-1">−</button>
+            <div class="val mc">0</div>
+            <button class="btn" data-sex="m" data-d="1">＋</button>
+          </div>
+        </div>
+        <div class="box f">
+          <div class="stepper">
+            <button class="btn" data-sex="f" data-d="-1">−</button>
+            <div class="val fc">0</div>
+            <button class="btn" data-sex="f" data-d="1">＋</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const header = card.querySelector(".cardHeader");
+  const sel = card.querySelector("select.type");
+  const unit = card.querySelector(".unit");
+  const mc = card.querySelector(".mc");
+  const fc = card.querySelector(".fc");
+
+  sel.value = s.type;
+  unit.textContent = `単価${prices[s.type]}円`;
+
+  // header toggle
+  header.onclick = (e)=>{
+    if(e.target && (e.target.tagName === "SELECT" || e.target.closest("select"))) return;
+    s.open = !s.open;
+    card.classList.toggle("collapsed", !s.open);
+  };
+
+  // type change should not close
+  sel.onchange = ()=>{
+    s.type = sel.value;
+    unit.textContent = `単価${prices[s.type]}円`;
+
+    if(s.open){
+      card.classList.remove("collapsed");
+    }
+
+    // if auto specified triggers
+    updateAutoSpecified(s);
+    sel.value = s.type;
+    unit.textContent = `単価${prices[s.type]}円`;
+
+    rebuildOutput();
+    saveStore();
+  };
+
+  // buttons
+  card.querySelectorAll(".btn").forEach(b=>{
+    b.onclick = ()=>{
+      const sex = b.dataset.sex;
+      const d = Number(b.dataset.d);
+      s[sex] = Math.max(0, (s[sex]||0) + d);
+
+      updateAutoSpecified(s);
+
+      sel.value = s.type;
+      unit.textContent = `単価${prices[s.type]}円`;
+      mc.textContent = s.m;
+      fc.textContent = s.f;
+
+      if(!s.open){
+        card.classList.add("collapsed");
+      }
+
+      rebuildOutput();
+      saveStore();
+      autoCollapseIfEmptyDino(s);
+    };
+  });
+
+  dinoState.set(name, s);
+  secDino.appendChild(card);
+  return s;
+}
+
+function makeItemCard(name, unitCount, unitPrice){
+  const s = {
+    name,
+    unitCount,
+    unitPrice,
+    qty:0,
+    open:false,
+    normName: norm(name),
+    card:null
+  };
+
+  const card = document.createElement("div");
+  s.card = card;
+  card.className = "card collapsed";
+
+  card.innerHTML = `
+    <div class="cardHeader">
+      <div class="name">${name}</div>
+      <div class="right">
+        <div class="unit">単位${unitCount} / 単価${unitPrice}円</div>
+      </div>
+    </div>
+
+    <div class="cardBody">
+      <div class="stepRow">
+        <div class="box item">
+          <div class="stepper">
+            <button class="btn" data-d="-1">−</button>
+            <div class="val vc">0</div>
+            <button class="btn" data-d="1">＋</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const header = card.querySelector(".cardHeader");
+  const vc = card.querySelector(".vc");
+
+  header.onclick = ()=>{
+    s.open = !s.open;
+    card.classList.toggle("collapsed", !s.open);
+  };
+
+  card.querySelectorAll(".btn").forEach(b=>{
+    b.onclick = ()=>{
+      const d = Number(b.dataset.d);
+      s.qty = Math.max(0, (s.qty||0) + d);
+      vc.textContent = s.qty;
+
+      if(!s.open){
+        card.classList.add("collapsed");
+      }
+
+      rebuildOutput();
+      saveStore();
+      autoCollapseIfEmptyItem(s);
+    };
+  });
+
+  itemState.set(name, s);
+  secItem.appendChild(card);
+  return s;
+}
+
+/* ======================
+   Merge base + user changes
+====================== */
+function mergeDinos(base){
+  const deleted = new Set(store.dinosDeleted || []);
+  const added = store.dinosAdded || [];
+
+  const map = new Map();
+  for(const rec of base){
+    if(deleted.has(rec.name)) continue;
+    map.set(rec.name, rec);
+  }
+  for(const rec of added){
+    if(!rec || !rec.name) continue;
+    if(deleted.has(rec.name)) continue;
+    const defType = (rec.defType && (rec.defType in prices)) ? rec.defType : "受精卵";
+    map.set(rec.name, { name: rec.name, defType });
+  }
+  return Array.from(map.values());
+}
+
+function mergeItems(base){
+  const deleted = new Set(store.itemsDeleted || []);
+  const added = store.itemsAdded || [];
+
+  const map = new Map();
+  for(const rec of base){
+    if(deleted.has(rec.name)) continue;
+    map.set(rec.name, rec);
+  }
+  for(const rec of added){
+    if(!rec || !rec.name) continue;
+    if(deleted.has(rec.name)) continue;
+
+    const unitCount = Number(rec.unitCount);
+    const unitPrice = Number(rec.unitPrice);
+    if(!Number.isFinite(unitCount) || unitCount<=0) continue;
+    if(!Number.isFinite(unitPrice) || unitPrice<0) continue;
+
+    map.set(rec.name, { name: rec.name, unitCount, unitPrice });
+  }
+  return Array.from(map.values());
+}
+
+/* ======================
+   Modal helpers (scroll lock)
+====================== */
+let modalMode = null;
+function showModal(mode){
+  modalMode = mode;
+  modalBack.classList.add("show");
+  document.body.classList.add("modalOpen");
+}
+function hideModal(){
+  modalBack.classList.remove("show");
+  document.body.classList.remove("modalOpen");
+  modalBody.innerHTML = "";
+  modalNote.textContent = "";
+  modalMode = null;
+}
+modalCancel.onclick = hideModal;
+modalX.onclick = hideModal;
+modalBack.addEventListener("click", (e)=>{
+  if(e.target === modalBack) hideModal();
+});
+
+/* ======================
+   Add / Manage UI
+====================== */
+addBtn.onclick = ()=>{
+  if(activeTab === "dino") openAddDino();
+  else openAddItem();
+};
+manageBtn.onclick = ()=> openManage();
+
+function openAddDino(){
+  modalTitle.textContent = "恐竜を追加";
+  modalOk.textContent = "追加";
+  modalNote.textContent = "※追加はこの端末に保存されます（リロードしても残ります）";
+
+  modalBody.innerHTML = `
+    <div class="form">
+      <div class="field">
+        <label>名前</label>
+        <input id="newName" placeholder="例：カルカロ" />
+      </div>
+      <div class="field">
+        <label>デフォルト</label>
+        <select id="newType">
+          ${Object.keys(prices).map(t=>`<option value="${t}">${t}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+  `;
+
+  showModal("addDino");
+
+  modalOk.onclick = ()=>{
+    const name = (document.getElementById("newName").value || "").trim();
+    const defType = document.getElementById("newType").value;
+    if(!name) return;
+
+    const exists = dinos.includes(name);
+
+    store.dinosDeleted = (store.dinosDeleted||[]).filter(n=>n!==name);
+
+    const added = store.dinosAdded || [];
+    const i = added.findIndex(r=>r && r.name===name);
+    const rec = { name, defType };
+    if(i >= 0) added[i] = rec;
+    else added.push(rec);
+    store.dinosAdded = added;
+
+    saveStore();
+
+    if(!exists){
+      dinos.push(name);
+      makeDinoCard(name, (defType in prices) ? defType : "受精卵");
+      applyFilter();
+    }else{
+      const s = dinoState.get(name);
+      if(s){
+        s.defType = (defType in prices) ? defType : "受精卵";
+        if((s.m+s.f)===0){
+          s.type = s.defType;
+          s.autoSpecified = false;
+          const sel = s.card.querySelector("select.type");
+          const unit = s.card.querySelector(".unit");
+          sel.value = s.type;
+          unit.textContent = `単価${prices[s.type]}円`;
+        }
+      }
+      applyFilter();
+      rebuildOutput();
+    }
+
+    hideModal();
+  };
+}
+
+function openAddItem(){
+  modalTitle.textContent = "アイテムを追加";
+  modalOk.textContent = "追加";
+  modalNote.textContent = "形式：個数単位（例：100） / 値段（例：100）";
+
+  modalBody.innerHTML = `
+    <div class="form">
+      <div class="field">
+        <label>商品名</label>
+        <input id="newItemName" placeholder="例：TEK天井" />
+      </div>
+      <div class="field">
+        <label>個数単位</label>
+        <input id="newUnitCount" inputmode="numeric" placeholder="例：100" />
+      </div>
+      <div class="field">
+        <label>値段</label>
+        <input id="newUnitPrice" inputmode="numeric" placeholder="例：100" />
+      </div>
+    </div>
+  `;
+
+  showModal("addItem");
+
+  modalOk.onclick = ()=>{
+    const name = (document.getElementById("newItemName").value || "").trim();
+    const unitCount = Number((document.getElementById("newUnitCount").value || "").trim());
+    const unitPrice = Number((document.getElementById("newUnitPrice").value || "").trim());
+
+    if(!name) return;
+    if(!Number.isFinite(unitCount) || unitCount<=0) return;
+    if(!Number.isFinite(unitPrice) || unitPrice<0) return;
+
+    const exists = items.includes(name);
+
+    store.itemsDeleted = (store.itemsDeleted||[]).filter(n=>n!==name);
+
+    const added = store.itemsAdded || [];
+    const i = added.findIndex(r=>r && r.name===name);
+    const rec = { name, unitCount, unitPrice };
+    if(i >= 0) added[i] = rec;
+    else added.push(rec);
+    store.itemsAdded = added;
+
+    saveStore();
+
+    if(!exists){
+      items.push(name);
+      makeItemCard(name, unitCount, unitPrice);
+      applyFilter();
+    }else{
+      const s = itemState.get(name);
+      if(s && s.qty===0){
+        s.unitCount = unitCount;
+        s.unitPrice = unitPrice;
+        s.card.querySelector(".unit").textContent = `単位${unitCount} / 単価${unitPrice}円`;
+      }
+      applyFilter();
+      rebuildOutput();
+    }
+
+    hideModal();
+  };
+}
+
+function openManage(){
+  modalTitle.textContent = "管理";
+  modalOk.textContent = "閉じる";
+  modalNote.textContent = "削除はこの端末での表示/保存から外します（後で再追加できます）";
+
+  const list = activeTab==="dino" ? dinos : items;
+
+  const rows = list.map(name=>{
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border:1px solid rgba(255,255,255,.10);border-radius:14px;background:rgba(0,0,0,.18);">
+        <div style="font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</div>
+        <button class="delOne danger" data-name="${name}" style="height:34px;padding:0 12px;border-radius:12px;">削除</button>
+      </div>
+    `;
+  }).join("");
+
+  modalBody.innerHTML = `
+    <div class="form" style="gap:10px;">
+      ${rows || `<div class="smallNote">一覧がありません</div>`}
+    </div>
+  `;
+
+  modalBody.querySelectorAll(".delOne").forEach(btn=>{
+    btn.onclick = ()=>{
+      const name = btn.dataset.name;
+      if(activeTab==="dino") deleteDino(name);
+      else deleteItem(name);
+      openManage();
+    };
+  });
+
+  showModal("manage");
+  modalOk.onclick = hideModal;
+}
+
+function deleteDino(name){
+  const s = dinoState.get(name);
+  if(s && s.card) s.card.remove();
+  dinoState.delete(name);
+
+  store.dinosAdded = (store.dinosAdded||[]).filter(r=>r && r.name!==name);
+  if(!(store.dinosDeleted||[]).includes(name)){
+    store.dinosDeleted = [...(store.dinosDeleted||[]), name];
+  }
+  saveStore();
+
+  const i = dinos.indexOf(name);
+  if(i>=0) dinos.splice(i,1);
+
+  rebuildOutput();
+  applyFilter();
+}
+
+function deleteItem(name){
+  const s = itemState.get(name);
+  if(s && s.card) s.card.remove();
+  itemState.delete(name);
+
+  store.itemsAdded = (store.itemsAdded||[]).filter(r=>r && r.name!==name);
+  if(!(store.itemsDeleted||[]).includes(name)){
+    store.itemsDeleted = [...(store.itemsDeleted||[]), name];
+  }
+  saveStore();
+
+  const i = items.indexOf(name);
+  if(i>=0) items.splice(i,1);
+
+  rebuildOutput();
+  applyFilter();
+}
+
+/* ======================
+   Load base files + build
+====================== */
+async function loadAll(){
+  const [dinoText, itemText] = await Promise.all([
+    fetch("dinos.txt?ts="+Date.now()).then(r=>r.ok ? r.text() : ""),
+    fetch("items.txt?ts="+Date.now()).then(r=>r.ok ? r.text() : "")
+  ]);
+
+  const baseDinos = dinoText.split(/\r?\n/).map(parseDinoLine).filter(Boolean);
+  const baseItems = itemText.split(/\r?\n/).map(parseItemLine).filter(Boolean);
+
+  const mergedDinos = mergeDinos(baseDinos);
+  const mergedItems = mergeItems(baseItems);
+
+  mergedDinos.forEach(({name, defType})=>{
+    dinos.push(name);
+    makeDinoCard(name, defType);
+  });
+
+  mergedItems.forEach(({name, unitCount, unitPrice})=>{
+    items.push(name);
+    makeItemCard(name, unitCount, unitPrice);
+  });
+
+  applyFilter();
+  rebuildOutput();
+}
+
+// init
+loadAll();
