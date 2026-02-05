@@ -10,9 +10,12 @@
              user-scalable=no,
              viewport-fit=cover"
   />
+
   <title>恐竜リスト</title>
 
+  <!-- iPhone ホーム画面アイコン（同階層の画像を使用） -->
   <link rel="apple-touch-icon" href="./56379E4F-8771-431A-B2A6-4B3EE3136504.png" />
+
   <link rel="stylesheet" href="./style.css?v=1" />
 </head>
 
@@ -21,7 +24,7 @@
     <div class="row">
       <div class="search">
         <input id="q" placeholder="検索" />
-        <button id="qClear" class="qClear" aria-label="clear">×</button>
+        <button id="qClear" class="qClear" aria-label="clear" type="button">×</button>
       </div>
 
       <select id="delivery" class="delivery">
@@ -29,20 +32,20 @@
         <option value="本日夜">本日夜</option>
       </select>
 
-      <button id="copy" class="copy">コピー</button>
+      <button id="copy" class="copy" type="button">コピー</button>
       <div id="total" class="total">0円</div>
     </div>
 
     <textarea id="out" readonly></textarea>
 
     <div class="row row2">
-      <button id="add" class="addBtn">＋追加</button>
-      <button id="manage" class="manageBtn">管理</button>
+      <button id="add" class="addBtn" type="button">＋追加</button>
+      <button id="manage" class="manageBtn" type="button">管理</button>
     </div>
 
     <div class="tabs">
-      <button id="tabDino" class="tab active">恐竜</button>
-      <button id="tabItem" class="tab">アイテム</button>
+      <button id="tabDino" class="tab active" type="button">恐竜</button>
+      <button id="tabItem" class="tab" type="button">アイテム</button>
     </div>
   </div>
 
@@ -56,41 +59,21 @@
     <div class="modal">
       <div class="modalTopRow">
         <h3 id="modalTitle">追加</h3>
-        <button id="modalX" class="modalX" aria-label="close">×</button>
+        <button id="modalX" class="modalX" aria-label="close" type="button">×</button>
       </div>
 
       <div id="modalBody"></div>
 
       <div class="modalBtns">
-        <button id="modalCancel">閉じる</button>
-        <button id="modalOk">追加</button>
+        <button id="modalCancel" type="button">閉じる</button>
+        <button id="modalOk" type="button">追加</button>
       </div>
 
       <div id="modalNote" class="smallNote"></div>
     </div>
   </div>
 
-  <!-- app.js 読み込み（失敗したら out に表示） -->
-  <script>
-    (function(){
-      const out = document.getElementById("out");
-      function show(msg){
-        out.value =
-`【読み込みエラー】
-${msg}
-
-チェック:
-1) app.js / style.css が index.html と同じ階層にある
-2) ファイル名の大小文字が一致 (app.js と App.js は別物)
-3) GitHub Pages の反映/キャッシュ（Safariで再読み込み）`;
-      }
-      const s = document.createElement("script");
-      s.src = "./app.js?v=1";
-      s.defer = true;
-      s.onerror = () => show("app.js が読み込めません（ファイル名/階層/存在を確認）");
-      document.head.appendChild(s);
-      window.addEventListener("error", (e)=> show(e.message || String(e.error || e)));
-    })();
-  </script>
+  <!-- app.js（キャッシュ回避のため ?v を上げる運用推奨） -->
+  <script src="./app.js?v=1" defer></script>
 </body>
 </html>
