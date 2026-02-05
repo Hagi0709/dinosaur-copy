@@ -1,27 +1,27 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+        content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
   <title>恐竜リスト</title>
 
-  <!-- PWA / Home icon -->
-  <link rel="apple-touch-icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
-  <link rel="icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
+  <!-- App icon (同階層) -->
+  <link rel="icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png" />
+  <link rel="apple-touch-icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png" />
 
-  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="style.css" />
 </head>
-<body>
 
+<body>
   <header class="top">
     <div class="row">
       <div class="search">
-        <input id="q" placeholder="検索" inputmode="search" autocomplete="off" />
-        <button id="qClear" class="qClear" type="button" aria-label="検索をクリア">×</button>
+        <input id="q" placeholder="検索" autocomplete="off" />
+        <button id="qClear" class="qClear" type="button">×</button>
       </div>
 
-      <select id="delivery" class="delivery" aria-label="納品目安">
+      <select id="delivery" class="delivery">
         <option value="即納品可能">即納品可能</option>
         <option value="本日夜">本日夜</option>
       </select>
@@ -30,104 +30,114 @@
       <div id="total" class="total">0円</div>
     </div>
 
-    <textarea id="out" class="out" readonly></textarea>
+    <textarea id="out" readonly></textarea>
 
-    <div class="subrow">
-      <button id="openManage" class="ghost" type="button">管理</button>
+    <div class="row2">
+      <button id="openManage" class="mini" type="button">管理</button>
 
-      <div class="tabs" role="tablist" aria-label="カテゴリ切替">
+      <div class="tabs" role="tablist">
         <button id="tabDino" class="tab is-active" type="button" role="tab" aria-selected="true">恐竜</button>
         <button id="tabItem" class="tab" type="button" role="tab" aria-selected="false">アイテム</button>
       </div>
     </div>
   </header>
 
-  <main class="main">
-    <section id="listDino" class="list"></section>
-    <section id="listItem" class="list" style="display:none"></section>
+  <main class="listWrap">
+    <div id="listDino" class="list"></div>
+    <div id="listItem" class="list" style="display:none"></div>
   </main>
 
-  <!-- ===== Manage Modal ===== -->
+  <!-- Backdrop -->
   <div id="modalBackdrop" class="backdrop" hidden></div>
 
-  <div id="manageModal" class="modal" hidden role="dialog" aria-modal="true" aria-label="管理">
-    <div class="modalHead">
-      <div class="modalTitle">管理</div>
-      <button id="closeManage" class="modalClose" type="button" aria-label="閉じる">×</button>
-    </div>
+  <!-- Manage modal -->
+  <section id="manageModal" class="modal" hidden aria-modal="true" role="dialog">
+    <div class="modalBox">
+      <div class="modalHead">
+        <div class="modalTitle">管理</div>
+        <button id="closeManage" class="xbtn" type="button">×</button>
+      </div>
 
-    <div class="modalTabs">
-      <button id="mTabDino" class="mTab is-active" type="button">恐竜</button>
-      <button id="mTabItem" class="mTab" type="button">アイテム</button>
-      <button id="sortKana" class="mBtn" type="button">50音</button>
-    </div>
+      <div class="modalBar">
+        <div class="tabs small" role="tablist">
+          <button id="mTabDino" class="tab is-active" type="button" role="tab" aria-selected="true">恐竜</button>
+          <button id="mTabItem" class="tab" type="button" role="tab" aria-selected="false">アイテム</button>
+        </div>
 
-    <div class="modalBody">
-      <div id="manageList" class="manageList"></div>
+        <button id="openAdd" class="mini" type="button">+追加</button>
+        <button id="sortKana" class="mini" type="button">50音</button>
+      </div>
 
-      <div class="manageSection">
-        <div class="secTitle">価格</div>
-        <div id="priceGrid" class="priceGrid"></div>
+      <div class="modalBody">
+        <div class="manageSection">
+          <div id="manageList" class="manageList"></div>
+        </div>
+
+        <div class="manageSection">
+          <div class="manageLabel">価格設定</div>
+          <div id="priceGrid" class="priceGrid"></div>
+        </div>
+      </div>
+
+      <div class="modalFoot">
+        <button id="closeManage2" class="footBtn" type="button">閉じる</button>
       </div>
     </div>
+  </section>
 
-    <div class="modalFoot">
-      <button id="openAdd" class="primary" type="button">追加</button>
-    </div>
-  </div>
+  <!-- Edit/Add modal -->
+  <section id="editModal" class="modal" hidden aria-modal="true" role="dialog">
+    <div class="modalBox">
+      <div class="modalHead">
+        <div id="editTitle" class="modalTitle">編集</div>
+        <button id="closeEdit" class="xbtn" type="button">×</button>
+      </div>
 
-  <!-- ===== Add/Edit Modal ===== -->
-  <div id="editModal" class="modal" hidden role="dialog" aria-modal="true" aria-label="追加・編集">
-    <div class="modalHead">
-      <div id="editTitle" class="modalTitle">追加</div>
-      <button id="closeEdit" class="modalClose" type="button" aria-label="閉じる">×</button>
-    </div>
-
-    <div class="modalBody">
-      <div class="form">
-        <label class="field">
+      <div class="modalBody">
+        <div class="formRow">
           <div class="label">名前</div>
           <input id="editName" class="input" placeholder="例：カルカロ" />
-        </label>
-
-        <label id="editDefaultWrap" class="field">
-          <div class="label">デフォルト</div>
-          <select id="editDefault" class="select"></select>
-        </label>
-
-        <div id="editItemWrap" class="grid2" hidden>
-          <label class="field">
-            <div class="label">個数単位</div>
-            <input id="editUnit" class="input" inputmode="numeric" placeholder="例：100" />
-          </label>
-          <label class="field">
-            <div class="label">単価</div>
-            <input id="editPrice" class="input" inputmode="numeric" placeholder="例：100" />
-          </label>
         </div>
 
-        <div class="rowBtn">
-          <button id="saveEdit" class="primary" type="button">保存</button>
+        <div id="editDefaultWrap" class="formRow">
+          <div class="label">デフォルト</div>
+          <select id="editDefault" class="select"></select>
+        </div>
+
+        <div id="editItemWrap" class="grid2" hidden>
+          <div class="formRow">
+            <div class="label">個数単位</div>
+            <input id="editUnit" class="input" inputmode="numeric" placeholder="例：100" />
+          </div>
+          <div class="formRow">
+            <div class="label">単価</div>
+            <input id="editPrice" class="input" inputmode="numeric" placeholder="例：100" />
+          </div>
+        </div>
+
+        <button id="saveEdit" class="bigBtn" type="button">保存</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Confirm modal -->
+  <section id="confirmModal" class="modal" hidden aria-modal="true" role="dialog">
+    <div class="modalBox">
+      <div class="modalHead">
+        <div class="modalTitle">確認</div>
+        <button id="closeConfirm" class="xbtn" type="button">×</button>
+      </div>
+
+      <div class="modalBody">
+        <div id="confirmText" class="confirmText"></div>
+        <div class="confirmRow">
+          <button id="confirmNo" class="btnGray" type="button">キャンセル</button>
+          <button id="confirmYes" class="btnRed" type="button">削除</button>
         </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- ===== Confirm Modal ===== -->
-  <div id="confirmModal" class="modal" hidden role="dialog" aria-modal="true" aria-label="確認">
-    <div class="modalHead">
-      <div class="modalTitle">確認</div>
-      <button id="closeConfirm" class="modalClose" type="button" aria-label="閉じる">×</button>
-    </div>
-    <div class="modalBody">
-      <div id="confirmText" class="confirmText"></div>
-    </div>
-    <div class="modalFoot two">
-      <button id="confirmNo" class="ghost" type="button">キャンセル</button>
-      <button id="confirmYes" class="danger" type="button">削除</button>
-    </div>
-  </div>
-
-  <script src="app.js?v=1"></script>
+  <script src="app.js"></script>
 </body>
 </html>
