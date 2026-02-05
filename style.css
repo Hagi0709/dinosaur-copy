@@ -67,7 +67,7 @@ input,select,button{outline:none}
   line-height:24px;
 }
 
-.delivery,.copy,.manageBtn,.addBtn{
+.delivery,.copy,.manageBtn,.addBtn,.sortBtn{
   height:36px;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.14);
@@ -78,6 +78,7 @@ input,select,button{outline:none}
 }
 .copy{ font-weight:900; }
 .addBtn{ font-weight:900; }
+.sortBtn{ font-weight:900; }
 
 .total{
   margin-left:auto;
@@ -254,7 +255,7 @@ select.type{
 #modalBody{
   overflow:auto;
   -webkit-overflow-scrolling: touch;
-  max-height: calc(100dvh - 190px - env(safe-area-inset-top));
+  max-height: calc(100dvh - 210px - env(safe-area-inset-top));
   padding-right:2px;
 }
 
@@ -279,10 +280,6 @@ select.type{
   line-height:1.4;
   margin-top:10px;
 }
-.danger{
-  background:rgba(255,80,80,.10)!important;
-  border-color:rgba(255,80,80,.25)!important;
-}
 
 body.modalOpen{
   overflow:hidden;
@@ -300,6 +297,13 @@ body.modalOpen{
   border-radius:14px;
   background:rgba(0,0,0,.18);
 }
+.mRow .mLeft{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+  flex:1;
+}
 .mRow .mName{
   font-weight:900;
   overflow:hidden;
@@ -309,17 +313,24 @@ body.modalOpen{
 .mRow .mBtns{
   display:flex;
   gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
 }
 .mRow .mBtns button{
   height:34px;
-  padding:0 12px;
+  padding:0 10px;
   border-radius:12px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
   color:#fff;
   font-weight:900;
+  font-size:12px;
 }
 .mRow .mBtns .delBtn{
   background:rgba(255,80,80,.10);
   border-color:rgba(255,80,80,.25);
+}
+.mRow .mBtns .moveBtn{
+  width:44px;
+  padding:0;
 }
