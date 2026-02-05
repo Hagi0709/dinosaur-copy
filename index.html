@@ -211,12 +211,24 @@ const dinos=[], state=new Map();
 const listEl=document.getElementById("list");
 const outEl=document.getElementById("out");
 const totalEl=document.getElementById("total");
+const qEl=document.getElementById("q");
+const qClear=document.getElementById("qClear");
 const delivery=document.getElementById("delivery");
 
-function yen(n){return n.toLocaleString("ja-JP")+"円"}
+/* ===== search utils ===== */
+function kataToHira(str){
+  return (str||"").replace(/[\u30a1-\u30f6]/g,ch =>
+    String.fromCharCode(ch.charCodeAt(0)-0x60)
+  );
+}
+function norm(str){
+  return kataToHira(str).replace(/[ 　・]/g,"");
+}
 
+/* ===== rebuild (出力専用) ===== */
 function rebuild(){
   let sum=0, lines=[], idx=1;
+
   dinos.forEach(name=>{
     const s=state.get(name);
     const qty=s.m+s.f;
@@ -243,7 +255,7 @@ function rebuild(){
     idx++;
   });
 
-  totalEl.textContent=yen(sum);
+  totalEl.textContent=sum.toLocaleString("ja-JP")+"円";
   outEl.value=
 `この度はご検討いただきありがとうございます！
 ご希望内容は以下となります👇🏻
@@ -254,21 +266,32 @@ ${lines.join("\n")}
 最短納品目安 : ${delivery.value}`;
 }
 
-delivery.onchange=rebuild;
+/* ===== search ===== */
+function applySearch(){
+  const q=norm(qEl.value);
+  dinos.forEach(name=>{
+    const s=state.get(name);
+    s.card.style.display = (!q || s.normName.includes(q)) ? "" : "none";
+  });
+}
+qEl.oninput=applySearch;
+qClear.onclick=()=>{qEl.value="";applySearch();};
 
+/* ===== load ===== */
 async function load(){
   const text=await fetch("dinos.txt?ts="+Date.now()).then(r=>r.text());
   text.split(/\r?\n/).forEach(line=>{
     if(!line.trim())return;
     const name=line.replace(/^・/,"").split("|")[0].trim();
     const defType=(line.split("|")[1]||"受精卵").trim();
-    dinos.push(name);
 
+    dinos.push(name);
     const baseType=defType.replace("(指定)","");
-    const s={type:defType, baseType, m:0, f:0};
+    const s={type:defType,baseType,m:0,f:0,normName:norm(name)};
     state.set(name,s);
 
     const card=document.createElement("div");
+    s.card=card;
     card.className="card collapsed";
     card.innerHTML=`
       <div class="head">
@@ -314,32 +337,29 @@ async function load(){
       s.type=sel.value;
       s.baseType=s.type.replace("(指定)","");
       unit.textContent=`単価${prices[s.type]}円`;
-      card.classList.remove("collapsed");
       rebuild();
     };
 
     card.querySelectorAll(".btn").forEach(b=>{
       b.onclick=()=>{
         const sex=b.dataset.sex;
-        s[sex]=Math.max(0, s[sex]+Number(b.dataset.d));
+        s[sex]=Math.max(0,s[sex]+Number(b.dataset.d));
         mc.textContent=s.m;
         fc.textContent=s.f;
 
-        // ★ 自動 指定 / 指定解除
         if(s.m>0 && s.f>0){
           const cand=s.baseType+"(指定)";
           if(prices[cand]) s.type=cand;
         }else if(s.m===0 && s.f===0){
           s.type=s.baseType;
         }
-
         sel.value=s.type;
         unit.textContent=`単価${prices[s.type]}円`;
-        card.classList.remove("collapsed");
         rebuild();
       };
     });
   });
+
   rebuild();
 }
 load();
