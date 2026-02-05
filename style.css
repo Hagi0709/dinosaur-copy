@@ -4,25 +4,19 @@
   --mut:rgba(255,255,255,.60);
   --ok:#78ffb3;
   --stroke:rgba(255,255,255,.10);
-  --card:rgba(255,255,255,.06);
-  --card2:rgba(255,255,255,.10);
-  --male:rgba(116,215,255,.18);
-  --female:rgba(255,134,200,.16);
-  --btn:rgba(255,255,255,.10);
-  --btn2:rgba(255,255,255,.14);
-  --danger:rgba(255,80,80,.24);
-  --danger2:rgba(255,80,80,.32);
+  --card1:rgba(255,255,255,.10);
+  --card2:rgba(255,255,255,.06);
 }
 *{box-sizing:border-box}
-html,body{height:100%}
 body{
   margin:0;
   font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
   background:var(--bg);
   color:var(--txt);
-  -webkit-text-size-adjust:100%;
+  padding-bottom:120px;
 }
-button,select,input,textarea{touch-action:manipulation}
+button,select,input{touch-action:manipulation}
+button{cursor:pointer}
 
 .top{
   position:sticky;
@@ -34,14 +28,19 @@ button,select,input,textarea{touch-action:manipulation}
   padding-top:calc(10px + env(safe-area-inset-top));
   border-bottom:1px solid rgba(255,255,255,.06);
 }
-
 .row{
   display:flex;
   gap:8px;
   align-items:center;
   flex-wrap:wrap;
 }
-
+.row2{
+  margin-top:8px;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  justify-content:space-between;
+}
 .search{
   flex:1;
   display:flex;
@@ -57,10 +56,10 @@ button,select,input,textarea{touch-action:manipulation}
 .search input{
   flex:1;
   border:0;
-  outline:none;
   background:transparent;
   color:var(--txt);
   font-size:14px;
+  outline:none;
   min-width:0;
 }
 .qClear{
@@ -70,11 +69,9 @@ button,select,input,textarea{touch-action:manipulation}
   background:rgba(255,255,255,.06);
   font-size:18px;
   color:#fff;
-  display:inline-block; /* ← これ固定 */
-  line-height:1;
+  display:inline-block;
 }
-
-.delivery,.copy{
+.delivery,.copy,.ghost{
   height:36px;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.14);
@@ -90,8 +87,7 @@ button,select,input,textarea{touch-action:manipulation}
   font-weight:900;
   white-space:nowrap;
 }
-
-.out{
+textarea{
   width:100%;
   margin-top:8px;
   height:120px;
@@ -102,54 +98,39 @@ button,select,input,textarea{touch-action:manipulation}
   padding:10px;
   font-size:12px;
   line-height:1.45;
-}
-
-.subrow{
-  margin-top:10px;
-  display:flex;
-  gap:10px;
-  align-items:center;
-}
-.ghost{
-  height:36px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.06);
-  color:#fff;
-  padding:0 12px;
+  outline:none;
 }
 
 .tabs{
-  flex:1;
   display:flex;
-  gap:10px;
+  gap:8px;
+  flex:1;
+  justify-content:flex-end;
 }
 .tab{
   flex:1;
   height:40px;
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.10);
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.06);
-  color:#fff;
+  color:rgba(255,255,255,.80);
   font-weight:900;
 }
-.tab.is-active{
+.tab.active{
   background:rgba(255,255,255,.12);
-  border-color:rgba(255,255,255,.18);
+  color:#fff;
 }
 
-.main{padding:12px 12px 120px}
+.listWrap{padding:12px}
 .list{display:flex;flex-direction:column;gap:10px}
 
 .card{
-  background:linear-gradient(180deg,var(--card2),var(--card));
+  background:linear-gradient(180deg,var(--card1),var(--card2));
   border:1px solid var(--stroke);
-  border-radius:18px;
+  border-radius:16px;
   padding:12px;
-  transition:transform .08s ease;
 }
-.card:active{transform:scale(.995)}
-.card.collapsed .body{display:none}
+.card.collapsed .controls{display:none}
 
 .head{
   display:flex;
@@ -158,7 +139,7 @@ button,select,input,textarea{touch-action:manipulation}
   gap:10px;
 }
 .name{
-  font-weight:1000;
+  font-weight:900;
   font-size:18px;
   line-height:1.2;
   word-break:break-word;
@@ -167,25 +148,23 @@ button,select,input,textarea{touch-action:manipulation}
   text-align:right;
   display:flex;
   flex-direction:column;
-  gap:6px;
-  min-width:140px;
+  gap:4px;
+  align-items:flex-end;
+  min-width:120px;
 }
-.typeSelect{
-  padding:7px 10px;
+select.type{
+  padding:6px 10px;
   border-radius:999px;
-  background:rgba(255,255,255,.08);
+  background:rgba(255,255,255,.10);
   border:1px solid rgba(255,255,255,.14);
   color:#fff;
   font-size:12px;
 }
-.unit{
-  font-size:12px;
-  color:var(--mut);
+.unit{font-size:12px;color:var(--mut)}
+
+.controls{
+  margin-top:10px;
 }
-
-.body{margin-top:10px}
-
-/* dino: two steppers */
 .steppers{
   display:flex;
   gap:10px;
@@ -193,243 +172,167 @@ button,select,input,textarea{touch-action:manipulation}
 .step{
   flex:1;
   border-radius:14px;
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.04);
   padding:8px;
 }
-.step.m{background:var(--male)}
-.step.f{background:var(--female)}
-
 .stepRow{
-  display:grid;
-  grid-template-columns:48px 1fr 48px 54px;
+  display:flex;
   align-items:center;
-  gap:8px;
+  gap:10px;
 }
 .btn{
-  height:34px;
-  width:48px;
+  width:44px;
+  height:32px;
   border-radius:12px;
   border:1px solid rgba(255,255,255,.14);
-  background:var(--btn);
+  background:rgba(255,255,255,.12);
   color:#fff;
-  font-weight:1000;
   font-size:18px;
+  font-weight:900;
   line-height:1;
 }
 .val{
-  height:34px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(0,0,0,.18);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:1000;
+  flex:1;
+  text-align:center;
+  font-weight:900;
   font-size:16px;
+  letter-spacing:.2px;
 }
-.cloneBtn{
-  height:34px;
+.dupBtn{
+  width:44px;
+  height:32px;
   border-radius:12px;
   border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.06);
+  background:rgba(255,255,255,.08);
   color:#fff;
+  font-size:14px;
   font-weight:900;
-  font-size:12px;
-}
-
-/* item: one stepper */
-.itemStepRow{
-  display:grid;
-  grid-template-columns:48px 1fr 48px;
-  align-items:center;
-  gap:8px;
-}
-.itemInfo{
-  margin-top:10px;
-  display:flex;
-  justify-content:space-between;
-  color:var(--mut);
-  font-size:12px;
-}
-
-/* ===== Modal ===== */
-.backdrop{
-  position:fixed;inset:0;
-  background:rgba(0,0,0,.55);
-  backdrop-filter:blur(6px);
-  z-index:50;
-}
-.modal{
-  position:fixed;
-  left:50%;
-  top:calc(env(safe-area-inset-top) + 10px);
-  transform:translateX(-50%);
-  width:min(92vw,520px);
-  max-height:calc(100vh - env(safe-area-inset-top) - 20px);
-  z-index:60;
-  background:rgba(25,30,38,.92);
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:18px;
-  overflow:hidden;
-  display:flex;
-  flex-direction:column;
-}
-.modalHead{
-  padding:12px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  border-bottom:1px solid rgba(255,255,255,.08);
-}
-.modalTitle{font-weight:1000}
-.modalClose{
-  width:40px;height:40px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.06);
-  color:#fff;
-  font-size:20px;
   line-height:1;
 }
-.modalTabs{
-  padding:10px 12px 0;
-  display:flex;
-  gap:8px;
-  align-items:center;
-}
-.mTab{
-  flex:1;
-  height:36px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(255,255,255,.06);
-  color:#fff;
-  font-weight:900;
-}
-.mTab.is-active{
-  background:rgba(255,255,255,.12);
-  border-color:rgba(255,255,255,.18);
-}
-.mBtn{
-  height:36px;
-  padding:0 12px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.06);
-  color:#fff;
-  font-weight:900;
-}
 
+/* modal */
+.modalRoot{
+  position:fixed;
+  inset:0;
+  z-index:999;
+  display:none;
+}
+.modalRoot.open{display:block}
+.modalBackdrop{
+  position:absolute;inset:0;
+  background:rgba(0,0,0,.45);
+  backdrop-filter:blur(10px);
+}
+.modalPanel{
+  position:absolute;
+  left:12px; right:12px;
+  top:calc(12px + env(safe-area-inset-top));
+  bottom:calc(12px + env(safe-area-inset-bottom));
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(20,26,34,.92);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.modalTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px;
+  border-bottom:1px solid rgba(255,255,255,.10);
+}
+.modalTitle{font-weight:900;font-size:16px}
+.modalX{
+  width:40px;height:40px;border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;font-size:20px;font-weight:900;
+}
 .modalBody{
   padding:12px;
-  overflow:auto; /* ← ここがスクロール本体 */
+  overflow:auto;
   -webkit-overflow-scrolling:touch;
 }
-.modalFoot{
+.modalBottom{
   padding:12px;
-  border-top:1px solid rgba(255,255,255,.08);
+  border-top:1px solid rgba(255,255,255,.10);
 }
-.modalFoot.two{display:flex;gap:10px}
-.modalFoot.two > button{flex:1}
-
-.primary{
-  height:44px;
+.modalClose{
   width:100%;
+  height:44px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.12);
+  background:rgba(255,255,255,.08);
   color:#fff;
-  font-weight:1000;
-}
-.danger{
-  height:44px;
-  width:100%;
-  border-radius:16px;
-  border:1px solid var(--danger2);
-  background:var(--danger);
-  color:#fff;
-  font-weight:1000;
-}
-
-.manageList{display:flex;flex-direction:column;gap:10px}
-.manageRow{
-  display:grid;
-  grid-template-columns: 1fr 44px 44px 72px 72px;
-  gap:8px;
-  align-items:center;
-  padding:10px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(255,255,255,.06);
-}
-.mName{
-  font-weight:1000;
-  font-size:14px;
-  line-height:1.2;
-  word-break:break-word;     /* 省略せず折り返す */
-  white-space:normal;
-}
-.iconBtn{
-  height:40px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.06);
-  color:#fff;
-  font-weight:1000;
-}
-.smallBtn{
-  height:40px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.06);
-  color:#fff;
-  font-weight:1000;
-}
-.smallBtn.d{
-  border-color:var(--danger2);
-  background:var(--danger);
-}
-
-.manageSection{
-  margin-top:14px;
-  padding-top:10px;
-  border-top:1px solid rgba(255,255,255,.08);
-}
-.secTitle{font-weight:1000;margin-bottom:10px}
-.priceGrid{
-  display:grid;
-  grid-template-columns:1fr 120px;
-  gap:10px;
-}
-.priceGrid .pName{
-  align-self:center;
-  color:rgba(255,255,255,.86);
   font-weight:900;
 }
-.priceGrid input{
+
+/* manage list row */
+.mRow{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:10px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.04);
+  margin-bottom:10px;
+}
+.mName{
+  flex:1;
+  font-weight:900;
+  white-space:normal;
+  word-break:break-word;
+}
+.mBtn{
+  width:42px;height:36px;border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;font-weight:900;
+}
+.mBtn.danger{
+  background:rgba(255,80,80,.15);
+  border-color:rgba(255,80,80,.35);
+}
+
+.mGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.mField label{
+  display:block;
+  font-size:12px;
+  color:var(--mut);
+  margin-bottom:6px;
+}
+.mField input, .mField select{
+  width:100%;
   height:40px;
   border-radius:14px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.18);
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
   color:#fff;
-  padding:0 12px;
+  padding:0 10px;
   outline:none;
 }
-
-.form{display:flex;flex-direction:column;gap:12px}
-.field{display:flex;flex-direction:column;gap:8px}
-.label{color:rgba(255,255,255,.70);font-size:12px;font-weight:900}
-.input,.select{
+.mActions{
+  display:flex;
+  gap:10px;
+  margin-top:12px;
+}
+.mActions button{
+  flex:1;
   height:42px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.18);
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
   color:#fff;
-  padding:0 12px;
-  outline:none;
+  font-weight:900;
 }
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.rowBtn{margin-top:6px}
-
-.confirmText{line-height:1.5;color:rgba(255,255,255,.90)}
+.mActions .danger{
+  background:rgba(255,80,80,.15);
+  border-color:rgba(255,80,80,.35);
+}
