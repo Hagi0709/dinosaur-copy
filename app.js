@@ -35,7 +35,7 @@
   const typeList = Object.keys(defaultPrices);
   const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
 
-  /* ========= DOM (index.html と一致させる) ========= */
+  /* ========= DOM ========= */
   const el = {
     q: $('#q'),
     qClear: $('#qClear'),
@@ -43,42 +43,15 @@
     copy: $('#copy'),
     total: $('#total'),
     out: $('#out'),
-
-    openManage: $('#openManage'),
-
-    tabDinos: $('#tabDinos'),
-    tabItems: $('#tabItems'),
-
-    listRoot: $('#list'),
-
-    // manage modal
-    modalOverlay: $('#modalOverlay'),
+    tabDino: $('#tabDino'),
+    tabItem: $('#tabItem'),
+    listDino: $('#listDino'),
+    listItem: $('#listItem'),
+    manageBtn: $('#manageBtn'),
+    modalRoot: $('#modalRoot'),
+    modalTitle: $('#modalTitle'),
     modalBody: $('#modalBody'),
-    closeManage: $('#closeManage'),
-    mTabCatalog: $('#mTabCatalog'),
-    mTabPrices: $('#mTabPrices'),
-
-    // confirm modal
-    confirmOverlay: $('#confirmOverlay'),
-    confirmText: $('#confirmText'),
-    confirmCancel: $('#confirmCancel'),
-    confirmOk: $('#confirmOk'),
-
-    // edit modal
-    editOverlay: $('#editOverlay'),
-    editTitle: $('#editTitle'),
-    editBody: $('#editBody'),
-    editClose: $('#editClose'),
   };
-
-  // 必須DOMが取れないなら何もせず落ちないように
-  const must = ['q','qClear','delivery','copy','total','out','openManage','tabDinos','tabItems','listRoot','modalOverlay','modalBody','closeManage'];
-  for (const k of must) {
-    if (!el[k]) {
-      console.warn('[app] missing element:', k);
-      return;
-    }
-  }
 
   /* ========= reset helper ========= */
   if (new URL(location.href).searchParams.get('reset') === '1') {
@@ -87,94 +60,59 @@
     return;
   }
 
-  /* ========= scroll lock ========= */
-  function lockScroll(on) {
-    if (on) {
-      const y = window.scrollY || 0;
-      document.body.dataset.lockY = String(y);
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${y}px`;
-      document.body.style.left = '0';
-      document.body.style.right = '0';
-      document.body.style.width = '100%';
-    } else {
-      const y = Number(document.body.dataset.lockY || '0');
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.left = '';
-      document.body.style.right = '';
-      document.body.style.width = '';
-      delete document.body.dataset.lockY;
-      window.scrollTo(0, y);
-    }
-  }
+  /* ========= modal (single, never persisted) ========= */
+  const modal = (() => {
+    let open = false;
 
-  /* ========= modal helpers ========= */
-  function showOverlay(overlayEl) {
-    overlayEl.classList.remove('isHidden');
-    overlayEl.setAttribute('aria-hidden', 'false');
-    lockScroll(true);
-  }
-  function hideOverlay(overlayEl) {
-    overlayEl.classList.add('isHidden');
-    overlayEl.setAttribute('aria-hidden', 'true');
-    lockScroll(false);
-  }
-
-  function openManageModal() { showOverlay(el.modalOverlay); }
-  function closeManageModal() {
-    hideOverlay(el.modalOverlay);
-    el.modalBody.innerHTML = '';
-    // タブ状態は一覧に戻す
-    el.mTabCatalog.classList.add('isActive');
-    el.mTabPrices.classList.remove('isActive');
-  }
-
-  function openEditModal(title, node) {
-    el.editTitle.textContent = title || '編集';
-    el.editBody.innerHTML = '';
-    if (node) el.editBody.appendChild(node);
-    showOverlay(el.editOverlay);
-  }
-  function closeEditModal() {
-    hideOverlay(el.editOverlay);
-    el.editBody.innerHTML = '';
-  }
-
-  function confirmDialog(message, okText = '削除') {
-    return new Promise((resolve) => {
-      el.confirmText.textContent = message || '実行しますか？';
-      el.confirmOk.textContent = okText;
-
-      const onCancel = () => {
-        cleanup();
-        resolve(false);
-      };
-      const onOk = () => {
-        cleanup();
-        resolve(true);
-      };
-      function cleanup() {
-        el.confirmCancel.removeEventListener('click', onCancel);
-        el.confirmOk.removeEventListener('click', onOk);
-        hideOverlay(el.confirmOverlay);
+    function lockScroll(on) {
+      if (on) {
+        const y = window.scrollY || 0;
+        document.body.dataset.lockY = String(y);
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${y}px`;
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.width = '100%';
+      } else {
+        const y = Number(document.body.dataset.lockY || '0');
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
+        delete document.body.dataset.lockY;
+        window.scrollTo(0, y);
       }
+    }
 
-      el.confirmCancel.addEventListener('click', onCancel);
-      el.confirmOk.addEventListener('click', onOk);
-      showOverlay(el.confirmOverlay);
+    function show(title, node) {
+      el.modalTitle.textContent = title || '管理';
+      el.modalBody.innerHTML = '';
+      if (node) el.modalBody.appendChild(node);
+      el.modalRoot.classList.add('open');
+      el.modalRoot.setAttribute('aria-hidden', 'false');
+      open = true;
+      lockScroll(true);
+    }
+
+    function hide() {
+      el.modalRoot.classList.remove('open');
+      el.modalRoot.setAttribute('aria-hidden', 'true');
+      el.modalBody.innerHTML = '';
+      open = false;
+      lockScroll(false);
+    }
+
+    el.modalRoot.addEventListener('click', (e) => {
+      const t = e.target;
+      if (t && t.dataset && t.dataset.act === 'close') hide();
     });
-  }
+    document.addEventListener('keydown', (e) => { if (open && e.key === 'Escape') hide(); });
 
-  // overlay click to close (背景クリックでは閉じない：誤操作防止)
-  el.closeManage.addEventListener('click', closeManageModal);
-  el.editClose.addEventListener('click', closeEditModal);
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    if (!el.confirmOverlay.classList.contains('isHidden')) hideOverlay(el.confirmOverlay);
-    else if (!el.editOverlay.classList.contains('isHidden')) closeEditModal();
-    else if (!el.modalOverlay.classList.contains('isHidden')) closeManageModal();
-  });
+    // always closed on boot
+    hide();
+    return { show, hide, get open() { return open; } };
+  })();
 
   /* ========= data ========= */
   const hidden = {
@@ -196,16 +134,8 @@
 
   // inputState: key -> {type,m,f} or {qty}
   const inputState = new Map();
-  // duplicated cards are ephemeral (リロードで消える)
+  // duplicated cards are ephemeral
   const ephemeralKeys = new Set();
-
-  /* ========= list containers ========= */
-  const listDino = document.createElement('div');
-  const listItem = document.createElement('div');
-  listDino.id = 'listDino';
-  listItem.id = 'listItem';
-  el.listRoot.appendChild(listDino);
-  el.listRoot.appendChild(listItem);
 
   /* ========= fetch & parse ========= */
   async function fetchTextSafe(path) {
@@ -259,7 +189,7 @@
     });
   }
 
-  /* ========= state ========= */
+  /* ========= behavior rules ========= */
   function ensureDinoState(key, defType) {
     if (!inputState.has(key)) inputState.set(key, { type: defType || '受精卵', m: 0, f: 0 });
     return inputState.get(key);
@@ -366,8 +296,7 @@ ${lines.join('\n')}
   /* ========= collapse & search ========= */
   function applyCollapseAndSearch() {
     const q = norm(el.q.value);
-
-    const root = (activeTab === 'dino') ? listDino : listItem;
+    const root = activeTab === 'dino' ? el.listDino : el.listItem;
 
     $$('[data-card="1"]', root).forEach(card => {
       const name = card.dataset.name || '';
@@ -387,45 +316,46 @@ ${lines.join('\n')}
 
       // 通常: qty==0なら畳む / 検索中: ヒット以外畳む
       const collapsed = q ? !show : (qty === 0);
-      card.classList.toggle('isCollapsed', collapsed);
+      card.classList.toggle('collapsed', collapsed);
     });
   }
 
-  /* ========= cards (style.css の class に合わせる) ========= */
+  /* ========= cards ========= */
   function buildDinoCard(d) {
     const key = d.id;
     const s = ensureDinoState(key, d.defType);
 
-    const wrap = document.createElement('div');
-    wrap.className = 'cardWrap';
-    wrap.dataset.card = '1';
-    wrap.dataset.key = key;
-    wrap.dataset.name = d.name;
-
     const card = document.createElement('div');
     card.className = 'card';
+    card.dataset.card = '1';
+    card.dataset.key = key;
+    card.dataset.name = d.name;
 
     card.innerHTML = `
-      <div class="cardHead">
+      <div class="head">
         <div class="name"></div>
         <div class="right">
           <select class="type"></select>
           <div class="unit"></div>
         </div>
       </div>
-
-      <div class="controls grid2">
-        <div class="stepper">
-          <button class="btn" type="button" data-act="m-">−</button>
-          <div class="val js-m">0</div>
-          <button class="btn" type="button" data-act="m+">＋</button>
-          <button class="mini" type="button" data-act="dup">複製</button>
-        </div>
-
-        <div class="stepper">
-          <button class="btn" type="button" data-act="f-">−</button>
-          <div class="val js-f">0</div>
-          <button class="btn" type="button" data-act="f+">＋</button>
+      <div class="controls">
+        <div class="steppers">
+          <div class="step">
+            <div class="stepRow">
+              <button class="btn" data-act="m-" type="button">−</button>
+              <div class="val js-m">0</div>
+              <button class="btn" data-act="m+" type="button">＋</button>
+              <button class="dupBtn" data-act="dup" type="button">⎘</button>
+            </div>
+          </div>
+          <div class="step">
+            <div class="stepRow">
+              <button class="btn" data-act="f-" type="button">−</button>
+              <div class="val js-f">0</div>
+              <button class="btn" data-act="f+" type="button">＋</button>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -453,7 +383,9 @@ ${lines.join('\n')}
       applyCollapseAndSearch();
     });
 
-    function refresh() {
+    function step(sex, delta) {
+      if (sex === 'm') s.m = Math.max(0, Number(s.m || 0) + delta);
+      if (sex === 'f') s.f = Math.max(0, Number(s.f || 0) + delta);
       autoSpecify(s);
       sel.value = s.type;
       unit.textContent = `単価${prices[s.type] || 0}円`;
@@ -463,63 +395,58 @@ ${lines.join('\n')}
       applyCollapseAndSearch();
     }
 
-    // iOS/Safariで委譲クリックが不安定になりやすいので「ボタン個別」に付ける
-    $$('[data-act]', card).forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const act = btn.dataset.act;
+    card.addEventListener('click', (e) => {
+      const act = e.target?.dataset?.act;
+      if (!act) return;
 
-        if (act === 'm-') s.m = Math.max(0, Number(s.m || 0) - 1);
-        if (act === 'm+') s.m = Math.max(0, Number(s.m || 0) + 1);
-        if (act === 'f-') s.f = Math.max(0, Number(s.f || 0) - 1);
-        if (act === 'f+') s.f = Math.max(0, Number(s.f || 0) + 1);
+      if (act === 'm-') step('m', -1);
+      if (act === 'm+') step('m', +1);
+      if (act === 'f-') step('f', -1);
+      if (act === 'f+') step('f', +1);
 
-        if (act === 'dup') {
-          const dupKey = `${key}__dup_${uid()}`;
-          ephemeralKeys.add(dupKey);
-          inputState.set(dupKey, { type: s.type, m: 0, f: 0 });
+      if (act === 'dup') {
+        const dupKey = `${key}__dup_${uid()}`;
+        ephemeralKeys.add(dupKey);
+        inputState.set(dupKey, { type: s.type, m: 0, f: 0 });
 
-          const dup = buildDinoCard({ ...d, id: dupKey });
-          wrap.after(dup);
-          rebuildOutput();
-          applyCollapseAndSearch();
-          return;
-        }
+        const dupCard = buildDinoCard({ ...d, id: dupKey });
+        dupCard.dataset.name = d.name;
+        dupCard.dataset.key = dupKey;
 
-        refresh();
-      }, { passive: false });
+        card.after(dupCard);
+        rebuildOutput();
+        applyCollapseAndSearch();
+      }
     });
 
-    wrap.appendChild(card);
-    return wrap;
+    return card;
   }
 
   function buildItemCard(it) {
     const s = ensureItemState(it.id);
 
-    const wrap = document.createElement('div');
-    wrap.className = 'cardWrap';
-    wrap.dataset.card = '1';
-    wrap.dataset.key = it.id;
-    wrap.dataset.name = it.name;
-
     const card = document.createElement('div');
     card.className = 'card';
+    card.dataset.card = '1';
+    card.dataset.key = it.id;
+    card.dataset.name = it.name;
 
     card.innerHTML = `
-      <div class="cardHead">
+      <div class="head">
         <div class="name"></div>
         <div class="right">
           <div class="unit"></div>
         </div>
       </div>
-
       <div class="controls">
-        <div class="stepper">
-          <button class="btn" type="button" data-act="-">−</button>
-          <div class="val js-q">0</div>
-          <button class="btn" type="button" data-act="+">＋</button>
+        <div class="steppers">
+          <div class="step" style="flex:1">
+            <div class="stepRow">
+              <button class="btn" data-act="-" type="button">−</button>
+              <div class="val js-q">0</div>
+              <button class="btn" data-act="+" type="button">＋</button>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -530,33 +457,29 @@ ${lines.join('\n')}
     const qEl = $('.js-q', card);
     qEl.textContent = String(s.qty || 0);
 
-    $$('[data-act]', card).forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const act = btn.dataset.act;
-        if (act === '-') s.qty = Math.max(0, Number(s.qty || 0) - 1);
-        if (act === '+') s.qty = Math.max(0, Number(s.qty || 0) + 1);
-        qEl.textContent = String(s.qty || 0);
-        rebuildOutput();
-        applyCollapseAndSearch();
-      }, { passive: false });
+    card.addEventListener('click', (e) => {
+      const act = e.target?.dataset?.act;
+      if (!act) return;
+      if (act === '-') s.qty = Math.max(0, Number(s.qty || 0) - 1);
+      if (act === '+') s.qty = Math.max(0, Number(s.qty || 0) + 1);
+      qEl.textContent = String(s.qty || 0);
+      rebuildOutput();
+      applyCollapseAndSearch();
     });
 
-    wrap.appendChild(card);
-    return wrap;
+    return card;
   }
 
   /* ========= render ========= */
   function renderAll() {
-    listDino.innerHTML = '';
-    listItem.innerHTML = '';
+    el.listDino.innerHTML = '';
+    el.listItem.innerHTML = '';
 
     const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
     const iList = sortByOrder(items.filter(i => !hidden.item.has(i.id)), 'item');
 
-    dList.forEach(d => listDino.appendChild(buildDinoCard(d)));
-    iList.forEach(it => listItem.appendChild(buildItemCard(it)));
+    dList.forEach(d => el.listDino.appendChild(buildDinoCard(d)));
+    iList.forEach(it => el.listItem.appendChild(buildItemCard(it)));
 
     rebuildOutput();
     applyCollapseAndSearch();
@@ -565,20 +488,14 @@ ${lines.join('\n')}
   /* ========= tabs ========= */
   function setTab(tab) {
     activeTab = tab;
-
-    el.tabDinos.classList.toggle('isActive', tab === 'dino');
-    el.tabItems.classList.toggle('isActive', tab === 'item');
-
-    el.tabDinos.setAttribute('aria-selected', tab === 'dino' ? 'true' : 'false');
-    el.tabItems.setAttribute('aria-selected', tab === 'item' ? 'true' : 'false');
-
-    listDino.style.display = tab === 'dino' ? '' : 'none';
-    listItem.style.display = tab === 'item' ? '' : 'none';
-
+    el.tabDino.classList.toggle('active', tab === 'dino');
+    el.tabItem.classList.toggle('active', tab === 'item');
+    el.listDino.style.display = tab === 'dino' ? '' : 'none';
+    el.listItem.style.display = tab === 'item' ? '' : 'none';
     applyCollapseAndSearch();
   }
-  el.tabDinos.addEventListener('click', () => setTab('dino'));
-  el.tabItems.addEventListener('click', () => setTab('item'));
+  el.tabDino.addEventListener('click', () => setTab('dino'));
+  el.tabItem.addEventListener('click', () => setTab('item'));
 
   /* ========= search ========= */
   el.q.addEventListener('input', applyCollapseAndSearch);
@@ -609,77 +526,102 @@ ${lines.join('\n')}
     }
   });
 
-  /* ========= manage UI ========= */
-  function buildPricesPanel() {
-    const box = document.createElement('div');
-
-    const grid = document.createElement('div');
-    grid.className = 'priceGrid';
-
-    typeList.forEach(t => {
-      const key = document.createElement('div');
-      key.className = 'pKey';
-      key.textContent = t;
-
-      const val = document.createElement('div');
-      val.className = 'pVal';
-      val.innerHTML = `<input type="number" inputmode="numeric" value="${Number(prices[t] || 0)}" data-type="${t}">`;
-
-      grid.appendChild(key);
-      grid.appendChild(val);
-    });
-
-    const save = document.createElement('div');
-    save.style.marginTop = '12px';
-    save.innerHTML = `<button class="primary" type="button" data-act="savePrices">保存</button>`;
-
-    box.appendChild(grid);
-    box.appendChild(save);
-
-    box.addEventListener('click', (e) => {
-      if (e.target?.dataset?.act !== 'savePrices') return;
-      $$('input[data-type]', box).forEach(inp => {
-        const t = inp.dataset.type;
-        prices[t] = Number(inp.value || 0);
+  /* ========= manage ========= */
+  function confirmDialog({ title = '確認', message = '', okText = '削除', cancelText = 'キャンセル' }) {
+    return new Promise((resolve) => {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = `
+        <div style="font-weight:900;margin-bottom:10px;">${title}</div>
+        <div style="color:rgba(255,255,255,.75);line-height:1.5;margin-bottom:12px;">${message}</div>
+        <div class="mActions">
+          <button type="button" data-act="cancel">${cancelText}</button>
+          <button type="button" class="danger" data-act="ok">${okText}</button>
+        </div>
+      `;
+      wrap.addEventListener('click', (e) => {
+        const a = e.target?.dataset?.act;
+        if (a === 'cancel') { modal.hide(); resolve(false); }
+        if (a === 'ok') { modal.hide(); resolve(true); }
       });
-      saveJSON(LS.PRICES, prices);
-      renderAll();
-      closeManageModal();
+      modal.show('確認', wrap);
     });
-
-    return box;
   }
 
-  function buildCatalogPanel(kind) {
-    const box = document.createElement('div');
+  function openManage() {
+    const kind = activeTab; // manage current tab
 
-    // add
-    const addBtn = document.createElement('button');
-    addBtn.className = 'primary';
-    addBtn.type = 'button';
-    addBtn.textContent = '追加';
-    addBtn.style.marginBottom = '12px';
+    const content = document.createElement('div');
 
-    addBtn.addEventListener('click', () => openAdd(kind));
-    box.appendChild(addBtn);
-
-    // sort
-    const kanaBtn = document.createElement('button');
-    kanaBtn.className = 'ghost';
-    kanaBtn.type = 'button';
-    kanaBtn.textContent = '50音並び替え';
-    kanaBtn.style.marginBottom = '12px';
-    kanaBtn.addEventListener('click', () => {
-      const list = kind === 'dino' ? dinos : items;
-      const hset = kind === 'dino' ? hidden.dino : hidden.item;
-      const visible = list.filter(x => !hset.has(x.id));
-      visible.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-      order[kind] = visible.map(x => x.id);
-      saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, order[kind]);
-      renderAll();
-      openManage(); // 再描画
+    // price editor
+    const priceBox = document.createElement('div');
+    priceBox.className = 'card';
+    priceBox.innerHTML = `<div class="name" style="font-size:16px;margin-bottom:10px;">価格設定</div>`;
+    const grid = document.createElement('div');
+    grid.className = 'mGrid';
+    typeList.forEach(t => {
+      const f = document.createElement('div');
+      f.className = 'mField';
+      f.innerHTML = `
+        <label>${t}</label>
+        <input type="number" inputmode="numeric" value="${prices[t] || 0}" data-type="${t}">
+      `;
+      grid.appendChild(f);
     });
-    box.appendChild(kanaBtn);
+    priceBox.appendChild(grid);
+    const priceSave = document.createElement('div');
+    priceSave.className = 'mActions';
+    priceSave.innerHTML = `<button type="button" data-act="savePrices">保存</button>`;
+    priceBox.appendChild(priceSave);
+    content.appendChild(priceBox);
+
+    // list manager
+    const listBox = document.createElement('div');
+    listBox.className = 'card';
+    listBox.innerHTML = `<div class="name" style="font-size:16px;margin-bottom:10px;">${kind === 'dino' ? '恐竜' : 'アイテム'}管理</div>`;
+
+    // add form (inside manage)
+    const add = document.createElement('div');
+    add.innerHTML = (kind === 'dino')
+      ? `
+        <div class="mGrid">
+          <div class="mField">
+            <label>名前</label>
+            <input id="addName" type="text" placeholder="例：カルカロ">
+          </div>
+          <div class="mField">
+            <label>デフォルト</label>
+            <select id="addDef">
+              ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="mActions"><button type="button" data-act="addOne">追加</button></div>
+      `
+      : `
+        <div class="mGrid">
+          <div class="mField">
+            <label>名前</label>
+            <input id="addName" type="text" placeholder="例：TEK天井">
+          </div>
+          <div class="mField">
+            <label>個数単位</label>
+            <input id="addUnit" type="number" inputmode="numeric" placeholder="例：100">
+          </div>
+        </div>
+        <div class="mGrid" style="margin-top:10px;">
+          <div class="mField" style="grid-column:1 / -1;">
+            <label>単価</label>
+            <input id="addPrice" type="number" inputmode="numeric" placeholder="例：100">
+          </div>
+        </div>
+        <div class="mActions"><button type="button" data-act="addOne">追加</button></div>
+      `;
+    listBox.appendChild(add);
+
+    const sortBar = document.createElement('div');
+    sortBar.className = 'mActions';
+    sortBar.innerHTML = `<button type="button" data-act="sortKana">50音並び替え</button>`;
+    listBox.appendChild(sortBar);
 
     const rows = document.createElement('div');
     const currentList = (kind === 'dino')
@@ -691,22 +633,46 @@ ${lines.join('\n')}
       r.className = 'mRow';
       r.innerHTML = `
         <div class="mName">${obj.name}</div>
-        <div class="mBtns">
-          <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
-          <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
-          <button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">編集</button>
-          <button class="sBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
-        </div>
+        <button class="mBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
+        <button class="mBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
+        <button class="mBtn" type="button" data-act="edit" data-id="${obj.id}">編集</button>
+        <button class="mBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
       `;
       rows.appendChild(r);
     });
 
-    rows.addEventListener('click', async (e) => {
+    listBox.appendChild(rows);
+    content.appendChild(listBox);
+
+    content.addEventListener('click', async (e) => {
       const act = e.target?.dataset?.act;
-      const id = e.target?.dataset?.id;
-      if (!act || !id) return;
+      if (!act) return;
+
+      if (act === 'savePrices') {
+        $$('input[data-type]', content).forEach(inp => {
+          const t = inp.dataset.type;
+          prices[t] = Number(inp.value || 0);
+        });
+        saveJSON(LS.PRICES, prices);
+        renderAll();
+        modal.hide();
+        return;
+      }
+
+      if (act === 'sortKana') {
+        const list = kind === 'dino' ? dinos : items;
+        const hset = kind === 'dino' ? hidden.dino : hidden.item;
+        const visible = list.filter(x => !hset.has(x.id));
+        visible.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+        order[kind] = visible.map(x => x.id);
+        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, order[kind]);
+        renderAll();
+        modal.hide();
+        return;
+      }
 
       if (act === 'up' || act === 'down') {
+        const id = e.target.dataset.id;
         const ord = (order[kind] || []).slice();
         const i = ord.indexOf(id);
         if (i === -1) return;
@@ -716,220 +682,129 @@ ${lines.join('\n')}
         order[kind] = ord;
         saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
         renderAll();
-        openManage();
+        modal.hide();
         return;
       }
 
       if (act === 'del') {
+        const id = e.target.dataset.id;
         const list = kind === 'dino' ? dinos : items;
         const obj = list.find(x => x.id === id);
-        const ok = await confirmDialog(`「${obj?.name || ''}」を削除しますか？`, '削除');
+        const ok = await confirmDialog({ message: `「${obj?.name || ''}」を削除しますか？` });
         if (!ok) return;
-
         (kind === 'dino' ? hidden.dino : hidden.item).add(id);
         saveJSON(kind === 'dino' ? LS.DINO_HIDDEN : LS.ITEM_HIDDEN,
           Array.from(kind === 'dino' ? hidden.dino : hidden.item)
         );
-
         renderAll();
-        openManage();
+        modal.hide();
         return;
       }
 
       if (act === 'edit') {
-        openEdit(kind, id);
+        const id = e.target.dataset.id;
+        const list = kind === 'dino' ? dinos : items;
+        const obj = list.find(x => x.id === id);
+        if (!obj) return;
+
+        const form = document.createElement('div');
+        if (kind === 'dino') {
+          form.innerHTML = `
+            <div class="mGrid">
+              <div class="mField">
+                <label>名前</label>
+                <input id="eName" type="text" value="${obj.name}">
+              </div>
+              <div class="mField">
+                <label>デフォルト</label>
+                <select id="eDef">
+                  ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div class="mActions"><button type="button" data-act="saveEdit">保存</button></div>
+          `;
+          $('#eDef', form).value = obj.defType || '受精卵';
+        } else {
+          form.innerHTML = `
+            <div class="mGrid">
+              <div class="mField">
+                <label>名前</label>
+                <input id="eName" type="text" value="${obj.name}">
+              </div>
+              <div class="mField">
+                <label>個数単位</label>
+                <input id="eUnit" type="number" inputmode="numeric" value="${obj.unit}">
+              </div>
+            </div>
+            <div class="mGrid" style="margin-top:10px;">
+              <div class="mField" style="grid-column:1 / -1;">
+                <label>単価</label>
+                <input id="ePrice" type="number" inputmode="numeric" value="${obj.price}">
+              </div>
+            </div>
+            <div class="mActions"><button type="button" data-act="saveEdit">保存</button></div>
+          `;
+        }
+
+        form.addEventListener('click', (ev) => {
+          if (ev.target?.dataset?.act !== 'saveEdit') return;
+
+          const newName = $('#eName', form).value.trim();
+          if (!newName) return;
+          obj.name = newName;
+
+          if (kind === 'dino') obj.defType = $('#eDef', form).value;
+          else {
+            obj.unit = Number($('#eUnit', form).value || 1);
+            obj.price = Number($('#ePrice', form).value || 0);
+          }
+
+          if (kind === 'dino') {
+            const c = custom.dino.find(x => x.id === id);
+            if (c) { c.name = obj.name; c.defType = obj.defType; }
+            else custom.dino.push({ id, name: obj.name, defType: obj.defType });
+            saveJSON(LS.DINO_CUSTOM, custom.dino);
+          } else {
+            const c = custom.item.find(x => x.id === id);
+            if (c) { c.name = obj.name; c.unit = obj.unit; c.price = obj.price; }
+            else custom.item.push({ id, name: obj.name, unit: obj.unit, price: obj.price });
+            saveJSON(LS.ITEM_CUSTOM, custom.item);
+          }
+
+          renderAll();
+          modal.hide();
+        });
+
+        modal.show('編集', form);
         return;
       }
-    });
 
-    box.appendChild(rows);
-    return box;
-  }
-
-  function openAdd(kind) {
-    const form = document.createElement('div');
-    form.className = 'form';
-
-    if (kind === 'dino') {
-      form.innerHTML = `
-        <div class="field">
-          <label>名前</label>
-          <input id="aName" type="text" placeholder="例：カルカロ">
-        </div>
-        <div class="field">
-          <label>デフォルト</label>
-          <select id="aDef">${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
-        </div>
-        <div class="formBtns">
-          <button class="ghost" type="button" data-act="cancel">キャンセル</button>
-          <button class="primary" type="button" data-act="save">追加</button>
-        </div>
-      `;
-    } else {
-      form.innerHTML = `
-        <div class="field">
-          <label>名前</label>
-          <input id="aName" type="text" placeholder="例：TEK天井">
-        </div>
-        <div class="field">
-          <label>個数単位</label>
-          <input id="aUnit" type="number" inputmode="numeric" placeholder="例：100">
-        </div>
-        <div class="field">
-          <label>単価</label>
-          <input id="aPrice" type="number" inputmode="numeric" placeholder="例：100">
-        </div>
-        <div class="formBtns">
-          <button class="ghost" type="button" data-act="cancel">キャンセル</button>
-          <button class="primary" type="button" data-act="save">追加</button>
-        </div>
-      `;
-    }
-
-    form.addEventListener('click', async (e) => {
-      const act = e.target?.dataset?.act;
-      if (!act) return;
-
-      if (act === 'cancel') { closeEditModal(); return; }
-
-      if (act === 'save') {
-        const name = ($('#aName', form)?.value || '').trim();
+      if (act === 'addOne') {
+        const name = ($('#addName', content)?.value || '').trim();
         if (!name) return;
 
         if (kind === 'dino') {
-          const defType = $('#aDef', form).value;
+          const defType = $('#addDef', content).value;
           const id = 'd_c_' + uid();
           custom.dino.push({ id, name, defType });
           saveJSON(LS.DINO_CUSTOM, custom.dino);
         } else {
-          const unit = Number($('#aUnit', form).value || 1);
-          const price = Number($('#aPrice', form).value || 0);
+          const unit = Number($('#addUnit', content).value || 1);
+          const price = Number($('#addPrice', content).value || 0);
           const id = 'i_c_' + uid();
           custom.item.push({ id, name, unit, price });
           saveJSON(LS.ITEM_CUSTOM, custom.item);
         }
 
-        await init();
-        closeEditModal();
-        openManage(); // 管理画面再描画
+        init().then(() => modal.hide());
       }
     });
 
-    openEditModal(kind === 'dino' ? '恐竜を追加' : 'アイテムを追加', form);
+    modal.show('管理', content);
   }
 
-  function openEdit(kind, id) {
-    const list = kind === 'dino' ? dinos : items;
-    const obj = list.find(x => x.id === id);
-    if (!obj) return;
-
-    const form = document.createElement('div');
-    form.className = 'form';
-
-    if (kind === 'dino') {
-      form.innerHTML = `
-        <div class="field">
-          <label>名前</label>
-          <input id="eName" type="text" value="${obj.name}">
-        </div>
-        <div class="field">
-          <label>デフォルト</label>
-          <select id="eDef">${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
-        </div>
-        <div class="formBtns">
-          <button class="ghost" type="button" data-act="cancel">キャンセル</button>
-          <button class="primary" type="button" data-act="save">保存</button>
-        </div>
-      `;
-      $('#eDef', form).value = obj.defType || '受精卵';
-    } else {
-      form.innerHTML = `
-        <div class="field">
-          <label>名前</label>
-          <input id="eName" type="text" value="${obj.name}">
-        </div>
-        <div class="field">
-          <label>個数単位</label>
-          <input id="eUnit" type="number" inputmode="numeric" value="${obj.unit}">
-        </div>
-        <div class="field">
-          <label>単価</label>
-          <input id="ePrice" type="number" inputmode="numeric" value="${obj.price}">
-        </div>
-        <div class="formBtns">
-          <button class="ghost" type="button" data-act="cancel">キャンセル</button>
-          <button class="primary" type="button" data-act="save">保存</button>
-        </div>
-      `;
-    }
-
-    form.addEventListener('click', async (e) => {
-      const act = e.target?.dataset?.act;
-      if (!act) return;
-
-      if (act === 'cancel') { closeEditModal(); return; }
-
-      if (act === 'save') {
-        const newName = $('#eName', form).value.trim();
-        if (!newName) return;
-        obj.name = newName;
-
-        if (kind === 'dino') obj.defType = $('#eDef', form).value;
-        else {
-          obj.unit = Number($('#eUnit', form).value || 1);
-          obj.price = Number($('#ePrice', form).value || 0);
-        }
-
-        if (kind === 'dino') {
-          const c = custom.dino.find(x => x.id === id);
-          if (c) { c.name = obj.name; c.defType = obj.defType; }
-          else custom.dino.push({ id, name: obj.name, defType: obj.defType });
-          saveJSON(LS.DINO_CUSTOM, custom.dino);
-        } else {
-          const c = custom.item.find(x => x.id === id);
-          if (c) { c.name = obj.name; c.unit = obj.unit; c.price = obj.price; }
-          else custom.item.push({ id, name: obj.name, unit: obj.unit, price: obj.price });
-          saveJSON(LS.ITEM_CUSTOM, custom.item);
-        }
-
-        renderAll();
-        closeEditModal();
-        openManage();
-      }
-    });
-
-    openEditModal('編集', form);
-  }
-
-  function openManage() {
-    el.modalBody.innerHTML = '';
-
-    const bar = document.createElement('div');
-    bar.className = 'mBar';
-    // 管理は「現在のタブ」の一覧を出す
-    // ただし価格は共通なので tab で切り替え可能
-    el.modalBody.appendChild(bar);
-
-    const panel = document.createElement('div');
-    el.modalBody.appendChild(panel);
-
-    function setManageTab(which) {
-      el.mTabCatalog.classList.toggle('isActive', which === 'catalog');
-      el.mTabPrices.classList.toggle('isActive', which === 'prices');
-
-      panel.innerHTML = '';
-      if (which === 'prices') panel.appendChild(buildPricesPanel());
-      else panel.appendChild(buildCatalogPanel(activeTab));
-    }
-
-    el.mTabCatalog.onclick = () => setManageTab('catalog');
-    el.mTabPrices.onclick = () => setManageTab('prices');
-
-    setManageTab('catalog');
-    openManageModal();
-  }
-
-  el.openManage.addEventListener('click', openManage);
+  el.manageBtn.addEventListener('click', openManage);
 
   /* ========= init ========= */
   async function init() {
@@ -945,17 +820,12 @@ ${lines.join('\n')}
     ensureOrderList(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
     ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
 
-    const savedDelivery2 = localStorage.getItem(LS.DELIVERY);
-    if (savedDelivery2) el.delivery.value = savedDelivery2;
+    const savedDelivery = localStorage.getItem(LS.DELIVERY);
+    if (savedDelivery) el.delivery.value = savedDelivery;
 
     renderAll();
     setTab(activeTab);
   }
-
-  // 初期：管理系オーバーレイが開いたままにならないよう強制的に閉じる
-  hideOverlay(el.modalOverlay);
-  hideOverlay(el.confirmOverlay);
-  hideOverlay(el.editOverlay);
 
   init();
 })();
