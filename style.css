@@ -67,7 +67,7 @@ input,select,button{outline:none}
   line-height:24px;
 }
 
-.delivery,.copy,.addBtn,.manageBtn{
+.delivery,.copy,.manageBtn,.addBtn{
   height:36px;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.14);
@@ -77,6 +77,7 @@ input,select,button{outline:none}
   font-size:13px;
 }
 .copy{ font-weight:900; }
+.addBtn{ font-weight:900; }
 
 .total{
   margin-left:auto;
@@ -249,45 +250,14 @@ select.type{
   margin:0;
   font-size:16px;
 }
-.modalX{
-  width:40px;
-  height:40px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-weight:900;
-  font-size:18px;
-}
+
 #modalBody{
   overflow:auto;
   -webkit-overflow-scrolling: touch;
-  max-height: calc(100dvh - 220px - env(safe-area-inset-top));
+  max-height: calc(100dvh - 190px - env(safe-area-inset-top));
   padding-right:2px;
 }
-.form{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.field{
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-}
-.field label{
-  font-size:12px;
-  color:rgba(255,255,255,.72);
-}
-.field input,.field select{
-  height:40px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(0,0,0,.22);
-  color:#fff;
-  padding:0 12px;
-  font-size:14px;
-}
+
 .modalBtns{
   display:flex;
   gap:10px;
@@ -302,6 +272,7 @@ select.type{
   color:#fff;
   font-weight:900;
 }
+
 .smallNote{
   font-size:12px;
   color:rgba(255,255,255,.60);
@@ -316,4 +287,39 @@ select.type{
 body.modalOpen{
   overflow:hidden;
   touch-action:none;
+}
+
+/* manage list row */
+.mRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:14px;
+  background:rgba(0,0,0,.18);
+}
+.mRow .mName{
+  font-weight:900;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.mRow .mBtns{
+  display:flex;
+  gap:8px;
+}
+.mRow .mBtns button{
+  height:34px;
+  padding:0 12px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-weight:900;
+}
+.mRow .mBtns .delBtn{
+  background:rgba(255,80,80,.10);
+  border-color:rgba(255,80,80,.25);
 }
