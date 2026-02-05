@@ -202,8 +202,8 @@ button{cursor:pointer}
 /* 恐竜：♂ / ♀ / 複製 を横並び（旧UIの形） */
 .grid3{
   display:grid;
-  grid-template-columns:1fr 1fr 72px;
-  gap:10px;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) max-content;
+  gap:8px;
   align-items:center;
 }
 
@@ -257,13 +257,15 @@ button{cursor:pointer}
 }
 
 .dupBtn{
+  width:64px;
   height:56px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
   color:#fff;
   font-weight:950;
-  font-size:13px;
+  font-size:12px;
+  padding:0;
 }
 
 /* 初期は折りたたみ */
