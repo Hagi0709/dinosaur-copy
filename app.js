@@ -589,21 +589,32 @@ ${lines.join('\n')}
     }
   }
 
-  function applyCollapseAndSearch() {
-    const q = norm(el.q.value);
+function applyCollapseAndSearch() {
+  const q = norm(el.q.value);
 
-    $$('[data-card="1"]', el.list).forEach(card => {
-      const name = card.dataset.name || '';
-      const show = !q || norm(name).includes(q);
-      card.style.display = show ? '' : 'none';
+  $$('[data-card="1"]', el.list).forEach(card => {
+    const name = card.dataset.name || '';
+    const show = !q || norm(name).includes(q);
+    card.style.display = show ? '' : 'none';
 
-      const key = card.dataset.key;
-      const kind = card.dataset.kind;
-      const qty = getQtyForCard(key, kind);
-      const collapsed = q ? !show : (qty === 0);
-      card.classList.toggle('isCollapsed', collapsed);
-    });
-  }
+    const key = card.dataset.key;
+    const kind = card.dataset.kind;
+    const qty = getQtyForCard(key, kind);
+
+    // ✅ 検索中は「ヒットしないものは閉じる（従来通り）」
+    if (q) {
+      card.classList.toggle('isCollapsed', !show);
+      return;
+    }
+
+    // ✅ 検索してない時は「手動トグルが優先」
+    //    userToggled=1 のカードは勝手に開閉しない
+    if (card.dataset.userToggled === '1') return;
+
+    // ✅ 触ってないカードだけ「数量0なら自動で閉じる」
+    card.classList.toggle('isCollapsed', qty === 0);
+  });
+}
 
   /* ========= cards ========= */
   function buildDinoCard(d, keyOverride = null) {
@@ -647,7 +658,7 @@ ${lines.join('\n')}
             </div>
           </div>
 
-          <div class="controls" style="display:block;">
+          <div class="controls">
             <div class="gWrap" style="margin-top:12px;">
               <div class="gGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
                 ${btns.join('')}
@@ -696,13 +707,16 @@ ${lines.join('\n')}
       };
 
       syncSpecial();
+      const qNow = s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0);
+if (qNow === 0) delete card.dataset.userToggled;
       card.classList.toggle('isCollapsed', (s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0)) === 0);
 
-      $('.cardToggle', card).addEventListener('click', (ev) => {
-        ev.preventDefault();
-        if (el.q.value.trim()) return;
-        card.classList.toggle('isCollapsed');
-      });
+$('.cardToggle', card).addEventListener('click', (ev) => {
+  ev.preventDefault();
+  if (el.q.value.trim()) return;
+  card.dataset.userToggled = '1';
+  card.classList.toggle('isCollapsed');
+});
 
       card.addEventListener('click', (ev) => {
         const btn = ev.target?.closest('button');
@@ -807,6 +821,8 @@ ${lines.join('\n')}
     card.classList.toggle('isCollapsed', initialQty === 0);
 
     function syncUI() {
+      const qNow = (Number(s.m || 0) + Number(s.f || 0));
+if (qNow === 0) delete card.dataset.userToggled;
       if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
       sel.value = s.type;
       unit.textContent = `単価${prices[s.type] || 0}円`;
@@ -837,11 +853,12 @@ ${lines.join('\n')}
       applyCollapseAndSearch();
     });
 
-    $('.cardToggle', card).addEventListener('click', (ev) => {
-      ev.preventDefault();
-      if (el.q.value.trim()) return;
-      card.classList.toggle('isCollapsed');
-    });
+$('.cardToggle', card).addEventListener('click', (ev) => {
+  ev.preventDefault();
+  if (el.q.value.trim()) return;
+  card.dataset.userToggled = '1';
+  card.classList.toggle('isCollapsed');
+});
 
     $$('button[data-act]', card).forEach(btn => {
       btn.addEventListener('click', (ev) => {
@@ -911,13 +928,12 @@ ${lines.join('\n')}
     const qEl = $('.js-q', card);
     qEl.textContent = String(s.qty || 0);
 
-    card.classList.toggle('isCollapsed', Number(s.qty || 0) === 0);
-
-    $('.cardToggle', card).addEventListener('click', (ev) => {
-      ev.preventDefault();
-      if (el.q.value.trim()) return;
-      card.classList.toggle('isCollapsed');
-    });
+$('.cardToggle', card).addEventListener('click', (ev) => {
+  ev.preventDefault();
+  if (el.q.value.trim()) return;
+  card.dataset.userToggled = '1';
+  card.classList.toggle('isCollapsed');
+});
 
     $$('button[data-act]', card).forEach(btn => {
       btn.addEventListener('click', (ev) => {
