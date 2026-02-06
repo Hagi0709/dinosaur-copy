@@ -77,17 +77,11 @@
     </div>
   </div>
 
-  <!-- Edit/Add Modal -->
-  <div id="editOverlay" class="modalOverlay isHidden" aria-hidden="true">
-    <div class="edit" role="dialog" aria-modal="true" aria-label="編集">
-      <div class="editHead">
-        <div class="editTitle" id="editTitle">追加 / 編集</div>
-        <button id="editClose" class="iconBtn" type="button" aria-label="閉じる">×</button>
-      </div>
-
-      <div class="editBody" id="editBody">
-        <!-- injected -->
-      </div>
+  <!-- Image Viewer Overlay（タップ拡大） -->
+  <div id="imgOverlay" class="modalOverlay isHidden" aria-hidden="true">
+    <div class="imgViewer" role="dialog" aria-modal="true" aria-label="画像表示">
+      <button id="imgClose" class="iconBtn imgClose" type="button" aria-label="閉じる">×</button>
+      <img id="imgView" class="imgView" alt="">
     </div>
   </div>
 </body>
