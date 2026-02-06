@@ -983,14 +983,16 @@ function renderManageImages() {
 
   // ✅ 上部バー（画像出力ボタン）
   const topBar = document.createElement('div');
-  topBar.className = 'imgTopBar';
+  topBar.style.display = 'flex';
+  topBar.style.justifyContent = 'flex-end';
+  topBar.style.marginBottom = '12px';
   topBar.innerHTML = `<button id="imgExport" class="pill" type="button">画像出力</button>`;
   wrap.appendChild(topBar);
 
   // 対象リスト（表示順）
   const list = sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino');
 
-  // ✅ 画像合成（黒背景・縦横指定・上から順に詰める・未設定はスキップ）
+  // ✅ dataURL画像読み込み
   function loadImg(src) {
     return new Promise((resolve) => {
       const im = new Image();
@@ -1000,13 +1002,13 @@ function renderManageImages() {
     });
   }
 
+  // ✅ 合成出力（黒背景・縦横指定・上から順・未設定スキップ）
   async function exportGrid(rows, cols) {
     const maxCells = rows * cols;
 
-    // 上から順に画像を集める（未設定はスキップ）
     const srcs = [];
     for (const d of list) {
-      const u = dinoImages[d.id];
+      const u = getImageUrlForDino(d); // ✅ IDBキャッシュから取得
       if (u) srcs.push(u);
       if (srcs.length >= maxCells) break;
     }
@@ -1027,7 +1029,7 @@ function renderManageImages() {
       return;
     }
 
-    // セルサイズ（管理サムネと同じ 2:1）
+    // セルサイズ（2:1）
     const cellW = 640;
     const cellH = 320;
     const gap = 8;
@@ -1045,7 +1047,7 @@ function renderManageImages() {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, outW, outH);
 
-    // 左→右、上→下で詰める
+    // 左→右、上→下
     let idx = 0;
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -1055,21 +1057,17 @@ function renderManageImages() {
         const x = pad + c * (cellW + gap);
         const y = pad + r * (cellH + gap);
 
-        // cover（比率維持でセルを埋める）
-        const iw = im.naturalWidth || im.width;
-        const ih = im.naturalHeight || im.height;
+        // cover
+        const iw = im.naturalWidth || im.width || 1;
+        const ih = im.naturalHeight || im.height || 1;
         const targetRatio = cellW / cellH;
         const imgRatio = iw / ih;
 
         let sx = 0, sy = 0, sw = iw, sh = ih;
         if (imgRatio > targetRatio) {
-          // 横長 → 左右をカット
-          sh = ih;
           sw = ih * targetRatio;
           sx = (iw - sw) / 2;
         } else {
-          // 縦長 → 上下をカット
-          sw = iw;
           sh = iw / targetRatio;
           sy = (ih - sh) / 2;
         }
@@ -1079,10 +1077,10 @@ function renderManageImages() {
     }
 
     const dataUrl = canvas.toDataURL('image/png', 1.0);
-    openImgViewer(dataUrl); // ✅ 既存の画像ビューアで表示
+    openImgViewer(dataUrl);
   }
 
-  // ✅ クリック処理（この関数内で完結させる）
+  // ✅ 出力ボタン
   topBar.querySelector('#imgExport').addEventListener('click', async () => {
     const rows = parseInt(prompt('縦は何枚？（例：5）', '5') || '', 10);
     const cols = parseInt(prompt('横は何枚？（例：2）', '2') || '', 10);
@@ -1094,14 +1092,16 @@ function renderManageImages() {
     await exportGrid(rows, cols);
   });
 
-  // ✅ 画像一覧（従来通り）
+  // ✅ 画像一覧（IndexedDB版）
   list.forEach(d => {
     const row = document.createElement('div');
     row.className = 'imgRow';
 
     const thumb = document.createElement('div');
     thumb.className = 'thumb';
-    const url = dinoImages[d.id];
+
+    const key = imageKeyFromBaseName(d._baseName || d.name);
+    const url = imageCache[key] || '';
     if (url) thumb.innerHTML = `<img src="${url}" alt="">`;
     else thumb.textContent = 'No Image';
 
@@ -1135,26 +1135,46 @@ function renderManageImages() {
     file.addEventListener('change', async () => {
       const f = file.files && file.files[0];
       if (!f) return;
-      const dataUrl = await fileToDataURL(f);
-      dinoImages[d.id] = dataUrl;
-      saveJSON(LS.DINO_IMAGES, dinoImages);
-      thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
 
-      // ✅ メインにも反映（既存仕様）
-      renderList();
+      try {
+        // ✅ 圧縮して保存（IDB）
+        const dataUrl = await fileToDataURLCompressed(f, 900, 0.78);
+        imageCache[key] = dataUrl;
+        await idbPutImage(key, dataUrl);
+
+        thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
+
+        // ✅ メインにも即反映（再描画依存を減らす）
+        syncThumbInMainListByDino(d, dataUrl);
+
+        openToast('画像を保存しました');
+      } catch {
+        openToast('画像の保存に失敗しました');
+      } finally {
+        file.value = '';
+      }
     });
 
     del.addEventListener('click', async () => {
       const ok = await confirmAsk('画像を削除しますか？');
       if (!ok) return;
-      delete dinoImages[d.id];
-      saveJSON(LS.DINO_IMAGES, dinoImages);
-      thumb.textContent = 'No Image';
-      renderList();
+
+      try {
+        delete imageCache[key];
+        await idbDelImage(key);
+        thumb.textContent = 'No Image';
+
+        // メイン側は素直に再描画（確実）
+        renderList();
+
+        openToast('画像を削除しました');
+      } catch {
+        openToast('削除に失敗しました');
+      }
     });
 
     thumb.addEventListener('click', () => {
-      const u = dinoImages[d.id];
+      const u = imageCache[key];
       if (!u) return;
       openImgViewer(u);
     });
