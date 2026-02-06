@@ -9,6 +9,9 @@
 
   --male:#57c7ff;   /* 水色 */
   --female:#ff5fcf; /* ピンク */
+
+  /* ✅ 追加：固定ヘッダーの高さ（JSで上書き） */
+  --topH: 0px;
 }
 
 *{box-sizing:border-box}
@@ -24,13 +27,21 @@ body{
   font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
   background:var(--bg);
   color:var(--txt);
+
+  /* ✅ 変更：固定ヘッダー分だけ下げる */
+  padding-top: var(--topH);
+
   padding-bottom:120px;
 }
 button{cursor:pointer}
 
 .top{
-  position:sticky;
+  /* ✅ 変更：sticky → fixed（iOSで確実に固定） */
+  position:fixed;
+  left:0;
+  right:0;
   top:0;
+
   z-index:10;
   background:rgba(11,15,20,.95);
   backdrop-filter:blur(14px);
@@ -161,6 +172,7 @@ button{cursor:pointer}
   border-color:rgba(255,255,255,.18);
 }
 
+/* ✅ 変更：fixed header 前提でOK（body padding-top で確保済み） */
 .list{padding:12px}
 
 /* ================= Cards ================= */
