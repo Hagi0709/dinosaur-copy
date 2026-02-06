@@ -7,8 +7,8 @@
   --ok:#78ffb3;
   --danger:#b94a55;
 
-  --male:#63c7ff;   /* 水色 */
-  --female:#ff7ecb; /* ピンク */
+  --male:#65c8ff;
+  --female:#ff72c6;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -73,7 +73,6 @@ button{cursor:pointer}
   line-height:1;
   font-size:18px;
 }
-
 .delivery{
   height:36px;
   border-radius:14px;
@@ -151,6 +150,7 @@ button{cursor:pointer}
 
 .list{padding:12px}
 
+/* ===== Card ===== */
 .card{
   background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
   border:1px solid rgba(255,255,255,.10);
@@ -158,6 +158,9 @@ button{cursor:pointer}
   padding:12px;
   margin-bottom:10px;
   overflow:hidden;
+}
+.cardWrap{
+  position:relative;
 }
 .cardHead{
   display:flex;
@@ -193,55 +196,68 @@ button{cursor:pointer}
   white-space:nowrap;
 }
 
+/* 展開/折りたたみの判定を“枠いっぱい”にする */
+.cardTap{
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  height:64px; /* ヘッダー＋余白 */
+  border:0;
+  background:transparent;
+  padding:0;
+}
+
+/* 折りたたみ */
+.card.isCollapsed .controls{display:none}
+
+/* ===== Controls ===== */
 .controls{
   margin-top:10px;
   display:grid;
   gap:10px;
 }
 
-/* 恐竜：♂ / ♀ / 複製 を横並び（旧UIの形） */
-.grid3{
+/* 恐竜：オス・メス・複製を横一列に */
+.dinoRowWrap{
+  position:relative;
+  padding-right:78px; /* 右に複製席 */
+}
+.dinoRow{
   display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(0,1fr) max-content;
-  gap:8px;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  gap:10px;
   align-items:center;
 }
 
-/* アイテム：ステッパー1本 */
-.grid1{
-  display:grid;
-  grid-template-columns:1fr;
-  gap:10px;
-}
-
+/* ステッパー（横） */
 .stepper{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:10px;
-  padding:10px 10px;
+  gap:8px;
+  padding:10px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.04);
-  min-height:56px;
+  min-width:0;
 }
-.stepper.male{
-  border-color:rgba(99,199,255,.45);
-  box-shadow:0 0 0 1px rgba(99,199,255,.10) inset;
+.stepper.stepperM{
+  box-shadow:0 0 0 1px rgba(101,200,255,.35) inset;
 }
-.stepper.female{
-  border-color:rgba(255,126,203,.45);
-  box-shadow:0 0 0 1px rgba(255,126,203,.10) inset;
+.stepper.stepperF{
+  box-shadow:0 0 0 1px rgba(255,114,198,.35) inset;
 }
 
+/* ボタン類 */
 .btn{
-  width:48px;
-  height:38px;
+  width:44px;
+  height:36px;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.10);
   color:#fff;
-  font-size:20px;
+  font-size:18px;
   font-weight:950;
   line-height:1;
   display:inline-flex;
@@ -252,26 +268,26 @@ button{cursor:pointer}
   flex:1;
   text-align:center;
   font-weight:950;
-  font-size:18px;
-  letter-spacing:.5px;
+  font-size:16px;
 }
 
+/* 複製ボタンは“行の外”に固定（見切れない） */
 .dupBtn{
-  width:64px;
-  height:56px;
+  position:absolute;
+  right:0;
+  top:50%;
+  transform:translateY(-50%);
+  width:68px;
+  height:40px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
+  background:rgba(255,255,255,.10);
   color:#fff;
   font-weight:950;
-  font-size:12px;
-  padding:0;
+  white-space:nowrap;
 }
 
-/* 初期は折りたたみ */
-.card.isCollapsed .controls{display:none}
-
-/* ====== modal ====== */
+/* ===== Modal ===== */
 .modalOverlay{
   position:fixed;
   inset:0;
@@ -283,7 +299,7 @@ button{cursor:pointer}
   justify-content:center;
   padding:14px;
 }
-.modalOverlay.isHidden{display:none;}
+.modalOverlay.isHidden{display:none}
 
 .modal{
   width:min(720px, 100%);
@@ -338,42 +354,7 @@ button{cursor:pointer}
   -webkit-overflow-scrolling:touch;
 }
 
-/* 管理UI（app.jsが生成するクラス群） */
-.mGrid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-}
-.mField label{
-  display:block;
-  font-size:12px;
-  color:var(--mut);
-  margin:0 0 6px;
-  font-weight:800;
-}
-.mField input, .mField select{
-  width:100%;
-  padding:12px 10px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.18);
-  color:#fff;
-  outline:none;
-}
-.mActions{
-  display:flex;
-  gap:10px;
-  margin-top:10px;
-}
-.mActions button{
-  height:40px;
-  padding:0 14px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.10);
-  color:#fff;
-  font-weight:950;
-}
+/* 管理：一覧 */
 .mRow{
   display:flex;
   gap:10px;
@@ -382,7 +363,7 @@ button{cursor:pointer}
   border-radius:18px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(0,0,0,.18);
-  margin-top:10px;
+  margin-bottom:10px;
 }
 .mName{
   flex:1;
@@ -391,23 +372,50 @@ button{cursor:pointer}
   line-height:1.2;
   word-break:break-word;
 }
-.mBtn{
-  width:52px;
-  height:40px;
-  border-radius:16px;
+.mBtns{
+  display:flex;
+  gap:8px;
+}
+.sBtn{
+  width:44px;height:38px;
+  border-radius:14px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
   color:#fff;
   font-weight:950;
 }
-.mBtn.danger{
-  width:auto;
-  padding:0 14px;
+.sBtn.wide{width:66px} /* 削除が縦にならない */
+.sBtn.danger{
   background:rgba(185,74,85,.22);
   border-color:rgba(185,74,85,.35);
 }
 
-/* Confirm / Edit overlay blocks (index.html側) */
+/* 価格 */
+.priceGrid{
+  display:grid;
+  grid-template-columns:1fr 140px;
+  gap:10px;
+}
+.pKey{
+  padding:12px 10px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(0,0,0,.16);
+  font-weight:900;
+}
+.pVal input{
+  width:100%;
+  padding:12px 10px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.18);
+  color:#fff;
+  outline:none;
+  text-align:right;
+  font-weight:950;
+}
+
+/* Confirm / Edit */
 .confirm, .edit{
   width:min(640px, 100%);
   max-height:min(86vh, 900px);
@@ -433,6 +441,55 @@ button{cursor:pointer}
   border-radius:16px;
   border:1px solid rgba(185,74,85,.35);
   background:rgba(185,74,85,.22);
+  color:#fff;
+  font-weight:950;
+}
+
+.editHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:12px;
+}
+.editTitle{font-weight:950;font-size:18px}
+.editBody{
+  overflow:auto;
+  max-height:calc(86vh - 110px);
+  -webkit-overflow-scrolling:touch;
+}
+.form{
+  display:grid;
+  gap:10px;
+}
+.field label{
+  display:block;
+  font-size:12px;
+  color:var(--mut);
+  margin:0 0 6px;
+  font-weight:800;
+}
+.field input, .field select{
+  width:100%;
+  padding:12px 10px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.18);
+  color:#fff;
+  outline:none;
+}
+.formBtns{
+  display:flex;
+  gap:10px;
+  margin-top:6px;
+}
+.formBtns .primary{flex:1}
+.formBtns .ghost{flex:1}
+.primary{
+  height:40px;
+  padding:0 14px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.10);
   color:#fff;
   font-weight:950;
 }
