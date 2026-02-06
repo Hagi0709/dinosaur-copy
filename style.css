@@ -36,7 +36,6 @@ button{cursor:pointer}
 
 /* =========================
    ✅ Header 固定（stickyではなくfixedで安定化）
-   stickyが壊れる原因（親のoverflow/transform等）を回避する
 ========================= */
 .top{
   position:fixed;
@@ -52,14 +51,12 @@ button{cursor:pointer}
   padding-top:calc(10px + env(safe-area-inset-top));
   border-bottom:1px solid rgba(255,255,255,.06);
 
-  /* ✅ iOSで固定ヘッダーが微妙にガタつくのを抑える */
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
   will-change: transform;
 }
 
-/* ✅ ヘッダー内の高さは内容で決まるので、
-   代表的なケースで topPad を分岐させてズレを吸収 */
+/* ✅ ヘッダー内の高さは内容で決まるので分岐 */
 @media (max-width: 420px){
   :root{ --topPad: 248px; }
 }
@@ -212,6 +209,9 @@ button{cursor:pointer}
   gap:10px;
   align-items:start;
 }
+
+/* ✅ ここが原因：toggleが前面すぎるとselectが押せない
+   → toggleを下げて、右側(select側)を上げる */
 .cardToggle{
   position:absolute;
   inset:-12px -12px auto -12px;
@@ -221,7 +221,7 @@ button{cursor:pointer}
   padding:0;
   margin:0;
   cursor:pointer;
-  z-index:5;              /* ✅ iOSで右側select等に負けない */
+  z-index:1; /* ✅ selectより下 */
 }
 
 .nameWrap{
@@ -230,6 +230,8 @@ button{cursor:pointer}
   flex-direction:column;
   gap:8px;
   padding-right:6px;
+  position:relative;
+  z-index:2;
 }
 .name{
   font-weight:950;
@@ -259,7 +261,9 @@ button{cursor:pointer}
   gap:8px;
   align-items:stretch;
   justify-self:end;
-  z-index:1;
+
+  position:relative;
+  z-index:10; /* ✅ toggleより上 */
 }
 .type{
   height:44px;
@@ -276,6 +280,8 @@ button{cursor:pointer}
   background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
   background-size: 6px 6px, 6px 6px;
   background-repeat:no-repeat;
+  position:relative;
+  z-index:11; /* ✅ 念のため */
 }
 .unit{
   font-size:12px;
@@ -291,6 +297,8 @@ button{cursor:pointer}
   align-items:center;
   flex-wrap:nowrap;
   overflow:visible;
+  position:relative;
+  z-index:2;
 }
 
 .stepper{
@@ -349,8 +357,11 @@ button{cursor:pointer}
 
 .card.isCollapsed .controls{display:none}
 
-/* ✅ ガチャなど “controls外” に居る特殊UIも閉じる */
-.card.isCollapsed .gachaWrap{display:none}
+/* ✅ special UI を閉じる（JS側class名に合わせるならここも調整可）
+   今のJSでは gWrap/gGrid を使っているので gachaWrap では閉じない。
+   ただし controls 自体を block にしてる special では折りたたみ時に隠す必要がある。
+*/
+.card.isCollapsed .gWrap{display:none}
 
 /* ================= Modal ================= */
 
@@ -601,6 +612,7 @@ button{cursor:pointer}
   gap:10px;
   align-items:center;
 }
+
 /* ✅ 画像タブ：上部ボタン行 */
 .imgTopBar{
   display:flex;
@@ -609,11 +621,8 @@ button{cursor:pointer}
   justify-content:flex-end;
   margin-bottom:12px;
 }
-
-/* ✅ 画像出力ボタン（pillを流用しつつ幅確保） */
-#imgExport{
-  min-width:120px;
-}
+/* ✅ 画像出力ボタンの幅 */
+#imgExport{ min-width:120px; }
 
 .pill{
   height:40px;
@@ -649,11 +658,3 @@ button{cursor:pointer}
   padding:12px;
   border-radius:18px;
 }
-/* =========================
-   ✅ 画像出力（画像タブのサムネから合成）
-   - 縦×横を入力
-   - 表示順（上から順）で埋める
-   - 画像未設定はスキップ
-   - 背景は黒
-   - 生成画像は既存の画像ビューア(#imgOverlay)で表示
-========================= */
