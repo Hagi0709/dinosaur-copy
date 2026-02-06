@@ -410,10 +410,9 @@ button{cursor:pointer}
 
 .imgRow{
   display:grid;
-  grid-template-columns:140px 1fr;
-  grid-template-areas:
-    "thumb name"
-    "thumb btns";
+  /* ✅ サムネ | 名前 | ボタン の3列にする */
+  grid-template-columns:140px minmax(0,1fr) max-content;
+  grid-template-areas: "thumb name btns";
   gap:10px 12px;
   align-items:center;
   padding:12px;
