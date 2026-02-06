@@ -19,6 +19,29 @@
     const key = norm(name);
     return `${prefix}_${stableHash(key)}`;
   }
+  function openConfirm(message, onOk) {
+  const ov = $('#confirmOverlay');
+  const tx = $('#confirmText');
+  const ok = $('#confirmOk');
+  const cancel = $('#confirmCancel');
+
+  tx.textContent = message;
+  ov.classList.remove('isHidden');
+
+  const cleanup = () => {
+    ov.classList.add('isHidden');
+    ok.onclick = null;
+    cancel.onclick = null;
+  };
+
+  cancel.onclick = cleanup;
+  ov.onclick = (e) => { if (e.target === ov) cleanup(); };
+
+  ok.onclick = () => {
+    cleanup();
+    onOk && onOk();
+  };
+}
 
   /* ========= storage keys ========= */
   const LS = {
@@ -651,15 +674,44 @@ ${lines.join('\n')}
   }
 
   /* ========= manage: catalog (並び替え/削除 + 追加 + 編集) ========= */
-  function renderManageCatalog() {
-    const wrap = document.createElement('div');
+function renderManageCatalog() {
+  const wrap = document.createElement('div');
 
-    if (activeTab === 'dino') {
-      const addBar = document.createElement('div');
-      addBar.style.marginBottom = '12px';
-      addBar.innerHTML = `<button class="pill" type="button" data-act="addDino">＋ 恐竜を追加</button>`;
-      wrap.appendChild(addBar);
-    }
+  // ✅ 五十音並び替えボタン（管理画面内）
+  const sortBar = document.createElement('div');
+  sortBar.style.display = 'flex';
+  sortBar.style.justifyContent = 'flex-end';
+  sortBar.style.margin = '0 0 10px';
+
+  const sortBtn = document.createElement('button');
+  sortBtn.className = 'pill';
+  sortBtn.type = 'button';
+  sortBtn.textContent = '五十音で並び替え';
+  sortBtn.addEventListener('click', () => {
+    openConfirm('五十音順で並び替えます。よろしいですか？', () => {
+      const kind = activeTab; // 'dino' or 'item'
+      const list = (kind === 'dino')
+        ? dinos.filter(x => !hidden.dino.has(x.id))
+        : items.filter(x => !hidden.item.has(x.id));
+
+      // 五十音順でID配列を作る（表示対象のみ）
+      const ids = list
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name, 'ja'))
+        .map(x => x.id);
+
+      order[kind] = ids;
+      saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ids);
+
+      // ✅ 管理画面を閉じずに更新
+      el.modalBody.innerHTML = '';
+      el.modalBody.appendChild(renderManageCatalog());
+      renderList(); // メインも反映
+    });
+  });
+
+  sortBar.appendChild(sortBtn);
+  wrap.appendChild(sortBar);
 
     const list = (activeTab === 'dino')
       ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
