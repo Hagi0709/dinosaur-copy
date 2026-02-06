@@ -31,8 +31,10 @@
   const circled = (n) => {
     const x = Number(n);
     if (!Number.isFinite(x) || x <= 0) return String(n);
-    if (x >= 1 && x <= 20) return String.fromCharCode(0x2460 + (x - 1));     // ①..⑳
-    if (x >= 21 && x <= 35) return String.fromCharCode(0x3251 + (x - 21));   // ㉑..㉟
+    // ①..⑳ (1..20)
+    if (x >= 1 && x <= 20) return String.fromCharCode(0x2460 + (x - 1));
+    // ㉑..㉟ (21..35)
+    if (x >= 21 && x <= 35) return String.fromCharCode(0x3251 + (x - 21));
     return String(n);
   };
 
@@ -47,12 +49,16 @@
     PRICES: 'prices_v1',
     DELIVERY: 'delivery_v1',
 
+    // 旧：画像(localStorage)
     DINO_IMAGES_OLD: 'dino_images_v1',
+
     DINO_OVERRIDE: 'dino_override_v1',
 
+    // ROOM
     ROOM_ENTRY_PW: 'room_entry_pw_v1',
     ROOM_PW: 'room_pw_v1',
 
+    // ✅ 特殊入力設定（ガチャ等）
     SPECIAL_CFG: 'special_cfg_v1',
   };
 
@@ -138,7 +144,7 @@
   const IDB = {
     DB_NAME: 'dino_list_db_v3',
     DB_VER: 1,
-    STORE_IMAGES: 'images',
+    STORE_IMAGES: 'images', // key: imageKey, value: dataUrl
   };
 
   let dbPromise = null;
@@ -231,24 +237,26 @@
   const typeList = Object.keys(defaultPrices);
   const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
 
-  /* ========= special cfg ========= */
+  /* ========= special cfg (ガチャ等) ========= */
+  // cfg: { enabled: true, max: 16, unit: 300, all: 3000, allowSex: false }
   const specialCfg = Object.assign({}, loadJSON(LS.SPECIAL_CFG, {}));
 
   function getSpecialCfgForDino(d) {
+    // ✅ 既存設定優先
     if (specialCfg[d.id]?.enabled) return specialCfg[d.id];
 
+    // ✅ とりあえず「ガチャ」だけデフォルトで特殊化
     const base = String(d._baseName || d.name || '').trim();
     const name = String(d.name || '').trim();
     if (base === 'ガチャ' || name === 'ガチャ') {
-      return { enabled: true, max: 16, unit: 300, all: 3000 };
+      return { enabled: true, max: 16, unit: 300, all: 3000, allowSex: false };
     }
     return null;
   }
 
   /* ========= images ========= */
-  const imageCache = {};
+  const imageCache = {}; // { [imageKey]: dataURL }
   const dinoOverride = Object.assign({}, loadJSON(LS.DINO_OVERRIDE, {}));
-
   function imageKeyFromBaseName(baseName) {
     return `img_${stableHash(norm(baseName))}`;
   }
@@ -344,7 +352,7 @@
       name: ov?.name || nameRaw,
       defType: ov?.defType || defType,
       kind: 'dino',
-      _baseName: nameRaw,
+      _baseName: nameRaw, // ✅ 画像キーの元
     };
   }
 
@@ -386,8 +394,9 @@
       if (spCfg?.enabled) {
         inputState.set(key, {
           mode: 'special',
-          picks: [],
-          all: false,
+          picks: [],      // [1,2,3,3,...]
+          all: false,     // 全種
+          // ✅ allowSex時に通常入力も持つ
           type: defType || '受精卵',
           m: 0,
           f: 0,
@@ -395,15 +404,26 @@
       } else {
         inputState.set(key, { type: defType || '受精卵', m: 0, f: 0 });
       }
+    } else {
+      // 既存stateがある場合、special化されたら必要フィールドだけ補完
+      const s = inputState.get(key);
+      if (spCfg?.enabled) {
+        if (s.mode !== 'special') s.mode = 'special';
+        if (!Array.isArray(s.picks)) s.picks = [];
+        if (typeof s.all !== 'boolean') s.all = false;
+        if (typeof s.type !== 'string') s.type = defType || '受精卵';
+        if (typeof s.m !== 'number') s.m = 0;
+        if (typeof s.f !== 'number') s.f = 0;
+      }
     }
     return inputState.get(key);
   }
-
   function ensureItemState(key) {
     if (!inputState.has(key)) inputState.set(key, { qty: 0 });
     return inputState.get(key);
   }
 
+  // ✅ 幼体/成体には(指定)を付けない
   function autoSpecify(s) {
     const m = Number(s.m || 0), f = Number(s.f || 0);
     const base = String(s.type || '受精卵').replace('(指定)', '');
@@ -423,7 +443,6 @@
     const k = imageKeyFromBaseName(d._baseName || d.name);
     return imageCache[k] || '';
   }
-
   function syncThumbInMainListByDino(d, dataUrl) {
     const cards = $$(`[data-kind="dino"][data-did="${CSS.escape(d.id)}"]`, el.list);
     cards.forEach(card => {
@@ -442,9 +461,7 @@
         if (dataUrl) im.src = dataUrl;
         else im.removeAttribute('src');
       }
-      if (!dataUrl) {
-        wrap.remove();
-      }
+      if (!dataUrl) wrap.remove();
     });
   }
 
@@ -459,14 +476,49 @@
     for (const d of dList) {
       const baseKey = d.id;
       const keys = [baseKey, ...Array.from(ephemeralKeys).filter(k => k.startsWith(baseKey + '__dup'))];
-
       const sp = getSpecialCfgForDino(d);
 
       for (const k of keys) {
         const s = inputState.get(k);
         if (!s) continue;
 
+        // ✅ SPECIAL（ガチャ等）
         if (sp?.enabled && s.mode === 'special') {
+          const allowSex = !!sp.allowSex;
+          const m = Number(s.m || 0);
+          const f = Number(s.f || 0);
+          const sexQty = m + f;
+
+          // ✅ allowSexで通常入力がある場合は「特殊無効（通常扱い）」
+          if (allowSex && sexQty > 0) {
+            const type = s.type || d.defType || '受精卵';
+            const unitPrice = prices[type] || 0;
+            const price = unitPrice * sexQty;
+            sum += price;
+
+            const tOut = String(type).replace('(指定)', '');
+            const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+
+            let line = '';
+            if (isPair) {
+              if (m === f) {
+                line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+              } else {
+                const p = [];
+                if (m > 0) p.push(`♂×${m}`);
+                if (f > 0) p.push(`♀×${f}`);
+                line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+              }
+            } else {
+              line = `${d.name}${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
+            }
+
+            lines.push(`${idx}. ${line}`);
+            idx++;
+            continue;
+          }
+
+          // ✅ 特殊入力（全種 or picks）
           const unitPrice = Number(sp.unit || 0);
           const allPrice = Number(sp.all || 0);
 
@@ -492,6 +544,7 @@
           continue;
         }
 
+        // ✅ NORMAL（従来）
         const type = s.type || d.defType || '受精卵';
         const m = Number(s.m || 0);
         const f = Number(s.f || 0);
@@ -560,7 +613,10 @@ ${lines.join('\n')}
     if (kind === 'dino') {
       const s = inputState.get(key);
       if (!s) return 0;
+
       if (s.mode === 'special') {
+        const sexQty = Number(s.m || 0) + Number(s.f || 0);
+        if (sexQty > 0) return sexQty;
         if (s.all) return 1;
         return Array.isArray(s.picks) ? s.picks.length : 0;
       }
@@ -587,6 +643,26 @@ ${lines.join('\n')}
     });
   }
 
+  /* ========= Toggle hit area (左側ほぼ全部) ========= */
+  function installLeftToggleHit(card) {
+    // JSで「左側の当たり」を確実にする（CSSが何でも動くように）
+    // - 右側( select 等 ) は絶対に邪魔しない
+    // - nameWrap / miniThumb / 左側余白で反応
+    const head = $('.cardHead', card);
+    const toggle = $('.cardToggle', card);
+    if (!head || !toggle) return;
+
+    // 右列が140px想定 + gapなどを見込んで 170px を除外
+    toggle.style.inset = 'auto';
+    toggle.style.left = '-12px';
+    toggle.style.top = '-12px';
+    toggle.style.bottom = '-12px';
+    toggle.style.width = 'calc(100% - 170px)'; // ✅ 左側ほぼ全部
+    toggle.style.height = 'calc(100% + 24px)';
+    toggle.style.zIndex = '5';
+    toggle.style.pointerEvents = 'auto';
+  }
+
   /* ========= cards ========= */
   function buildDinoCard(d, keyOverride = null) {
     const sp = getSpecialCfgForDino(d);
@@ -603,15 +679,36 @@ ${lines.join('\n')}
 
     const imgUrl = getImageUrlForDino(d);
 
+    // ✅ special UI（ガチャ等）
     if (sp?.enabled && s.mode === 'special') {
       const maxN = Math.max(1, Math.min(60, Number(sp.max || 16)));
       const unitPrice = Number(sp.unit || 0);
       const allPrice = Number(sp.all || 0);
+      const allowSex = !!sp.allowSex;
 
       const btns = [];
       for (let i = 1; i <= maxN; i++) {
         btns.push(`<button class="gBtn" type="button" data-act="pick" data-n="${i}">${i}</button>`);
       }
+
+      // allowSex: 通常UI（種類＋♂♀）も出す（入力されたら特殊無効）
+      const normalBlock = allowSex ? `
+        <div class="controls" style="margin-top:10px;">
+          <div class="stepper male">
+            <button class="btn" type="button" data-act="m-">−</button>
+            <div class="val js-m">0</div>
+            <button class="btn" type="button" data-act="m+">＋</button>
+          </div>
+
+          <div class="stepper female">
+            <button class="btn" type="button" data-act="f-">−</button>
+            <div class="val js-f">0</div>
+            <button class="btn" type="button" data-act="f+">＋</button>
+          </div>
+
+          <select class="type" aria-label="種類"></select>
+        </div>
+      ` : ``;
 
       card.innerHTML = `
         <div class="cardInner">
@@ -628,8 +725,10 @@ ${lines.join('\n')}
             </div>
           </div>
 
-          <div class="controls" style="display:block;">
-            <div class="gWrap" style="margin-top:12px;">
+          ${normalBlock}
+
+          <div class="controls gachaWrap" style="display:block;margin-top:10px;">
+            <div class="gWrap">
               <div class="gGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
                 ${btns.join('')}
               </div>
@@ -654,37 +753,107 @@ ${lines.join('\n')}
 
       $('.name', card).textContent = d.name;
 
+      // ✅ 左側ほぼ全部で折りたたみ
+      installLeftToggleHit(card);
+
       const inputEl = $('.gInput', card);
       const sumEl = $('.gSum', card);
       const allBtn = $('button[data-act="all"]', card);
 
+      // allowSex 用
+      const mEl = $('.js-m', card);
+      const fEl = $('.js-f', card);
+      const sel = $('.type', card);
+
+      if (allowSex && sel) {
+        sel.innerHTML = typeList.map(t => `<option value="${t}">${t}</option>`).join('');
+        if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
+        sel.value = s.type;
+      }
+
       const syncSpecial = () => {
         const picks = Array.isArray(s.picks) ? s.picks : [];
-        if (s.all) {
-          inputEl.textContent = '全種';
-          sumEl.textContent = yen(allPrice);
-          allBtn.textContent = '全種✓';
+        const sexQty = Number(s.m || 0) + Number(s.f || 0);
+
+        // allowSexで通常入力が入ったら特殊は表示だけ（無効扱い）
+        if (allowSex) {
+          if (mEl) mEl.textContent = String(s.m || 0);
+          if (fEl) fEl.textContent = String(s.f || 0);
+          if (sel) sel.value = s.type;
+
+          if (sexQty > 0) {
+            inputEl.textContent = '(通常入力中)';
+            sumEl.textContent = '(特殊無効)';
+            allBtn.textContent = '全種';
+          } else {
+            if (s.all) {
+              inputEl.textContent = '全種';
+              sumEl.textContent = yen(allPrice);
+              allBtn.textContent = '全種✓';
+            } else {
+              inputEl.textContent = picks.length ? picks.map(n => circled(n)).join('') : '(未入力)';
+              sumEl.textContent = yen(picks.length * unitPrice);
+              allBtn.textContent = '全種';
+            }
+          }
         } else {
-          inputEl.textContent = picks.length ? picks.map(n => circled(n)).join('') : '(未入力)';
-          sumEl.textContent = yen(picks.length * unitPrice);
-          allBtn.textContent = '全種';
+          if (s.all) {
+            inputEl.textContent = '全種';
+            sumEl.textContent = yen(allPrice);
+            allBtn.textContent = '全種✓';
+          } else {
+            inputEl.textContent = picks.length ? picks.map(n => circled(n)).join('') : '(未入力)';
+            sumEl.textContent = yen(picks.length * unitPrice);
+            allBtn.textContent = '全種';
+          }
         }
 
         if (!el.q.value.trim()) {
-          const q = s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0);
+          const q = (Number(s.m || 0) + Number(s.f || 0)) > 0
+            ? (Number(s.m || 0) + Number(s.f || 0))
+            : (s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0));
           card.classList.toggle('isCollapsed', q === 0);
         }
       };
 
       syncSpecial();
-      card.classList.toggle('isCollapsed', (s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0)) === 0);
+      card.classList.toggle('isCollapsed', getQtyForCard(key, 'dino') === 0);
 
+      // 折りたたみ
       $('.cardToggle', card).addEventListener('click', (ev) => {
         ev.preventDefault();
         if (el.q.value.trim()) return;
         card.classList.toggle('isCollapsed');
       });
 
+      // allowSex: 種類変更
+      sel?.addEventListener('click', (ev) => ev.stopPropagation());
+      sel?.addEventListener('change', (ev) => {
+        ev.stopPropagation();
+        s.type = sel.value;
+        autoSpecify(s);
+        syncSpecial();
+        rebuildOutput();
+        applyCollapseAndSearch();
+      });
+
+      // allowSex: step
+      const step = (sex, delta) => {
+        if (sex === 'm') s.m = Math.max(0, Number(s.m || 0) + delta);
+        if (sex === 'f') s.f = Math.max(0, Number(s.f || 0) + delta);
+        autoSpecify(s);
+
+        // ✅ 通常入力が入ったら特殊無効（併用しない）
+        if ((Number(s.m || 0) + Number(s.f || 0)) > 0) {
+          s.all = false;
+          s.picks = [];
+        }
+        syncSpecial();
+        rebuildOutput();
+        applyCollapseAndSearch();
+      };
+
+      // ボタン類（特殊 + allowSex）
       card.addEventListener('click', (ev) => {
         const btn = ev.target?.closest('button');
         if (!btn) return;
@@ -692,9 +861,25 @@ ${lines.join('\n')}
 
         const act = btn.dataset.act;
 
+        // allowSex stepper
+        if (act === 'm-') return step('m', -1);
+        if (act === 'm+') return step('m', +1);
+        if (act === 'f-') return step('f', -1);
+        if (act === 'f+') return step('f', +1);
+
+        // 特殊入力は「通常入力が無いときだけ」有効
+        const sexQty = Number(s.m || 0) + Number(s.f || 0);
+        if (allowSex && sexQty > 0) {
+          openToast('通常入力があるため特殊入力は無効です');
+          return;
+        }
+
         if (act === 'pick') {
           const n = Number(btn.dataset.n || 0);
           if (!Number.isFinite(n) || n <= 0) return;
+
+          // ✅ 特殊入力したら通常を無効化
+          s.m = 0; s.f = 0;
 
           s.all = false;
           if (!Array.isArray(s.picks)) s.picks = [];
@@ -707,6 +892,9 @@ ${lines.join('\n')}
         }
 
         if (act === 'undo') {
+          // ✅ 特殊操作したら通常を無効化
+          s.m = 0; s.f = 0;
+
           if (s.all) {
             s.all = false;
           } else {
@@ -719,6 +907,9 @@ ${lines.join('\n')}
         }
 
         if (act === 'all') {
+          // ✅ 特殊操作したら通常を無効化
+          s.m = 0; s.f = 0;
+
           s.all = !s.all;
           if (s.all) s.picks = [];
           syncSpecial();
@@ -768,15 +959,13 @@ ${lines.join('\n')}
 
     $('.name', card).textContent = d.name;
 
+    // ✅ 左側ほぼ全部で折りたたみ（右のselectは邪魔しない）
+    installLeftToggleHit(card);
+
     const sel = $('.type', card);
     sel.innerHTML = typeList.map(t => `<option value="${t}">${t}</option>`).join('');
     if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
     sel.value = s.type;
-
-    // ✅ 追加：iOS事故防止（toggleに吸われないように）
-    sel.addEventListener('pointerdown', (ev) => ev.stopPropagation(), { passive: true });
-    sel.addEventListener('click', (ev) => ev.stopPropagation());
-    sel.addEventListener('touchstart', (ev) => ev.stopPropagation(), { passive: true });
 
     const unit = $('.unit', card);
     unit.textContent = `単価${prices[s.type] || 0}円`;
@@ -810,6 +999,10 @@ ${lines.join('\n')}
       rebuildOutput();
       applyCollapseAndSearch();
     }
+
+    // ✅ select を押しても折りたたまれないように（保険）
+    sel.addEventListener('click', (ev) => ev.stopPropagation());
+    sel.addEventListener('pointerdown', (ev) => ev.stopPropagation());
 
     sel.addEventListener('change', (ev) => {
       ev.stopPropagation();
@@ -889,12 +1082,24 @@ ${lines.join('\n')}
     $('.name', card).textContent = it.name;
     $('.unit', card).textContent = `単価${it.price}円`;
 
+    // ✅ 左側ほぼ全部で折りたたみ（右側なしなので広く）
+    const toggle = $('.cardToggle', card);
+    if (toggle) {
+      toggle.style.inset = 'auto';
+      toggle.style.left = '-12px';
+      toggle.style.top = '-12px';
+      toggle.style.bottom = '-12px';
+      toggle.style.width = 'calc(100% - 10px)';
+      toggle.style.height = 'calc(100% + 24px)';
+      toggle.style.zIndex = '5';
+    }
+
     const qEl = $('.js-q', card);
     qEl.textContent = String(s.qty || 0);
 
     card.classList.toggle('isCollapsed', Number(s.qty || 0) === 0);
 
-    $('.cardToggle', card).addEventListener('click', (ev) => {
+    toggle?.addEventListener('click', (ev) => {
       ev.preventDefault();
       if (el.q.value.trim()) return;
       card.classList.toggle('isCollapsed');
@@ -1022,277 +1227,380 @@ ${lines.join('\n')}
   }
 
   /* ========= manage: catalog ========= */
-function renderManageCatalog() {
-  const wrap = document.createElement('div');
+  function renderManageCatalog() {
+    const wrap = document.createElement('div');
 
-  // ✅ 追加ボタン
-  const top = document.createElement('div');
-  top.style.display = 'flex';
-  top.style.justifyContent = 'flex-end';
-  top.style.marginBottom = '10px';
-  top.innerHTML = `<button class="pill" type="button" data-act="addDino">＋ 追加</button>`;
-  wrap.appendChild(top);
+    // ✅ 追加ボタン（復活）
+    const top = document.createElement('div');
+    top.style.display = 'flex';
+    top.style.justifyContent = 'flex-end';
+    top.style.marginBottom = '10px';
+    top.innerHTML = `<button class="pill" type="button" data-act="add">＋追加</button>`;
+    wrap.appendChild(top);
 
-  const list = (activeTab === 'dino')
-    ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
-    : sortByOrder(items.filter(x => !hidden.item.has(x.id)), 'item');
+    const list = (activeTab === 'dino')
+      ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
+      : sortByOrder(items.filter(x => !hidden.item.has(x.id)), 'item');
 
-  list.forEach(obj => {
-    const r = document.createElement('div');
-    r.className = 'mRow';
-    r.innerHTML = `
-        <div class="mName">${obj.name}</div>
+    list.forEach(obj => {
+      const r = document.createElement('div');
+      r.className = 'mRow';
+      r.innerHTML = `
+        <div class="mName">${escapeHtml(obj.name)}</div>
         ${activeTab === 'dino' ? `<button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">✎</button>` : ``}
         <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
         <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
         <button class="sBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
       `;
-    wrap.appendChild(r);
-  });
+      wrap.appendChild(r);
+    });
 
-  wrap.addEventListener('click', async (e) => {
-    const btn = e.target?.closest('button');
-    const act = btn?.dataset?.act;
+    wrap.addEventListener('click', async (e) => {
+      const btn = e.target?.closest('button');
+      const act = btn?.dataset?.act;
+      const id = btn?.dataset?.id;
 
-    // ✅ 新規追加（恐竜タブのみ）
-    if (act === 'addDino') {
-      if (activeTab !== 'dino') {
-        openToast('恐竜タブで追加できます');
-        return;
-      }
-      openEditDino(null); // ← 新規追加モード
-      return;
-    }
-
-    const id = btn?.dataset?.id;
-    if (!act || !id) return;
-
-    const kind = activeTab;
-    const ord = (order[kind] || []).slice();
-    const i = ord.indexOf(id);
-
-    if (act === 'up' && i > 0) {
-      [ord[i], ord[i - 1]] = [ord[i - 1], ord[i]];
-      order[kind] = ord;
-      saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
-      renderList();
-      setManageTab('catalog');
-      return;
-    }
-
-    if (act === 'down' && i !== -1 && i < ord.length - 1) {
-      [ord[i], ord[i + 1]] = [ord[i + 1], ord[i]];
-      order[kind] = ord;
-      saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
-      renderList();
-      setManageTab('catalog');
-      return;
-    }
-
-    if (act === 'del') {
-      const ok = await confirmAsk('削除しますか？');
-      if (!ok) return;
-
-      if (kind === 'dino') {
-        hidden.dino.add(id);
-        saveJSON(LS.DINO_HIDDEN, Array.from(hidden.dino));
-      } else {
-        hidden.item.add(id);
-        saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item));
-      }
-      renderList();
-      setManageTab('catalog');
-      return;
-    }
-
-    if (act === 'edit' && kind === 'dino') {
-      openEditDino(id);
-      return;
-    }
-  });
-
-  return wrap;
-}
-function openEditDino(id) {
-  const isNew = (id == null);
-
-  // ✅ 既存 or 新規のベース
-  const d = isNew
-    ? { id: '', name: '', defType: '受精卵', _baseName: '' }
-    : dinos.find(x => x.id === id);
-
-  if (!d && !isNew) return;
-
-  const curId = isNew ? '' : d.id;
-  const curSp = (!isNew && specialCfg[curId]) ? specialCfg[curId] : (isNew ? null : (getSpecialCfgForDino(d) || null));
-
-  const box = document.createElement('div');
-  box.innerHTML = `
-    <div class="editForm">
-      <div class="editLabel">名前</div>
-      <input id="editName" class="editInput" type="text" value="${escapeHtml(d?.name || '')}" autocomplete="off">
-
-      <div class="editLabel">デフォルト種類</div>
-      <select id="editType" class="editSelect">
-        ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
-      </select>
-
-      <div style="height:1px;background:rgba(255,255,255,.10);margin:6px 0;"></div>
-
-      <label style="display:flex;gap:10px;align-items:center;font-weight:900;color:rgba(255,255,255,.85);">
-        <input id="spEnable" type="checkbox" ${curSp?.enabled ? 'checked' : ''} style="transform:scale(1.2);">
-        特殊入力（ガチャ等）
-      </label>
-
-      <div id="spBox" style="display:${curSp?.enabled ? 'block' : 'none'};">
-        <div class="editLabel">何番までボタンを用意するか</div>
-        <input id="spMax" class="editInput" type="number" inputmode="numeric" value="${Number(curSp?.max || 16)}">
-
-        <div class="editLabel">1体あたりの価格</div>
-        <input id="spUnit" class="editInput" type="number" inputmode="numeric" value="${Number(curSp?.unit || 300)}">
-
-        <div class="editLabel">全種の場合の価格</div>
-        <input id="spAll" class="editInput" type="number" inputmode="numeric" value="${Number(curSp?.all || 3000)}">
-      </div>
-
-      <div class="editBtns">
-        <button class="ghost" type="button" data-act="cancel">キャンセル</button>
-        <button class="pill" type="button" data-act="save">${isNew ? '追加' : '保存'}</button>
-      </div>
-    </div>
-  `;
-
-  const sel = $('#editType', box);
-  if (sel) sel.value = (d?.defType || '受精卵');
-
-  const spEnable = $('#spEnable', box);
-  const spBox = $('#spBox', box);
-  spEnable?.addEventListener('change', () => {
-    if (!spBox) return;
-    spBox.style.display = spEnable.checked ? 'block' : 'none';
-  });
-
-  openEditModal(isNew ? '恐竜を追加' : '追加 / 編集', box);
-
-  box.addEventListener('click', (e) => {
-    const act = e.target?.dataset?.act;
-    if (!act) return;
-
-    if (act === 'cancel') {
-      closeEditModal();
-      return;
-    }
-
-    if (act === 'save') {
-      const newName = ($('#editName', box)?.value || '').trim();
-      const newDef = ($('#editType', box)?.value || '受精卵');
-      if (!newName) {
-        openToast('名前を入力してください');
+      if (act === 'add') {
+        if (activeTab === 'dino') openAddDino();
+        else openAddItem();
         return;
       }
 
-      // ✅ 新規IDは dinos.txt互換の stableId で固定
-      const newId = stableId('d', newName);
+      if (!act || !id) return;
 
-      // ✅ 新規追加：同名（同ID）が既にあるなら追加ではなく弾く
-      if (isNew) {
-        const exists = dinos.some(x => x.id === newId);
-        if (exists) {
-          openToast('同じ名前の恐竜が既にあります');
-          return;
+      const kind = activeTab;
+      const ord = (order[kind] || []).slice();
+      const i = ord.indexOf(id);
+
+      if (act === 'up' && i > 0) {
+        [ord[i], ord[i - 1]] = [ord[i - 1], ord[i]];
+        order[kind] = ord;
+        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
+        renderList();
+        setManageTab('catalog');
+        return;
+      }
+
+      if (act === 'down' && i !== -1 && i < ord.length - 1) {
+        [ord[i], ord[i + 1]] = [ord[i + 1], ord[i]];
+        order[kind] = ord;
+        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
+        renderList();
+        setManageTab('catalog');
+        return;
+      }
+
+      if (act === 'del') {
+        const ok = await confirmAsk('削除しますか？');
+        if (!ok) return;
+
+        if (kind === 'dino') {
+          hidden.dino.add(id);
+          saveJSON(LS.DINO_HIDDEN, Array.from(hidden.dino));
+        } else {
+          hidden.item.add(id);
+          saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item));
         }
+        renderList();
+        setManageTab('catalog');
+        return;
       }
 
-      // special cfg
-      const wantsSpecial = !!spEnable?.checked;
-      if (wantsSpecial) {
-        const max = Math.max(1, Math.min(60, Number($('#spMax', box)?.value || 16)));
-        const unit = Math.max(0, Number($('#spUnit', box)?.value || 0));
-        const all = Math.max(0, Number($('#spAll', box)?.value || 0));
-        specialCfg[newId] = { enabled: true, max, unit, all };
-        saveJSON(LS.SPECIAL_CFG, specialCfg);
+      if (act === 'edit' && kind === 'dino') {
+        openEditDino(id);
+        return;
+      }
+    });
+
+    return wrap;
+  }
+
+  function openAddDino() {
+    const box = document.createElement('div');
+    box.innerHTML = `
+      <div class="editForm">
+        <div class="editLabel">名前</div>
+        <input id="addName" class="editInput" type="text" value="" autocomplete="off" placeholder="例：ガチャ">
+
+        <div class="editLabel">デフォルト種類</div>
+        <select id="addType" class="editSelect">
+          ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
+        </select>
+
+        <div style="height:1px;background:rgba(255,255,255,.10);margin:6px 0;"></div>
+
+        <label style="display:flex;gap:10px;align-items:center;font-weight:900;color:rgba(255,255,255,.85);">
+          <input id="spEnable" type="checkbox" style="transform:scale(1.2);">
+          特殊入力（ガチャ等）
+        </label>
+
+        <label style="display:flex;gap:10px;align-items:center;font-weight:900;color:rgba(255,255,255,.85);margin-top:-6px;">
+          <input id="spAllowSex" type="checkbox" style="transform:scale(1.2);" disabled>
+          特殊＋通常の♂♀入力を許可
+        </label>
+
+        <div id="spBox" style="display:none;">
+          <div class="editLabel">何番までボタンを用意するか</div>
+          <input id="spMax" class="editInput" type="number" inputmode="numeric" value="16">
+
+          <div class="editLabel">1体あたりの価格</div>
+          <input id="spUnit" class="editInput" type="number" inputmode="numeric" value="300">
+
+          <div class="editLabel">全種の場合の価格</div>
+          <input id="spAll" class="editInput" type="number" inputmode="numeric" value="3000">
+        </div>
+
+        <div class="editBtns">
+          <button class="ghost" type="button" data-act="cancel">キャンセル</button>
+          <button class="pill" type="button" data-act="save">保存</button>
+        </div>
+      </div>
+    `;
+
+    const spEnable = $('#spEnable', box);
+    const spBox = $('#spBox', box);
+    const spAllowSex = $('#spAllowSex', box);
+
+    spEnable?.addEventListener('change', () => {
+      const on = !!spEnable.checked;
+      if (spBox) spBox.style.display = on ? 'block' : 'none';
+      if (spAllowSex) spAllowSex.disabled = !on;
+      if (!on && spAllowSex) spAllowSex.checked = false;
+    });
+
+    openEditModal('追加 / 編集', box);
+
+    box.addEventListener('click', (e) => {
+      const act = e.target?.dataset?.act;
+      if (!act) return;
+
+      if (act === 'cancel') {
+        closeEditModal();
+        return;
       }
 
-      if (isNew) {
-        // ✅ customへ追加
-        const obj = { id: newId, name: newName, defType: newDef, _baseName: newName };
-        custom.dino.push(obj);
+      if (act === 'save') {
+        const name = ($('#addName', box)?.value || '').trim();
+        const defType = ($('#addType', box)?.value || '受精卵');
+        if (!name) return openToast('名前を入力してください');
+
+        // ✅ カスタム恐竜として追加
+        const id = stableId('d', name);
+        // 既にあるなら上書き（重複事故回避）
+        const existIdx = custom.dino.findIndex(x => x.id === id);
+        const rec = { id, name, defType, _baseName: name };
+        if (existIdx >= 0) custom.dino[existIdx] = rec;
+        else custom.dino.push(rec);
         saveJSON(LS.DINO_CUSTOM, custom.dino);
 
-        // ✅ メモリ上にも反映
-        dinos.push({ id: newId, name: newName, defType: newDef, kind: 'dino', _baseName: newName });
-
-        // ✅ 並び順末尾に追加
-        const ord = (order.dino || []).slice();
-        if (!ord.includes(newId)) ord.push(newId);
-        order.dino = ord;
-        saveJSON(LS.DINO_ORDER, ord);
-
-        // ✅ state 初期化（特殊なら special mode）
-        if (wantsSpecial) {
-          inputState.set(newId, { mode: 'special', picks: [], all: false, type: newDef, m: 0, f: 0 });
-        } else {
-          inputState.set(newId, { type: newDef, m: 0, f: 0 });
+        // special cfg
+        if (spEnable?.checked) {
+          const max = Math.max(1, Math.min(60, Number($('#spMax', box)?.value || 16)));
+          const unit = Math.max(0, Number($('#spUnit', box)?.value || 0));
+          const all = Math.max(0, Number($('#spAll', box)?.value || 0));
+          const allowSex = !!spAllowSex?.checked;
+          specialCfg[id] = { enabled: true, max, unit, all, allowSex };
+          saveJSON(LS.SPECIAL_CFG, specialCfg);
         }
 
-      } else {
-        // ✅ 既存編集（override or custom 更新）
-        const oldId = id;
+        closeEditModal();
+        // 再構築
+        dinos = dinos.concat([{ id, name, defType, kind: 'dino', _baseName: name }]);
+        ensureOrderList(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
+        renderList();
+        setManageTab('catalog');
+        openToast('追加しました');
+      }
+    });
+  }
 
-        const cIdx = custom.dino.findIndex(x => x.id === oldId);
+  function openAddItem() {
+    const box = document.createElement('div');
+    box.innerHTML = `
+      <div class="editForm">
+        <div class="editLabel">名前</div>
+        <input id="addName" class="editInput" type="text" value="" autocomplete="off" placeholder="例：金庫">
+
+        <div class="editLabel">1セットあたり個数</div>
+        <input id="addUnit" class="editInput" type="number" inputmode="numeric" value="1">
+
+        <div class="editLabel">価格（1セット）</div>
+        <input id="addPrice" class="editInput" type="number" inputmode="numeric" value="0">
+
+        <div class="editBtns">
+          <button class="ghost" type="button" data-act="cancel">キャンセル</button>
+          <button class="pill" type="button" data-act="save">保存</button>
+        </div>
+      </div>
+    `;
+
+    openEditModal('追加 / 編集', box);
+
+    box.addEventListener('click', (e) => {
+      const act = e.target?.dataset?.act;
+      if (!act) return;
+
+      if (act === 'cancel') {
+        closeEditModal();
+        return;
+      }
+
+      if (act === 'save') {
+        const name = ($('#addName', box)?.value || '').trim();
+        const unit = Number($('#addUnit', box)?.value || 1);
+        const price = Number($('#addPrice', box)?.value || 0);
+        if (!name) return openToast('名前を入力してください');
+        if (!Number.isFinite(unit) || unit <= 0) return openToast('個数は1以上');
+        if (!Number.isFinite(price) || price < 0) return openToast('価格が不正です');
+
+        const id = stableId('i', name);
+        const existIdx = custom.item.findIndex(x => x.id === id);
+        const rec = { id, name, unit, price };
+        if (existIdx >= 0) custom.item[existIdx] = rec;
+        else custom.item.push(rec);
+        saveJSON(LS.ITEM_CUSTOM, custom.item);
+
+        closeEditModal();
+        items = items.concat([{ id, name, unit, price, kind: 'item' }]);
+        ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
+        renderList();
+        setManageTab('catalog');
+        openToast('追加しました');
+      }
+    });
+  }
+
+  function openEditDino(id) {
+    const d = dinos.find(x => x.id === id);
+    if (!d) return;
+
+    const curSp = specialCfg[id] || getSpecialCfgForDino(d) || null;
+
+    const box = document.createElement('div');
+    box.innerHTML = `
+      <div class="editForm">
+        <div class="editLabel">名前</div>
+        <input id="editName" class="editInput" type="text" value="${escapeHtml(d.name)}" autocomplete="off">
+
+        <div class="editLabel">デフォルト種類</div>
+        <select id="editType" class="editSelect">
+          ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
+        </select>
+
+        <div style="height:1px;background:rgba(255,255,255,.10);margin:6px 0;"></div>
+
+        <label style="display:flex;gap:10px;align-items:center;font-weight:900;color:rgba(255,255,255,.85);">
+          <input id="spEnable" type="checkbox" ${curSp?.enabled ? 'checked' : ''} style="transform:scale(1.2);">
+          特殊入力（ガチャ等）
+        </label>
+
+        <label style="display:flex;gap:10px;align-items:center;font-weight:900;color:rgba(255,255,255,.85);margin-top:-6px;">
+          <input id="spAllowSex" type="checkbox" ${curSp?.allowSex ? 'checked' : ''} style="transform:scale(1.2);" ${curSp?.enabled ? '' : 'disabled'}>
+          特殊＋通常の♂♀入力を許可
+        </label>
+
+        <div id="spBox" style="display:${curSp?.enabled ? 'block' : 'none'};">
+          <div class="editLabel">何番までボタンを用意するか</div>
+          <input id="spMax" class="editInput" type="number" inputmode="numeric" value="${Number(curSp?.max || 16)}">
+
+          <div class="editLabel">1体あたりの価格</div>
+          <input id="spUnit" class="editInput" type="number" inputmode="numeric" value="${Number(curSp?.unit || 300)}">
+
+          <div class="editLabel">全種の場合の価格</div>
+          <input id="spAll" class="editInput" type="number" inputmode="numeric" value="${Number(curSp?.all || 3000)}">
+        </div>
+
+        <div class="editBtns">
+          <button class="ghost" type="button" data-act="cancel">キャンセル</button>
+          <button class="pill" type="button" data-act="save">保存</button>
+        </div>
+      </div>
+    `;
+
+    const sel = $('#editType', box);
+    if (sel) sel.value = d.defType || '受精卵';
+
+    const spEnable = $('#spEnable', box);
+    const spBox = $('#spBox', box);
+    const spAllowSex = $('#spAllowSex', box);
+
+    spEnable?.addEventListener('change', () => {
+      if (!spBox) return;
+      const on = spEnable.checked;
+      spBox.style.display = on ? 'block' : 'none';
+      if (spAllowSex) {
+        spAllowSex.disabled = !on;
+        if (!on) spAllowSex.checked = false;
+      }
+    });
+
+    openEditModal('追加 / 編集', box);
+
+    box.addEventListener('click', (e) => {
+      const act = e.target?.dataset?.act;
+      if (!act) return;
+
+      if (act === 'cancel') {
+        closeEditModal();
+        return;
+      }
+
+      if (act === 'save') {
+        const newName = ($('#editName', box)?.value || '').trim();
+        const newDef = ($('#editType', box)?.value || '受精卵');
+        if (!newName) return;
+
+        // name/defType
+        const cIdx = custom.dino.findIndex(x => x.id === id);
         if (cIdx >= 0) {
-          // customの場合：IDは変えない（画像キー整合崩れ防止）
-          custom.dino[cIdx] = {
-            id: oldId,
-            name: newName,
-            defType: newDef,
-            _baseName: custom.dino[cIdx]._baseName || newName
-          };
+          custom.dino[cIdx] = { id, name: newName, defType: newDef, _baseName: custom.dino[cIdx]._baseName || newName };
           saveJSON(LS.DINO_CUSTOM, custom.dino);
         } else {
-          dinoOverride[oldId] = { name: newName, defType: newDef };
+          dinoOverride[id] = { name: newName, defType: newDef };
           saveJSON(LS.DINO_OVERRIDE, dinoOverride);
         }
 
-        const di = dinos.findIndex(x => x.id === oldId);
+        const di = dinos.findIndex(x => x.id === id);
         if (di >= 0) dinos[di] = Object.assign({}, dinos[di], { name: newName, defType: newDef });
 
-        // special cfg は oldIdに対して
-        if (wantsSpecial) {
-          // 既に newId で保存してるので、oldIdに付け直す（編集はID固定のため）
-          if (oldId !== newId) {
-            specialCfg[oldId] = specialCfg[newId];
-            delete specialCfg[newId];
-            saveJSON(LS.SPECIAL_CFG, specialCfg);
-          }
-          const st = inputState.get(oldId);
+        // special cfg
+        if (spEnable?.checked) {
+          const max = Math.max(1, Math.min(60, Number($('#spMax', box)?.value || 16)));
+          const unit = Math.max(0, Number($('#spUnit', box)?.value || 0));
+          const all = Math.max(0, Number($('#spAll', box)?.value || 0));
+          const allowSex = !!spAllowSex?.checked;
+          specialCfg[id] = { enabled: true, max, unit, all, allowSex };
+          saveJSON(LS.SPECIAL_CFG, specialCfg);
+
+          // state整形
+          const st = inputState.get(id);
           if (st) {
             st.mode = 'special';
             if (!Array.isArray(st.picks)) st.picks = [];
             if (typeof st.all !== 'boolean') st.all = false;
-          } else {
-            inputState.set(oldId, { mode: 'special', picks: [], all: false, type: newDef, m: 0, f: 0 });
+            if (typeof st.type !== 'string') st.type = newDef;
+            if (typeof st.m !== 'number') st.m = 0;
+            if (typeof st.f !== 'number') st.f = 0;
           }
         } else {
-          if (specialCfg[oldId]) {
-            delete specialCfg[oldId];
+          if (specialCfg[id]) {
+            delete specialCfg[id];
             saveJSON(LS.SPECIAL_CFG, specialCfg);
           }
-          const st = inputState.get(oldId);
+          const st = inputState.get(id);
           if (st && st.mode === 'special') {
-            inputState.set(oldId, { type: newDef, m: 0, f: 0 });
+            inputState.set(id, { type: newDef, m: 0, f: 0 });
           }
         }
+
+        closeEditModal();
+        renderList();
+        setManageTab('catalog');
       }
+    });
+  }
 
-      closeEditModal();
-      renderList();
-      setManageTab('catalog');
-    }
-  });
-}
-
-  /* ========= Images tab ========= */
+  /* ========= Images tab (IndexedDB) ========= */
   async function fileToDataURLCompressed(file, maxW = 900, quality = 0.78) {
     const img = await new Promise((resolve, reject) => {
       const r = new FileReader();
@@ -1339,11 +1647,15 @@ function openEditDino(id) {
   function renderManageImages() {
     const wrap = document.createElement('div');
 
+    // ✅ 画像出力ボタン（上部）
     const topBar = document.createElement('div');
-    topBar.className = 'imgTopBar';
+    topBar.style.display = 'flex';
+    topBar.style.justifyContent = 'flex-end';
+    topBar.style.marginBottom = '10px';
     topBar.innerHTML = `<button id="imgExport" class="pill" type="button">画像出力</button>`;
     wrap.appendChild(topBar);
 
+    // 対象リスト（表示順）
     const list = sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino');
 
     function loadImg(src) {
@@ -1382,6 +1694,7 @@ function openEditDino(id) {
         return;
       }
 
+      // セルサイズ（2:1）
       const cellW = 640;
       const cellH = 320;
       const gap = 8;
@@ -1440,6 +1753,7 @@ function openEditDino(id) {
       await exportGrid(rows, cols);
     });
 
+    // ✅ 画像一覧（IDB）
     list.forEach(d => {
       const row = document.createElement('div');
       row.className = 'imgRow';
@@ -1490,6 +1804,8 @@ function openEditDino(id) {
           imageCache[k] = dataUrl;
 
           thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
+
+          // ✅ メインにも即反映
           syncThumbInMainListByDino(d, dataUrl);
 
           openToast('画像を保存しました');
@@ -1728,6 +2044,7 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
   async function init() {
     await migrateOldImagesIfAny();
 
+    // ✅ IDB画像ロード
     try {
       const all = await idbGetAllImages();
       Object.keys(all).forEach(k => { imageCache[k] = all[k]; });
