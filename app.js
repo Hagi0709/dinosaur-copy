@@ -9,20 +9,17 @@
   const toHira = (s) => (s || '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
   const norm = (s) => toHira(String(s || '').toLowerCase()).replace(/\s+/g, '');
 
-  // ✅ 決定的ID用：軽量ハッシュ（djb2）
-  function hashId(str) {
-    const s = String(str || '');
+  // ✅ 追加：安定ID生成（同じ名前 → 同じID）
+  function stableHash(str) {
+    // djb2（軽量・十分）
     let h = 5381;
-    for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
-    // unsigned & base36
+    for (let i = 0; i < str.length; i++) h = ((h << 5) + h) + str.charCodeAt(i);
+    // unsigned化して base36
     return (h >>> 0).toString(36);
   }
-  function dinoIdFromName(name) {
-    // 同名なら常に同じID（dinos.txt起因）
-    return 'd_' + hashId('dino|' + norm(name));
-  }
-  function itemIdFromFields(name, unit, price) {
-    return 'i_' + hashId('item|' + norm(name) + '|' + Number(unit || 0) + '|' + Number(price || 0));
+  function stableId(prefix, name) {
+    const key = norm(name);
+    return `${prefix}_${stableHash(key)}`;
   }
 
   /* ========= storage keys ========= */
@@ -115,36 +112,31 @@
     } catch { return ''; }
   }
 
-  // ✅ ここが重要：dinos.txt は「名前から決定的ID」
   function parseDinoLine(line) {
     line = (line || '').trim();
     if (!line || line.startsWith('#')) return null;
     line = line.replace(/^・/, '').trim();
     if (!line) return null;
-
     const [nameRaw, defRaw] = line.split('|').map(s => (s || '').trim());
     if (!nameRaw) return null;
-
     const defType = (defRaw && prices[defRaw] != null) ? defRaw : '受精卵';
-    const id = dinoIdFromName(nameRaw);
-    return { id, name: nameRaw, defType, kind: 'dino' };
+
+    // ✅ 変更：ランダムID → 安定ID（並び順・画像・非表示がリロードで維持される）
+    return { id: stableId('d', nameRaw), name: nameRaw, defType, kind: 'dino' };
   }
 
-  // ✅ items.txt も「内容から決定的ID」
   function parseItemLine(line) {
     line = (line || '').trim();
     if (!line || line.startsWith('#')) return null;
-
     const parts = line.split('|').map(s => (s || '').trim());
     if (parts.length < 3) return null;
-
     const name = parts[0];
     const unit = Number(parts[1]);
     const price = Number(parts[2]);
     if (!name || !Number.isFinite(unit) || !Number.isFinite(price)) return null;
 
-    const id = itemIdFromFields(name, unit, price);
-    return { id, name, unit, price, kind: 'item' };
+    // ✅ 変更：ランダムID → 安定ID
+    return { id: stableId('i', name), name, unit, price, kind: 'item' };
   }
 
   /* ========= ordering ========= */
@@ -568,156 +560,62 @@ ${lines.join('\n')}
     return box;
   }
 
-function renderManageCatalog() {
-  const wrap = document.createElement('div');
+  function renderManageCatalog() {
+    const wrap = document.createElement('div');
 
-  // ===== 追加UI（説明文なし） =====
-  const addBox = document.createElement('div');
-  addBox.className = 'card';
-  addBox.style.padding = '12px';
+    const list = (activeTab === 'dino')
+      ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
+      : sortByOrder(items.filter(x => !hidden.item.has(x.id)), 'item');
 
-  if (activeTab === 'dino') {
-    addBox.innerHTML = `
-      <div style="display:grid;gap:10px;">
-        <div style="display:grid;grid-template-columns:1fr 160px;gap:10px;">
-          <div>
-            <div style="font-size:12px;color:rgba(255,255,255,.6);font-weight:800;margin:0 0 6px;">名前</div>
-            <input id="addName" type="text" placeholder="例：カルカロ"
-              style="width:100%;padding:12px 10px;border-radius:16px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);color:#fff;outline:none;">
-          </div>
-          <div>
-            <div style="font-size:12px;color:rgba(255,255,255,.6);font-weight:800;margin:0 0 6px;">デフォルト</div>
-            <select id="addDef"
-              style="width:100%;padding:12px 10px;border-radius:16px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);color:#fff;outline:none;">
-              ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
-            </select>
-          </div>
-        </div>
+    list.forEach(obj => {
+      const r = document.createElement('div');
+      r.className = 'mRow';
+      r.innerHTML = `
+        <div class="mName">${obj.name}</div>
+        <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
+        <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
+        <button class="sBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
+      `;
+      wrap.appendChild(r);
+    });
 
-        <div style="display:flex;gap:10px;justify-content:flex-end;">
-          <button class="pill" type="button" data-act="addOne">追加</button>
-        </div>
-      </div>
-    `;
-  } else {
-    addBox.innerHTML = `
-      <div style="display:grid;gap:10px;">
-        <div style="display:grid;grid-template-columns:1fr 140px;gap:10px;">
-          <div>
-            <div style="font-size:12px;color:rgba(255,255,255,.6);font-weight:800;margin:0 0 6px;">名前</div>
-            <input id="addName" type="text" placeholder="例：TEK天井"
-              style="width:100%;padding:12px 10px;border-radius:16px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);color:#fff;outline:none;">
-          </div>
-          <div>
-            <div style="font-size:12px;color:rgba(255,255,255,.6);font-weight:800;margin:0 0 6px;">個数単位</div>
-            <input id="addUnit" type="number" inputmode="numeric" placeholder="例：100"
-              style="width:100%;padding:12px 10px;border-radius:16px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);color:#fff;outline:none;">
-          </div>
-        </div>
+    wrap.addEventListener('click', (e) => {
+      const act = e.target?.dataset?.act;
+      const id = e.target?.dataset?.id;
+      if (!act || !id) return;
 
-        <div>
-          <div style="font-size:12px;color:rgba(255,255,255,.6);font-weight:800;margin:0 0 6px;">単価</div>
-          <input id="addPrice" type="number" inputmode="numeric" placeholder="例：100"
-            style="width:100%;padding:12px 10px;border-radius:16px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);color:#fff;outline:none;">
-        </div>
+      const kind = activeTab;
+      const ord = (order[kind] || []).slice();
+      const i = ord.indexOf(id);
 
-        <div style="display:flex;gap:10px;justify-content:flex-end;">
-          <button class="pill" type="button" data-act="addOne">追加</button>
-        </div>
-      </div>
-    `;
-  }
-
-  wrap.appendChild(addBox);
-
-  // ===== 一覧 =====
-  const list = (activeTab === 'dino')
-    ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
-    : sortByOrder(items.filter(x => !hidden.item.has(x.id)), 'item');
-
-  list.forEach(obj => {
-    const r = document.createElement('div');
-    r.className = 'mRow';
-    r.innerHTML = `
-      <div class="mName">${obj.name}</div>
-      <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
-      <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
-      <button class="sBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
-    `;
-    wrap.appendChild(r);
-  });
-
-  wrap.addEventListener('click', (e) => {
-    const act = e.target?.dataset?.act;
-    if (!act) return;
-
-    // ===== 追加 =====
-    if (act === 'addOne') {
-      const name = ($('#addName', wrap)?.value || '').trim();
-      if (!name) return;
-
-      if (activeTab === 'dino') {
-        const defType = ($('#addDef', wrap)?.value || '受精卵');
-
-        // ✅ 追加分はID固定（消えない）
-        const id = 'd_c_' + uid();
-        custom.dino.push({ id, name, defType });
-        saveJSON(LS.DINO_CUSTOM, custom.dino);
-
-      } else {
-        const unit = Number($('#addUnit', wrap)?.value || 1);
-        const price = Number($('#addPrice', wrap)?.value || 0);
-
-        const id = 'i_c_' + uid();
-        custom.item.push({ id, name, unit, price });
-        saveJSON(LS.ITEM_CUSTOM, custom.item);
+      if (act === 'up' && i > 0) {
+        [ord[i], ord[i-1]] = [ord[i-1], ord[i]];
+        order[kind] = ord;
+        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
+        renderList();
+        closeModal();
+        return;
       }
+      if (act === 'down' && i !== -1 && i < ord.length - 1) {
+        [ord[i], ord[i+1]] = [ord[i+1], ord[i]];
+        order[kind] = ord;
+        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
+        renderList();
+        closeModal();
+        return;
+      }
+      if (act === 'del') {
+        if (kind === 'dino') hidden.dino.add(id);
+        else hidden.item.add(id);
+        saveJSON(kind === 'dino' ? LS.DINO_HIDDEN : LS.ITEM_HIDDEN, Array.from(kind === 'dino' ? hidden.dino : hidden.item));
+        renderList();
+        closeModal();
+        return;
+      }
+    });
 
-      // 再読込して並び/表示を同期
-      init().then(() => closeModal());
-      return;
-    }
-
-    // 以下は従来操作（up/down/del）
-    const id = e.target?.dataset?.id;
-    if (!id) return;
-
-    const kind = activeTab;
-    const ord = (order[kind] || []).slice();
-    const i = ord.indexOf(id);
-
-    if (act === 'up' && i > 0) {
-      [ord[i], ord[i - 1]] = [ord[i - 1], ord[i]];
-      order[kind] = ord;
-      saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
-      renderList();
-      closeModal();
-      return;
-    }
-
-    if (act === 'down' && i !== -1 && i < ord.length - 1) {
-      [ord[i], ord[i + 1]] = [ord[i + 1], ord[i]];
-      order[kind] = ord;
-      saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
-      renderList();
-      closeModal();
-      return;
-    }
-
-    if (act === 'del') {
-      if (kind === 'dino') hidden.dino.add(id);
-      else hidden.item.add(id);
-      saveJSON(kind === 'dino' ? LS.DINO_HIDDEN : LS.ITEM_HIDDEN,
-        Array.from(kind === 'dino' ? hidden.dino : hidden.item)
-      );
-      renderList();
-      closeModal();
-      return;
-    }
-  });
-
-  return wrap;
-}
+    return wrap;
+  }
 
   /* ========= Images tab ========= */
   function renderManageImages() {
@@ -893,7 +791,6 @@ function renderManageCatalog() {
     const baseD = dText.split(/\r?\n/).map(parseDinoLine).filter(Boolean);
     const baseI = iText.split(/\r?\n/).map(parseItemLine).filter(Boolean);
 
-    // custom は id を保持（管理画面追加分は消えない）
     dinos = baseD.concat(custom.dino.map(x => ({ id: x.id, name: x.name, defType: x.defType, kind: 'dino' })));
     items = baseI.concat(custom.item.map(x => ({ id: x.id, name: x.name, unit: x.unit, price: x.price, kind: 'item' })));
 
