@@ -138,9 +138,14 @@
     modalOverlay: $('#modalOverlay'),
     modalBody: $('#modalBody'),
     closeManage: $('#closeManage'),
-    mTabCatalog: $('#mTabCatalog'),
+        mTabCatalog: $('#mTabCatalog'),
     mTabPrices: $('#mTabPrices'),
 
+    // ✅ Room
+    openRoom: $('#openRoom'),
+    roomOverlay: $('#roomOverlay'),
+    roomBody: $('#roomBody'),
+    closeRoom: $('#closeRoom'),
     // ✅ ルーム
     openRoom: $('#openRoom'),
     roomOverlay: $('#roomOverlay'),
@@ -1177,7 +1182,7 @@ ROOM${room}の方にパスワード【${roomPw}】で入室をして頂き、冷
     }
   });
 
-  el.openManage?.addEventListener('click', openModal);
+    el.openManage?.addEventListener('click', openModal);
   el.closeManage?.addEventListener('click', closeModal);
   el.modalOverlay?.addEventListener('click', (e) => {
     if (e.target === el.modalOverlay) closeModal();
@@ -1187,6 +1192,60 @@ ROOM${room}の方にパスワード【${roomPw}】で入室をして頂き、冷
   el.mTabPrices?.addEventListener('click', () => setManageTab('prices'));
   $('#mTabImages')?.addEventListener('click', () => setManageTab('images'));
 
+  /* ========= Room ========= */
+  function openRoom() {
+    if (!el.roomOverlay || !el.roomBody) return;
+
+    // 最低限：開いたのが分かる描画（ここは後で本実装に差し替え）
+    if (!el.roomBody.dataset.inited) {
+      el.roomBody.dataset.inited = '1';
+      el.roomBody.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="font-weight:950;">ROOM</div>
+          <div style="opacity:.8;">（ここにROOM1〜9 UIを描画します）</div>
+        </div>
+      `;
+    }
+
+    el.roomOverlay.classList.remove('isHidden');
+  }
+
+  function closeRoom() {
+    if (!el.roomOverlay) return;
+    el.roomOverlay.classList.add('isHidden');
+  }
+
+  // 直付け（取れていれば最優先で動く）
+  el.openRoom?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openRoom();
+  });
+  el.closeRoom?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeRoom();
+  });
+  el.roomOverlay?.addEventListener('click', (e) => {
+    if (e.target === el.roomOverlay) closeRoom();
+  });
+
+  // 保険：DOM参照が死んでても拾う（HTML差し替え/読み込み順/キャッシュ対策）
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (!(t instanceof Element)) return;
+
+    if (t.id === 'openRoom') {
+      e.preventDefault();
+      openRoom();
+      return;
+    }
+    if (t.id === 'closeRoom') {
+      e.preventDefault();
+      closeRoom();
+      return;
+    }
+  }, true);
   // ✅ ルーム
     // ✅ ルーム（保険込み：直接 + 委譲）
   el.openRoom?.addEventListener('click', (e) => {
