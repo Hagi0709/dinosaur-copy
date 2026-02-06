@@ -483,7 +483,7 @@ button{cursor:pointer}
 }
 .imgThumb{
   width:56px;
-  height:56px;
+  height:112px; /* 1:2 */
   border-radius:14px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.06);
@@ -510,10 +510,9 @@ button{cursor:pointer}
   word-break:break-word;
 }
 .imgHint{
-  margin-top:4px;
-  font-size:12px;
-  color:rgba(255,255,255,.55);
+  display:none;
 }
+
 .imgActions{
   display:flex;
   gap:8px;
