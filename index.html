@@ -6,6 +6,7 @@
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>恐竜リスト</title>
 
+  <!-- PWA / iOS icon -->
   <link rel="apple-touch-icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
   <link rel="icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
 
@@ -18,7 +19,7 @@
     <div class="row">
       <div class="search">
         <input id="q" type="text" placeholder="検索" autocomplete="off" />
-        <button id="qClear" class="qClear" type="button">×</button>
+        <button id="qClear" class="qClear" type="button" aria-label="検索をクリア">×</button>
       </div>
 
       <select id="delivery" class="delivery">
@@ -35,20 +36,21 @@
     <div class="subrow">
       <button id="openManage" class="ghost" type="button">管理</button>
 
-      <div class="tabs">
-        <button id="tabDinos" class="tab isActive" type="button">恐竜</button>
-        <button id="tabItems" class="tab" type="button">アイテム</button>
+      <div class="tabs" role="tablist" aria-label="表示切替">
+        <button id="tabDinos" class="tab isActive" type="button" role="tab" aria-selected="true">恐竜</button>
+        <button id="tabItems" class="tab" type="button" role="tab" aria-selected="false">アイテム</button>
       </div>
     </div>
   </header>
 
   <main class="list" id="list"></main>
 
-  <!-- 管理画面 -->
-  <div id="modalOverlay" class="modalOverlay isHidden">
-    <div class="modal">
+  <!-- Manage Modal -->
+  <div id="modalOverlay" class="modalOverlay isHidden" aria-hidden="true">
+    <div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="管理">
       <div class="modalHead">
         <div class="modalTitle">管理</div>
+        <button id="closeManage" class="iconBtn" type="button" aria-label="閉じる">×</button>
       </div>
 
       <div class="modalTabs">
@@ -57,15 +59,17 @@
         <button id="mTabImages" class="mTab" type="button">画像</button>
       </div>
 
-      <div class="modalBody" id="modalBody"></div>
+      <div class="modalBody" id="modalBody">
+        <!-- injected -->
+      </div>
     </div>
   </div>
 
-  <!-- 確認 -->
-  <div id="confirmOverlay" class="modalOverlay isHidden">
-    <div class="confirm">
+  <!-- Confirm Modal -->
+  <div id="confirmOverlay" class="modalOverlay isHidden" aria-hidden="true">
+    <div class="confirm" role="dialog" aria-modal="true" aria-label="確認">
       <div class="confirmTitle">確認</div>
-      <div class="confirmText" id="confirmText"></div>
+      <div class="confirmText" id="confirmText">実行しますか？</div>
       <div class="confirmBtns">
         <button id="confirmCancel" class="ghost" type="button">キャンセル</button>
         <button id="confirmOk" class="ghost" type="button">OK</button>
@@ -73,20 +77,24 @@
     </div>
   </div>
 
-  <!-- 画像拡大 -->
-  <div id="imgOverlay" class="modalOverlay isHidden">
-    <div class="imgViewer">
-      <img id="imgViewerImg" />
+  <!-- Image Viewer Modal (tap to enlarge) -->
+  <div id="imgOverlay" class="modalOverlay isHidden" aria-hidden="true">
+    <div class="imgViewer" role="dialog" aria-modal="true" aria-label="画像">
+      <button id="imgClose" class="iconBtn imgClose" type="button" aria-label="閉じる">×</button>
+      <img id="imgViewerImg" alt="画像" />
     </div>
   </div>
 
-  <!-- 追加 / 編集 -->
-  <div id="editOverlay" class="modalOverlay isHidden">
-    <div class="edit">
+  <!-- Edit/Add Modal（×は廃止：キャンセルで閉じる） -->
+  <div id="editOverlay" class="modalOverlay isHidden" aria-hidden="true">
+    <div class="edit" role="dialog" aria-modal="true" aria-label="編集">
       <div class="editHead">
-        <div class="editTitle" id="editTitle"></div>
+        <div class="editTitle" id="editTitle">追加 / 編集</div>
       </div>
-      <div class="editBody" id="editBody"></div>
+
+      <div class="editBody" id="editBody">
+        <!-- injected -->
+      </div>
     </div>
   </div>
 </body>
