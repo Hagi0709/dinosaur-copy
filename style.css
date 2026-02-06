@@ -6,9 +6,6 @@
   --mut:rgba(255,255,255,.60);
   --ok:#78ffb3;
   --danger:#b94a55;
-
-  --male:#65c8ff;
-  --female:#ff72c6;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -150,7 +147,6 @@ button{cursor:pointer}
 
 .list{padding:12px}
 
-/* ===== Card ===== */
 .card{
   background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
   border:1px solid rgba(255,255,255,.10);
@@ -158,9 +154,6 @@ button{cursor:pointer}
   padding:12px;
   margin-bottom:10px;
   overflow:hidden;
-}
-.cardWrap{
-  position:relative;
 }
 .cardHead{
   display:flex;
@@ -196,41 +189,17 @@ button{cursor:pointer}
   white-space:nowrap;
 }
 
-/* 展開/折りたたみの判定を“枠いっぱい”にする */
-.cardTap{
-  position:absolute;
-  left:0;
-  right:0;
-  top:0;
-  height:64px; /* ヘッダー＋余白 */
-  border:0;
-  background:transparent;
-  padding:0;
-}
-
-/* 折りたたみ */
-.card.isCollapsed .controls{display:none}
-
-/* ===== Controls ===== */
 .controls{
   margin-top:10px;
   display:grid;
   gap:10px;
 }
-
-/* 恐竜：オス・メス・複製を横一列に */
-.dinoRowWrap{
-  position:relative;
-  padding-right:78px; /* 右に複製席 */
-}
-.dinoRow{
+.grid2{
   display:grid;
-  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  grid-template-columns:1fr 1fr;
   gap:10px;
-  align-items:center;
 }
 
-/* ステッパー（横） */
 .stepper{
   display:flex;
   align-items:center;
@@ -240,28 +209,10 @@ button{cursor:pointer}
   border:1px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.04);
 }
-
-/* ====== sex color (override) ====== */
-.stepper.male{
-  background:rgba(80,160,255,.16) !important;
-  border-color:rgba(80,160,255,.55) !important;
-}
-.stepper.female{
-  background:rgba(255,120,200,.16) !important;
-  border-color:rgba(255,120,200,.55) !important;
-}
-.stepper.stepperM{
-  box-shadow:0 0 0 1px rgba(101,200,255,.35) inset;
-}
-.stepper.stepperF{
-  box-shadow:0 0 0 1px rgba(255,114,198,.35) inset;
-}
-
-/* ボタン類 */
 .btn{
   width:44px;
-  height:36px;
-  border-radius:14px;
+  height:32px;
+  border-radius:12px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.10);
   color:#fff;
@@ -278,24 +229,26 @@ button{cursor:pointer}
   font-weight:950;
   font-size:16px;
 }
-
-/* 複製ボタンは“行の外”に固定（見切れない） */
-.dupBtn{
-  position:absolute;
-  right:0;
-  top:50%;
-  transform:translateY(-50%);
-  width:68px;
-  height:40px;
-  border-radius:16px;
+.mini{
+  width:44px;
+  height:32px;
+  border-radius:12px;
   border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.10);
+  background:rgba(255,255,255,.08);
   color:#fff;
-  font-weight:950;
-  white-space:nowrap;
+  font-weight:900;
+  font-size:12px;
 }
 
-/* ===== Modal ===== */
+.card.isCollapsed .controls{display:none}
+.cardTap{
+  position:absolute;
+  inset:0;
+}
+.cardWrap{
+  position:relative;
+}
+
 .modalOverlay{
   position:fixed;
   inset:0;
@@ -307,7 +260,9 @@ button{cursor:pointer}
   justify-content:center;
   padding:14px;
 }
-.modalOverlay.isHidden{display:none}
+.modalOverlay.isHidden{
+  display:none;
+}
 
 .modal{
   width:min(720px, 100%);
@@ -356,13 +311,30 @@ button{cursor:pointer}
   background:rgba(255,255,255,.10);
   border-color:rgba(255,255,255,.18);
 }
+
 .modalBody{
   padding:14px;
   overflow:auto;
   -webkit-overflow-scrolling:touch;
 }
 
-/* 管理：一覧 */
+.mBar{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  margin-bottom:12px;
+}
+.mBar .tabs{flex:1}
+.primary{
+  height:40px;
+  padding:0 14px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.10);
+  color:#fff;
+  font-weight:950;
+}
+
 .mRow{
   display:flex;
   gap:10px;
@@ -392,17 +364,18 @@ button{cursor:pointer}
   color:#fff;
   font-weight:950;
 }
-.sBtn.wide{width:66px} /* 削除が縦にならない */
 .sBtn.danger{
   background:rgba(185,74,85,.22);
   border-color:rgba(185,74,85,.35);
 }
 
-/* 価格 */
 .priceGrid{
   display:grid;
   grid-template-columns:1fr 140px;
   gap:10px;
+}
+.pRow{
+  display:contents;
 }
 .pKey{
   padding:12px 10px;
@@ -423,7 +396,6 @@ button{cursor:pointer}
   font-weight:950;
 }
 
-/* Confirm / Edit */
 .confirm, .edit{
   width:min(640px, 100%);
   max-height:min(86vh, 900px);
@@ -492,12 +464,72 @@ button{cursor:pointer}
 }
 .formBtns .primary{flex:1}
 .formBtns .ghost{flex:1}
-.primary{
-  height:40px;
-  padding:0 14px;
-  border-radius:16px;
+
+/* =========================
+   画像タブ用
+========================= */
+.imgList{
+  display:grid;
+  gap:10px;
+}
+.imgRow{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  padding:10px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.18);
+}
+.imgThumb{
+  width:56px;
+  height:56px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);
+  overflow:hidden;
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.imgThumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.imgMeta{
+  flex:1;
+  min-width:0;
+}
+.imgName{
+  font-weight:900;
+  font-size:15px;
+  line-height:1.2;
+  word-break:break-word;
+}
+.imgHint{
+  margin-top:4px;
+  font-size:12px;
+  color:rgba(255,255,255,.55);
+}
+.imgActions{
+  display:flex;
+  gap:8px;
+  flex:0 0 auto;
+}
+.imgBtn{
+  height:38px;
+  padding:0 12px;
+  border-radius:14px;
   border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.10);
+  background:rgba(255,255,255,.08);
   color:#fff;
   font-weight:950;
+  white-space:nowrap;
+}
+.imgBtn.danger{
+  background:rgba(185,74,85,.22);
+  border-color:rgba(185,74,85,.35);
 }
