@@ -984,15 +984,173 @@ function renderManageImages() {
   // ✅ 上部バー（画像出力ボタン）
   const topBar = document.createElement('div');
   topBar.style.display = 'flex';
-  topBar.style.justifyContent = 'flex-end';
+  topBar.style.justifyContent = 'space-between';
+  topBar.style.alignItems = 'center';
+  topBar.style.gap = '10px';
   topBar.style.marginBottom = '12px';
-  topBar.innerHTML = `<button id="imgExport" class="pill" type="button">画像出力</button>`;
+  topBar.innerHTML = `
+    <div style="font-weight:900;color:rgba(255,255,255,.85);">画像管理</div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button id="imgExportAll" class="pill" type="button">画像出力</button>
+    </div>
+  `;
   wrap.appendChild(topBar);
 
   // 対象リスト（表示順）
   const list = sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino');
 
-  // ✅ dataURL画像読み込み
+  // ========= Export gallery (生成結果をまとめて確認) =========
+  function ensureExportOverlay() {
+    let ov = document.getElementById('exportOverlay');
+    if (ov) return ov;
+
+    ov = document.createElement('div');
+    ov.id = 'exportOverlay';
+    ov.className = 'modalOverlay isHidden';
+    ov.setAttribute('aria-hidden', 'true');
+
+    ov.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true" aria-label="画像出力結果">
+        <div class="modalHead">
+          <div class="modalTitle">画像出力（結果）</div>
+          <button id="exportClose" class="iconBtn" type="button" aria-label="閉じる">×</button>
+        </div>
+
+        <div style="padding:0 14px 12px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
+          <button id="exportSaveAll" class="pill" type="button">一括保存</button>
+          <button id="exportClear" class="pill danger" type="button">クリア</button>
+        </div>
+
+        <div class="modalBody" id="exportBody" style="padding-top:0;">
+          <!-- injected -->
+        </div>
+      </div>
+    `;
+    document.body.appendChild(ov);
+
+    // close
+    ov.querySelector('#exportClose')?.addEventListener('click', () => closeExportOverlay());
+    ov.addEventListener('click', (e) => {
+      if (e.target === ov) closeExportOverlay();
+    });
+
+    // clear
+    ov.querySelector('#exportClear')?.addEventListener('click', () => {
+      exportResults.length = 0;
+      renderExportResults();
+      openToast('出力結果をクリアしました');
+    });
+
+    // bulk save
+    ov.querySelector('#exportSaveAll')?.addEventListener('click', async () => {
+      if (!exportResults.length) {
+        openToast('保存する画像がありません');
+        return;
+      }
+      // ⚠️ iOS Safariは連続ダウンロードをブロックすることがある
+      // できるだけユーザー操作1回の流れで順番に保存を試みる
+      const ok = confirm(`全${exportResults.length}枚を順番に保存します。\n※端末によっては複数保存がブロックされる場合があります。`);
+      if (!ok) return;
+
+      for (let i = 0; i < exportResults.length; i++) {
+        const it = exportResults[i];
+        downloadDataUrl(it.dataUrl, it.filename);
+        // 少し間隔を空ける（ブロック回避）
+        await new Promise(r => setTimeout(r, 450));
+      }
+      openToast('一括保存を開始しました');
+    });
+
+    return ov;
+  }
+
+  function openExportOverlay() {
+    const ov = ensureExportOverlay();
+    ov.classList.remove('isHidden');
+  }
+  function closeExportOverlay() {
+    const ov = document.getElementById('exportOverlay');
+    if (!ov) return;
+    ov.classList.add('isHidden');
+  }
+
+  function downloadDataUrl(dataUrl, filename) {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filename || 'export.png';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  // 生成結果を保持（複数枚）
+  const exportResults = []; // { dataUrl, filename, label }
+
+  function renderExportResults() {
+    const body = document.getElementById('exportBody');
+    if (!body) return;
+
+    body.innerHTML = '';
+
+    if (!exportResults.length) {
+      const empty = document.createElement('div');
+      empty.style.color = 'rgba(255,255,255,.65)';
+      empty.style.fontWeight = '800';
+      empty.textContent = 'まだ出力がありません。「画像出力」から生成してください。';
+      body.appendChild(empty);
+      return;
+    }
+
+    // グリッド（見やすいサムネ一覧）
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = '1fr';
+    grid.style.gap = '12px';
+
+    exportResults.forEach((it, idx) => {
+      const card = document.createElement('div');
+      card.style.border = '1px solid rgba(255,255,255,.12)';
+      card.style.borderRadius = '18px';
+      card.style.background = 'rgba(0,0,0,.18)';
+      card.style.overflow = 'hidden';
+
+      card.innerHTML = `
+        <div style="padding:12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+          <div style="font-weight:950;">${escapeHtml(it.label || `出力 ${idx + 1}`)}</div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <button class="pill" type="button" data-act="save" data-idx="${idx}">保存</button>
+            <button class="pill" type="button" data-act="view" data-idx="${idx}">拡大</button>
+          </div>
+        </div>
+        <div style="padding:0 12px 12px;">
+          <img src="${it.dataUrl}" alt="" style="width:100%;height:auto;display:block;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:#000;">
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    grid.addEventListener('click', (e) => {
+      const btn = e.target?.closest('button');
+      const act = btn?.dataset?.act;
+      const idx = Number(btn?.dataset?.idx);
+      if (!act || !Number.isFinite(idx)) return;
+      const it = exportResults[idx];
+      if (!it) return;
+
+      if (act === 'save') {
+        downloadDataUrl(it.dataUrl, it.filename);
+        openToast('保存を開始しました');
+      }
+      if (act === 'view') {
+        openImgViewer(it.dataUrl);
+      }
+    });
+
+    body.appendChild(grid);
+  }
+
+  // ========= dataURL画像読み込み =========
   function loadImg(src) {
     return new Promise((resolve) => {
       const im = new Image();
@@ -1002,32 +1160,15 @@ function renderManageImages() {
     });
   }
 
-  // ✅ 合成出力（黒背景・縦横指定・上から順・未設定スキップ）
-  async function exportGrid(rows, cols) {
-    const maxCells = rows * cols;
-
-    const srcs = [];
-    for (const d of list) {
-      const u = getImageUrlForDino(d); // ✅ IDBキャッシュから取得
-      if (u) srcs.push(u);
-      if (srcs.length >= maxCells) break;
-    }
-
-    if (!srcs.length) {
-      alert('画像が1枚も設定されていません。');
-      return;
-    }
-
+  // ✅ 画像合成（黒背景・縦横指定・上から順に詰める・未設定はスキップ）
+  async function buildGridDataUrl(srcs, rows, cols) {
     const ims = [];
     for (const s of srcs) {
       const im = await loadImg(s);
       if (im) ims.push(im);
-      if (ims.length >= maxCells) break;
+      if (ims.length >= rows * cols) break;
     }
-    if (!ims.length) {
-      alert('読み込める画像がありませんでした。');
-      return;
-    }
+    if (!ims.length) return '';
 
     // セルサイズ（2:1）
     const cellW = 640;
@@ -1076,12 +1217,55 @@ function renderManageImages() {
       }
     }
 
-    const dataUrl = canvas.toDataURL('image/png', 1.0);
-    openImgViewer(dataUrl);
+    return canvas.toDataURL('image/png', 1.0);
+  }
+
+  // ✅ 全画像が尽きるまでページ生成（複数生成に対応）
+  async function exportAllPages(rows, cols) {
+    const perPage = rows * cols;
+
+    // 全画像srcを上から順に集める（未設定はスキップ）
+    const allSrcs = [];
+    for (const d of list) {
+      const u = getImageUrlForDino(d);
+      if (u) allSrcs.push(u);
+    }
+
+    if (!allSrcs.length) {
+      alert('画像が1枚も設定されていません。');
+      return;
+    }
+
+    // ページ分割して生成
+    const pages = [];
+    for (let i = 0; i < allSrcs.length; i += perPage) {
+      pages.push(allSrcs.slice(i, i + perPage));
+    }
+
+    exportResults.length = 0;
+
+    openToast(`生成中…（${pages.length}枚）`);
+
+    for (let p = 0; p < pages.length; p++) {
+      const dataUrl = await buildGridDataUrl(pages[p], rows, cols);
+      if (!dataUrl) continue;
+
+      const pageNo = String(p + 1).padStart(2, '0');
+      const filename = `dino_export_${rows}x${cols}_p${pageNo}.png`;
+      exportResults.push({
+        dataUrl,
+        filename,
+        label: `${rows}×${cols} 出力 ${p + 1} / ${pages.length}`,
+      });
+    }
+
+    openExportOverlay();
+    renderExportResults();
+    openToast(`生成完了：${exportResults.length}枚`);
   }
 
   // ✅ 出力ボタン
-  topBar.querySelector('#imgExport').addEventListener('click', async () => {
+  topBar.querySelector('#imgExportAll')?.addEventListener('click', async () => {
     const rows = parseInt(prompt('縦は何枚？（例：5）', '5') || '', 10);
     const cols = parseInt(prompt('横は何枚？（例：2）', '2') || '', 10);
 
@@ -1089,10 +1273,10 @@ function renderManageImages() {
       alert('縦・横は1以上の数字で入力してください。');
       return;
     }
-    await exportGrid(rows, cols);
+    await exportAllPages(rows, cols);
   });
 
-  // ✅ 画像一覧（IndexedDB版）
+  // ========= 画像一覧（IndexedDB） =========
   list.forEach(d => {
     const row = document.createElement('div');
     row.className = 'imgRow';
@@ -1137,14 +1321,13 @@ function renderManageImages() {
       if (!f) return;
 
       try {
-        // ✅ 圧縮して保存（IDB）
         const dataUrl = await fileToDataURLCompressed(f, 900, 0.78);
         imageCache[key] = dataUrl;
         await idbPutImage(key, dataUrl);
 
         thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
 
-        // ✅ メインにも即反映（再描画依存を減らす）
+        // ✅ メインにも即反映
         syncThumbInMainListByDino(d, dataUrl);
 
         openToast('画像を保存しました');
@@ -1164,7 +1347,7 @@ function renderManageImages() {
         await idbDelImage(key);
         thumb.textContent = 'No Image';
 
-        // メイン側は素直に再描画（確実）
+        // メインは確実に再描画
         renderList();
 
         openToast('画像を削除しました');
