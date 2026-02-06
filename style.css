@@ -336,8 +336,22 @@ button{cursor:pointer}
   align-items:center;
   flex-wrap:nowrap;
   overflow:visible;
-  position:relative;
-  z-index:2;
+}
+
+/* ✅ 特殊＋オスメス用：折り返しを許可して崩れを防ぐ */
+.controls.controlsWrap{
+  flex-wrap:wrap;
+}
+
+/* ✅ wrap時：stepperは2列、selectは下段100% */
+.controls.controlsWrap .stepper{
+  flex:1 1 calc(50% - 5px);
+  min-width:140px;
+}
+.controls.controlsWrap .type{
+  flex:1 1 100%;
+  width:100%;
+  height:44px;
 }
 
 .stepper{
