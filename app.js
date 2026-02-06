@@ -9,6 +9,22 @@
   const toHira = (s) => (s || '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
   const norm = (s) => toHira(String(s || '').toLowerCase()).replace(/\s+/g, '');
 
+  // ✅ 決定的ID用：軽量ハッシュ（djb2）
+  function hashId(str) {
+    const s = String(str || '');
+    let h = 5381;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
+    // unsigned & base36
+    return (h >>> 0).toString(36);
+  }
+  function dinoIdFromName(name) {
+    // 同名なら常に同じID（dinos.txt起因）
+    return 'd_' + hashId('dino|' + norm(name));
+  }
+  function itemIdFromFields(name, unit, price) {
+    return 'i_' + hashId('item|' + norm(name) + '|' + Number(unit || 0) + '|' + Number(price || 0));
+  }
+
   /* ========= storage keys ========= */
   const LS = {
     DINO_CUSTOM: 'dino_custom_v1',
@@ -37,136 +53,7 @@
   const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
 
   /* ========= images ========= */
-    /* ========= images =========
-     ✅ localStorage(dataURL)は容量・破損リスクが高いのでIndexedDBへ
-     - 画像は Blob として保存
-     - 旧localStorage(LS.DINO_IMAGES) が残っていれば初回だけ移行
-  */
-
-  const IDB = {
-    DB: 'dino_assets_v1',
-    STORE: 'images',
-    VER: 1,
-  };
-
-  function openDB() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(IDB.DB, IDB.VER);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if (!db.objectStoreNames.contains(IDB.STORE)) {
-          db.createObjectStore(IDB.STORE); // key = dinoId, value = Blob
-        }
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async function idbGet(key) {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(IDB.STORE, 'readonly');
-      const st = tx.objectStore(IDB.STORE);
-      const req = st.get(key);
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async function idbSet(key, val) {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(IDB.STORE, 'readwrite');
-      const st = tx.objectStore(IDB.STORE);
-      const req = st.put(val, key);
-      req.onsuccess = () => resolve(true);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async function idbDel(key) {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(IDB.STORE, 'readwrite');
-      const st = tx.objectStore(IDB.STORE);
-      const req = st.delete(key);
-      req.onsuccess = () => resolve(true);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async function idbKeys() {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(IDB.STORE, 'readonly');
-      const st = tx.objectStore(IDB.STORE);
-      const req = st.getAllKeys();
-      req.onsuccess = () => resolve(req.result || []);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  // 表示用のURLキャッシュ（ObjectURL）
-  const dinoImages = {};         // id -> objectURL(string)
-  const dinoImageBlob = {};      // id -> Blob
-  function revokeUrl(id) {
-    const u = dinoImages[id];
-    if (u && u.startsWith('blob:')) URL.revokeObjectURL(u);
-    delete dinoImages[id];
-  }
-
-  async function getImageUrl(id) {
-    if (dinoImages[id]) return dinoImages[id];
-    const blob = dinoImageBlob[id] || await idbGet(id);
-    if (!blob) return null;
-    dinoImageBlob[id] = blob;
-    const url = URL.createObjectURL(blob);
-    dinoImages[id] = url;
-    return url;
-  }
-
-  async function setImage(id, blob) {
-    // blob保存
-    await idbSet(id, blob);
-    // キャッシュ更新
-    revokeUrl(id);
-    dinoImageBlob[id] = blob;
-    dinoImages[id] = URL.createObjectURL(blob);
-    return dinoImages[id];
-  }
-
-  async function deleteImage(id) {
-    await idbDel(id);
-    revokeUrl(id);
-    delete dinoImageBlob[id];
-  }
-
-  async function migrateLocalStorageImagesOnce() {
-    // 旧: localStorage に dataURL が入ってる場合だけ移行
-    const legacy = loadJSON(LS.DINO_IMAGES, null);
-    if (!legacy || typeof legacy !== 'object') return;
-
-    // すでにIDBに何か入ってるなら移行しない（多重移行防止）
-    const keys = await idbKeys();
-    if (keys && keys.length > 0) {
-      // 旧データは残っててもOK。消したければここでremoveしても良い
-      return;
-    }
-
-    // dataURL -> Blob 変換して保存
-    const entries = Object.entries(legacy);
-    for (const [id, dataUrl] of entries) {
-      if (!dataUrl || typeof dataUrl !== 'string') continue;
-      try {
-        const blob = await (await fetch(dataUrl)).blob();
-        await idbSet(id, blob);
-      } catch {}
-    }
-
-    // 移行が済んだら旧キーを消しておく（任意だが推奨）
-    try { localStorage.removeItem(LS.DINO_IMAGES); } catch {}
-  }
+  const dinoImages = Object.assign({}, loadJSON(LS.DINO_IMAGES, {})); // id -> dataURL
 
   /* ========= DOM ========= */
   const el = {
@@ -228,27 +115,36 @@
     } catch { return ''; }
   }
 
+  // ✅ ここが重要：dinos.txt は「名前から決定的ID」
   function parseDinoLine(line) {
     line = (line || '').trim();
     if (!line || line.startsWith('#')) return null;
     line = line.replace(/^・/, '').trim();
     if (!line) return null;
+
     const [nameRaw, defRaw] = line.split('|').map(s => (s || '').trim());
     if (!nameRaw) return null;
+
     const defType = (defRaw && prices[defRaw] != null) ? defRaw : '受精卵';
-    return { id: 'd_' + uid(), name: nameRaw, defType, kind: 'dino' };
+    const id = dinoIdFromName(nameRaw);
+    return { id, name: nameRaw, defType, kind: 'dino' };
   }
 
+  // ✅ items.txt も「内容から決定的ID」
   function parseItemLine(line) {
     line = (line || '').trim();
     if (!line || line.startsWith('#')) return null;
+
     const parts = line.split('|').map(s => (s || '').trim());
     if (parts.length < 3) return null;
+
     const name = parts[0];
     const unit = Number(parts[1]);
     const price = Number(parts[2]);
     if (!name || !Number.isFinite(unit) || !Number.isFinite(price)) return null;
-    return { id: 'i_' + uid(), name, unit, price, kind: 'item' };
+
+    const id = itemIdFromFields(name, unit, price);
+    return { id, name, unit, price, kind: 'item' };
   }
 
   /* ========= ordering ========= */
@@ -701,7 +597,7 @@ ${lines.join('\n')}
       const i = ord.indexOf(id);
 
       if (act === 'up' && i > 0) {
-        [ord[i], ord[i-1]] = [ord[i-1], ord[i]];
+        [ord[i], ord[i - 1]] = [ord[i - 1], ord[i]];
         order[kind] = ord;
         saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
         renderList();
@@ -709,7 +605,7 @@ ${lines.join('\n')}
         return;
       }
       if (act === 'down' && i !== -1 && i < ord.length - 1) {
-        [ord[i], ord[i+1]] = [ord[i+1], ord[i]];
+        [ord[i], ord[i + 1]] = [ord[i + 1], ord[i]];
         order[kind] = ord;
         saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
         renderList();
@@ -730,7 +626,7 @@ ${lines.join('\n')}
   }
 
   /* ========= Images tab ========= */
-    function renderManageImages() {
+  function renderManageImages() {
     const wrap = document.createElement('div');
     const list = sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino');
 
@@ -740,8 +636,9 @@ ${lines.join('\n')}
 
       const thumb = document.createElement('div');
       thumb.className = 'thumb';
-      thumb.dataset.id = d.id;
-      thumb.textContent = 'No Image';
+      const url = dinoImages[d.id];
+      if (url) thumb.innerHTML = `<img src="${url}" alt="">`;
+      else thumb.textContent = 'No Image';
 
       const name = document.createElement('div');
       name.className = 'imgName';
@@ -770,19 +667,20 @@ ${lines.join('\n')}
       file.addEventListener('change', async () => {
         const f = file.files && file.files[0];
         if (!f) return;
-        // ✅ Blobで保存（IndexedDB）
-        const url = await setImage(d.id, f);
-        thumb.innerHTML = `<img src="${url}" alt="">`;
+        const dataUrl = await fileToDataURL(f);
+        dinoImages[d.id] = dataUrl; // 上書き
+        saveJSON(LS.DINO_IMAGES, dinoImages);
+        thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
       });
 
-      del.addEventListener('click', async () => {
-        await deleteImage(d.id);
+      del.addEventListener('click', () => {
+        delete dinoImages[d.id];
+        saveJSON(LS.DINO_IMAGES, dinoImages);
         thumb.textContent = 'No Image';
       });
 
-      // ✅ タップで拡大（lightbox）
-      thumb.addEventListener('click', async () => {
-        const u = await getImageUrl(d.id);
+      thumb.addEventListener('click', () => {
+        const u = dinoImages[d.id];
         if (!u) return;
         openLightbox(d.name, u);
       });
@@ -798,20 +696,7 @@ ${lines.join('\n')}
       wrap.appendChild(row);
     });
 
-    // ✅ 非同期でサムネを埋める（描画後に一気に反映）
-    hydrateImageThumbs(wrap);
-
     return wrap;
-  }
-
-  async function hydrateImageThumbs(root) {
-    const thumbs = $$(`.thumb[data-id]`, root);
-    for (const t of thumbs) {
-      const id = t.dataset.id;
-      const url = await getImageUrl(id);
-      if (!url) { t.textContent = 'No Image'; continue; }
-      t.innerHTML = `<img src="${url}" alt="">`;
-    }
   }
 
   function fileToDataURL(file) {
@@ -908,15 +793,13 @@ ${lines.join('\n')}
 
   /* ========= init ========= */
   async function init() {
-    // ✅ 旧localStorage画像があれば初回だけIndexedDBへ移行
-    try { await migrateLocalStorageImagesOnce(); } catch {}
-
     const dText = await fetchTextSafe('./dinos.txt');
     const iText = await fetchTextSafe('./items.txt');
 
     const baseD = dText.split(/\r?\n/).map(parseDinoLine).filter(Boolean);
     const baseI = iText.split(/\r?\n/).map(parseItemLine).filter(Boolean);
 
+    // custom は id を保持（管理画面追加分は消えない）
     dinos = baseD.concat(custom.dino.map(x => ({ id: x.id, name: x.name, defType: x.defType, kind: 'dino' })));
     items = baseI.concat(custom.item.map(x => ({ id: x.id, name: x.name, unit: x.unit, price: x.price, kind: 'item' })));
 
@@ -926,5 +809,6 @@ ${lines.join('\n')}
     // 初期タブ
     setTab('dino');
   }
+
   init();
 })();
