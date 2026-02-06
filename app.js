@@ -1,7 +1,9 @@
 (() => {
   'use strict';
 
-  /* ========= utils ========= */
+  /* =========================================================
+   * utils
+   * =======================================================*/
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const uid = () => Math.random().toString(36).slice(2, 10);
@@ -15,40 +17,30 @@
     return (h >>> 0).toString(36);
   }
   function stableId(prefix, name) {
-    const key = norm(name);
-    return `${prefix}_${stableHash(key)}`;
-  }
-  function escapeHtml(s) {
-    return String(s || '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
+    return `${prefix}_${stableHash(norm(name))}`;
   }
 
-  /* ========= localStorage keys ========= */
+  /* =========================================================
+   * 丸数字（出力専用）
+   * =======================================================*/
+  function toCircled(n) {
+    const x = Number(n);
+    if (!Number.isFinite(x)) return String(n ?? '');
+    if (x >= 1 && x <= 20) return String.fromCharCode(0x2460 + (x - 1));   // ①〜⑳
+    if (x >= 21 && x <= 35) return String.fromCharCode(0x3251 + (x - 21)); // ㉑〜㉟
+    if (x >= 36 && x <= 50) return String.fromCharCode(0x32B1 + (x - 36)); // ㊱〜㊿
+    return `(${x})`;
+  }
+
+  /* =========================================================
+   * localStorage keys
+   * =======================================================*/
   const LS = {
-    DINO_CUSTOM: 'dino_custom_v1',
-    ITEM_CUSTOM: 'item_custom_v1',
-    DINO_HIDDEN: 'dino_hidden_v1',
-    ITEM_HIDDEN: 'item_hidden_v1',
-    DINO_ORDER: 'dino_order_v1',
-    ITEM_ORDER: 'item_order_v1',
     PRICES: 'prices_v1',
     DELIVERY: 'delivery_v1',
 
-    // 旧：画像(localStorage)
-    DINO_IMAGES_OLD: 'dino_images_v1',
-
-    DINO_OVERRIDE: 'dino_override_v1',
-
-    // ROOM
-    ROOM_ENTRY_PW: 'room_entry_pw_v1',
-    ROOM_PW: 'room_pw_v1',
-
-    // ✅ ガチャ単価（将来の拡張用。今回は固定300でもOKだが一応保存先だけ用意）
-    GACHA_UNIT: 'gacha_unit_v1',
+    // ガチャ（特殊）
+    SPECIAL_CONF: 'special_conf_v1', // { dinoId: { max, price, allPrice } }
   };
 
   const loadJSON = (k, fb) => {
@@ -59,212 +51,22 @@
       return fb;
     }
   };
+  const saveJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-  function saveJSON(k, v) {
-    try {
-      localStorage.setItem(k, JSON.stringify(v));
-      return true;
-    } catch {
-      openToast('保存に失敗しました（容量オーバー等）');
-      return false;
-    }
-  }
-
-  /* ========= toast ========= */
-  let toastTimer = null;
-  function openToast(text) {
-    let t = $('#toast');
-    if (!t) {
-      t = document.createElement('div');
-      t.id = 'toast';
-      t.style.position = 'fixed';
-      t.style.left = '50%';
-      t.style.bottom = '18px';
-      t.style.transform = 'translateX(-50%)';
-      t.style.zIndex = '9999';
-      t.style.padding = '10px 12px';
-      t.style.borderRadius = '14px';
-      t.style.border = '1px solid rgba(255,255,255,.14)';
-      t.style.background = 'rgba(0,0,0,.55)';
-      t.style.backdropFilter = 'blur(10px)';
-      t.style.color = '#fff';
-      t.style.fontWeight = '800';
-      t.style.fontSize = '13px';
-      t.style.maxWidth = '92vw';
-      t.style.textAlign = 'center';
-      t.style.whiteSpace = 'pre-wrap';
-      document.body.appendChild(t);
-    }
-    t.textContent = text;
-    t.style.display = 'block';
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { t.style.display = 'none'; }, 1700);
-  }
-
-  /* ========= confirm modal ========= */
-  let confirmResolve = null;
-  function confirmAsk(text) {
-    return new Promise((resolve) => {
-      const ov = $('#confirmOverlay');
-      const tx = $('#confirmText');
-      if (!ov || !tx) return resolve(false);
-      confirmResolve = resolve;
-      tx.textContent = text || 'よろしいですか？';
-      ov.classList.remove('isHidden');
-    });
-  }
-  function confirmClose(val) {
-    const ov = $('#confirmOverlay');
-    if (!ov) return;
-    ov.classList.add('isHidden');
-    if (confirmResolve) {
-      const r = confirmResolve;
-      confirmResolve = null;
-      r(!!val);
-    }
-  }
-  $('#confirmCancel')?.addEventListener('click', () => confirmClose(false));
-  $('#confirmOk')?.addEventListener('click', () => confirmClose(true));
-  $('#confirmOverlay')?.addEventListener('click', (e) => {
-    if (e.target === $('#confirmOverlay')) confirmClose(false);
-  });
-
-  /* ========= IndexedDB (images) ========= */
-  const IDB = {
-    DB_NAME: 'dino_list_db_v3',
-    DB_VER: 1,
-    STORE_IMAGES: 'images', // key: imageKey, value: dataUrl
-  };
-
-  let dbPromise = null;
-  function openDb() {
-    if (dbPromise) return dbPromise;
-    dbPromise = new Promise((resolve, reject) => {
-      const req = indexedDB.open(IDB.DB_NAME, IDB.DB_VER);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if (!db.objectStoreNames.contains(IDB.STORE_IMAGES)) {
-          db.createObjectStore(IDB.STORE_IMAGES);
-        }
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-    return dbPromise;
-  }
-
-  async function idbGetAllImages() {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(IDB.STORE_IMAGES, 'readonly');
-      const st = tx.objectStore(IDB.STORE_IMAGES);
-      const out = {};
-      const cur = st.openCursor();
-      cur.onsuccess = () => {
-        const c = cur.result;
-        if (!c) return resolve(out);
-        out[c.key] = c.value;
-        c.continue();
-      };
-      cur.onerror = () => reject(cur.error);
-    });
-  }
-
-  async function idbPutImage(key, dataUrl) {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(IDB.STORE_IMAGES, 'readwrite');
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
-      tx.objectStore(IDB.STORE_IMAGES).put(dataUrl, key);
-    });
-  }
-
-  async function idbDelImage(key) {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(IDB.STORE_IMAGES, 'readwrite');
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
-      tx.objectStore(IDB.STORE_IMAGES).delete(key);
-    });
-  }
-
-  async function migrateOldImagesIfAny() {
-    const old = loadJSON(LS.DINO_IMAGES_OLD, null);
-    if (!old || typeof old !== 'object') return;
-
-    const keys = Object.keys(old);
-    if (keys.length === 0) {
-      localStorage.removeItem(LS.DINO_IMAGES_OLD);
-      return;
-    }
-
-    try {
-      for (const k of keys) {
-        const v = old[k];
-        if (typeof v === 'string' && v.startsWith('data:')) {
-          await idbPutImage(`legacy_${k}`, v);
-        }
-      }
-      localStorage.removeItem(LS.DINO_IMAGES_OLD);
-      openToast('旧画像データを退避しました');
-    } catch {
-      openToast('旧画像の移行に失敗しました');
-    }
-  }
-
-  /* ========= prices ========= */
+  /* =========================================================
+   * prices
+   * =======================================================*/
   const defaultPrices = {
-    '受精卵': 30, '受精卵(指定)': 50,
-    '胚': 50, '胚(指定)': 100,
+    '受精卵': 30,
+    '胚': 50,
     '幼体': 100,
     '成体': 500,
-    'クローン': 500, 'クローン(指定)': 300,
   };
   const prices = Object.assign({}, defaultPrices, loadJSON(LS.PRICES, {}));
-  const typeList = Object.keys(defaultPrices);
-  const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
 
-  /* ========= images ========= */
-  const imageCache = {}; // { [imageKey]: dataURL }
-  const dinoOverride = Object.assign({}, loadJSON(LS.DINO_OVERRIDE, {}));
-  function imageKeyFromBaseName(baseName) {
-    return `img_${stableHash(norm(baseName))}`;
-  }
-
-  /* ========= ✅ SPECIAL: ガチャ ========= */
-  const GACHA = {
-    NAME: 'ガチャ',
-    unit: Number(loadJSON(LS.GACHA_UNIT, 300)) || 300, // 今回はここが単価（将来ここを管理画面で編集してもOK）
-    nums: Array.from({ length: 16 }, (_, i) => i + 1),
-    labels: ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯'],
-  };
-
-  function isGachaDino(d) {
-    const base = String(d?._baseName || d?.name || '').trim();
-    const disp = String(d?.name || '').trim();
-    return base === GACHA.NAME || disp === GACHA.NAME;
-  }
-
-  function ensureGachaState(key) {
-    if (!inputState.has(key)) inputState.set(key, { kind: 'gacha', seq: [], unit: GACHA.unit });
-    const s = inputState.get(key);
-    if (!s || typeof s !== 'object') {
-      inputState.set(key, { kind: 'gacha', seq: [], unit: GACHA.unit });
-      return inputState.get(key);
-    }
-    if (!Array.isArray(s.seq)) s.seq = [];
-    if (!Number.isFinite(Number(s.unit))) s.unit = GACHA.unit;
-    s.kind = 'gacha';
-    return s;
-  }
-
-  function gachaSeqLabel(seq) {
-    return (seq || []).map(n => GACHA.labels[(Number(n) || 1) - 1] || '').join('');
-  }
-
-  /* ========= DOM ========= */
+  /* =========================================================
+   * DOM
+   * =======================================================*/
   const el = {
     q: $('#q'),
     qClear: $('#qClear'),
@@ -272,223 +74,80 @@
     copy: $('#copy'),
     total: $('#total'),
     out: $('#out'),
-
-    tabDinos: $('#tabDinos'),
-    tabItems: $('#tabItems'),
     list: $('#list'),
-
-    openManage: $('#openManage'),
-    modalOverlay: $('#modalOverlay'),
-    modalBody: $('#modalBody'),
-    closeManage: $('#closeManage'),
-    mTabCatalog: $('#mTabCatalog'),
-    mTabPrices: $('#mTabPrices'),
-    mTabImages: $('#mTabImages'),
-
-    openRoom: $('#openRoom'),
-    roomOverlay: $('#roomOverlay'),
-    roomBody: $('#roomBody'),
-    closeRoom: $('#closeRoom'),
-
-    editOverlay: $('#editOverlay'),
-    editBody: $('#editBody'),
-    editTitle: $('#editTitle'),
-
-    imgOverlay: $('#imgOverlay'),
-    imgClose: $('#imgClose'),
-    imgViewerImg: $('#imgViewerImg'),
   };
 
-  /* ========= sanity (reset) ========= */
-  if (new URL(location.href).searchParams.get('reset') === '1') {
-    Object.values(LS).forEach(k => localStorage.removeItem(k));
-    indexedDB.deleteDatabase(IDB.DB_NAME);
-    location.replace(location.pathname);
-    return;
-  }
-
-  /* ========= data ========= */
-  const hidden = {
-    dino: new Set(loadJSON(LS.DINO_HIDDEN, [])),
-    item: new Set(loadJSON(LS.ITEM_HIDDEN, [])),
-  };
-  const order = {
-    dino: loadJSON(LS.DINO_ORDER, []),
-    item: loadJSON(LS.ITEM_ORDER, []),
-  };
-  const custom = {
-    dino: loadJSON(LS.DINO_CUSTOM, []),
-    item: loadJSON(LS.ITEM_CUSTOM, []),
-  };
-
-  let dinos = [];
-  let items = [];
-  let activeTab = 'dino';
+  /* =========================================================
+   * data
+   * =======================================================*/
+  let dinos = [
+    // サンプル：ガチャ
+    {
+      id: stableId('d', 'ガチャ'),
+      name: 'ガチャ',
+      kind: 'dino',
+      special: true, // ← 特殊
+    },
+  ];
 
   const inputState = new Map();
-  const ephemeralKeys = new Set();
 
-  /* ========= fetch & parse ========= */
-  async function fetchTextSafe(path) {
-    try {
-      const r = await fetch(path + '?ts=' + Date.now(), { cache: 'no-store' });
-      if (!r.ok) return '';
-      return await r.text();
-    } catch { return ''; }
-  }
+  // 特殊設定（恐竜追加画面から設定される想定）
+  const specialConf = loadJSON(LS.SPECIAL_CONF, {
+    // [dinoId]: { max: 16, price: 300, allPrice: 3000 }
+  });
 
-  function parseDinoLine(line) {
-    line = (line || '').trim();
-    if (!line || line.startsWith('#')) return null;
-    line = line.replace(/^・/, '').trim();
-    if (!line) return null;
-
-    const [nameRaw, defRaw] = line.split('|').map(s => (s || '').trim());
-    if (!nameRaw) return null;
-    const defType = (defRaw && prices[defRaw] != null) ? defRaw : '受精卵';
-
-    const id = stableId('d', nameRaw);
-    const ov = dinoOverride[id];
-
-    return {
-      id,
-      name: ov?.name || nameRaw,
-      defType: ov?.defType || defType,
-      kind: 'dino',
-      _baseName: nameRaw,
-    };
-  }
-
-  function parseItemLine(line) {
-    line = (line || '').trim();
-    if (!line || line.startsWith('#')) return null;
-    const parts = line.split('|').map(s => (s || '').trim());
-    if (parts.length < 3) return null;
-    const name = parts[0];
-    const unit = Number(parts[1]);
-    const price = Number(parts[2]);
-    if (!name || !Number.isFinite(unit) || !Number.isFinite(price)) return null;
-    return { id: stableId('i', name), name, unit, price, kind: 'item' };
-  }
-
-  /* ========= ordering ========= */
-  function ensureOrderList(list, kind) {
-    const ids = list.map(x => x.id);
-    const ord = (order[kind] || []).filter(id => ids.includes(id));
-    ids.forEach(id => { if (!ord.includes(id)) ord.push(id); });
-    order[kind] = ord;
-    saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
-  }
-
-  function sortByOrder(list, kind) {
-    const ord = order[kind] || [];
-    const idx = new Map(ord.map((id, i) => [id, i]));
-    return list.slice().sort((a, b) => {
-      const ai = idx.has(a.id) ? idx.get(a.id) : 1e9;
-      const bi = idx.has(b.id) ? idx.get(b.id) : 1e9;
-      if (ai !== bi) return ai - bi;
-      return a.name.localeCompare(b.name, 'ja');
-    });
-  }
-
-  /* ========= behavior rules ========= */
-  function ensureDinoState(key, defType) {
-    if (!inputState.has(key)) inputState.set(key, { type: defType || '受精卵', m: 0, f: 0 });
-    return inputState.get(key);
-  }
-  function ensureItemState(key) {
-    if (!inputState.has(key)) inputState.set(key, { qty: 0 });
+  /* =========================================================
+   * special state
+   * =======================================================*/
+  function ensureSpecialState(key) {
+    if (!inputState.has(key)) {
+      inputState.set(key, {
+        seq: [],       // 押された番号列 [1,2,3,...]
+        all: false,    // 全種
+      });
+    }
     return inputState.get(key);
   }
 
-  function autoSpecify(s) {
-    const m = Number(s.m || 0), f = Number(s.f || 0);
-    const base = String(s.type || '受精卵').replace('(指定)', '');
-    const hasSpecified = /\(指定\)$/.test(String(s.type || ''));
-
-    if (m > 0 && f > 0) {
-      if (specifiedMap[base]) s.type = specifiedMap[base];
-      return;
-    }
-    if (m === 0 && f === 0 && hasSpecified) {
-      s.type = base;
-    }
+  function specialSeqLabel(seq) {
+    return (seq || []).map(n => toCircled(n)).join('');
   }
 
-  /* ========= output ========= */
+  /* =========================================================
+   * output
+   * =======================================================*/
   function rebuildOutput() {
     const lines = [];
     let sum = 0;
     let idx = 1;
 
-    const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
-    for (const d of dList) {
-      const baseKey = d.id;
-      const keys = [baseKey, ...Array.from(ephemeralKeys).filter(k => k.startsWith(baseKey + '__dup'))];
+    for (const d of dinos) {
+      if (!d.special) continue;
 
-      // ✅ ガチャは複製対応しない（誤爆防止）。キーはbaseのみ使う
-      if (isGachaDino(d)) {
-        const gs = ensureGachaState(baseKey);
-        const cnt = (gs.seq || []).length;
-        if (cnt > 0) {
-          const label = gachaSeqLabel(gs.seq);
-          const price = cnt * (Number(gs.unit) || GACHA.unit);
-          sum += price;
-          lines.push(`${idx}. ${GACHA.NAME}${label} = ${price.toLocaleString('ja-JP')}円`);
-          idx++;
-        }
+      const s = ensureSpecialState(d.id);
+      const conf = specialConf[d.id];
+      if (!conf) continue;
+
+      if (s.all) {
+        const price = Number(conf.allPrice || 0);
+        sum += price;
+        lines.push(
+          `${idx}. ${d.name}全種 = ${price.toLocaleString('ja-JP')}円`
+        );
+        idx++;
         continue;
       }
 
-      for (const k of keys) {
-        const s = inputState.get(k);
-        if (!s) continue;
-
-        const type = s.type || d.defType || '受精卵';
-        const m = Number(s.m || 0);
-        const f = Number(s.f || 0);
-        const qty = m + f;
-        if (qty <= 0) continue;
-
-        const unitPrice = prices[type] || 0;
-        const price = unitPrice * qty;
+      if (s.seq.length > 0) {
+        const qty = s.seq.length;
+        const price = qty * Number(conf.price || 0);
         sum += price;
-
-        const tOut = String(type).replace('(指定)', '');
-        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
-
-        let line = '';
-        if (isPair) {
-          if (m === f) {
-            line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
-          } else {
-            const p = [];
-            if (m > 0) p.push(`♂×${m}`);
-            if (f > 0) p.push(`♀×${f}`);
-            line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
-          }
-        } else {
-          line = `${d.name}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
-        }
-
-        lines.push(`${idx}. ${line}`);
+        lines.push(
+          `${idx}. ${d.name}${specialSeqLabel(s.seq)} = ${price.toLocaleString('ja-JP')}円`
+        );
         idx++;
       }
-    }
-
-    const iList = sortByOrder(items.filter(it => !hidden.item.has(it.id)), 'item');
-    for (const it of iList) {
-      const s = inputState.get(it.id);
-      if (!s) continue;
-      const qty = Number(s.qty || 0);
-      if (qty <= 0) continue;
-
-      const totalCount = qty * Number(it.unit || 1);
-      const price = qty * Number(it.price || 0);
-      sum += price;
-
-      lines.push(`${idx}. ${it.name} × ${totalCount} = ${price.toLocaleString('ja-JP')}円`);
-      idx++;
     }
 
     el.total.textContent = yen(sum);
@@ -500,849 +159,93 @@
 ${lines.join('\n')}
 ーーーーーーーーーーーーーーー
 計：${sum.toLocaleString('ja-JP')}円
-最短納品目安 : ${el.delivery.value}
+最短納品目安 : ${el.delivery?.value || ''}
 
-ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻
-
-また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
+ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻`;
   }
 
-  /* ========= collapse & search ========= */
-  function getQtyForCard(key, kind) {
-    if (kind === 'dino') {
-      // ✅ ガチャは seq長を「数量」として扱う
-      const s = inputState.get(key);
-      if (s && s.kind === 'gacha') return (Array.isArray(s.seq) ? s.seq.length : 0);
+  /* =========================================================
+   * cards（ガチャ専用）
+   * =======================================================*/
+  function buildGachaCard(d) {
+    const conf = specialConf[d.id];
+    if (!conf) return document.createElement('div');
 
-      const ds = inputState.get(key);
-      return ds ? (Number(ds.m || 0) + Number(ds.f || 0)) : 0;
-    } else {
-      const s = inputState.get(key);
-      return s ? Number(s.qty || 0) : 0;
-    }
-  }
-
-  function applyCollapseAndSearch() {
-    const q = norm(el.q.value);
-
-    $$('[data-card="1"]', el.list).forEach(card => {
-      const name = card.dataset.name || '';
-      const show = !q || norm(name).includes(q);
-      card.style.display = show ? '' : 'none';
-
-      const key = card.dataset.key;
-      const kind = card.dataset.kind;
-      const qty = getQtyForCard(key, kind);
-      const collapsed = q ? !show : (qty === 0);
-      card.classList.toggle('isCollapsed', collapsed);
-    });
-  }
-
-  /* ========= image DOM sync ========= */
-  function getImageUrlForDino(d) {
-    const k = imageKeyFromBaseName(d._baseName || d.name);
-    return imageCache[k] || '';
-  }
-  function syncThumbInMainListByDino(d, dataUrl) {
-    const cards = $$(`[data-kind="dino"][data-did="${CSS.escape(d.id)}"]`, el.list);
-    cards.forEach(card => {
-      let wrap = $('.miniThumb', card);
-      if (!wrap) {
-        const nw = document.createElement('div');
-        nw.className = 'miniThumb';
-        nw.innerHTML = `<img alt="">`;
-        $('.nameWrap', card)?.appendChild(nw);
-        wrap = nw;
-      }
-      const im = $('img', wrap);
-      if (im) im.src = dataUrl;
-    });
-  }
-
-  /* ========= cards ========= */
-  function buildDinoCard(d, keyOverride = null) {
-    const key = keyOverride || d.id;
-
-    // ✅ ガチャは専用UI
-    if (isGachaDino(d)) {
-      const s = ensureGachaState(key);
-
-      const card = document.createElement('div');
-      card.className = 'card isCollapsed';
-      card.dataset.card = '1';
-      card.dataset.key = key;
-      card.dataset.name = d.name;
-      card.dataset.kind = 'dino';
-      card.dataset.did = d.id;
-
-      const imgUrl = getImageUrlForDino(d);
-
-      card.innerHTML = `
-        <div class="cardInner">
-          <div class="cardHead">
-            <button class="cardToggle" type="button" aria-label="開閉" data-act="toggle"></button>
-
-            <div class="nameWrap">
-              <div class="name"></div>
-              ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
-            </div>
-
-            <div class="right">
-              <div class="unit"></div>
-              <div class="unit" style="opacity:.85;">1回=${(Number(s.unit) || GACHA.unit).toLocaleString('ja-JP')}円</div>
-            </div>
-          </div>
-
-          <div class="controls" style="flex-direction:column;align-items:stretch;gap:10px;">
-            <div class="gachaGrid"
-              style="display:grid;grid-template-columns:repeat(4, minmax(0,1fr));gap:10px;">
-              ${GACHA.nums.map(n => `<button class="btn" type="button" data-act="gacha" data-n="${n}" style="height:44px;border-radius:16px;font-size:18px;">${GACHA.labels[n-1]}</button>`).join('')}
-            </div>
-
-            <div style="display:flex;gap:10px;align-items:center;">
-              <button class="pill danger" type="button" data-act="gachaBack" style="height:44px;width:120px;">− 取消</button>
-              <div style="flex:1;min-width:0;">
-                <div class="unit" style="text-align:left;white-space:normal;">
-                  入力：<span class="js-gachaLabel"></span>
-                </div>
-                <div class="unit" style="text-align:left;">
-                  小計：<span class="js-gachaPrice"></span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-
-      $('.name', card).textContent = d.name;
-
-      const lblEl = $('.js-gachaLabel', card);
-      const priceEl = $('.js-gachaPrice', card);
-
-      function syncGachaUI() {
-        const seq = Array.isArray(s.seq) ? s.seq : [];
-        const label = gachaSeqLabel(seq);
-        const price = seq.length * (Number(s.unit) || GACHA.unit);
-
-        if (lblEl) lblEl.textContent = label || '（未入力）';
-        if (priceEl) priceEl.textContent = `${price.toLocaleString('ja-JP')}円`;
-
-        if (!el.q.value.trim()) {
-          card.classList.toggle('isCollapsed', seq.length === 0);
-        }
-      }
-
-      // 初期
-      syncGachaUI();
-      rebuildOutput();
-      applyCollapseAndSearch();
-
-      $('.cardToggle', card).addEventListener('click', (ev) => {
-        ev.preventDefault();
-        if (el.q.value.trim()) return;
-        card.classList.toggle('isCollapsed');
-      });
-
-      card.addEventListener('click', (ev) => {
-        const btn = ev.target?.closest('button');
-        const act = btn?.dataset?.act;
-        if (!act) return;
-
-        ev.stopPropagation();
-
-        if (act === 'gacha') {
-          const n = Number(btn.dataset.n || 0);
-          if (!n || n < 1 || n > 16) return;
-          s.seq.push(n);
-          syncGachaUI();
-          rebuildOutput();
-          applyCollapseAndSearch();
-          return;
-        }
-
-        if (act === 'gachaBack') {
-          if (Array.isArray(s.seq) && s.seq.length) s.seq.pop();
-          syncGachaUI();
-          rebuildOutput();
-          applyCollapseAndSearch();
-          return;
-        }
-      });
-
-      return card;
-    }
-
-    // 通常恐竜
-    const s = ensureDinoState(key, d.defType);
+    const s = ensureSpecialState(d.id);
 
     const card = document.createElement('div');
-    card.className = 'card isCollapsed';
-    card.dataset.card = '1';
-    card.dataset.key = key;
-    card.dataset.name = d.name;
-    card.dataset.kind = 'dino';
-    card.dataset.did = d.id;
+    card.className = 'card';
 
-    const imgUrl = getImageUrlForDino(d);
+    const nums = [];
+    for (let i = 1; i <= conf.max; i++) {
+      nums.push(`<button class="btn" data-n="${i}">${i}</button>`);
+    }
 
     card.innerHTML = `
       <div class="cardInner">
-        <div class="cardHead">
-          <button class="cardToggle" type="button" aria-label="開閉" data-act="toggle"></button>
+        <div class="name">${d.name}</div>
 
-          <div class="nameWrap">
-            <div class="name"></div>
-            ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
-          </div>
-
-          <div class="right">
-            <select class="type" aria-label="種類"></select>
-            <div class="unit"></div>
-          </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${nums.join('')}
         </div>
 
-        <div class="controls">
-          <div class="stepper male">
-            <button class="btn" type="button" data-act="m-">−</button>
-            <div class="val js-m">0</div>
-            <button class="btn" type="button" data-act="m+">＋</button>
-          </div>
-
-          <div class="stepper female">
-            <button class="btn" type="button" data-act="f-">−</button>
-            <div class="val js-f">0</div>
-            <button class="btn" type="button" data-act="f+">＋</button>
-          </div>
-
-          <button class="dupBtn" type="button" data-act="dup">複製</button>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn" data-act="all">全種</button>
+          <button class="btn" data-act="del">−</button>
         </div>
       </div>
     `;
 
-    $('.name', card).textContent = d.name;
+    card.addEventListener('click', (e) => {
+      const n = e.target?.dataset?.n;
+      const act = e.target?.dataset?.act;
 
-    const sel = $('.type', card);
-    sel.innerHTML = typeList.map(t => `<option value="${t}">${t}</option>`).join('');
-    if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
-    sel.value = s.type;
-
-    const unit = $('.unit', card);
-    unit.textContent = `単価${prices[s.type] || 0}円`;
-
-    const mEl = $('.js-m', card);
-    const fEl = $('.js-f', card);
-    mEl.textContent = String(s.m || 0);
-    fEl.textContent = String(s.f || 0);
-
-    const initialQty = Number(s.m || 0) + Number(s.f || 0);
-    card.classList.toggle('isCollapsed', initialQty === 0);
-
-    function syncUI() {
-      if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
-      sel.value = s.type;
-      unit.textContent = `単価${prices[s.type] || 0}円`;
-      mEl.textContent = String(s.m || 0);
-      fEl.textContent = String(s.f || 0);
-
-      if (!el.q.value.trim()) {
-        const q = (Number(s.m || 0) + Number(s.f || 0));
-        card.classList.toggle('isCollapsed', q === 0);
-      }
-    }
-
-    function step(sex, delta) {
-      if (sex === 'm') s.m = Math.max(0, Number(s.m || 0) + delta);
-      if (sex === 'f') s.f = Math.max(0, Number(s.f || 0) + delta);
-      autoSpecify(s);
-      syncUI();
-      rebuildOutput();
-      applyCollapseAndSearch();
-    }
-
-    sel.addEventListener('change', (ev) => {
-      ev.stopPropagation();
-      s.type = sel.value;
-      autoSpecify(s);
-      syncUI();
-      rebuildOutput();
-      applyCollapseAndSearch();
-    });
-
-    $('.cardToggle', card).addEventListener('click', (ev) => {
-      ev.preventDefault();
-      if (el.q.value.trim()) return;
-      card.classList.toggle('isCollapsed');
-    });
-
-    $$('button[data-act]', card).forEach(btn => {
-      btn.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        const act = btn.dataset.act;
-
-        if (act === 'm-') step('m', -1);
-        if (act === 'm+') step('m', +1);
-        if (act === 'f-') step('f', -1);
-        if (act === 'f+') step('f', +1);
-
-        if (act === 'dup') {
-          const dupKey = `${d.id}__dup_${uid()}`;
-          ephemeralKeys.add(dupKey);
-          inputState.set(dupKey, { type: s.type, m: 0, f: 0 });
-
-          const dupCard = buildDinoCard(d, dupKey);
-          card.after(dupCard);
-          rebuildOutput();
-          applyCollapseAndSearch();
-        }
-      });
-    });
-
-    return card;
-  }
-
-  function buildItemCard(it) {
-    const s = ensureItemState(it.id);
-
-    const card = document.createElement('div');
-    card.className = 'card isCollapsed';
-    card.dataset.card = '1';
-    card.dataset.key = it.id;
-    card.dataset.name = it.name;
-    card.dataset.kind = 'item';
-
-    card.innerHTML = `
-      <div class="cardInner">
-        <div class="cardHead">
-          <button class="cardToggle" type="button" aria-label="開閉" data-act="toggle"></button>
-
-          <div class="nameWrap">
-            <div class="name"></div>
-          </div>
-
-          <div class="right">
-            <div class="unit"></div>
-          </div>
-        </div>
-
-        <div class="controls">
-          <div class="stepper" style="flex:1;">
-            <button class="btn" type="button" data-act="-">−</button>
-            <div class="val js-q">0</div>
-            <button class="btn" type="button" data-act="+">＋</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    $('.name', card).textContent = it.name;
-    $('.unit', card).textContent = `単価${it.price}円`;
-
-    const qEl = $('.js-q', card);
-    qEl.textContent = String(s.qty || 0);
-
-    card.classList.toggle('isCollapsed', Number(s.qty || 0) === 0);
-
-    $('.cardToggle', card).addEventListener('click', (ev) => {
-      ev.preventDefault();
-      if (el.q.value.trim()) return;
-      card.classList.toggle('isCollapsed');
-    });
-
-    $$('button[data-act]', card).forEach(btn => {
-      btn.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        const act = btn.dataset.act;
-        if (act === '-') s.qty = Math.max(0, Number(s.qty || 0) - 1);
-        if (act === '+') s.qty = Math.max(0, Number(s.qty || 0) + 1);
-
-        qEl.textContent = String(s.qty || 0);
-
-        if (!el.q.value.trim()) card.classList.toggle('isCollapsed', Number(s.qty || 0) === 0);
-
+      if (n) {
+        s.seq.push(Number(n));
+        s.all = false;
         rebuildOutput();
-        applyCollapseAndSearch();
-      });
+      }
+      if (act === 'del') {
+        s.seq.pop();
+        rebuildOutput();
+      }
+      if (act === 'all') {
+        s.all = true;
+        s.seq = [];
+        rebuildOutput();
+      }
     });
 
     return card;
   }
 
-  /* ========= render ========= */
+  /* =========================================================
+   * render
+   * =======================================================*/
   function renderList() {
     el.list.innerHTML = '';
-
-    if (activeTab === 'dino') {
-      const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
-      dList.forEach(d => el.list.appendChild(buildDinoCard(d)));
-    } else {
-      const iList = sortByOrder(items.filter(i => !hidden.item.has(i.id)), 'item');
-      iList.forEach(it => el.list.appendChild(buildItemCard(it)));
-    }
-
+    dinos.forEach(d => {
+      if (d.special) el.list.appendChild(buildGachaCard(d));
+    });
     rebuildOutput();
-    applyCollapseAndSearch();
   }
 
-  function setTab(tab) {
-    activeTab = tab;
-    el.tabDinos.classList.toggle('isActive', tab === 'dino');
-    el.tabItems.classList.toggle('isActive', tab === 'item');
+  /* =========================================================
+   * init
+   * =======================================================*/
+  function init() {
+    // ガチャ初期設定（なければ作る）
+    const gacha = dinos.find(d => d.name === 'ガチャ');
+    if (gacha && !specialConf[gacha.id]) {
+      specialConf[gacha.id] = {
+        max: 16,
+        price: 300,
+        allPrice: 3000,
+      };
+      saveJSON(LS.SPECIAL_CONF, specialConf);
+    }
+
     renderList();
-  }
-
-  /* ========= manage modal ========= */
-  function openModal() {
-    el.modalOverlay.classList.remove('isHidden');
-    setManageTab('catalog');
-  }
-  function closeModal() {
-    el.modalOverlay.classList.add('isHidden');
-    el.modalBody.innerHTML = '';
-  }
-
-  function setManageTab(kind) {
-    el.mTabCatalog.classList.toggle('isActive', kind === 'catalog');
-    el.mTabPrices.classList.toggle('isActive', kind === 'prices');
-    el.mTabImages?.classList.toggle('isActive', kind === 'images');
-
-    el.modalBody.innerHTML = '';
-    if (kind === 'catalog') el.modalBody.appendChild(renderManageCatalog());
-    if (kind === 'prices') el.modalBody.appendChild(renderManagePrices());
-    if (kind === 'images') el.modalBody.appendChild(renderManageImages());
-  }
-
-  /* ========= edit/add modal ========= */
-  function openEditModal(title, bodyEl) {
-    if (!el.editOverlay) return;
-    el.editTitle.textContent = title;
-    el.editBody.innerHTML = '';
-    el.editBody.appendChild(bodyEl);
-    el.editOverlay.classList.remove('isHidden');
-  }
-  function closeEditModal() {
-    if (!el.editOverlay) return;
-    el.editOverlay.classList.add('isHidden');
-    el.editBody.innerHTML = '';
-  }
-  el.editOverlay?.addEventListener('click', (e) => {
-    if (e.target === el.editOverlay) closeEditModal();
-  });
-
-  /* ========= manage: prices ========= */
-  function renderManagePrices() {
-    const box = document.createElement('div');
-
-    const grid = document.createElement('div');
-    grid.className = 'priceGrid';
-
-    typeList.forEach(t => {
-      const key = document.createElement('div');
-      key.className = 'pKey';
-      key.textContent = t;
-
-      const val = document.createElement('div');
-      val.className = 'pVal';
-      val.innerHTML = `<input type="number" inputmode="numeric" value="${prices[t] || 0}" data-type="${t}">`;
-
-      grid.appendChild(key);
-      grid.appendChild(val);
-    });
-
-    const save = document.createElement('div');
-    save.style.marginTop = '12px';
-    save.innerHTML = `<button class="pill" type="button" data-act="savePrices">保存</button>`;
-
-    box.appendChild(grid);
-    box.appendChild(save);
-
-    box.addEventListener('click', (e) => {
-      if (e.target?.dataset?.act !== 'savePrices') return;
-      $$('input[data-type]', box).forEach(inp => {
-        const t = inp.dataset.type;
-        prices[t] = Number(inp.value || 0);
-      });
-      saveJSON(LS.PRICES, prices);
-      renderList();
-      setManageTab('prices');
-    });
-
-    return box;
-  }
-
-  /* ========= manage: catalog ========= */
-  function renderManageCatalog() {
-    const wrap = document.createElement('div');
-
-    const list = (activeTab === 'dino')
-      ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
-      : sortByOrder(items.filter(x => !hidden.item.has(x.id)), 'item');
-
-    list.forEach(obj => {
-      const r = document.createElement('div');
-      r.className = 'mRow';
-      r.innerHTML = `
-        <div class="mName">${obj.name}</div>
-        ${activeTab === 'dino' ? `<button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">✎</button>` : ``}
-        <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
-        <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
-        <button class="sBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
-      `;
-      wrap.appendChild(r);
-    });
-
-    wrap.addEventListener('click', async (e) => {
-      const act = e.target?.dataset?.act;
-      const id = e.target?.dataset?.id;
-      if (!act || !id) return;
-
-      const kind = activeTab;
-      const ord = (order[kind] || []).slice();
-      const i = ord.indexOf(id);
-
-      if (act === 'up' && i > 0) {
-        [ord[i], ord[i - 1]] = [ord[i - 1], ord[i]];
-        order[kind] = ord;
-        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
-        renderList();
-        setManageTab('catalog');
-        return;
-      }
-
-      if (act === 'down' && i !== -1 && i < ord.length - 1) {
-        [ord[i], ord[i + 1]] = [ord[i + 1], ord[i]];
-        order[kind] = ord;
-        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
-        renderList();
-        setManageTab('catalog');
-        return;
-      }
-
-      if (act === 'del') {
-        const ok = await confirmAsk('削除しますか？');
-        if (!ok) return;
-
-        if (kind === 'dino') {
-          hidden.dino.add(id);
-          saveJSON(LS.DINO_HIDDEN, Array.from(hidden.dino));
-        } else {
-          hidden.item.add(id);
-          saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item));
-        }
-        renderList();
-        setManageTab('catalog');
-        return;
-      }
-
-      if (act === 'edit' && kind === 'dino') {
-        openEditDino(id);
-        return;
-      }
-    });
-
-    return wrap;
-  }
-
-  function openEditDino(id) {
-    const d = dinos.find(x => x.id === id);
-    if (!d) return;
-
-    const box = document.createElement('div');
-    box.innerHTML = `
-      <div class="editForm">
-        <div class="editLabel">名前</div>
-        <input id="editName" class="editInput" type="text" value="${escapeHtml(d.name)}" autocomplete="off">
-        <div class="editLabel">デフォルト種類</div>
-        <select id="editType" class="editSelect">
-          ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
-        </select>
-        <div class="editBtns">
-          <button class="ghost" type="button" data-act="cancel">キャンセル</button>
-          <button class="pill" type="button" data-act="save">保存</button>
-        </div>
-      </div>
-    `;
-
-    const sel = $('#editType', box);
-    if (sel) sel.value = d.defType || '受精卵';
-
-    openEditModal('追加 / 編集', box);
-
-    box.addEventListener('click', (e) => {
-      const act = e.target?.dataset?.act;
-      if (!act) return;
-
-      if (act === 'cancel') {
-        closeEditModal();
-        return;
-      }
-
-      if (act === 'save') {
-        const newName = ($('#editName', box)?.value || '').trim();
-        const newDef = ($('#editType', box)?.value || '受精卵');
-        if (!newName) return;
-
-        const cIdx = custom.dino.findIndex(x => x.id === id);
-        if (cIdx >= 0) {
-          custom.dino[cIdx] = { id, name: newName, defType: newDef, _baseName: custom.dino[cIdx]._baseName || newName };
-          saveJSON(LS.DINO_CUSTOM, custom.dino);
-        } else {
-          dinoOverride[id] = { name: newName, defType: newDef };
-          saveJSON(LS.DINO_OVERRIDE, dinoOverride);
-        }
-
-        const di = dinos.findIndex(x => x.id === id);
-        if (di >= 0) dinos[di] = Object.assign({}, dinos[di], { name: newName, defType: newDef });
-
-        closeEditModal();
-        renderList();
-        setManageTab('catalog');
-      }
-    });
-  }
-
-  /* ========= Images tab (現状維持) ========= */
-  function renderManageImages() {
-    const wrap = document.createElement('div');
-    wrap.innerHTML = `<div class="unit">※画像出力・IDB周りは別途調整中</div>`;
-    return wrap;
-  }
-
-  function openImgViewer(url) {
-    if (!el.imgOverlay || !el.imgViewerImg) return;
-    el.imgViewerImg.src = url;
-    el.imgOverlay.classList.remove('isHidden');
-  }
-  function closeImgViewer() {
-    if (!el.imgOverlay) return;
-    el.imgOverlay.classList.add('isHidden');
-    if (el.imgViewerImg) el.imgViewerImg.src = '';
-  }
-  el.imgClose?.addEventListener('click', closeImgViewer);
-  el.imgOverlay?.addEventListener('click', (e) => {
-    if (e.target === el.imgOverlay) closeImgViewer();
-  });
-
-  /* ========= ROOM ========= */
-  function hasEggOrEmbryoSelected() {
-    const targets = new Set(['受精卵', '受精卵(指定)', '胚', '胚(指定)']);
-    for (const s of inputState.values()) {
-      if (!s || typeof s !== 'object') continue;
-      if (s.kind === 'gacha') continue;
-      if (!('m' in s) || !('f' in s) || !('type' in s)) continue;
-
-      const qty = Number(s.m || 0) + Number(s.f || 0);
-      if (qty <= 0) continue;
-
-      const t = String(s.type || '').trim();
-      if (targets.has(t)) return true;
-    }
-    return false;
-  }
-
-  let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
-  let roomPw = loadJSON(LS.ROOM_PW, {
-    ROOM1: '5412',
-    ROOM2: '0000',
-    ROOM3: '0000',
-    ROOM4: '0000',
-    ROOM5: '0000',
-    ROOM6: '0000',
-    ROOM7: '0000',
-    ROOM8: '0000',
-    ROOM9: '0000',
-  });
-
-  async function copyText(text) {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      ta.remove();
-    }
-  }
-
-  function roomLabelForSentence(room) {
-    const n = Number(String(room).replace('ROOM', '')) || 0;
-    if (n >= 5) return `2階${room}`;
-    return room;
-  }
-
-  function buildCopyText(room) {
-    const warn = hasEggOrEmbryoSelected()
-      ? `
-
-⚠️受精卵はサバイバーのインベントリに入れての転送をしないと消えてしまうバグがあるためご注意してください！`
-      : '';
-
-    const roomText = roomLabelForSentence(room);
-
-    return `納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
-
-サーバー番号 : 5041 (アイランド)
-座標 : 87 / 16 (西部2、赤オベ付近)
-入口パスワード【${entryPw}】
-${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き、冷蔵庫より受け取りお願いします。${warn}`;
-  }
-
-  function renderRooms() {
-    if (!el.roomBody) return;
-    el.roomBody.innerHTML = '';
-
-    const wrap = document.createElement('div');
-    wrap.style.display = 'flex';
-    wrap.style.flexDirection = 'column';
-    wrap.style.gap = '12px';
-
-    const entry = document.createElement('div');
-    entry.className = 'mRow';
-    entry.innerHTML = `
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:950;margin-bottom:6px;">入口パスワード（全ルーム共通）</div>
-        <input id="entryPw" value="${escapeHtml(entryPw)}"
-          style="width:100%;height:44px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);color:#fff;padding:0 12px;font-weight:900;">
-      </div>
-      <button id="saveEntry" class="pill" type="button" style="height:44px;align-self:center;">保存</button>
-    `;
-    wrap.appendChild(entry);
-
-    entry.querySelector('#saveEntry').onclick = () => {
-      entryPw = (entry.querySelector('#entryPw').value || '').trim() || entryPw;
-      saveJSON(LS.ROOM_ENTRY_PW, entryPw);
-      openToast('入口パスワードを保存しました');
-    };
-
-    Object.keys(roomPw).forEach(room => {
-      const row = document.createElement('div');
-      row.className = 'mRow';
-      row.innerHTML = `
-        <div class="mName">${room}</div>
-        <div style="display:flex;gap:10px;align-items:center;flex:0 0 auto;">
-          <button class="pill" style="width:110px;height:40px;" data-act="copy" data-room="${room}" type="button">コピー</button>
-          <button class="pill" style="width:110px;height:40px;" data-act="pw" data-room="${room}" type="button">PW変更</button>
-        </div>
-      `;
-      wrap.appendChild(row);
-    });
-
-    wrap.addEventListener('click', async (e) => {
-      const btn = e.target?.closest('button');
-      const act = btn?.dataset?.act;
-      const room = btn?.dataset?.room;
-      if (!act || !room) return;
-
-      if (act === 'copy') {
-        await copyText(buildCopyText(room));
-        const prev = btn.textContent;
-        btn.textContent = 'コピー済';
-        btn.disabled = true;
-        setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 900);
-      }
-
-      if (act === 'pw') {
-        const npw = prompt(`${room} のパスワードを入力`, roomPw[room]);
-        if (!npw) return;
-        roomPw[room] = npw;
-        saveJSON(LS.ROOM_PW, roomPw);
-        openToast(`${room} のPWを保存しました`);
-      }
-    });
-
-    el.roomBody.appendChild(wrap);
-  }
-
-  function openRoom() {
-    if (!el.roomOverlay) return;
-    el.roomOverlay.classList.remove('isHidden');
-    renderRooms();
-  }
-  function closeRoom() {
-    if (!el.roomOverlay) return;
-    el.roomOverlay.classList.add('isHidden');
-    if (el.roomBody) el.roomBody.innerHTML = '';
-  }
-
-  /* ========= events ========= */
-  el.tabDinos?.addEventListener('click', () => setTab('dino'));
-  el.tabItems?.addEventListener('click', () => setTab('item'));
-
-  el.q?.addEventListener('input', applyCollapseAndSearch);
-  el.qClear?.addEventListener('click', () => { el.q.value = ''; applyCollapseAndSearch(); });
-
-  const savedDelivery = localStorage.getItem(LS.DELIVERY);
-  if (savedDelivery && el.delivery) el.delivery.value = savedDelivery;
-
-  el.delivery?.addEventListener('change', () => {
-    localStorage.setItem(LS.DELIVERY, el.delivery.value);
-    rebuildOutput();
-  });
-
-  el.copy?.addEventListener('click', async () => {
-    const text = el.out.value.trim();
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      const prev = el.copy.textContent;
-      el.copy.textContent = 'コピー済み✓';
-      el.copy.disabled = true;
-      setTimeout(() => { el.copy.textContent = prev; el.copy.disabled = false; }, 1100);
-    } catch {
-      el.out.focus();
-      el.out.select();
-      document.execCommand('copy');
-    }
-  });
-
-  el.openManage?.addEventListener('click', openModal);
-  el.closeManage?.addEventListener('click', closeModal);
-  el.modalOverlay?.addEventListener('click', (e) => {
-    if (e.target === el.modalOverlay) closeModal();
-  });
-
-  el.mTabCatalog?.addEventListener('click', () => setManageTab('catalog'));
-  el.mTabPrices?.addEventListener('click', () => setManageTab('prices'));
-  el.mTabImages?.addEventListener('click', () => setManageTab('images'));
-
-  el.openRoom?.addEventListener('click', openRoom);
-  el.closeRoom?.addEventListener('click', closeRoom);
-  el.roomOverlay?.addEventListener('click', (e) => {
-    if (e.target === el.roomOverlay) closeRoom();
-  });
-
-  /* ========= init ========= */
-  async function init() {
-    await migrateOldImagesIfAny();
-
-    try {
-      const all = await idbGetAllImages();
-      Object.keys(all).forEach(k => { imageCache[k] = all[k]; });
-    } catch {
-      openToast('画像DBの読み込みに失敗しました');
-    }
-
-    const dText = await fetchTextSafe('./dinos.txt');
-    const iText = await fetchTextSafe('./items.txt');
-
-    const baseD = dText.split(/\r?\n/).map(parseDinoLine).filter(Boolean);
-    const baseI = iText.split(/\r?\n/).map(parseItemLine).filter(Boolean);
-
-    dinos = baseD.concat(custom.dino.map(x => ({
-      id: x.id,
-      name: x.name,
-      defType: x.defType,
-      kind: 'dino',
-      _baseName: x._baseName || x.name,
-    })));
-
-    items = baseI.concat(custom.item.map(x => ({ id: x.id, name: x.name, unit: x.unit, price: x.price, kind: 'item' })));
-
-    ensureOrderList(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
-    ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
-
-    setTab('dino');
   }
 
   init();
