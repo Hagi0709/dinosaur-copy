@@ -197,6 +197,7 @@ button{cursor:pointer}
   flex-direction:column;
   gap:6px;
   min-width:140px;
+  z-index:1; /* toggleの上に表示はされるが、クリックはselectが取る */
 }
 .type{
   padding:6px 10px;
@@ -277,7 +278,6 @@ button{cursor:pointer}
   white-space:nowrap;
 }
 
-/* collapsed */
 .card.isCollapsed .controls{display:none}
 
 /* ================= Modal ================= */
