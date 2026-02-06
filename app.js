@@ -1,6 +1,65 @@
 (() => {
   'use strict';
 
+  /* ========= BOOT DIAG (iOSでconsole見れない対策) ========= */
+  (function bootDiag(){
+    const make = () => {
+      if (document.getElementById('__diag')) return;
+      const box = document.createElement('div');
+      box.id = '__diag';
+      box.style.cssText = [
+        'position:fixed','left:10px','right:10px','bottom:10px',
+        'z-index:99999','padding:10px',
+        'border-radius:14px','border:1px solid rgba(255,255,255,.18)',
+        'background:rgba(0,0,0,.78)','color:#fff',
+        'font-size:12px','line-height:1.4',
+        'max-height:38vh','overflow:auto','display:none'
+      ].join(';');
+      box.innerHTML = `
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+          <div style="font-weight:900;">DIAG</div>
+          <button id="__diagClose" style="
+            border:1px solid rgba(255,255,255,.22);
+            background:rgba(255,255,255,.10);
+            color:#fff;border-radius:12px;padding:6px 10px;font-weight:900;
+          " type="button">閉じる</button>
+        </div>
+        <pre id="__diagTxt" style="white-space:pre-wrap;margin:8px 0 0;"></pre>
+      `;
+      document.body.appendChild(box);
+      document.getElementById('__diagClose').onclick = () => box.style.display = 'none';
+    };
+
+    const show = (msg) => {
+      try {
+        make();
+        const box = document.getElementById('__diag');
+        const pre = document.getElementById('__diagTxt');
+        pre.textContent = (pre.textContent ? pre.textContent + '\n\n' : '') + msg;
+        box.style.display = 'block';
+      } catch {}
+    };
+
+    window.addEventListener('error', (e) => {
+      show(`[JS ERROR]\n${e.message}\n${e.filename || ''}:${e.lineno || ''}:${e.colno || ''}`);
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      show(`[PROMISE REJECT]\n${String(e.reason || e)}`);
+    });
+
+    // 起動確認（ここが出ないならJSが読み込まれてない/キャッシュが古い）
+    document.addEventListener('DOMContentLoaded', () => {
+      // 小さく一瞬だけ表示
+      try {
+        make();
+        show('[BOOT] app.js loaded');
+        setTimeout(() => {
+          const box = document.getElementById('__diag');
+          if (box && box.style.display !== 'none') box.style.display = 'none';
+        }, 800);
+      } catch {}
+    });
+  })();
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -1181,7 +1240,25 @@ ROOM${room}の方にパスワード【${roomPw}】で入室をして頂き、冷
       setTimeout(() => { el.copy.textContent = prev; el.copy.disabled = false; }, 1100);
     }
   });
+  // ✅ ROOM open/close（ここが無いと絶対に開きません）
+  function openRoom() {
+    if (!el.roomOverlay || !el.roomBody) return;
+    el.roomOverlay.classList.remove('isHidden');
+    // まだ中身生成してないなら仮表示（まず開くことを優先）
+    if (!el.roomBody.innerHTML.trim()) {
+      el.roomBody.innerHTML = `<div style="padding:6px 0;color:rgba(255,255,255,.85);font-weight:900;">ROOM UI is not wired yet</div>`;
+    }
+  }
+  function closeRoom() {
+    if (!el.roomOverlay) return;
+    el.roomOverlay.classList.add('isHidden');
+  }
 
+  el.openRoom?.addEventListener('click', (e) => { e.preventDefault(); openRoom(); });
+  el.closeRoom?.addEventListener('click', (e) => { e.preventDefault(); closeRoom(); });
+  el.roomOverlay?.addEventListener('click', (e) => {
+    if (e.target === el.roomOverlay) closeRoom();
+  });
     el.openManage?.addEventListener('click', openModal);
   el.closeManage?.addEventListener('click', closeModal);
   el.modalOverlay?.addEventListener('click', (e) => {
