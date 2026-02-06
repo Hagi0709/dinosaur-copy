@@ -20,31 +20,16 @@
     return `${prefix}_${stableHash(key)}`;
   }
 
-  function openConfirm(message, onOk) {
-    const ov = $('#confirmOverlay');
-    const tx = $('#confirmText');
-    const ok = $('#confirmOk');
-    const cancel = $('#confirmCancel');
-
-    tx.textContent = message;
-    ov.classList.remove('isHidden');
-
-    const cleanup = () => {
-      ov.classList.add('isHidden');
-      ok.onclick = null;
-      cancel.onclick = null;
-    };
-
-    cancel.onclick = cleanup;
-    ov.onclick = (e) => { if (e.target === ov) cleanup(); };
-
-    ok.onclick = () => {
-      cleanup();
-      onOk && onOk();
-    };
+  function escapeHtml(s) {
+    return String(s || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
   }
 
-  /* ========= storage keys ========= */
+  /* ========= localStorage keys ========= */
   const LS = {
     DINO_CUSTOM: 'dino_custom_v1',
     ITEM_CUSTOM: 'item_custom_v1',
@@ -54,16 +39,177 @@
     ITEM_ORDER: 'item_order_v1',
     PRICES: 'prices_v1',
     DELIVERY: 'delivery_v1',
-    DINO_IMAGES: 'dino_images_v1',     // { [dinoId]: dataURL }
-    DINO_OVERRIDE: 'dino_override_v1', // { [dinoId]: {name, defType} }
+
+    // 旧：画像(localStorage) → 初回にIndexedDBへ移行して削除
+    DINO_IMAGES_OLD: 'dino_images_v1',
+
+    DINO_OVERRIDE: 'dino_override_v1',
 
     // ✅ ROOM
     ROOM_ENTRY_PW: 'room_entry_pw_v1',
-    ROOM_PW: 'room_pw_v1', // { ROOM1:'5412', ... }
+    ROOM_PW: 'room_pw_v1',
   };
 
-  const loadJSON = (k, fb) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } };
-  const saveJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+  const loadJSON = (k, fb) => {
+    try {
+      const v = localStorage.getItem(k);
+      return v ? JSON.parse(v) : fb;
+    } catch {
+      return fb;
+    }
+  };
+
+  function saveJSON(k, v) {
+    try {
+      localStorage.setItem(k, JSON.stringify(v));
+      return true;
+    } catch {
+      openToast('保存に失敗しました（容量オーバー等）');
+      return false;
+    }
+  }
+
+  /* ========= toast ========= */
+  let toastTimer = null;
+  function openToast(text) {
+    let t = $('#toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'toast';
+      t.style.position = 'fixed';
+      t.style.left = '50%';
+      t.style.bottom = '18px';
+      t.style.transform = 'translateX(-50%)';
+      t.style.zIndex = '9999';
+      t.style.padding = '10px 12px';
+      t.style.borderRadius = '14px';
+      t.style.border = '1px solid rgba(255,255,255,.14)';
+      t.style.background = 'rgba(0,0,0,.55)';
+      t.style.backdropFilter = 'blur(10px)';
+      t.style.color = '#fff';
+      t.style.fontWeight = '800';
+      t.style.fontSize = '13px';
+      t.style.maxWidth = '92vw';
+      t.style.textAlign = 'center';
+      t.style.whiteSpace = 'pre-wrap';
+      document.body.appendChild(t);
+    }
+    t.textContent = text;
+    t.style.display = 'block';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.style.display = 'none'; }, 1700);
+  }
+
+  /* ========= confirm modal ========= */
+  let confirmResolve = null;
+  function confirmAsk(text) {
+    return new Promise((resolve) => {
+      const ov = $('#confirmOverlay');
+      const tx = $('#confirmText');
+      if (!ov || !tx) return resolve(false);
+      confirmResolve = resolve;
+      tx.textContent = text || 'よろしいですか？';
+      ov.classList.remove('isHidden');
+    });
+  }
+  function confirmClose(val) {
+    const ov = $('#confirmOverlay');
+    if (!ov) return;
+    ov.classList.add('isHidden');
+    if (confirmResolve) {
+      const r = confirmResolve;
+      confirmResolve = null;
+      r(!!val);
+    }
+  }
+  $('#confirmCancel')?.addEventListener('click', () => confirmClose(false));
+  $('#confirmOk')?.addEventListener('click', () => confirmClose(true));
+  $('#confirmOverlay')?.addEventListener('click', (e) => {
+    if (e.target === $('#confirmOverlay')) confirmClose(false);
+  });
+
+  /* ========= IndexedDB (images) ========= */
+  const IDB = {
+    DB_NAME: 'dino_list_db_v2',
+    DB_VER: 1,
+    STORE_IMAGES: 'images', // key: dinoId, value: dataUrl
+  };
+
+  function openDb() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(IDB.DB_NAME, IDB.DB_VER);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(IDB.STORE_IMAGES)) {
+          db.createObjectStore(IDB.STORE_IMAGES); // key = id, value = dataURL
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function idbGetAllImages() {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB.STORE_IMAGES, 'readonly');
+      const st = tx.objectStore(IDB.STORE_IMAGES);
+      const out = {};
+      const cur = st.openCursor();
+      cur.onsuccess = () => {
+        const c = cur.result;
+        if (!c) return resolve(out);
+        out[c.key] = c.value;
+        c.continue();
+      };
+      cur.onerror = () => reject(cur.error);
+    });
+  }
+
+  async function idbPutImage(id, dataUrl) {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB.STORE_IMAGES, 'readwrite');
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+      tx.objectStore(IDB.STORE_IMAGES).put(dataUrl, id);
+    });
+  }
+
+  async function idbDelImage(id) {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB.STORE_IMAGES, 'readwrite');
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+      tx.objectStore(IDB.STORE_IMAGES).delete(id);
+    });
+  }
+
+  // ✅ 旧 localStorage 画像をIndexedDBへ移行（1回だけ）
+  async function migrateOldImagesIfAny() {
+    const old = loadJSON(LS.DINO_IMAGES_OLD, null);
+    if (!old || typeof old !== 'object') return;
+
+    const keys = Object.keys(old);
+    if (keys.length === 0) {
+      localStorage.removeItem(LS.DINO_IMAGES_OLD);
+      return;
+    }
+
+    try {
+      for (const id of keys) {
+        const v = old[id];
+        if (typeof v === 'string' && v.startsWith('data:')) {
+          await idbPutImage(id, v);
+        }
+      }
+      localStorage.removeItem(LS.DINO_IMAGES_OLD);
+      openToast('画像データを移行しました');
+    } catch {
+      openToast('画像移行に失敗しました');
+    }
+  }
 
   /* ========= prices ========= */
   const defaultPrices = {
@@ -78,8 +224,9 @@
   const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
 
   /* ========= images ========= */
-  const dinoImages = Object.assign({}, loadJSON(LS.DINO_IMAGES, {})); // id -> dataURL
-  const dinoOverride = Object.assign({}, loadJSON(LS.DINO_OVERRIDE, {})); // id -> {name,defType}
+  // ✅ IndexedDBから起動時に読み込む（メモリ上のキャッシュ）
+  const dinoImages = {}; // { [dinoId]: dataURL }
+  const dinoOverride = Object.assign({}, loadJSON(LS.DINO_OVERRIDE, {}));
 
   /* ========= DOM ========= */
   const el = {
@@ -100,8 +247,9 @@
     closeManage: $('#closeManage'),
     mTabCatalog: $('#mTabCatalog'),
     mTabPrices: $('#mTabPrices'),
+    mTabImages: $('#mTabImages'),
 
-    // ✅ ROOM
+    // ✅ ルーム
     openRoom: $('#openRoom'),
     roomOverlay: $('#roomOverlay'),
     roomBody: $('#roomBody'),
@@ -112,12 +260,6 @@
     editBody: $('#editBody'),
     editTitle: $('#editTitle'),
 
-    // 確認
-    confirmOverlay: $('#confirmOverlay'),
-    confirmText: $('#confirmText'),
-    confirmCancel: $('#confirmCancel'),
-    confirmOk: $('#confirmOk'),
-
     // 画像ビューア
     imgOverlay: $('#imgOverlay'),
     imgClose: $('#imgClose'),
@@ -127,6 +269,8 @@
   /* ========= sanity (reset) ========= */
   if (new URL(location.href).searchParams.get('reset') === '1') {
     Object.values(LS).forEach(k => localStorage.removeItem(k));
+    // IndexedDBも削除
+    indexedDB.deleteDatabase(IDB.DB_NAME);
     location.replace(location.pathname);
     return;
   }
@@ -141,8 +285,8 @@
     item: loadJSON(LS.ITEM_ORDER, []),
   };
   const custom = {
-    dino: loadJSON(LS.DINO_CUSTOM, []), // [{id,name,defType}]
-    item: loadJSON(LS.ITEM_CUSTOM, []), // [{id,name,unit,price}]
+    dino: loadJSON(LS.DINO_CUSTOM, []),
+    item: loadJSON(LS.ITEM_CUSTOM, []),
   };
 
   let dinos = [];
@@ -223,24 +367,18 @@
     return inputState.get(key);
   }
 
-  // ✅ autoSpecify 暴走停止（受精卵/胚/クローンだけ）
+  // ✅ 幼体/成体には(指定)を付けない（存在しないoption対策）
   function autoSpecify(s) {
     const m = Number(s.m || 0), f = Number(s.f || 0);
-    const t = String(s.type || '受精卵');
-    const base = t.replace('(指定)', '');
-
-    const canSpecify = Object.prototype.hasOwnProperty.call(specifiedMap, base);
-    const target = canSpecify ? specifiedMap[base] : null;
+    const base = String(s.type || '受精卵').replace('(指定)', '');
+    const hasSpecified = /\(指定\)$/.test(String(s.type || ''));
 
     if (m > 0 && f > 0) {
-      if (canSpecify) {
-        if (t === base || t === target) s.type = target;
-      }
+      if (specifiedMap[base]) s.type = specifiedMap[base];
       return;
     }
-
-    if (m === 0 && f === 0) {
-      if (canSpecify && /\(指定\)$/.test(t)) s.type = base;
+    if (m === 0 && f === 0 && hasSpecified) {
+      s.type = base;
     }
   }
 
@@ -401,6 +539,7 @@ ${lines.join('\n')}
 
     const sel = $('.type', card);
     sel.innerHTML = typeList.map(t => `<option value="${t}">${t}</option>`).join('');
+    if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
     sel.value = s.type;
 
     const unit = $('.unit', card);
@@ -415,9 +554,7 @@ ${lines.join('\n')}
     card.classList.toggle('isCollapsed', initialQty === 0);
 
     function syncUI() {
-      // ✅ select が未知値になった時に空欄化しない（保険）
       if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
-
       sel.value = s.type;
       unit.textContent = `単価${prices[s.type] || 0}円`;
       mEl.textContent = String(s.m || 0);
@@ -469,9 +606,6 @@ ${lines.join('\n')}
           inputState.set(dupKey, { type: s.type, m: 0, f: 0 });
 
           const dupCard = buildDinoCard(d, dupKey);
-          dupCard.dataset.name = d.name;
-          dupCard.dataset.key = dupKey;
-
           card.after(dupCard);
           rebuildOutput();
           applyCollapseAndSearch();
@@ -585,40 +719,13 @@ ${lines.join('\n')}
   function setManageTab(kind) {
     el.mTabCatalog.classList.toggle('isActive', kind === 'catalog');
     el.mTabPrices.classList.toggle('isActive', kind === 'prices');
-
-    const mTabImages = $('#mTabImages');
-    if (mTabImages) mTabImages.classList.toggle('isActive', kind === 'images');
+    el.mTabImages?.classList.toggle('isActive', kind === 'images');
 
     el.modalBody.innerHTML = '';
     if (kind === 'catalog') el.modalBody.appendChild(renderManageCatalog());
     if (kind === 'prices') el.modalBody.appendChild(renderManagePrices());
     if (kind === 'images') el.modalBody.appendChild(renderManageImages());
   }
-
-  /* ========= confirm modal ========= */
-  let confirmResolve = null;
-  function confirmAsk(text) {
-    return new Promise((resolve) => {
-      if (!el.confirmOverlay) return resolve(false);
-      confirmResolve = resolve;
-      el.confirmText.textContent = text || '削除しますか？';
-      el.confirmOverlay.classList.remove('isHidden');
-    });
-  }
-  function confirmClose(val) {
-    if (!el.confirmOverlay) return;
-    el.confirmOverlay.classList.add('isHidden');
-    if (confirmResolve) {
-      const r = confirmResolve;
-      confirmResolve = null;
-      r(!!val);
-    }
-  }
-  el.confirmCancel?.addEventListener('click', () => confirmClose(false));
-  el.confirmOk?.addEventListener('click', () => confirmClose(true));
-  el.confirmOverlay?.addEventListener('click', (e) => {
-    if (e.target === el.confirmOverlay) confirmClose(false);
-  });
 
   /* ========= edit/add modal ========= */
   function openEditModal(title, bodyEl) {
@@ -756,19 +863,18 @@ ${lines.join('\n')}
     if (!d) return;
 
     const box = document.createElement('div');
-    box.className = 'editForm';
     box.innerHTML = `
-      <div class="editLabel">名前</div>
-      <input id="editName" class="editInput" type="text" value="${escapeHtml(d.name)}" autocomplete="off">
-
-      <div class="editLabel">デフォルト種類</div>
-      <select id="editType" class="editSelect">
-        ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
-      </select>
-
-      <div class="editBtns">
-        <button class="ghost" type="button" data-act="cancel">キャンセル</button>
-        <button class="pill" type="button" data-act="save">保存</button>
+      <div class="editForm">
+        <div class="editLabel">名前</div>
+        <input id="editName" class="editInput" type="text" value="${escapeHtml(d.name)}" autocomplete="off">
+        <div class="editLabel">デフォルト種類</div>
+        <select id="editType" class="editSelect">
+          ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
+        </select>
+        <div class="editBtns">
+          <button class="ghost" type="button" data-act="cancel">キャンセル</button>
+          <button class="pill" type="button" data-act="save">保存</button>
+        </div>
       </div>
     `;
 
@@ -810,16 +916,37 @@ ${lines.join('\n')}
     });
   }
 
-  function escapeHtml(s) {
-    return String(s || '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
+  /* ========= Images tab (IndexedDB) ========= */
+
+  // ✅ 画像は圧縮して保存（容量＆描画負荷対策）
+  async function fileToDataURLCompressed(file, maxW = 900, quality = 0.78) {
+    const img = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => {
+        const im = new Image();
+        im.onload = () => resolve(im);
+        im.onerror = reject;
+        im.src = String(r.result || '');
+      };
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+
+    const w0 = img.naturalWidth || img.width || 1;
+    const h0 = img.naturalHeight || img.height || 1;
+    const scale = Math.min(1, maxW / w0);
+    const w = Math.max(1, Math.round(w0 * scale));
+    const h = Math.max(1, Math.round(h0 * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+
+    return canvas.toDataURL('image/jpeg', quality);
   }
 
-  /* ========= Images tab ========= */
   function renderManageImages() {
     const wrap = document.createElement('div');
     const list = sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino');
@@ -864,20 +991,32 @@ ${lines.join('\n')}
       file.addEventListener('change', async () => {
         const f = file.files && file.files[0];
         if (!f) return;
-        const dataUrl = await fileToDataURL(f);
-        dinoImages[d.id] = dataUrl;
-        saveJSON(LS.DINO_IMAGES, dinoImages);
-        thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
-        renderList();
+
+        const dataUrl = await fileToDataURLCompressed(f, 900, 0.78);
+
+        try {
+          await idbPutImage(d.id, dataUrl);
+          dinoImages[d.id] = dataUrl; // メモリキャッシュ更新
+          thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
+          openToast('画像を保存しました');
+          renderList(); // ✅ メイン即反映
+        } catch {
+          openToast('画像保存に失敗しました');
+        }
       });
 
       del.addEventListener('click', async () => {
         const ok = await confirmAsk('画像を削除しますか？');
         if (!ok) return;
-        delete dinoImages[d.id];
-        saveJSON(LS.DINO_IMAGES, dinoImages);
-        thumb.textContent = 'No Image';
-        renderList();
+        try {
+          await idbDelImage(d.id);
+          delete dinoImages[d.id];
+          thumb.textContent = 'No Image';
+          openToast('画像を削除しました');
+          renderList();
+        } catch {
+          openToast('画像削除に失敗しました');
+        }
       });
 
       thumb.addEventListener('click', () => {
@@ -902,15 +1041,6 @@ ${lines.join('\n')}
     return wrap;
   }
 
-  function fileToDataURL(file) {
-    return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(String(r.result || ''));
-      r.onerror = reject;
-      r.readAsDataURL(file);
-    });
-  }
-
   function openImgViewer(url) {
     if (!el.imgOverlay || !el.imgViewerImg) return;
     el.imgViewerImg.src = url;
@@ -926,12 +1056,36 @@ ${lines.join('\n')}
     if (e.target === el.imgOverlay) closeImgViewer();
   });
 
-  /* ===================== ROOM ===================== */
+  /* ========= ROOM ========= */
+
+  // ✅ 受精卵or胚が1つでも選択されているか（(指定)含む）
+  function hasEggOrEmbryoSelected() {
+    const targets = new Set(['受精卵', '受精卵(指定)', '胚', '胚(指定)']);
+    for (const s of inputState.values()) {
+      if (!s || typeof s !== 'object') continue;
+      if (!('m' in s) || !('f' in s) || !('type' in s)) continue;
+
+      const qty = Number(s.m || 0) + Number(s.f || 0);
+      if (qty <= 0) continue;
+
+      const t = String(s.type || '').trim();
+      if (targets.has(t)) return true;
+    }
+    return false;
+  }
+
   let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
-  let roomPw = Object.assign({
-    ROOM1: '5412', ROOM2: '0000', ROOM3: '0000', ROOM4: '0000',
-    ROOM5: '0000', ROOM6: '0000', ROOM7: '0000', ROOM8: '0000', ROOM9: '0000',
-  }, loadJSON(LS.ROOM_PW, {}));
+  let roomPw = loadJSON(LS.ROOM_PW, {
+    ROOM1: '5412',
+    ROOM2: '0000',
+    ROOM3: '0000',
+    ROOM4: '0000',
+    ROOM5: '0000',
+    ROOM6: '0000',
+    ROOM7: '0000',
+    ROOM8: '0000',
+    ROOM9: '0000',
+  });
 
   async function copyText(text) {
     try {
@@ -946,41 +1100,27 @@ ${lines.join('\n')}
     }
   }
 
-  // ✅ 受精卵 or 胚 が1つでも選択されているか
-  function hasEggOrEmbryoSelected() {
-    const dList = dinos.filter(d => !hidden.dino.has(d.id));
-    for (const d of dList) {
-      const baseKey = d.id;
-      const keys = [baseKey, ...Array.from(ephemeralKeys).filter(k => k.startsWith(baseKey + '__dup'))];
-      for (const k of keys) {
-        const s = inputState.get(k);
-        if (!s) continue;
-        const m = Number(s.m || 0), f = Number(s.f || 0);
-        const qty = m + f;
-        if (qty <= 0) continue;
-        const base = String(s.type || d.defType || '受精卵').replace('(指定)', '');
-        if (base === '受精卵' || base === '胚') return true;
-      }
-    }
-    return false;
+  function roomLabelForSentence(room) {
+    const n = Number(String(room).replace('ROOM', '')) || 0;
+    if (n >= 5) return `2階${room}`;
+    return room;
   }
 
   function buildCopyText(room) {
-    const n = Number(String(room).replace('ROOM', '')) || 0;
-    const roomLabel = (n >= 5) ? `2階${room}` : room;
-
     const warn = hasEggOrEmbryoSelected()
       ? `
 
 ⚠️受精卵はサバイバーのインベントリに入れての転送をしないと消えてしまうバグがあるためご注意してください！`
       : '';
 
+    const roomText = roomLabelForSentence(room);
+
     return `納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
 
 サーバー番号 : 5041 (アイランド)
 座標 : 87 / 16 (西部2、赤オベ付近)
 入口パスワード【${entryPw}】
-${roomLabel}の方にパスワード【${roomPw[room]}】で入室をして頂き、冷蔵庫より受け取りお願いします。${warn}`;
+${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き、冷蔵庫より受け取りお願いします。${warn}`;
   }
 
   function renderRooms() {
@@ -993,46 +1133,44 @@ ${roomLabel}の方にパスワード【${roomPw[room]}】で入室をして頂�
     wrap.style.gap = '12px';
 
     const entry = document.createElement('div');
-    entry.className = 'roomEntryBox';
+    entry.className = 'mRow';
     entry.innerHTML = `
-      <div style="font-weight:900;margin-bottom:6px;">入口パスワード（全ルーム共通）</div>
-      <div class="roomEntryRow">
-        <input id="entryPw" value="${entryPw}" class="roomEntryInput">
-        <button id="saveEntry" class="pill roomBtn" type="button">保存</button>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:950;margin-bottom:6px;">入口パスワード（全ルーム共通）</div>
+        <input id="entryPw" value="${escapeHtml(entryPw)}"
+          style="width:100%;height:44px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);color:#fff;padding:0 12px;font-weight:900;">
       </div>
+      <button id="saveEntry" class="pill" type="button" style="height:44px;align-self:center;">保存</button>
     `;
     wrap.appendChild(entry);
 
-    $('#saveEntry', entry).onclick = () => {
-      const v = ($('#entryPw', entry)?.value || '').trim();
-      if (v) {
-        entryPw = v;
-        saveJSON(LS.ROOM_ENTRY_PW, entryPw);
-      }
+    entry.querySelector('#saveEntry').onclick = () => {
+      entryPw = (entry.querySelector('#entryPw').value || '').trim() || entryPw;
+      saveJSON(LS.ROOM_ENTRY_PW, entryPw);
+      openToast('入口パスワードを保存しました');
     };
 
-    const rooms = Array.from({ length: 9 }, (_, i) => `ROOM${i + 1}`);
-    rooms.forEach(room => {
+    Object.keys(roomPw).forEach(room => {
       const row = document.createElement('div');
-      row.className = 'mRow roomRow';
+      row.className = 'mRow';
       row.innerHTML = `
         <div class="mName">${room}</div>
-        <div class="roomBtns">
-          <button class="pill roomBtn" type="button" data-act="copy" data-room="${room}">コピー</button>
-          <button class="pill roomBtn" type="button" data-act="pw" data-room="${room}">PW変更</button>
+        <div style="display:flex;gap:10px;align-items:center;flex:0 0 auto;">
+          <button class="pill" style="width:110px;height:40px;" data-act="copy" data-room="${room}" type="button">コピー</button>
+          <button class="pill" style="width:110px;height:40px;" data-act="pw" data-room="${room}" type="button">PW変更</button>
         </div>
       `;
       wrap.appendChild(row);
     });
 
     wrap.addEventListener('click', async (e) => {
-      const act = e.target?.dataset?.act;
-      const room = e.target?.dataset?.room;
+      const btn = e.target?.closest('button');
+      const act = btn?.dataset?.act;
+      const room = btn?.dataset?.room;
       if (!act || !room) return;
 
       if (act === 'copy') {
         await copyText(buildCopyText(room));
-        const btn = e.target;
         const prev = btn.textContent;
         btn.textContent = 'コピー済';
         btn.disabled = true;
@@ -1040,10 +1178,11 @@ ${roomLabel}の方にパスワード【${roomPw[room]}】で入室をして頂�
       }
 
       if (act === 'pw') {
-        const npw = prompt(`${room} のパスワードを入力`, roomPw[room] || '');
+        const npw = prompt(`${room} のパスワードを入力`, roomPw[room]);
         if (!npw) return;
         roomPw[room] = npw;
         saveJSON(LS.ROOM_PW, roomPw);
+        openToast(`${room} のPWを保存しました`);
       }
     });
 
@@ -1079,11 +1218,17 @@ ${roomLabel}の方にパスワード【${roomPw[room]}】で入室をして頂�
   el.copy?.addEventListener('click', async () => {
     const text = el.out.value.trim();
     if (!text) return;
-    await copyText(text);
-    const prev = el.copy.textContent;
-    el.copy.textContent = 'コピー済み✓';
-    el.copy.disabled = true;
-    setTimeout(() => { el.copy.textContent = prev; el.copy.disabled = false; }, 1100);
+    try {
+      await navigator.clipboard.writeText(text);
+      const prev = el.copy.textContent;
+      el.copy.textContent = 'コピー済み✓';
+      el.copy.disabled = true;
+      setTimeout(() => { el.copy.textContent = prev; el.copy.disabled = false; }, 1100);
+    } catch {
+      el.out.focus();
+      el.out.select();
+      document.execCommand('copy');
+    }
   });
 
   el.openManage?.addEventListener('click', openModal);
@@ -1094,9 +1239,8 @@ ${roomLabel}の方にパスワード【${roomPw[room]}】で入室をして頂�
 
   el.mTabCatalog?.addEventListener('click', () => setManageTab('catalog'));
   el.mTabPrices?.addEventListener('click', () => setManageTab('prices'));
-  $('#mTabImages')?.addEventListener('click', () => setManageTab('images'));
+  el.mTabImages?.addEventListener('click', () => setManageTab('images'));
 
-  // ✅ ROOM open/close
   el.openRoom?.addEventListener('click', openRoom);
   el.closeRoom?.addEventListener('click', closeRoom);
   el.roomOverlay?.addEventListener('click', (e) => {
@@ -1105,6 +1249,17 @@ ${roomLabel}の方にパスワード【${roomPw[room]}】で入室をして頂�
 
   /* ========= init ========= */
   async function init() {
+    // ✅ 旧localStorage画像があればIDBへ移行
+    await migrateOldImagesIfAny();
+
+    // ✅ IDB画像をメモリへロード
+    try {
+      const all = await idbGetAllImages();
+      Object.keys(all).forEach(k => { dinoImages[k] = all[k]; });
+    } catch {
+      openToast('画像DBの読み込みに失敗しました');
+    }
+
     const dText = await fetchTextSafe('./dinos.txt');
     const iText = await fetchTextSafe('./items.txt');
 
