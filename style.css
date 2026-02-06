@@ -7,8 +7,8 @@
   --ok:#78ffb3;
   --danger:#b94a55;
 
-  --male:#5cc7ff;
-  --female:#ff6ccf;
+  --male:#57c7ff;   /* 水色 */
+  --female:#ff5fcf; /* ピンク */
 }
 
 *{box-sizing:border-box}
@@ -19,7 +19,6 @@ body{
   background:var(--bg);
   color:var(--txt);
   padding-bottom:120px;
-  -webkit-tap-highlight-color: transparent;
 }
 button,select,input,textarea{touch-action:manipulation; font:inherit}
 button{cursor:pointer}
@@ -39,7 +38,7 @@ button{cursor:pointer}
   display:flex;
   gap:8px;
   align-items:center;
-  flex-wrap:nowrap;
+  flex-wrap:wrap;
 }
 
 .search{
@@ -75,6 +74,7 @@ button{cursor:pointer}
   line-height:1;
   font-size:18px;
 }
+
 .delivery{
   height:36px;
   border-radius:14px;
@@ -92,7 +92,6 @@ button{cursor:pointer}
   background:rgba(255,255,255,.08);
   color:#fff;
   font-weight:900;
-  white-space:nowrap;
 }
 .total{
   margin-left:auto;
@@ -120,7 +119,7 @@ button{cursor:pointer}
   display:flex;
   gap:10px;
   align-items:center;
-  flex-wrap:nowrap;
+  flex-wrap:wrap;
 }
 .ghost{
   height:34px;
@@ -130,7 +129,6 @@ button{cursor:pointer}
   background:rgba(255,255,255,.06);
   color:#fff;
   font-weight:800;
-  white-space:nowrap;
 }
 
 .tabs{
@@ -154,20 +152,36 @@ button{cursor:pointer}
 
 .list{padding:12px}
 
+/* ================= Cards ================= */
+
 .card{
   background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
   border:1px solid rgba(255,255,255,.10);
   border-radius:18px;
-  padding:12px;
   margin-bottom:10px;
-  overflow:visible; /* ← 複製ボタン見切れ防止 */
+  overflow:hidden;
+}
+.cardInner{
+  padding:12px;
 }
 
+/* Header（ここだけが折りたたみタップ領域） */
 .cardHead{
+  position:relative;
   display:flex;
   justify-content:space-between;
   align-items:flex-start;
   gap:10px;
+}
+.cardToggle{
+  position:absolute;
+  inset:-12px -12px auto -12px; /* ヘッダー枠いっぱいに広げる */
+  height:calc(100% + 24px);
+  border:0;
+  background:transparent;
+  padding:0;
+  margin:0;
+  cursor:pointer;
 }
 .name{
   font-weight:950;
@@ -175,6 +189,7 @@ button{cursor:pointer}
   font-size:18px;
   line-height:1.1;
   word-break:break-word;
+  padding-right:4px;
 }
 .right{
   text-align:right;
@@ -197,17 +212,20 @@ button{cursor:pointer}
   white-space:nowrap;
 }
 
+/* Controls（ヘッダーの下に必ず来る） */
 .controls{
   margin-top:10px;
   display:flex;
   gap:10px;
   align-items:center;
-  flex-wrap:nowrap; /* ← 横並び固定 */
-  min-width:0;
+  flex-wrap:nowrap;
+  overflow:visible;
 }
 
+/* オス/メスのステッパー横並び + 右に複製 */
 .stepper{
   flex:1;
+  min-width:0;
   display:flex;
   align-items:center;
   gap:8px;
@@ -215,15 +233,14 @@ button{cursor:pointer}
   border-radius:16px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.04);
-  min-width:0;
 }
 .stepper.male{
-  border-color: color-mix(in srgb, var(--male) 45%, rgba(255,255,255,.12));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--male) 35%, transparent);
+  border-color:color-mix(in srgb, var(--male) 55%, rgba(255,255,255,.12));
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--male) 30%, transparent) inset;
 }
 .stepper.female{
-  border-color: color-mix(in srgb, var(--female) 45%, rgba(255,255,255,.12));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--female) 35%, transparent);
+  border-color:color-mix(in srgb, var(--female) 55%, rgba(255,255,255,.12));
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--female) 30%, transparent) inset;
 }
 
 .btn{
@@ -245,6 +262,7 @@ button{cursor:pointer}
   text-align:center;
   font-weight:950;
   font-size:16px;
+  min-width:28px;
 }
 
 .dupBtn{
@@ -253,15 +271,16 @@ button{cursor:pointer}
   padding:0 14px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#111;
+  background:rgba(255,255,255,.10);
+  color:#fff;
   font-weight:950;
   white-space:nowrap;
-  background:rgba(255,255,255,.90);
 }
 
+/* collapsed */
 .card.isCollapsed .controls{display:none}
-.card.isCollapsed .unit{display:block}
+
+/* ================= Modal ================= */
 
 .modalOverlay{
   position:fixed;
@@ -274,7 +293,7 @@ button{cursor:pointer}
   justify-content:center;
   padding:14px;
 }
-.modalOverlay.isHidden{display:none;}
+.modalOverlay.isHidden{display:none}
 
 .modal{
   width:min(720px, 100%);
@@ -331,11 +350,12 @@ button{cursor:pointer}
   -webkit-overflow-scrolling:touch;
 }
 
+/* Manage rows */
 .mRow{
   display:flex;
   gap:10px;
   align-items:center;
-  padding:12px;
+  padding:10px;
   border-radius:18px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(0,0,0,.18);
@@ -348,23 +368,20 @@ button{cursor:pointer}
   line-height:1.2;
   word-break:break-word;
 }
-.mBtns{display:flex; gap:8px; flex-wrap:nowrap;}
 .sBtn{
-  height:38px;
-  padding:0 12px;
+  width:44px;height:38px;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
   color:#fff;
   font-weight:950;
-  white-space:nowrap; /* ← 縦書き防止 */
 }
-.sBtn.square{width:44px; padding:0;}
 .sBtn.danger{
   background:rgba(185,74,85,.22);
   border-color:rgba(185,74,85,.35);
 }
 
+/* Prices */
 .priceGrid{
   display:grid;
   grid-template-columns:1fr 140px;
@@ -389,23 +406,31 @@ button{cursor:pointer}
   font-weight:950;
 }
 
+/* ================= Image Manager ================= */
+
 .imgRow{
   display:flex;
-  align-items:center;
   gap:12px;
+  align-items:center;
+  padding:12px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.18);
+  margin-bottom:10px;
 }
 .thumb{
-  width:160px;
-  aspect-ratio:2/1; /* ← 縦1 横2（= 2:1） */
-  border-radius:16px;
+  width:140px;
+  aspect-ratio:2 / 1; /* 縦1：横2（横長） */
+  border-radius:14px;
+  overflow:hidden;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.06);
-  overflow:hidden;
   display:flex;
   align-items:center;
   justify-content:center;
-  color:rgba(255,255,255,.55);
+  color:rgba(255,255,255,.45);
   font-weight:900;
+  flex:0 0 auto;
 }
 .thumb img{
   width:100%;
@@ -413,27 +438,63 @@ button{cursor:pointer}
   object-fit:cover;
   display:block;
 }
-
-.imgActions{
+.imgName{
+  flex:1;
+  font-weight:950;
+  font-size:16px;
+  word-break:break-word;
+}
+.imgBtns{
   display:flex;
-  gap:10px;
-  margin-left:auto;
+  gap:8px;
+  flex:0 0 auto;
+}
+.pill{
+  height:40px;
+  padding:0 14px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.10);
+  color:#fff;
+  font-weight:950;
+  white-space:nowrap;
+}
+.pill.danger{
+  border-color:rgba(185,74,85,.35);
+  background:rgba(185,74,85,.22);
 }
 
-.viewerOverlay{
-  position:fixed;
-  inset:0;
-  z-index:80;
-  background:rgba(0,0,0,.85);
+/* ================= Lightbox ================= */
+
+.lightbox{
+  width:min(960px, 96vw);
+  max-height:min(86vh, 900px);
+  border-radius:22px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.55);
+  display:flex;
+  flex-direction:column;
+}
+.lightboxHead{
   display:flex;
   align-items:center;
-  justify-content:center;
-  padding:18px;
+  justify-content:space-between;
+  padding:12px 12px 10px;
 }
-.viewerOverlay.isHidden{display:none;}
-.viewerOverlay img{
-  max-width:100%;
-  max-height:100%;
+.lightboxTitle{
+  font-weight:950;
+  font-size:16px;
+}
+.lightboxBody{
+  padding:12px;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.lightboxImg{
+  width:100%;
+  height:auto;
+  display:block;
   border-radius:18px;
-  border:1px solid rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.12);
 }
