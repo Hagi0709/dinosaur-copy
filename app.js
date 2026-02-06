@@ -326,11 +326,10 @@ ${lines.join('\n')}
       </div>
 
       <div class="controls">
-        <div class="grid2" style="grid-template-columns:1fr 1fr auto; align-items:center;">
-          <div class="js-mBox"></div>
-          <div class="js-fBox"></div>
-          <button class="mini js-dupBtn" type="button" data-act="dup">${isDup ? '複製' : '複製'}</button>
-        </div>
+      <div class="grid2 dinoRow">
+        <div class="js-mBox"></div>
+        <div class="js-fBox"></div>
+        <button class="mini js-dupBtn" type="button" data-act="dup">複製</button>
       </div>
     `;
 
@@ -347,16 +346,16 @@ ${lines.join('\n')}
     const mBoxMount = $('.js-mBox', card);
     const fBoxMount = $('.js-fBox', card);
 
-    const mBox = buildStepperBox({
-      kind: 'm',
-      getValue: () => String(s.m || 0),
-      className: 'sexBox male',
-    });
-    const fBox = buildStepperBox({
-      kind: 'f',
-      getValue: () => String(s.f || 0),
-      className: 'sexBox female',
-    });
+const mBox = buildStepperBox({
+  kind: 'm',
+  getValue: () => String(s.m || 0),
+  className: 'sexBox male',
+});
+const fBox = buildStepperBox({
+  kind: 'f',
+  getValue: () => String(s.f || 0),
+  className: 'sexBox female',
+});
 
     mBoxMount.appendChild(mBox);
     fBoxMount.appendChild(fBox);
@@ -995,6 +994,24 @@ ${lines.join('\n')}
   el.tabDinos.classList.add('isActive');
   el.tabItems.classList.remove('isActive');
   setManageTab('catalog');
+
+  // ---- layout patch: dino stepper row (♂ / ♀ / 複製) ----
+  const __patchStyle = document.createElement('style');
+  __patchStyle.textContent = `
+    .dinoRow{
+      display:grid;
+      grid-template-columns: 1fr 1fr 76px;
+      gap:10px;
+      align-items:center;
+    }
+    .dinoRow .js-dupBtn{
+      width:76px;
+      height:32px;
+      justify-self:end;
+      white-space:nowrap;
+    }
+  `;
+  document.head.appendChild(__patchStyle);
 
   init();
 })();
