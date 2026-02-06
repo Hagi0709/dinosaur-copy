@@ -1,3 +1,4 @@
+/* style.css */
 :root{
   --bg:#0b0f14;
   --card:#141a22;
@@ -130,6 +131,13 @@ button{cursor:pointer}
   color:#fff;
   font-weight:800;
 }
+.danger{
+  border:1px solid rgba(185,74,85,.35);
+  background:rgba(185,74,85,.22);
+  color:#fff;
+  font-weight:900;
+  border-radius:14px;
+}
 
 .tabs{
   flex:1;
@@ -175,13 +183,12 @@ button{cursor:pointer}
 }
 .cardToggle{
   position:absolute;
-  inset:-12px -12px auto -12px; /* ヘッダー枠いっぱいに広げる */
+  inset:-12px -12px auto -12px;
   height:calc(100% + 24px);
   border:0;
   background:transparent;
   padding:0;
   margin:0;
-  cursor:pointer;
 }
 .name{
   font-weight:950;
@@ -197,7 +204,7 @@ button{cursor:pointer}
   flex-direction:column;
   gap:6px;
   min-width:140px;
-  z-index:1; /* toggleの上に表示はされるが、クリックはselectが取る */
+  z-index:1;
 }
 .type{
   padding:6px 10px;
@@ -213,7 +220,7 @@ button{cursor:pointer}
   white-space:nowrap;
 }
 
-/* Controls（ヘッダーの下に必ず来る） */
+/* Controls */
 .controls{
   margin-top:10px;
   display:flex;
@@ -223,7 +230,6 @@ button{cursor:pointer}
   overflow:visible;
 }
 
-/* オス/メスのステッパー横並び + 右に複製 */
 .stepper{
   flex:1;
   min-width:0;
@@ -394,7 +400,7 @@ button{cursor:pointer}
   background:rgba(0,0,0,.16);
   font-weight:900;
 }
-.pVal input{
+.pVal input, .pVal select{
   width:100%;
   padding:12px 10px;
   border-radius:16px;
@@ -402,71 +408,12 @@ button{cursor:pointer}
   background:rgba(0,0,0,.18);
   color:#fff;
   outline:none;
-  text-align:right;
-  font-weight:950;
-}
-
-/* ================= Image Manager ================= */
-
-.imgRow{
-  display:grid;
-  /* ✅ 画像(左) + 右側(名前→ボタン) の2列構成に戻す */
-  grid-template-columns:140px minmax(0,1fr);
-  grid-template-areas:
-    "thumb name"
-    "thumb btns";
-  gap:10px 12px;
-  align-items:center;
-  padding:12px;
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.18);
-  margin-bottom:10px;
-}
-
-.thumb{
-  grid-area:thumb;
-  width:140px;
-  aspect-ratio:2 / 1; /* 横2：縦1（横長） */
-  border-radius:14px;
-  overflow:hidden;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.06);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:rgba(255,255,255,.45);
+  text-align:left;
   font-weight:900;
 }
+.pVal input[type="number"]{ text-align:right; }
 
-/* ✅ 画像が枠いっぱいに表示されるように */
-.thumb img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:block;
-}
-
-.imgName{
-  grid-area:name;
-  min-width:0;
-  font-weight:950;
-  font-size:16px;
-  line-height:1.2;
-
-  /* ✅ iPhone幅でも縦積みになりにくくする */
-  white-space:normal;
-  word-break:normal;
-  overflow-wrap:anywhere;
-}
-
-.imgBtns{
-  grid-area:btns;
-  display:flex;
-  gap:10px;
-  justify-content:flex-start; /* 名前の下に左寄せで並ぶ */
-  align-items:center;
-}
+/* Pills */
 .pill{
   height:40px;
   padding:0 14px;
@@ -482,37 +429,120 @@ button{cursor:pointer}
   background:rgba(185,74,85,.22);
 }
 
-/* ================= Lightbox ================= */
+/* ================= Image Manager ================= */
 
-.lightbox{
-  width:min(960px, 96vw);
+/* ✅ 画像：左サムネ / 右に「名前」→「ボタン（下段）」 */
+.imgRow{
+  display:grid;
+  grid-template-columns:140px minmax(0,1fr);
+  grid-template-areas:
+    "thumb mid";
+  gap:10px 12px;
+  align-items:center;
+  padding:12px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.18);
+  margin-bottom:10px;
+}
+
+.thumb{
+  grid-area:thumb;
+  width:140px;
+  aspect-ratio:2 / 1; /* ✅ 縦1：横2（横長） */
+  border-radius:14px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:rgba(255,255,255,.45);
+  font-weight:900;
+}
+.thumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+
+.imgMid{
+  grid-area:mid;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.imgName{
+  font-weight:950;
+  font-size:16px;
+  line-height:1.2;
+  word-break:break-word;
+}
+
+.imgBtns{
+  display:flex;
+  gap:10px;
+  justify-content:flex-start;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+/* ================= Confirm / Edit / Viewer ================= */
+
+.confirm, .edit, .imgViewer{
+  width:min(720px, 100%);
   max-height:min(86vh, 900px);
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+  border:1px solid rgba(255,255,255,.14);
   border-radius:22px;
   overflow:hidden;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(0,0,0,.55);
   display:flex;
   flex-direction:column;
 }
-.lightboxHead{
+.confirmTitle{
+  font-weight:950;
+  font-size:18px;
+  padding:14px 14px 10px;
+}
+.confirmText{
+  padding:0 14px 12px;
+  color:rgba(255,255,255,.85);
+}
+.confirmBtns{
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+  padding:0 14px 14px;
+}
+
+.editHead{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:12px 12px 10px;
+  padding:14px 14px 10px;
 }
-.lightboxTitle{
-  font-weight:950;
-  font-size:16px;
-}
-.lightboxBody{
-  padding:12px;
+.editTitle{font-weight:950;font-size:18px}
+.editBody{
+  padding:14px;
   overflow:auto;
   -webkit-overflow-scrolling:touch;
 }
-.lightboxImg{
+
+.imgViewer{
+  width:min(960px, 96vw);
+  background:rgba(0,0,0,.55);
+}
+.imgClose{
+  margin:12px 12px 0 auto;
+}
+#imgViewerImg{
   width:100%;
   height:auto;
   display:block;
   border-radius:18px;
   border:1px solid rgba(255,255,255,.12);
+  margin:12px;
 }
