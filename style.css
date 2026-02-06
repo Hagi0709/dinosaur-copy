@@ -644,3 +644,215 @@ button{cursor:pointer}
   padding:12px;
   border-radius:18px;
 }
+/* =========================
+   ✅ 画像出力（画像タブのサムネから合成）
+   - 縦×横を入力
+   - 表示順（上から順）で埋める
+   - 画像未設定はスキップ
+   - 背景は黒
+   - 生成画像は既存の画像ビューア(#imgOverlay)で表示
+========================= */
+(function(){
+  'use strict';
+
+  const $ = (s, r=document)=>r.querySelector(s);
+  const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
+
+  // 画像ビューアを開く（既存DOMを使う）
+  function openImageViewer(dataUrl){
+    const overlay = $('#imgOverlay');
+    const img = $('#imgViewerImg');
+    const close = $('#imgClose');
+
+    if (!overlay || !img) {
+      // 最悪：新規タブで開く
+      window.open(dataUrl, '_blank');
+      return;
+    }
+
+    img.src = dataUrl;
+    overlay.classList.remove('isHidden');
+
+    // 閉じる
+    const onClose = ()=>{
+      overlay.classList.add('isHidden');
+      overlay.removeEventListener('click', onBg);
+      close?.removeEventListener('click', onClose);
+    };
+    const onBg = (e)=>{
+      if (e.target === overlay) onClose();
+    };
+    close?.addEventListener('click', onClose);
+    overlay.addEventListener('click', onBg);
+  }
+
+  // 画像の読み込みを待つ
+  function loadImg(src){
+    return new Promise((resolve)=>{
+      const im = new Image();
+      im.onload = ()=>resolve(im);
+      im.onerror = ()=>resolve(null);
+      im.src = src;
+    });
+  }
+
+  // 画像タブに「画像出力」ボタンが無ければ作る（毎回安全に差し込む）
+  function ensureExportButton(){
+    const roomBody = $('#roomBody');
+    const modalBody = $('#modalBody'); // 管理モーダルのボディ
+    if (!modalBody) return;
+
+    // 画像タブが表示中か判定（mTabImagesがisActiveなら画像タブ）
+    const mTabImages = $('#mTabImages');
+    const isImagesTab = !!(mTabImages && mTabImages.classList.contains('isActive'));
+    if (!isImagesTab) return;
+
+    // すでにあるなら何もしない
+    if ($('#imgExport')) return;
+
+    // 画像タブの先頭にボタン行を挿入
+    const bar = document.createElement('div');
+    bar.className = 'imgTopBar';
+    bar.innerHTML = `<button id="imgExport" class="pill" type="button">画像出力</button>`;
+
+    // modalBody先頭へ
+    modalBody.prepend(bar);
+  }
+
+  // 画像タブに表示されているサムネを “上から順” に集める
+  function collectThumbSrcInOrder(){
+    const modalBody = $('#modalBody');
+    if (!modalBody) return [];
+
+    // 画像管理の行（.imgRow）がある前提。なければサムネimgを上から拾う。
+    const rows = $$('.imgRow', modalBody);
+    if (rows.length) {
+      const list = [];
+      for (const row of rows) {
+        const img = row.querySelector('.thumb img');
+        const src = img?.getAttribute('src') || '';
+        // 未設定（No Image等）はスキップ
+        if (!src || src.includes('no-image') || src.includes('No%20Image')) continue;
+        // 空っぽのプレースホルダ回避
+        if (src === '#' || src === 'about:blank') continue;
+        list.push(src);
+      }
+      return list;
+    }
+
+    // フォールバック：thumb内のimgを上から拾う
+    return $$('.thumb img', modalBody)
+      .map(im => im.getAttribute('src') || '')
+      .filter(src => src && src !== '#' && src !== 'about:blank');
+  }
+
+  async function exportGridImage(rows, cols){
+    const srcs = collectThumbSrcInOrder();
+    if (!srcs.length) {
+      alert('画像が1枚も設定されていません。');
+      return;
+    }
+
+    const maxCells = rows * cols;
+
+    // 上から順に、未設定はスキップして詰める
+    const picked = srcs.slice(0, 500); // 念のため上限
+    const images = [];
+    for (const s of picked) {
+      const im = await loadImg(s);
+      if (im) images.push(im);
+      if (images.length >= maxCells) break;
+    }
+
+    if (!images.length) {
+      alert('読み込める画像がありませんでした。');
+      return;
+    }
+
+    // セルサイズ（2:1 を基準、管理サムネがそれっぽいので）
+    const cellW = 640;
+    const cellH = 320;
+
+    const gap = 8; // 黒背景で区切り
+    const pad = 8;
+
+    const outW = cols * cellW + (cols - 1) * gap + pad * 2;
+    const outH = rows * cellH + (rows - 1) * gap + pad * 2;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = outW;
+    canvas.height = outH;
+
+    const ctx = canvas.getContext('2d');
+    // 背景黒
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, outW, outH);
+
+    // 描画（左→右、上→下）
+    let idx = 0;
+    for (let r=0; r<rows; r++){
+      for (let c=0; c<cols; c++){
+        if (idx >= images.length) break;
+        const im = images[idx++];
+
+        const x = pad + c * (cellW + gap);
+        const y = pad + r * (cellH + gap);
+
+        // cover（比率維持してセルを埋める）
+        const iw = im.naturalWidth || im.width;
+        const ih = im.naturalHeight || im.height;
+        const targetRatio = cellW / cellH;
+        const imgRatio = iw / ih;
+
+        let sx=0, sy=0, sw=iw, sh=ih;
+        if (imgRatio > targetRatio) {
+          // 横長：左右を切る
+          sh = ih;
+          sw = ih * targetRatio;
+          sx = (iw - sw) / 2;
+        } else {
+          // 縦長：上下を切る
+          sw = iw;
+          sh = iw / targetRatio;
+          sy = (ih - sh) / 2;
+        }
+
+        ctx.drawImage(im, sx, sy, sw, sh, x, y, cellW, cellH);
+      }
+    }
+
+    // PNGで出力
+    const dataUrl = canvas.toDataURL('image/png', 1.0);
+    openImageViewer(dataUrl);
+  }
+
+  // ボタン押下（イベント委譲）
+  document.addEventListener('click', async (e)=>{
+    const t = e.target;
+    if (!(t instanceof HTMLElement)) return;
+
+    // 画像タブが描画されたタイミングでボタンを差し込む（安全策）
+    if (t.id === 'mTabImages') {
+      setTimeout(ensureExportButton, 0);
+      return;
+    }
+
+    if (t.id !== 'imgExport') return;
+
+    // 縦×横を入力
+    const r = parseInt(prompt('縦は何枚？（例：5）', '5') || '', 10);
+    const c = parseInt(prompt('横は何枚？（例：2）', '2') || '', 10);
+
+    if (!Number.isFinite(r) || !Number.isFinite(c) || r<=0 || c<=0) {
+      alert('縦・横は1以上の数字で入力してください。');
+      return;
+    }
+
+    await exportGridImage(r, c);
+  });
+
+  // 初回：画像タブが最初から開かれてる可能性にも対応
+  window.addEventListener('load', ()=>{
+    setTimeout(ensureExportButton, 0);
+  });
+})();
