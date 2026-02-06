@@ -6,7 +6,12 @@
   --mut:rgba(255,255,255,.60);
   --ok:#78ffb3;
   --danger:#b94a55;
+
+  /* 追加：♂♀カラー */
+  --male:#58c7ff;
+  --female:#ff6ac8;
 }
+
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
@@ -16,9 +21,13 @@ body{
   color:var(--txt);
   padding-bottom:120px;
 }
-button,select,input{touch-action:manipulation; font:inherit}
-button{cursor:pointer}
 
+button,select,input,textarea{touch-action:manipulation; font:inherit}
+button{cursor:pointer}
+select,input,textarea{outline:none}
+textarea{resize:none}
+
+/* ===== header ===== */
 .top{
   position:sticky;
   top:0;
@@ -70,6 +79,7 @@ button{cursor:pointer}
   line-height:1;
   font-size:18px;
 }
+
 .delivery{
   height:36px;
   border-radius:14px;
@@ -79,6 +89,7 @@ button{cursor:pointer}
   font-size:13px;
   padding:0 10px;
 }
+
 .copy{
   height:36px;
   padding:0 12px;
@@ -88,6 +99,7 @@ button{cursor:pointer}
   color:#fff;
   font-weight:900;
 }
+
 .total{
   margin-left:auto;
   font-size:14px;
@@ -116,6 +128,7 @@ button{cursor:pointer}
   align-items:center;
   flex-wrap:wrap;
 }
+
 .ghost{
   height:34px;
   padding:0 12px;
@@ -140,11 +153,13 @@ button{cursor:pointer}
   color:#fff;
   font-weight:900;
 }
-.tab.isActive{
+.tab.isActive,
+.tab.active{
   background:rgba(255,255,255,.10);
   border-color:rgba(255,255,255,.18);
 }
 
+/* ===== list/cards ===== */
 .list{padding:12px}
 
 .card{
@@ -155,12 +170,14 @@ button{cursor:pointer}
   margin-bottom:10px;
   overflow:hidden;
 }
-.cardHead{
+
+.head, .cardHead{
   display:flex;
   justify-content:space-between;
   align-items:flex-start;
   gap:10px;
 }
+
 .name{
   font-weight:950;
   letter-spacing:.2px;
@@ -168,6 +185,7 @@ button{cursor:pointer}
   line-height:1.1;
   word-break:break-word;
 }
+
 .right{
   text-align:right;
   display:flex;
@@ -175,6 +193,7 @@ button{cursor:pointer}
   gap:6px;
   min-width:140px;
 }
+
 .type{
   padding:6px 10px;
   border-radius:999px;
@@ -183,6 +202,7 @@ button{cursor:pointer}
   color:#fff;
   font-size:12px;
 }
+
 .unit{
   font-size:12px;
   color:var(--mut);
@@ -191,27 +211,47 @@ button{cursor:pointer}
 
 .controls{
   margin-top:10px;
-  display:grid;
-  gap:10px;
-}
-.grid2{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
+  display:block;
 }
 
-.stepper{
+/* ===== 数量入力（横並び / ♂ 左・♀ 中・複製 右） ===== */
+.steppers{
+  display:flex;
+  gap:10px;
+  align-items:stretch;
+  width:100%;
+  min-width:0;
+}
+
+.step{
+  flex:1;
+  min-width:0;
+}
+
+.stepRow{
   display:flex;
   align-items:center;
-  gap:8px;
-  padding:8px;
+  gap:10px;
+  padding:10px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.04);
+  min-width:0;
 }
+
+.stepRow.isMale{
+  box-shadow:0 0 0 2px rgba(88,199,255,.25) inset;
+  border-color:rgba(88,199,255,.35);
+}
+
+.stepRow.isFemale{
+  box-shadow:0 0 0 2px rgba(255,106,200,.22) inset;
+  border-color:rgba(255,106,200,.35);
+}
+
 .btn{
   width:44px;
-  height:32px;
+  height:34px;
   border-radius:12px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.10);
@@ -222,33 +262,38 @@ button{cursor:pointer}
   display:inline-flex;
   align-items:center;
   justify-content:center;
+  flex:0 0 auto;
 }
+
 .val{
   flex:1;
+  min-width:0;
   text-align:center;
   font-weight:950;
   font-size:16px;
 }
-.mini{
-  width:44px;
-  height:32px;
-  border-radius:12px;
+
+.dupBtn{
+  height:34px;
+  padding:0 14px;
+  border-radius:999px;
   border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-weight:900;
-  font-size:12px;
+  background:rgba(255,255,255,.10);
+  color:#111;
+  font-weight:950;
+  flex:0 0 auto;
+  white-space:nowrap;
 }
 
+/* 右端で見切れないための保険 */
+.steppers{ overflow:visible; }
+.card{ overflow:visible; }
+
+/* 折りたたみ */
+.card.collapsed .controls{display:none}
 .card.isCollapsed .controls{display:none}
-.cardTap{
-  position:absolute;
-  inset:0;
-}
-.cardWrap{
-  position:relative;
-}
 
+/* ===== modal overlays ===== */
 .modalOverlay{
   position:fixed;
   inset:0;
@@ -260,9 +305,7 @@ button{cursor:pointer}
   justify-content:center;
   padding:14px;
 }
-.modalOverlay.isHidden{
-  display:none;
-}
+.modalOverlay.isHidden{display:none}
 
 .modal{
   width:min(720px, 100%);
@@ -274,13 +317,16 @@ button{cursor:pointer}
   display:flex;
   flex-direction:column;
 }
+
 .modalHead{
   display:flex;
   align-items:center;
   justify-content:space-between;
   padding:14px 14px 10px;
 }
+
 .modalTitle{font-weight:950;font-size:18px}
+
 .iconBtn{
   width:44px;height:44px;
   border-radius:16px;
@@ -293,11 +339,13 @@ button{cursor:pointer}
   align-items:center;
   justify-content:center;
 }
+
 .modalTabs{
   display:flex;
   gap:10px;
   padding:0 14px 12px;
 }
+
 .mTab{
   flex:1;
   height:40px;
@@ -318,13 +366,14 @@ button{cursor:pointer}
   -webkit-overflow-scrolling:touch;
 }
 
+/* ===== manage common ===== */
 .mBar{
   display:flex;
   gap:10px;
   align-items:center;
   margin-bottom:12px;
 }
-.mBar .tabs{flex:1}
+
 .primary{
   height:40px;
   padding:0 14px;
@@ -345,6 +394,7 @@ button{cursor:pointer}
   background:rgba(0,0,0,.18);
   margin-bottom:10px;
 }
+
 .mName{
   flex:1;
   font-weight:900;
@@ -352,31 +402,78 @@ button{cursor:pointer}
   line-height:1.2;
   word-break:break-word;
 }
-.mBtns{
-  display:flex;
-  gap:8px;
-}
-.sBtn{
-  width:44px;height:38px;
+
+.mBtns{display:flex; gap:8px}
+
+.mBtn, .sBtn{
+  min-width:56px;
+  height:38px;
+  padding:0 12px;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
   color:#fff;
   font-weight:950;
+  white-space:nowrap; /* 「削除」を縦にしない */
 }
-.sBtn.danger{
+
+.mBtn.danger, .sBtn.danger{
   background:rgba(185,74,85,.22);
   border-color:rgba(185,74,85,.35);
 }
 
+.mGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:10px;
+}
+
+.mField label{
+  display:block;
+  font-size:12px;
+  color:var(--mut);
+  margin:0 0 6px;
+  font-weight:800;
+}
+
+.mField input, .mField select{
+  width:100%;
+  padding:12px 10px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.18);
+  color:#fff;
+  outline:none;
+}
+
+.mActions{
+  display:flex;
+  gap:10px;
+  margin-top:10px;
+}
+.mActions button{
+  flex:1;
+  height:40px;
+  padding:0 14px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.10);
+  color:#fff;
+  font-weight:950;
+}
+.mActions .danger{
+  border-color:rgba(185,74,85,.35);
+  background:rgba(185,74,85,.22);
+}
+
+/* ===== price grid ===== */
 .priceGrid{
   display:grid;
   grid-template-columns:1fr 140px;
   gap:10px;
 }
-.pRow{
-  display:contents;
-}
+.pRow{display:contents}
 .pKey{
   padding:12px 10px;
   border-radius:16px;
@@ -396,6 +493,7 @@ button{cursor:pointer}
   font-weight:950;
 }
 
+/* ===== confirm / edit (legacy compatible) ===== */
 .confirm, .edit{
   width:min(640px, 100%);
   max-height:min(86vh, 900px);
@@ -405,6 +503,7 @@ button{cursor:pointer}
   overflow:hidden;
   padding:14px;
 }
+
 .confirmTitle{
   font-weight:950;
   font-size:18px;
@@ -437,10 +536,7 @@ button{cursor:pointer}
   max-height:calc(86vh - 110px);
   -webkit-overflow-scrolling:touch;
 }
-.form{
-  display:grid;
-  gap:10px;
-}
+.form{display:grid; gap:10px}
 .field label{
   display:block;
   font-size:12px;
@@ -465,13 +561,7 @@ button{cursor:pointer}
 .formBtns .primary{flex:1}
 .formBtns .ghost{flex:1}
 
-/* =========================
-   画像タブ用
-========================= */
-.imgList{
-  display:grid;
-  gap:10px;
-}
+/* ===== 画像管理（1:2 サムネ） ===== */
 .imgRow{
   display:flex;
   gap:10px;
@@ -480,47 +570,57 @@ button{cursor:pointer}
   border-radius:18px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(0,0,0,.18);
+  margin-bottom:10px;
 }
+
 .imgThumb{
-  width:56px;
-  height:112px; /* 1:2 */
+  width:72px;
+  aspect-ratio:1 / 2; /* ★ 1:2 */
+  height:auto;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.06);
   overflow:hidden;
   flex:0 0 auto;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  display:block;
 }
+
 .imgThumb img{
   width:100%;
   height:100%;
   object-fit:cover;
   display:block;
 }
+
+.imgThumb .noImg{
+  width:100%;
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:rgba(255,255,255,.55);
+  font-size:12px;
+}
+
 .imgMeta{
   flex:1;
   min-width:0;
 }
-.imgName{
-  font-weight:900;
-  font-size:15px;
+.imgMeta .imgName{
+  font-weight:950;
+  font-size:16px;
   line-height:1.2;
   word-break:break-word;
 }
-.imgHint{
-  display:none;
-}
-
-.imgActions{
+.imgBtns{
   display:flex;
   gap:8px;
   flex:0 0 auto;
 }
-.imgBtn{
+.imgBtns button{
+  min-width:72px;
   height:38px;
-  padding:0 12px;
+  padding:0 14px;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
@@ -528,7 +628,14 @@ button{cursor:pointer}
   font-weight:950;
   white-space:nowrap;
 }
-.imgBtn.danger{
-  background:rgba(185,74,85,.22);
+.imgBtns .danger{
   border-color:rgba(185,74,85,.35);
+  background:rgba(185,74,85,.22);
+}
+
+/* ===== small screens safety ===== */
+@media (max-width:420px){
+  .right{min-width:120px}
+  .imgThumb{width:64px}
+  .dupBtn{padding:0 12px}
 }
