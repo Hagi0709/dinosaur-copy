@@ -35,6 +35,8 @@
 
     <div class="subrow">
       <button id="openManage" class="ghost" type="button">管理</button>
+      <!-- ✅ 追加：ルーム -->
+      <button id="openRoom" class="ghost" type="button">ルーム</button>
 
       <div class="tabs" role="tablist" aria-label="表示切替">
         <button id="tabDinos" class="tab isActive" type="button" role="tab" aria-selected="true">恐竜</button>
@@ -65,11 +67,25 @@
     </div>
   </div>
 
+  <!-- ✅ Room Modal -->
+  <div id="roomOverlay" class="modalOverlay isHidden" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="ルーム">
+      <div class="modalHead">
+        <div class="modalTitle">ルーム</div>
+        <button id="closeRoom" class="iconBtn" type="button" aria-label="閉じる">×</button>
+      </div>
+
+      <div class="modalBody" id="roomBody">
+        <!-- injected -->
+      </div>
+    </div>
+  </div>
+
   <!-- Confirm Modal -->
   <div id="confirmOverlay" class="modalOverlay isHidden" aria-hidden="true">
     <div class="confirm" role="dialog" aria-modal="true" aria-label="確認">
       <div class="confirmTitle">確認</div>
-      <div class="confirmText" id="confirmText">実行しますか？</div>
+      <div class="confirmText" id="confirmText">削除しますか？</div>
       <div class="confirmBtns">
         <button id="confirmCancel" class="ghost" type="button">キャンセル</button>
         <button id="confirmOk" class="ghost" type="button">OK</button>
