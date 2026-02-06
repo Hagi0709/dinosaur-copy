@@ -68,6 +68,7 @@
   const dinoOverride = Object.assign({}, loadJSON(LS.DINO_OVERRIDE, {}));  // id -> {name,defType}
 
   /* ========= DOM ========= */
+  /* ========= DOM ========= */
   const el = {
     q: $('#q'),
     qClear: $('#qClear'),
@@ -87,24 +88,34 @@
     mTabCatalog: $('#mTabCatalog'),
     mTabPrices: $('#mTabPrices'),
 
-    // Confirm
+    sortKana: $('#sortKana'), // ✅ 追加（index.htmlにボタン追加）
+
+    // 追加/編集
+    editOverlay: $('#editOverlay'),
+    editBody: $('#editBody'),
+    editTitle: $('#editTitle'),
+    editClose: $('#editClose'),
+
+    // 確認
     confirmOverlay: $('#confirmOverlay'),
     confirmText: $('#confirmText'),
     confirmCancel: $('#confirmCancel'),
     confirmOk: $('#confirmOk'),
 
-    // Image viewer
+    // 画像ビューア
     imgOverlay: $('#imgOverlay'),
     imgClose: $('#imgClose'),
     imgViewerImg: $('#imgViewerImg'),
-
-    // Edit/Add
-    editOverlay: $('#editOverlay'),
-    editBody: $('#editBody'),
-    editTitle: $('#editTitle'),
-    // editClose はHTMLから消えてる想定（nullでもOK）
-    editClose: $('#editClose'),
   };
+
+  // ✅ 追加：ヘッダーを常に画面上部に固定（CSSが壊れてもJS側で保険）
+  const top = document.querySelector('header.top');
+  if (top) {
+    top.style.position = 'sticky';
+    top.style.top = '0';
+    top.style.zIndex = '50';
+    top.style.transform = 'translateZ(0)'; // iOS Safariの描画崩れ対策
+  }
 
   /* ========= data ========= */
   const hidden = {
@@ -222,14 +233,28 @@
   // 両方>0なら(指定)へ。両方0なら(指定)解除。
   function autoSpecify(s) {
     const m = Number(s.m || 0), f = Number(s.f || 0);
-    const base = String(s.type || '受精卵').replace('(指定)', '');
-    const hasSpecified = /\(指定\)$/.test(String(s.type || ''));
-    if (m > 0 && f > 0) {
-      s.type = specifiedMap[base] || (base + '(指定)');
+    const cur = String(s.type || '受精卵');
+    const base = cur.replace('(指定)', '');
+    const hasSpecified = /\(指定\)$/.test(cur);
+
+    // ✅ 「指定」自動付与は、指定バリエーションが存在する種類のみに限定する
+    const canSpecify = Object.prototype.hasOwnProperty.call(specifiedMap, base);
+
+    // 両方>0なら(指定)へ（ただし指定可能な種類のみ）
+    if (m > 0 && f > 0 && canSpecify) {
+      s.type = specifiedMap[base];
       return;
     }
-    if (m === 0 && f === 0 && hasSpecified) {
+
+    // 両方0なら(指定)解除（指定可能な種類のみ）
+    if (m === 0 && f === 0 && hasSpecified && canSpecify) {
       s.type = base;
+      return;
+    }
+
+    // ✅ 念のため：selectに存在しない値になったらbaseへ戻す
+    if (!typeList.includes(s.type)) {
+      s.type = typeList.includes(base) ? base : '受精卵';
     }
   }
 
