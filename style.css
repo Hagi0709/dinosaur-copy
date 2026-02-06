@@ -7,11 +7,9 @@
   --ok:#78ffb3;
   --danger:#b94a55;
 
-  /* 追加：♂♀カラー */
-  --male:#58c7ff;
-  --female:#ff6ac8;
+  --male:#4fb6ff;
+  --female:#ff5db7;
 }
-
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
@@ -21,13 +19,9 @@ body{
   color:var(--txt);
   padding-bottom:120px;
 }
-
-button,select,input,textarea{touch-action:manipulation; font:inherit}
+button,select,input{touch-action:manipulation; font:inherit}
 button{cursor:pointer}
-select,input,textarea{outline:none}
-textarea{resize:none}
 
-/* ===== header ===== */
 .top{
   position:sticky;
   top:0;
@@ -79,7 +73,6 @@ textarea{resize:none}
   line-height:1;
   font-size:18px;
 }
-
 .delivery{
   height:36px;
   border-radius:14px;
@@ -89,7 +82,6 @@ textarea{resize:none}
   font-size:13px;
   padding:0 10px;
 }
-
 .copy{
   height:36px;
   padding:0 12px;
@@ -99,7 +91,6 @@ textarea{resize:none}
   color:#fff;
   font-weight:900;
 }
-
 .total{
   margin-left:auto;
   font-size:14px;
@@ -128,7 +119,6 @@ textarea{resize:none}
   align-items:center;
   flex-wrap:wrap;
 }
-
 .ghost{
   height:34px;
   padding:0 12px;
@@ -153,13 +143,11 @@ textarea{resize:none}
   color:#fff;
   font-weight:900;
 }
-.tab.isActive,
-.tab.active{
+.tab.isActive{
   background:rgba(255,255,255,.10);
   border-color:rgba(255,255,255,.18);
 }
 
-/* ===== list/cards ===== */
 .list{padding:12px}
 
 .card{
@@ -171,13 +159,12 @@ textarea{resize:none}
   overflow:hidden;
 }
 
-.head, .cardHead{
+.cardHead{
   display:flex;
   justify-content:space-between;
   align-items:flex-start;
   gap:10px;
 }
-
 .name{
   font-weight:950;
   letter-spacing:.2px;
@@ -185,7 +172,6 @@ textarea{resize:none}
   line-height:1.1;
   word-break:break-word;
 }
-
 .right{
   text-align:right;
   display:flex;
@@ -193,7 +179,6 @@ textarea{resize:none}
   gap:6px;
   min-width:140px;
 }
-
 .type{
   padding:6px 10px;
   border-radius:999px;
@@ -202,53 +187,57 @@ textarea{resize:none}
   color:#fff;
   font-size:12px;
 }
-
 .unit{
   font-size:12px;
   color:var(--mut);
   white-space:nowrap;
 }
 
+/* 折りたたみ（最初は畳む） */
+.card.isCollapsed .controls{display:none}
+.cardTap{
+  position:absolute;
+  inset:0;
+}
+.cardWrap{
+  position:relative;
+}
+
+/* controls */
 .controls{
   margin-top:10px;
-  display:block;
+  display:grid;
+  gap:10px;
 }
 
-/* ===== 数量入力（横並び / ♂ 左・♀ 中・複製 右） ===== */
-.steppers{
+/* ♂(左) / ♀(右) / 複製(右端) 横並び */
+.sexRow{
   display:flex;
   gap:10px;
-  align-items:stretch;
+  align-items:center;
   width:100%;
-  min-width:0;
+  overflow:visible;          /* 見切れ対策 */
 }
-
-.step{
-  flex:1;
-  min-width:0;
-}
-
-.stepRow{
+.stepper{
+  flex:1 1 0;
   display:flex;
   align-items:center;
-  gap:10px;
+  justify-content:space-between;
+  gap:8px;
   padding:10px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.04);
   min-width:0;
 }
-
-.stepRow.isMale{
-  box-shadow:0 0 0 2px rgba(88,199,255,.25) inset;
-  border-color:rgba(88,199,255,.35);
+.stepper.male{
+  border-color:color-mix(in oklab, var(--male) 55%, rgba(255,255,255,.12));
+  box-shadow:0 0 0 1px rgba(79,182,255,.25) inset;
 }
-
-.stepRow.isFemale{
-  box-shadow:0 0 0 2px rgba(255,106,200,.22) inset;
-  border-color:rgba(255,106,200,.35);
+.stepper.female{
+  border-color:color-mix(in oklab, var(--female) 55%, rgba(255,255,255,.12));
+  box-shadow:0 0 0 1px rgba(255,93,183,.22) inset;
 }
-
 .btn{
   width:44px;
   height:34px;
@@ -262,38 +251,28 @@ textarea{resize:none}
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  flex:0 0 auto;
 }
-
 .val{
-  flex:1;
-  min-width:0;
+  min-width:28px;
   text-align:center;
   font-weight:950;
   font-size:16px;
 }
 
+/* 複製：右端固定・見切れ対策 */
 .dupBtn{
-  height:34px;
+  flex:0 0 auto;
+  height:44px;
   padding:0 14px;
-  border-radius:999px;
+  border-radius:16px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.10);
-  color:#111;
+  color:#fff;
   font-weight:950;
-  flex:0 0 auto;
   white-space:nowrap;
 }
 
-/* 右端で見切れないための保険 */
-.steppers{ overflow:visible; }
-.card{ overflow:visible; }
-
-/* 折りたたみ */
-.card.collapsed .controls{display:none}
-.card.isCollapsed .controls{display:none}
-
-/* ===== modal overlays ===== */
+/* ===== modal ===== */
 .modalOverlay{
   position:fixed;
   inset:0;
@@ -317,16 +296,13 @@ textarea{resize:none}
   display:flex;
   flex-direction:column;
 }
-
 .modalHead{
   display:flex;
   align-items:center;
   justify-content:space-between;
   padding:14px 14px 10px;
 }
-
 .modalTitle{font-weight:950;font-size:18px}
-
 .iconBtn{
   width:44px;height:44px;
   border-radius:16px;
@@ -339,13 +315,11 @@ textarea{resize:none}
   align-items:center;
   justify-content:center;
 }
-
 .modalTabs{
   display:flex;
   gap:10px;
   padding:0 14px 12px;
 }
-
 .mTab{
   flex:1;
   height:40px;
@@ -359,20 +333,44 @@ textarea{resize:none}
   background:rgba(255,255,255,.10);
   border-color:rgba(255,255,255,.18);
 }
-
 .modalBody{
   padding:14px;
   overflow:auto;
   -webkit-overflow-scrolling:touch;
 }
 
-/* ===== manage common ===== */
-.mBar{
+/* manage rows */
+.mRow{
   display:flex;
-  gap:10px;
+  gap:8px;
   align-items:center;
-  margin-bottom:12px;
+  padding:10px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.18);
+  margin-bottom:10px;
 }
+.mName{
+  flex:1;
+  font-weight:900;
+  font-size:16px;
+  line-height:1.2;
+  word-break:break-word;
+}
+.sBtn{
+  width:44px;height:38px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-weight:950;
+}
+.sBtn.danger{
+  background:rgba(185,74,85,.22);
+  border-color:rgba(185,74,85,.35);
+}
+/* 「削除」横文字（縦にならないように） */
+.sBtn.danger{writing-mode:horizontal-tb}
 
 .primary{
   height:40px;
@@ -384,96 +382,12 @@ textarea{resize:none}
   font-weight:950;
 }
 
-.mRow{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  padding:10px;
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.18);
-  margin-bottom:10px;
-}
-
-.mName{
-  flex:1;
-  font-weight:900;
-  font-size:16px;
-  line-height:1.2;
-  word-break:break-word;
-}
-
-.mBtns{display:flex; gap:8px}
-
-.mBtn, .sBtn{
-  min-width:56px;
-  height:38px;
-  padding:0 12px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-weight:950;
-  white-space:nowrap; /* 「削除」を縦にしない */
-}
-
-.mBtn.danger, .sBtn.danger{
-  background:rgba(185,74,85,.22);
-  border-color:rgba(185,74,85,.35);
-}
-
-.mGrid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-  margin-top:10px;
-}
-
-.mField label{
-  display:block;
-  font-size:12px;
-  color:var(--mut);
-  margin:0 0 6px;
-  font-weight:800;
-}
-
-.mField input, .mField select{
-  width:100%;
-  padding:12px 10px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.18);
-  color:#fff;
-  outline:none;
-}
-
-.mActions{
-  display:flex;
-  gap:10px;
-  margin-top:10px;
-}
-.mActions button{
-  flex:1;
-  height:40px;
-  padding:0 14px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.10);
-  color:#fff;
-  font-weight:950;
-}
-.mActions .danger{
-  border-color:rgba(185,74,85,.35);
-  background:rgba(185,74,85,.22);
-}
-
-/* ===== price grid ===== */
+/* price grid */
 .priceGrid{
   display:grid;
   grid-template-columns:1fr 140px;
   gap:10px;
 }
-.pRow{display:contents}
 .pKey{
   padding:12px 10px;
   border-radius:16px;
@@ -493,7 +407,7 @@ textarea{resize:none}
   font-weight:950;
 }
 
-/* ===== confirm / edit (legacy compatible) ===== */
+/* confirm */
 .confirm, .edit{
   width:min(640px, 100%);
   max-height:min(86vh, 900px);
@@ -503,7 +417,6 @@ textarea{resize:none}
   overflow:hidden;
   padding:14px;
 }
-
 .confirmTitle{
   font-weight:950;
   font-size:18px;
@@ -524,6 +437,7 @@ textarea{resize:none}
   font-weight:950;
 }
 
+/* edit */
 .editHead{
   display:flex;
   align-items:center;
@@ -536,7 +450,10 @@ textarea{resize:none}
   max-height:calc(86vh - 110px);
   -webkit-overflow-scrolling:touch;
 }
-.form{display:grid; gap:10px}
+.form{
+  display:grid;
+  gap:10px;
+}
 .field label{
   display:block;
   font-size:12px;
@@ -561,55 +478,37 @@ textarea{resize:none}
 .formBtns .primary{flex:1}
 .formBtns .ghost{flex:1}
 
-/* ===== 画像管理（1:2 サムネ） ===== */
+/* ===== Images tab ===== */
 .imgRow{
   display:flex;
-  gap:10px;
+  gap:12px;
   align-items:center;
-  padding:10px;
+  padding:12px;
   border-radius:18px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(0,0,0,.18);
   margin-bottom:10px;
 }
-
 .imgThumb{
-  width:72px;
-  aspect-ratio:1 / 2; /* ★ 1:2 */
+  width:120px;          /* 横を基準 */
+  aspect-ratio:2 / 1;   /* 縦1 : 横2（横長） */
   height:auto;
-  border-radius:14px;
+  border-radius:16px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.06);
   overflow:hidden;
   flex:0 0 auto;
   display:block;
 }
-
 .imgThumb img{
   width:100%;
   height:100%;
   object-fit:cover;
   display:block;
 }
-
-.imgThumb .noImg{
-  width:100%;
-  height:100%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:rgba(255,255,255,.55);
-  font-size:12px;
-}
-
-.imgMeta{
+.imgName{
   flex:1;
-  min-width:0;
-}
-.imgMeta .imgName{
-  font-weight:950;
-  font-size:16px;
-  line-height:1.2;
+  font-weight:900;
   word-break:break-word;
 }
 .imgBtns{
@@ -617,25 +516,30 @@ textarea{resize:none}
   gap:8px;
   flex:0 0 auto;
 }
-.imgBtns button{
-  min-width:72px;
-  height:38px;
-  padding:0 14px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-weight:950;
-  white-space:nowrap;
-}
-.imgBtns .danger{
-  border-color:rgba(185,74,85,.35);
-  background:rgba(185,74,85,.22);
-}
 
-/* ===== small screens safety ===== */
-@media (max-width:420px){
-  .right{min-width:120px}
-  .imgThumb{width:64px}
-  .dupBtn{padding:0 12px}
+/* ===== Image Viewer (tap to enlarge) ===== */
+.imgViewer{
+  width:min(920px, 100%);
+  max-height:min(86vh, 900px);
+  position:relative;
+  background:rgba(0,0,0,.35);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:22px;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:14px;
+}
+.imgViewer img{
+  max-width:100%;
+  max-height:calc(86vh - 60px);
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.04);
+}
+.imgClose{
+  position:absolute;
+  top:10px;
+  right:10px;
 }
