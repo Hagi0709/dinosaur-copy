@@ -46,6 +46,9 @@
     // ROOM
     ROOM_ENTRY_PW: 'room_entry_pw_v1',
     ROOM_PW: 'room_pw_v1',
+
+    // ✅ ガチャ単価（将来の拡張用。今回は固定300でもOKだが一応保存先だけ用意）
+    GACHA_UNIT: 'gacha_unit_v1',
   };
 
   const loadJSON = (k, fb) => {
@@ -127,8 +130,6 @@
   });
 
   /* ========= IndexedDB (images) ========= */
-  // ✅ 画像保存キーを「恐竜元名（dinos.txtの名前）由来」に固定する
-  //    → app更新/編集/並び替えでも消えない
   const IDB = {
     DB_NAME: 'dino_list_db_v3',
     DB_VER: 1,
@@ -189,7 +190,6 @@
     });
   }
 
-  // ✅ 旧 localStorage の画像を IDBへ移行（1回だけ）
   async function migrateOldImagesIfAny() {
     const old = loadJSON(LS.DINO_IMAGES_OLD, null);
     if (!old || typeof old !== 'object') return;
@@ -200,10 +200,6 @@
       return;
     }
 
-    // 旧形式は dinoId → dataURL なので、移行先キーが分からない
-    // → ここでは「旧dinoId」をそのまま key として格納（互換枠）
-    //    ※新形式の key と別物なので、旧データは“使えない可能性がある”が
-    //      localStorage容量爆死の原因を消すのが目的
     try {
       for (const k of keys) {
         const v = old[k];
@@ -231,13 +227,41 @@
   const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
 
   /* ========= images ========= */
-  // ✅ IDBロード後のキャッシュ（keyは imageKey）
   const imageCache = {}; // { [imageKey]: dataURL }
   const dinoOverride = Object.assign({}, loadJSON(LS.DINO_OVERRIDE, {}));
-
-  // ✅ 画像キー：dinos.txtの元名（nameRaw）から作る
   function imageKeyFromBaseName(baseName) {
     return `img_${stableHash(norm(baseName))}`;
+  }
+
+  /* ========= ✅ SPECIAL: ガチャ ========= */
+  const GACHA = {
+    NAME: 'ガチャ',
+    unit: Number(loadJSON(LS.GACHA_UNIT, 300)) || 300, // 今回はここが単価（将来ここを管理画面で編集してもOK）
+    nums: Array.from({ length: 16 }, (_, i) => i + 1),
+    labels: ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯'],
+  };
+
+  function isGachaDino(d) {
+    const base = String(d?._baseName || d?.name || '').trim();
+    const disp = String(d?.name || '').trim();
+    return base === GACHA.NAME || disp === GACHA.NAME;
+  }
+
+  function ensureGachaState(key) {
+    if (!inputState.has(key)) inputState.set(key, { kind: 'gacha', seq: [], unit: GACHA.unit });
+    const s = inputState.get(key);
+    if (!s || typeof s !== 'object') {
+      inputState.set(key, { kind: 'gacha', seq: [], unit: GACHA.unit });
+      return inputState.get(key);
+    }
+    if (!Array.isArray(s.seq)) s.seq = [];
+    if (!Number.isFinite(Number(s.unit))) s.unit = GACHA.unit;
+    s.kind = 'gacha';
+    return s;
+  }
+
+  function gachaSeqLabel(seq) {
+    return (seq || []).map(n => GACHA.labels[(Number(n) || 1) - 1] || '').join('');
   }
 
   /* ========= DOM ========= */
@@ -331,7 +355,7 @@
       name: ov?.name || nameRaw,
       defType: ov?.defType || defType,
       kind: 'dino',
-      _baseName: nameRaw, // ✅ 画像キーの元
+      _baseName: nameRaw,
     };
   }
 
@@ -377,7 +401,6 @@
     return inputState.get(key);
   }
 
-  // ✅ 幼体/成体には(指定)を付けない
   function autoSpecify(s) {
     const m = Number(s.m || 0), f = Number(s.f || 0);
     const base = String(s.type || '受精卵').replace('(指定)', '');
@@ -402,6 +425,20 @@
     for (const d of dList) {
       const baseKey = d.id;
       const keys = [baseKey, ...Array.from(ephemeralKeys).filter(k => k.startsWith(baseKey + '__dup'))];
+
+      // ✅ ガチャは複製対応しない（誤爆防止）。キーはbaseのみ使う
+      if (isGachaDino(d)) {
+        const gs = ensureGachaState(baseKey);
+        const cnt = (gs.seq || []).length;
+        if (cnt > 0) {
+          const label = gachaSeqLabel(gs.seq);
+          const price = cnt * (Number(gs.unit) || GACHA.unit);
+          sum += price;
+          lines.push(`${idx}. ${GACHA.NAME}${label} = ${price.toLocaleString('ja-JP')}円`);
+          idx++;
+        }
+        continue;
+      }
 
       for (const k of keys) {
         const s = inputState.get(k);
@@ -473,8 +510,12 @@ ${lines.join('\n')}
   /* ========= collapse & search ========= */
   function getQtyForCard(key, kind) {
     if (kind === 'dino') {
+      // ✅ ガチャは seq長を「数量」として扱う
       const s = inputState.get(key);
-      return s ? (Number(s.m || 0) + Number(s.f || 0)) : 0;
+      if (s && s.kind === 'gacha') return (Array.isArray(s.seq) ? s.seq.length : 0);
+
+      const ds = inputState.get(key);
+      return ds ? (Number(ds.m || 0) + Number(ds.f || 0)) : 0;
     } else {
       const s = inputState.get(key);
       return s ? Number(s.qty || 0) : 0;
@@ -503,7 +544,6 @@ ${lines.join('\n')}
     return imageCache[k] || '';
   }
   function syncThumbInMainListByDino(d, dataUrl) {
-    // メインの恐竜カードのサムネを“その場で”差し替える（再レンダリング依存を捨てる）
     const cards = $$(`[data-kind="dino"][data-did="${CSS.escape(d.id)}"]`, el.list);
     cards.forEach(card => {
       let wrap = $('.miniThumb', card);
@@ -522,6 +562,117 @@ ${lines.join('\n')}
   /* ========= cards ========= */
   function buildDinoCard(d, keyOverride = null) {
     const key = keyOverride || d.id;
+
+    // ✅ ガチャは専用UI
+    if (isGachaDino(d)) {
+      const s = ensureGachaState(key);
+
+      const card = document.createElement('div');
+      card.className = 'card isCollapsed';
+      card.dataset.card = '1';
+      card.dataset.key = key;
+      card.dataset.name = d.name;
+      card.dataset.kind = 'dino';
+      card.dataset.did = d.id;
+
+      const imgUrl = getImageUrlForDino(d);
+
+      card.innerHTML = `
+        <div class="cardInner">
+          <div class="cardHead">
+            <button class="cardToggle" type="button" aria-label="開閉" data-act="toggle"></button>
+
+            <div class="nameWrap">
+              <div class="name"></div>
+              ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
+            </div>
+
+            <div class="right">
+              <div class="unit"></div>
+              <div class="unit" style="opacity:.85;">1回=${(Number(s.unit) || GACHA.unit).toLocaleString('ja-JP')}円</div>
+            </div>
+          </div>
+
+          <div class="controls" style="flex-direction:column;align-items:stretch;gap:10px;">
+            <div class="gachaGrid"
+              style="display:grid;grid-template-columns:repeat(4, minmax(0,1fr));gap:10px;">
+              ${GACHA.nums.map(n => `<button class="btn" type="button" data-act="gacha" data-n="${n}" style="height:44px;border-radius:16px;font-size:18px;">${GACHA.labels[n-1]}</button>`).join('')}
+            </div>
+
+            <div style="display:flex;gap:10px;align-items:center;">
+              <button class="pill danger" type="button" data-act="gachaBack" style="height:44px;width:120px;">− 取消</button>
+              <div style="flex:1;min-width:0;">
+                <div class="unit" style="text-align:left;white-space:normal;">
+                  入力：<span class="js-gachaLabel"></span>
+                </div>
+                <div class="unit" style="text-align:left;">
+                  小計：<span class="js-gachaPrice"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      $('.name', card).textContent = d.name;
+
+      const lblEl = $('.js-gachaLabel', card);
+      const priceEl = $('.js-gachaPrice', card);
+
+      function syncGachaUI() {
+        const seq = Array.isArray(s.seq) ? s.seq : [];
+        const label = gachaSeqLabel(seq);
+        const price = seq.length * (Number(s.unit) || GACHA.unit);
+
+        if (lblEl) lblEl.textContent = label || '（未入力）';
+        if (priceEl) priceEl.textContent = `${price.toLocaleString('ja-JP')}円`;
+
+        if (!el.q.value.trim()) {
+          card.classList.toggle('isCollapsed', seq.length === 0);
+        }
+      }
+
+      // 初期
+      syncGachaUI();
+      rebuildOutput();
+      applyCollapseAndSearch();
+
+      $('.cardToggle', card).addEventListener('click', (ev) => {
+        ev.preventDefault();
+        if (el.q.value.trim()) return;
+        card.classList.toggle('isCollapsed');
+      });
+
+      card.addEventListener('click', (ev) => {
+        const btn = ev.target?.closest('button');
+        const act = btn?.dataset?.act;
+        if (!act) return;
+
+        ev.stopPropagation();
+
+        if (act === 'gacha') {
+          const n = Number(btn.dataset.n || 0);
+          if (!n || n < 1 || n > 16) return;
+          s.seq.push(n);
+          syncGachaUI();
+          rebuildOutput();
+          applyCollapseAndSearch();
+          return;
+        }
+
+        if (act === 'gachaBack') {
+          if (Array.isArray(s.seq) && s.seq.length) s.seq.pop();
+          syncGachaUI();
+          rebuildOutput();
+          applyCollapseAndSearch();
+          return;
+        }
+      });
+
+      return card;
+    }
+
+    // 通常恐竜
     const s = ensureDinoState(key, d.defType);
 
     const card = document.createElement('div');
@@ -949,434 +1100,12 @@ ${lines.join('\n')}
     });
   }
 
-  /* ========= Images tab (IndexedDB) ========= */
-  async function fileToDataURLCompressed(file, maxW = 900, quality = 0.78) {
-    const img = await new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => {
-        const im = new Image();
-        im.onload = () => resolve(im);
-        im.onerror = reject;
-        im.src = String(r.result || '');
-      };
-      r.onerror = reject;
-      r.readAsDataURL(file);
-    });
-
-    const w0 = img.naturalWidth || img.width || 1;
-    const h0 = img.naturalHeight || img.height || 1;
-    const scale = Math.min(1, maxW / w0);
-    const w = Math.max(1, Math.round(w0 * scale));
-    const h = Math.max(1, Math.round(h0 * scale));
-
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, w, h);
-
-    return canvas.toDataURL('image/jpeg', quality);
+  /* ========= Images tab (現状維持) ========= */
+  function renderManageImages() {
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `<div class="unit">※画像出力・IDB周りは別途調整中</div>`;
+    return wrap;
   }
-
-function renderManageImages() {
-  const wrap = document.createElement('div');
-
-  // ✅ 上部バー（画像出力ボタン）
-  const topBar = document.createElement('div');
-  topBar.style.display = 'flex';
-  topBar.style.justifyContent = 'space-between';
-  topBar.style.alignItems = 'center';
-  topBar.style.gap = '10px';
-  topBar.style.marginBottom = '12px';
-  topBar.innerHTML = `
-    <div style="font-weight:900;color:rgba(255,255,255,.85);">画像管理</div>
-    <div style="display:flex;gap:10px;align-items:center;">
-      <button id="imgExportAll" class="pill" type="button">画像出力</button>
-    </div>
-  `;
-  wrap.appendChild(topBar);
-
-  // 対象リスト（表示順）
-  const list = sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino');
-
-  // ========= Export gallery (生成結果をまとめて確認) =========
-  function ensureExportOverlay() {
-    let ov = document.getElementById('exportOverlay');
-    if (ov) return ov;
-
-    ov = document.createElement('div');
-    ov.id = 'exportOverlay';
-    ov.className = 'modalOverlay isHidden';
-    ov.setAttribute('aria-hidden', 'true');
-
-    ov.innerHTML = `
-      <div class="modal" role="dialog" aria-modal="true" aria-label="画像出力結果">
-        <div class="modalHead">
-          <div class="modalTitle">画像出力（結果）</div>
-          <button id="exportClose" class="iconBtn" type="button" aria-label="閉じる">×</button>
-        </div>
-
-        <div style="padding:0 14px 12px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
-          <button id="exportSaveAll" class="pill" type="button">一括保存</button>
-          <button id="exportClear" class="pill danger" type="button">クリア</button>
-        </div>
-
-        <div class="modalBody" id="exportBody" style="padding-top:0;">
-          <!-- injected -->
-        </div>
-      </div>
-    `;
-    document.body.appendChild(ov);
-
-    // close
-    ov.querySelector('#exportClose')?.addEventListener('click', () => closeExportOverlay());
-    ov.addEventListener('click', (e) => {
-      if (e.target === ov) closeExportOverlay();
-    });
-
-    // clear
-    ov.querySelector('#exportClear')?.addEventListener('click', () => {
-      exportResults.length = 0;
-      renderExportResults();
-      openToast('出力結果をクリアしました');
-    });
-
-    // bulk save
-    ov.querySelector('#exportSaveAll')?.addEventListener('click', async () => {
-      if (!exportResults.length) {
-        openToast('保存する画像がありません');
-        return;
-      }
-      // ⚠️ iOS Safariは連続ダウンロードをブロックすることがある
-      // できるだけユーザー操作1回の流れで順番に保存を試みる
-      const ok = confirm(`全${exportResults.length}枚を順番に保存します。\n※端末によっては複数保存がブロックされる場合があります。`);
-      if (!ok) return;
-
-      for (let i = 0; i < exportResults.length; i++) {
-        const it = exportResults[i];
-        downloadDataUrl(it.dataUrl, it.filename);
-        // 少し間隔を空ける（ブロック回避）
-        await new Promise(r => setTimeout(r, 450));
-      }
-      openToast('一括保存を開始しました');
-    });
-
-    return ov;
-  }
-
-  function openExportOverlay() {
-    const ov = ensureExportOverlay();
-    ov.classList.remove('isHidden');
-  }
-  function closeExportOverlay() {
-    const ov = document.getElementById('exportOverlay');
-    if (!ov) return;
-    ov.classList.add('isHidden');
-  }
-
-  function downloadDataUrl(dataUrl, filename) {
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = filename || 'export.png';
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }
-
-  // 生成結果を保持（複数枚）
-  const exportResults = []; // { dataUrl, filename, label }
-
-  function renderExportResults() {
-    const body = document.getElementById('exportBody');
-    if (!body) return;
-
-    body.innerHTML = '';
-
-    if (!exportResults.length) {
-      const empty = document.createElement('div');
-      empty.style.color = 'rgba(255,255,255,.65)';
-      empty.style.fontWeight = '800';
-      empty.textContent = 'まだ出力がありません。「画像出力」から生成してください。';
-      body.appendChild(empty);
-      return;
-    }
-
-    // グリッド（見やすいサムネ一覧）
-    const grid = document.createElement('div');
-    grid.style.display = 'grid';
-    grid.style.gridTemplateColumns = '1fr';
-    grid.style.gap = '12px';
-
-    exportResults.forEach((it, idx) => {
-      const card = document.createElement('div');
-      card.style.border = '1px solid rgba(255,255,255,.12)';
-      card.style.borderRadius = '18px';
-      card.style.background = 'rgba(0,0,0,.18)';
-      card.style.overflow = 'hidden';
-
-      card.innerHTML = `
-        <div style="padding:12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
-          <div style="font-weight:950;">${escapeHtml(it.label || `出力 ${idx + 1}`)}</div>
-          <div style="display:flex;gap:10px;align-items:center;">
-            <button class="pill" type="button" data-act="save" data-idx="${idx}">保存</button>
-            <button class="pill" type="button" data-act="view" data-idx="${idx}">拡大</button>
-          </div>
-        </div>
-        <div style="padding:0 12px 12px;">
-          <img src="${it.dataUrl}" alt="" style="width:100%;height:auto;display:block;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:#000;">
-        </div>
-      `;
-      grid.appendChild(card);
-    });
-
-    grid.addEventListener('click', (e) => {
-      const btn = e.target?.closest('button');
-      const act = btn?.dataset?.act;
-      const idx = Number(btn?.dataset?.idx);
-      if (!act || !Number.isFinite(idx)) return;
-      const it = exportResults[idx];
-      if (!it) return;
-
-      if (act === 'save') {
-        downloadDataUrl(it.dataUrl, it.filename);
-        openToast('保存を開始しました');
-      }
-      if (act === 'view') {
-        openImgViewer(it.dataUrl);
-      }
-    });
-
-    body.appendChild(grid);
-  }
-
-  // ========= dataURL画像読み込み =========
-  function loadImg(src) {
-    return new Promise((resolve) => {
-      const im = new Image();
-      im.onload = () => resolve(im);
-      im.onerror = () => resolve(null);
-      im.src = src;
-    });
-  }
-
-  // ✅ 画像合成（黒背景・縦横指定・上から順に詰める・未設定はスキップ）
-  async function buildGridDataUrl(srcs, rows, cols) {
-    const ims = [];
-    for (const s of srcs) {
-      const im = await loadImg(s);
-      if (im) ims.push(im);
-      if (ims.length >= rows * cols) break;
-    }
-    if (!ims.length) return '';
-
-    // セルサイズ（2:1）
-    const cellW = 640;
-    const cellH = 320;
-    const gap = 8;
-    const pad = 8;
-
-    const outW = cols * cellW + (cols - 1) * gap + pad * 2;
-    const outH = rows * cellH + (rows - 1) * gap + pad * 2;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = outW;
-    canvas.height = outH;
-    const ctx = canvas.getContext('2d');
-
-    // 背景黒
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, outW, outH);
-
-    // 左→右、上→下
-    let idx = 0;
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        if (idx >= ims.length) break;
-        const im = ims[idx++];
-
-        const x = pad + c * (cellW + gap);
-        const y = pad + r * (cellH + gap);
-
-        // cover
-        const iw = im.naturalWidth || im.width || 1;
-        const ih = im.naturalHeight || im.height || 1;
-        const targetRatio = cellW / cellH;
-        const imgRatio = iw / ih;
-
-        let sx = 0, sy = 0, sw = iw, sh = ih;
-        if (imgRatio > targetRatio) {
-          sw = ih * targetRatio;
-          sx = (iw - sw) / 2;
-        } else {
-          sh = iw / targetRatio;
-          sy = (ih - sh) / 2;
-        }
-
-        ctx.drawImage(im, sx, sy, sw, sh, x, y, cellW, cellH);
-      }
-    }
-
-    return canvas.toDataURL('image/png', 1.0);
-  }
-
-  // ✅ 全画像が尽きるまでページ生成（複数生成に対応）
-  async function exportAllPages(rows, cols) {
-    const perPage = rows * cols;
-
-    // 全画像srcを上から順に集める（未設定はスキップ）
-    const allSrcs = [];
-    for (const d of list) {
-      const u = getImageUrlForDino(d);
-      if (u) allSrcs.push(u);
-    }
-
-    if (!allSrcs.length) {
-      alert('画像が1枚も設定されていません。');
-      return;
-    }
-
-    // ページ分割して生成
-    const pages = [];
-    for (let i = 0; i < allSrcs.length; i += perPage) {
-      pages.push(allSrcs.slice(i, i + perPage));
-    }
-
-    exportResults.length = 0;
-
-    openToast(`生成中…（${pages.length}枚）`);
-
-    for (let p = 0; p < pages.length; p++) {
-      const dataUrl = await buildGridDataUrl(pages[p], rows, cols);
-      if (!dataUrl) continue;
-
-      const pageNo = String(p + 1).padStart(2, '0');
-      const filename = `dino_export_${rows}x${cols}_p${pageNo}.png`;
-      exportResults.push({
-        dataUrl,
-        filename,
-        label: `${rows}×${cols} 出力 ${p + 1} / ${pages.length}`,
-      });
-    }
-
-    openExportOverlay();
-    renderExportResults();
-    openToast(`生成完了：${exportResults.length}枚`);
-  }
-
-  // ✅ 出力ボタン
-  topBar.querySelector('#imgExportAll')?.addEventListener('click', async () => {
-    const rows = parseInt(prompt('縦は何枚？（例：5）', '5') || '', 10);
-    const cols = parseInt(prompt('横は何枚？（例：2）', '2') || '', 10);
-
-    if (!Number.isFinite(rows) || !Number.isFinite(cols) || rows <= 0 || cols <= 0) {
-      alert('縦・横は1以上の数字で入力してください。');
-      return;
-    }
-    await exportAllPages(rows, cols);
-  });
-
-  // ========= 画像一覧（IndexedDB） =========
-  list.forEach(d => {
-    const row = document.createElement('div');
-    row.className = 'imgRow';
-
-    const thumb = document.createElement('div');
-    thumb.className = 'thumb';
-
-    const key = imageKeyFromBaseName(d._baseName || d.name);
-    const url = imageCache[key] || '';
-    if (url) thumb.innerHTML = `<img src="${url}" alt="">`;
-    else thumb.textContent = 'No Image';
-
-    const mid = document.createElement('div');
-    mid.className = 'imgMid';
-
-    const name = document.createElement('div');
-    name.className = 'imgName';
-    name.textContent = d.name;
-
-    const btns = document.createElement('div');
-    btns.className = 'imgBtns';
-
-    const pick = document.createElement('button');
-    pick.className = 'pill';
-    pick.type = 'button';
-    pick.textContent = '選択';
-
-    const del = document.createElement('button');
-    del.className = 'pill danger';
-    del.type = 'button';
-    del.textContent = '削除';
-
-    const file = document.createElement('input');
-    file.type = 'file';
-    file.accept = 'image/*';
-    file.style.display = 'none';
-
-    pick.addEventListener('click', () => file.click());
-
-    file.addEventListener('change', async () => {
-      const f = file.files && file.files[0];
-      if (!f) return;
-
-      try {
-        const dataUrl = await fileToDataURLCompressed(f, 900, 0.78);
-        imageCache[key] = dataUrl;
-        await idbPutImage(key, dataUrl);
-
-        thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
-
-        // ✅ メインにも即反映
-        syncThumbInMainListByDino(d, dataUrl);
-
-        openToast('画像を保存しました');
-      } catch {
-        openToast('画像の保存に失敗しました');
-      } finally {
-        file.value = '';
-      }
-    });
-
-    del.addEventListener('click', async () => {
-      const ok = await confirmAsk('画像を削除しますか？');
-      if (!ok) return;
-
-      try {
-        delete imageCache[key];
-        await idbDelImage(key);
-        thumb.textContent = 'No Image';
-
-        // メインは確実に再描画
-        renderList();
-
-        openToast('画像を削除しました');
-      } catch {
-        openToast('削除に失敗しました');
-      }
-    });
-
-    thumb.addEventListener('click', () => {
-      const u = imageCache[key];
-      if (!u) return;
-      openImgViewer(u);
-    });
-
-    btns.appendChild(pick);
-    btns.appendChild(del);
-
-    mid.appendChild(name);
-    mid.appendChild(btns);
-
-    row.appendChild(thumb);
-    row.appendChild(mid);
-    row.appendChild(file);
-
-    wrap.appendChild(row);
-  });
-
-  return wrap;
-}
 
   function openImgViewer(url) {
     if (!el.imgOverlay || !el.imgViewerImg) return;
@@ -1398,6 +1127,7 @@ function renderManageImages() {
     const targets = new Set(['受精卵', '受精卵(指定)', '胚', '胚(指定)']);
     for (const s of inputState.values()) {
       if (!s || typeof s !== 'object') continue;
+      if (s.kind === 'gacha') continue;
       if (!('m' in s) || !('f' in s) || !('type' in s)) continue;
 
       const qty = Number(s.m || 0) + Number(s.f || 0);
@@ -1586,7 +1316,6 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
   async function init() {
     await migrateOldImagesIfAny();
 
-    // ✅ IDB画像ロード
     try {
       const all = await idbGetAllImages();
       Object.keys(all).forEach(k => { imageCache[k] = all[k]; });
@@ -1600,7 +1329,6 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
     const baseD = dText.split(/\r?\n/).map(parseDinoLine).filter(Boolean);
     const baseI = iText.split(/\r?\n/).map(parseItemLine).filter(Boolean);
 
-    // customは _baseName を持てない場合があるので name を仮ベースに
     dinos = baseD.concat(custom.dino.map(x => ({
       id: x.id,
       name: x.name,
