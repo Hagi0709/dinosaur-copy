@@ -410,15 +410,11 @@ button{cursor:pointer}
 
 .imgRow{
   display:grid;
-
-  /* ✅ 目的のレイアウト：
-     左：サムネ固定
-     右：上に名前、下にボタン */
+  /* ✅ 画像(左) + 右側(名前→ボタン) の2列構成に戻す */
   grid-template-columns:140px minmax(0,1fr);
   grid-template-areas:
     "thumb name"
     "thumb btns";
-
   gap:10px 12px;
   align-items:center;
   padding:12px;
@@ -428,6 +424,29 @@ button{cursor:pointer}
   margin-bottom:10px;
 }
 
+.thumb{
+  grid-area:thumb;
+  width:140px;
+  aspect-ratio:2 / 1; /* 横2：縦1（横長） */
+  border-radius:14px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:rgba(255,255,255,.45);
+  font-weight:900;
+}
+
+/* ✅ 画像が枠いっぱいに表示されるように */
+.thumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+
 .imgName{
   grid-area:name;
   min-width:0;
@@ -435,27 +454,18 @@ button{cursor:pointer}
   font-size:16px;
   line-height:1.2;
 
-  /* ✅ iPhoneで「1文字縦積み」を回避しつつ、必要なら複数行OK */
+  /* ✅ iPhone幅でも縦積みになりにくくする */
   white-space:normal;
-  overflow:visible;
-
-  /* ✅ 日本語/英数字混在でも自然に折り返す */
+  word-break:normal;
   overflow-wrap:anywhere;
-  word-break:break-word;
-
-  /* ✅ 念のため横書き固定 */
-  writing-mode:horizontal-tb;
-  text-orientation:mixed;
 }
 
 .imgBtns{
   grid-area:btns;
-  min-width:0;
   display:flex;
   gap:10px;
-  justify-content:flex-start;
+  justify-content:flex-start; /* 名前の下に左寄せで並ぶ */
   align-items:center;
-  flex-wrap:wrap; /* ✅ 横幅が足りない時にボタンは下へ逃がす */
 }
 .pill{
   height:40px;
