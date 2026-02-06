@@ -6,99 +6,600 @@
   --mut:rgba(255,255,255,.60);
   --ok:#78ffb3;
   --danger:#b94a55;
-  --male:#57c7ff;
-  --female:#ff5fcf;
+
+  --male:#57c7ff;   /* 水色 */
+  --female:#ff5fcf; /* ピンク */
 }
 
 *{box-sizing:border-box}
+html,body{height:100%}
+
+/* ✅ iOS Safari の select が白巨大化するのを抑止 */
+html{color-scheme:dark}
+button,select,input,textarea{touch-action:manipulation; font:inherit}
+select{appearance:none; -webkit-appearance:none}
+
 body{
   margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
   background:var(--bg);
   color:var(--txt);
-  font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
   padding-bottom:120px;
 }
-
 button{cursor:pointer}
 
-.top{position:sticky;top:0;background:#0b0f14;padding:10px;border-bottom:1px solid var(--stroke)}
-.row{display:flex;gap:8px;align-items:center}
-.search{flex:1;display:flex;gap:6px;background:#1a1f27;border-radius:14px;padding:6px}
-.search input{flex:1;background:transparent;border:0;color:#fff}
+.top{
+  position:sticky;
+  top:0;
+  z-index:10;
+  background:rgba(11,15,20,.95);
+  backdrop-filter:blur(14px);
+  padding:10px;
+  padding-top:calc(10px + env(safe-area-inset-top));
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
 
-.copy,.ghost,.pill{
+.row{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+.search{
+  flex:1;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  height:36px;
+  padding:0 10px;
   border-radius:14px;
-  padding:8px 14px;
-  border:1px solid var(--stroke);
-  background:#1a1f27;
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.12);
+  min-width:0;
+}
+.search input{
+  flex:1;
+  border:0;
+  outline:none;
+  background:transparent;
+  color:var(--txt);
+  font-size:14px;
+  min-width:0;
+}
+.qClear{
+  width:28px;height:28px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
   color:#fff;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  line-height:1;
+  font-size:18px;
+}
+
+.delivery{
+  height:36px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-size:13px;
+  padding:0 34px 0 10px;
+  position:relative;
+  background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
+                   linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat:no-repeat;
+}
+.copy{
+  height:36px;
+  padding:0 12px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-weight:900;
+}
+.total{
+  margin-left:auto;
+  font-size:14px;
+  color:var(--ok);
+  font-weight:900;
+  white-space:nowrap;
+}
+
+.out{
+  width:100%;
+  margin-top:8px;
+  height:120px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.22);
+  color:#fff;
+  padding:10px;
+  font-size:12px;
+  line-height:1.45;
+}
+
+.subrow{
+  margin-top:10px;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.ghost{
+  height:34px;
+  padding:0 12px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  color:#fff;
+  font-weight:800;
+}
+
+.tabs{
+  flex:1;
+  display:flex;
+  gap:10px;
+}
+.tab{
+  flex:1;
+  height:44px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);
+  color:#fff;
+  font-weight:900;
+}
+.tab.isActive{
+  background:rgba(255,255,255,.10);
+  border-color:rgba(255,255,255,.18);
 }
 
 .list{padding:12px}
 
+/* ================= Cards ================= */
+
 .card{
-  background:#141a22;
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+  border:1px solid rgba(255,255,255,.10);
   border-radius:18px;
-  padding:12px;
   margin-bottom:10px;
+  overflow:hidden;
+}
+.cardInner{padding:12px}
+
+/* Header（ここだけが折りたたみタップ領域） */
+.cardHead{
+  position:relative;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 140px;
+  gap:10px;
+  align-items:start;
+}
+.cardToggle{
+  position:absolute;
+  inset:-12px -12px auto -12px;
+  height:calc(100% + 24px);
+  border:0;
+  background:transparent;
+  padding:0;
+  margin:0;
+  cursor:pointer;
 }
 
-.cardHead{display:flex;justify-content:space-between}
-.nameWrap{display:flex;flex-direction:column;gap:6px}
-
+.nameWrap{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding-right:6px;
+}
+.name{
+  font-weight:950;
+  letter-spacing:.2px;
+  font-size:18px;
+  line-height:1.1;
+  word-break:break-word;
+}
+.miniThumb{
+  width:112px;
+  aspect-ratio:2 / 1;
+  border-radius:12px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.05);
+}
 .miniThumb img{
-  width:120px;
-  aspect-ratio:2/1;
+  width:100%;
+  height:100%;
   object-fit:cover;
-  border-radius:10px;
-  border:1px solid var(--stroke);
+  display:block;
 }
 
-.controls{display:flex;gap:8px;margin-top:10px}
+.right{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  align-items:stretch;
+  justify-self:end;
+  z-index:1;
+}
+.type{
+  height:44px;
+  width:100%;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-size:14px;
+  font-weight:900;
+  padding:0 34px 0 12px;
+  background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
+                   linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat:no-repeat;
+}
+.unit{
+  font-size:12px;
+  color:var(--mut);
+  white-space:nowrap;
+  text-align:right;
+}
 
+/* Controls */
+.controls{
+  margin-top:10px;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:nowrap;
+  overflow:visible;
+}
+
+/* stepper */
 .stepper{
+  flex:1;
+  min-width:0;
   display:flex;
   align-items:center;
-  gap:6px;
-  padding:6px;
-  border-radius:14px;
-  border:1px solid var(--stroke);
+  gap:8px;
+  padding:8px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.04);
 }
-
-.stepper.male{border-color:var(--male)}
-.stepper.female{border-color:var(--female)}
+.stepper.male{
+  border-color:color-mix(in srgb, var(--male) 55%, rgba(255,255,255,.12));
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--male) 30%, transparent) inset;
+}
+.stepper.female{
+  border-color:color-mix(in srgb, var(--female) 55%, rgba(255,255,255,.12));
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--female) 30%, transparent) inset;
+}
 
 .btn{
-  width:32px;
+  width:44px;
   height:32px;
-  border-radius:10px;
-  border:1px solid var(--stroke);
-  background:#222;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.10);
   color:#fff;
+  font-size:18px;
+  font-weight:950;
+  line-height:1;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.val{
+  flex:1;
+  text-align:center;
+  font-weight:950;
+  font-size:16px;
+  min-width:28px;
 }
 
-.val{min-width:24px;text-align:center;font-weight:900}
+.dupBtn{
+  flex:0 0 auto;
+  height:40px;
+  padding:0 14px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.10);
+  color:#fff;
+  font-weight:950;
+  white-space:nowrap;
+}
+
+.card.isCollapsed .controls{display:none}
+
+/* ================= Modal ================= */
 
 .modalOverlay{
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.6);
+  z-index:50;
+  background:rgba(0,0,0,.55);
+  backdrop-filter:blur(8px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:14px;
+}
+.modalOverlay.isHidden{display:none}
+
+.modal{
+  width:min(720px, 100%);
+  max-height:min(86vh, 900px);
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:22px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.modalHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:14px 14px 10px;
+}
+.modalTitle{font-weight:950;font-size:18px}
+.iconBtn{
+  width:44px;height:44px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-size:22px;
+  line-height:1;
   display:flex;
   align-items:center;
   justify-content:center;
 }
 
-.modalOverlay.isHidden{display:none}
-
-.modal,.confirm,.edit{
-  background:#141a22;
-  border-radius:18px;
-  padding:14px;
-  width:min(92vw,520px);
+.modalTabs{
+  display:flex;
+  gap:10px;
+  padding:0 14px 12px;
+}
+.mTab{
+  flex:1;
+  height:40px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);
+  color:#fff;
+  font-weight:900;
+}
+.mTab.isActive{
+  background:rgba(255,255,255,.10);
+  border-color:rgba(255,255,255,.18);
 }
 
-.imgViewer img{
-  max-width:90vw;
-  max-height:80vh;
+.modalBody{
+  padding:14px;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+/* Manage rows */
+.mRow{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  padding:10px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.18);
+  margin-bottom:10px;
+}
+.mName{
+  flex:1;
+  font-weight:900;
+  font-size:16px;
+  line-height:1.2;
+  word-break:break-word;
+}
+.sBtn{
+  width:44px;height:38px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-weight:950;
+}
+.sBtn.danger{
+  background:rgba(185,74,85,.22);
+  border-color:rgba(185,74,85,.35);
+}
+
+/* Prices */
+.priceGrid{
+  display:grid;
+  grid-template-columns:1fr 140px;
+  gap:10px;
+}
+.pKey{
+  padding:12px 10px;
   border-radius:16px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(0,0,0,.16);
+  font-weight:900;
+}
+.pVal input{
+  width:100%;
+  padding:12px 10px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.18);
+  color:#fff;
+  outline:none;
+  text-align:right;
+  font-weight:950;
+}
+
+/* ✅ Edit/Add（入力欄だけ囲む） */
+.edit{
+  width:min(560px, 100%);
+  max-height:min(86vh, 900px);
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:22px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.editHead{
+  padding:14px 14px 8px;
+}
+.editTitle{
+  font-weight:950;
+  font-size:18px;
+}
+.editBody{
+  padding:14px;
+  overflow:auto;
+}
+.editForm{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.editLabel{
+  font-weight:900;
+  color:rgba(255,255,255,.78);
+  margin:2px 2px 0;
+}
+.editInput, .editSelect{
+  width:100%;
+  height:46px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.18);
+  color:#fff;
+  outline:none;
+  padding:0 12px;
+  font-weight:900;
+}
+.editSelect{
+  padding-right:34px;
+  background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
+                   linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat:no-repeat;
+}
+.editBtns{
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+  margin-top:4px;
+}
+
+/* Confirm */
+.confirm{
+  width:min(520px, 96vw);
+  border-radius:22px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.14);
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+  padding:14px;
+}
+.confirmTitle{font-weight:950;font-size:18px;margin-bottom:6px}
+.confirmText{color:rgba(255,255,255,.85);font-weight:800;margin-bottom:10px}
+.confirmBtns{display:flex;gap:10px;justify-content:flex-end}
+
+/* ================= Image Manager ================= */
+
+.imgRow{
+  display:grid;
+  grid-template-columns:140px minmax(0,1fr);
+  gap:10px 12px;
+  align-items:center;
+  padding:12px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.18);
+  margin-bottom:10px;
+}
+.thumb{
+  width:140px;
+  aspect-ratio:2 / 1;
+  border-radius:14px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:rgba(255,255,255,.45);
+  font-weight:900;
+}
+.thumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.imgMid{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.imgName{
+  min-width:0;
+  font-weight:950;
+  font-size:16px;
+  line-height:1.2;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.imgBtns{
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+.pill{
+  height:40px;
+  padding:0 14px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.10);
+  color:#fff;
+  font-weight:950;
+  white-space:nowrap;
+}
+.pill.danger{
+  border-color:rgba(185,74,85,.35);
+  background:rgba(185,74,85,.22);
+}
+
+/* Image viewer */
+.imgViewer{
+  width:min(960px, 96vw);
+  max-height:min(86vh, 900px);
+  border-radius:22px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.55);
+  display:flex;
+  flex-direction:column;
+}
+.imgClose{align-self:flex-end;margin:12px}
+#imgViewerImg{
+  width:100%;
+  height:auto;
+  display:block;
+  padding:12px;
+  border-radius:18px;
 }
