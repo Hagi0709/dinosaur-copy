@@ -7,8 +7,11 @@
   --ok:#78ffb3;
   --danger:#b94a55;
 
-  --male:#57c7ff;   /* 水色 */
-  --female:#ff5fcf; /* ピンク */
+  --male:#57c7ff;
+  --female:#ff5fcf;
+
+  /* ✅ 固定ヘッダー高さ（JS不要。CSSで確実に下げる） */
+  --topPad: 246px; /* 初期値（画面幅で後半で調整） */
 }
 
 *{box-sizing:border-box}
@@ -24,20 +27,50 @@ body{
   font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
   background:var(--bg);
   color:var(--txt);
+
+  /* ✅ fixed header の分だけ押し下げる */
+  padding-top: calc(var(--topPad) + env(safe-area-inset-top));
   padding-bottom:120px;
 }
 button{cursor:pointer}
 
+/* =========================
+   ✅ Header 固定（stickyではなくfixedで安定化）
+   stickyが壊れる原因（親のoverflow/transform等）を回避する
+========================= */
 .top{
-  position:sticky;
+  position:fixed;
   top:0;
-  z-index:10;
+  left:0;
+  right:0;
+  z-index:999; /* これより上はモーダルだけ */
+
   background:rgba(11,15,20,.95);
   backdrop-filter:blur(14px);
+
   padding:10px;
   padding-top:calc(10px + env(safe-area-inset-top));
   border-bottom:1px solid rgba(255,255,255,.06);
+
+  /* ✅ iOSで固定ヘッダーが微妙にガタつくのを抑える */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
 }
+
+/* ✅ ヘッダー内の高さは内容で決まるので、
+   代表的なケースで topPad を分岐させてズレを吸収 */
+@media (max-width: 420px){
+  :root{ --topPad: 248px; }
+}
+@media (max-width: 360px){
+  :root{ --topPad: 260px; }
+}
+
+/* ✅ listの上余白はbody側で持つので不要 */
+.list{padding:12px}
+
+/* ================= Top bar ================= */
 
 .row{
   display:flex;
@@ -161,8 +194,6 @@ button{cursor:pointer}
   border-color:rgba(255,255,255,.18);
 }
 
-.list{padding:12px}
-
 /* ================= Cards ================= */
 
 .card{
@@ -174,7 +205,6 @@ button{cursor:pointer}
 }
 .cardInner{padding:12px}
 
-/* Header（ここだけが折りたたみタップ領域） */
 .cardHead{
   position:relative;
   display:grid;
@@ -253,7 +283,6 @@ button{cursor:pointer}
   text-align:right;
 }
 
-/* Controls */
 .controls{
   margin-top:10px;
   display:flex;
@@ -263,7 +292,6 @@ button{cursor:pointer}
   overflow:visible;
 }
 
-/* stepper */
 .stepper{
   flex:1;
   min-width:0;
@@ -325,7 +353,7 @@ button{cursor:pointer}
 .modalOverlay{
   position:fixed;
   inset:0;
-  z-index:50;
+  z-index:2000;
   background:rgba(0,0,0,.55);
   backdrop-filter:blur(8px);
   display:flex;
@@ -446,7 +474,7 @@ button{cursor:pointer}
   font-weight:950;
 }
 
-/* ✅ Edit/Add（入力欄だけ囲む） */
+/* ✅ Edit/Add */
 .edit{
   width:min(560px, 100%);
   max-height:min(86vh, 900px);
@@ -602,46 +630,4 @@ button{cursor:pointer}
   display:block;
   padding:12px;
   border-radius:18px;
-}
-
-/* ================= Room ================= */
-
-.roomSection{
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.16);
-  border-radius:18px;
-  padding:12px;
-  margin-bottom:12px;
-}
-.roomTitle{
-  font-weight:950;
-  margin-bottom:10px;
-}
-.roomRow{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  padding:10px;
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.18);
-  margin-bottom:10px;
-}
-.roomName{
-  font-weight:950;
-  min-width:72px;
-}
-.roomPw{
-  flex:1;
-  min-width:0;
-  color:rgba(255,255,255,.85);
-  font-weight:900;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.roomBtns{
-  display:flex;
-  gap:10px;
-  align-items:center;
 }
