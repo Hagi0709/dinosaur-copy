@@ -9,7 +9,6 @@
   const toHira = (s) => (s || '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
   const norm = (s) => toHira(String(s || '').toLowerCase()).replace(/\s+/g, '');
 
-  // ✅ 安定ID生成（同じ名前 → 同じID）
   function stableHash(str) {
     let h = 5381;
     for (let i = 0; i < str.length; i++) h = ((h << 5) + h) + str.charCodeAt(i);
@@ -19,7 +18,6 @@
     const key = norm(name);
     return `${prefix}_${stableHash(key)}`;
   }
-
   function escapeHtml(s) {
     return String(s || '')
       .replaceAll('&', '&amp;')
@@ -40,12 +38,12 @@
     PRICES: 'prices_v1',
     DELIVERY: 'delivery_v1',
 
-    // 旧：画像(localStorage) → 初回にIndexedDBへ移行して削除
+    // 旧：画像(localStorage)
     DINO_IMAGES_OLD: 'dino_images_v1',
 
     DINO_OVERRIDE: 'dino_override_v1',
 
-    // ✅ ROOM
+    // ROOM
     ROOM_ENTRY_PW: 'room_entry_pw_v1',
     ROOM_PW: 'room_pw_v1',
   };
@@ -129,24 +127,29 @@
   });
 
   /* ========= IndexedDB (images) ========= */
+  // ✅ 画像保存キーを「恐竜元名（dinos.txtの名前）由来」に固定する
+  //    → app更新/編集/並び替えでも消えない
   const IDB = {
-    DB_NAME: 'dino_list_db_v2',
+    DB_NAME: 'dino_list_db_v3',
     DB_VER: 1,
-    STORE_IMAGES: 'images', // key: dinoId, value: dataUrl
+    STORE_IMAGES: 'images', // key: imageKey, value: dataUrl
   };
 
+  let dbPromise = null;
   function openDb() {
-    return new Promise((resolve, reject) => {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
       const req = indexedDB.open(IDB.DB_NAME, IDB.DB_VER);
       req.onupgradeneeded = () => {
         const db = req.result;
         if (!db.objectStoreNames.contains(IDB.STORE_IMAGES)) {
-          db.createObjectStore(IDB.STORE_IMAGES); // key = id, value = dataURL
+          db.createObjectStore(IDB.STORE_IMAGES);
         }
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });
+    return dbPromise;
   }
 
   async function idbGetAllImages() {
@@ -166,27 +169,27 @@
     });
   }
 
-  async function idbPutImage(id, dataUrl) {
+  async function idbPutImage(key, dataUrl) {
     const db = await openDb();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(IDB.STORE_IMAGES, 'readwrite');
       tx.oncomplete = () => resolve(true);
       tx.onerror = () => reject(tx.error);
-      tx.objectStore(IDB.STORE_IMAGES).put(dataUrl, id);
+      tx.objectStore(IDB.STORE_IMAGES).put(dataUrl, key);
     });
   }
 
-  async function idbDelImage(id) {
+  async function idbDelImage(key) {
     const db = await openDb();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(IDB.STORE_IMAGES, 'readwrite');
       tx.oncomplete = () => resolve(true);
       tx.onerror = () => reject(tx.error);
-      tx.objectStore(IDB.STORE_IMAGES).delete(id);
+      tx.objectStore(IDB.STORE_IMAGES).delete(key);
     });
   }
 
-  // ✅ 旧 localStorage 画像をIndexedDBへ移行（1回だけ）
+  // ✅ 旧 localStorage の画像を IDBへ移行（1回だけ）
   async function migrateOldImagesIfAny() {
     const old = loadJSON(LS.DINO_IMAGES_OLD, null);
     if (!old || typeof old !== 'object') return;
@@ -197,17 +200,21 @@
       return;
     }
 
+    // 旧形式は dinoId → dataURL なので、移行先キーが分からない
+    // → ここでは「旧dinoId」をそのまま key として格納（互換枠）
+    //    ※新形式の key と別物なので、旧データは“使えない可能性がある”が
+    //      localStorage容量爆死の原因を消すのが目的
     try {
-      for (const id of keys) {
-        const v = old[id];
+      for (const k of keys) {
+        const v = old[k];
         if (typeof v === 'string' && v.startsWith('data:')) {
-          await idbPutImage(id, v);
+          await idbPutImage(`legacy_${k}`, v);
         }
       }
       localStorage.removeItem(LS.DINO_IMAGES_OLD);
-      openToast('画像データを移行しました');
+      openToast('旧画像データを退避しました');
     } catch {
-      openToast('画像移行に失敗しました');
+      openToast('旧画像の移行に失敗しました');
     }
   }
 
@@ -224,9 +231,14 @@
   const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
 
   /* ========= images ========= */
-  // ✅ IndexedDBから起動時に読み込む（メモリ上のキャッシュ）
-  const dinoImages = {}; // { [dinoId]: dataURL }
+  // ✅ IDBロード後のキャッシュ（keyは imageKey）
+  const imageCache = {}; // { [imageKey]: dataURL }
   const dinoOverride = Object.assign({}, loadJSON(LS.DINO_OVERRIDE, {}));
+
+  // ✅ 画像キー：dinos.txtの元名（nameRaw）から作る
+  function imageKeyFromBaseName(baseName) {
+    return `img_${stableHash(norm(baseName))}`;
+  }
 
   /* ========= DOM ========= */
   const el = {
@@ -249,18 +261,15 @@
     mTabPrices: $('#mTabPrices'),
     mTabImages: $('#mTabImages'),
 
-    // ✅ ルーム
     openRoom: $('#openRoom'),
     roomOverlay: $('#roomOverlay'),
     roomBody: $('#roomBody'),
     closeRoom: $('#closeRoom'),
 
-    // 追加/編集
     editOverlay: $('#editOverlay'),
     editBody: $('#editBody'),
     editTitle: $('#editTitle'),
 
-    // 画像ビューア
     imgOverlay: $('#imgOverlay'),
     imgClose: $('#imgClose'),
     imgViewerImg: $('#imgViewerImg'),
@@ -269,7 +278,6 @@
   /* ========= sanity (reset) ========= */
   if (new URL(location.href).searchParams.get('reset') === '1') {
     Object.values(LS).forEach(k => localStorage.removeItem(k));
-    // IndexedDBも削除
     indexedDB.deleteDatabase(IDB.DB_NAME);
     location.replace(location.pathname);
     return;
@@ -310,18 +318,20 @@
     if (!line || line.startsWith('#')) return null;
     line = line.replace(/^・/, '').trim();
     if (!line) return null;
+
     const [nameRaw, defRaw] = line.split('|').map(s => (s || '').trim());
     if (!nameRaw) return null;
     const defType = (defRaw && prices[defRaw] != null) ? defRaw : '受精卵';
 
     const id = stableId('d', nameRaw);
     const ov = dinoOverride[id];
+
     return {
       id,
       name: ov?.name || nameRaw,
       defType: ov?.defType || defType,
       kind: 'dino',
-      _baseName: nameRaw,
+      _baseName: nameRaw, // ✅ 画像キーの元
     };
   }
 
@@ -367,7 +377,7 @@
     return inputState.get(key);
   }
 
-  // ✅ 幼体/成体には(指定)を付けない（存在しないoption対策）
+  // ✅ 幼体/成体には(指定)を付けない
   function autoSpecify(s) {
     const m = Number(s.m || 0), f = Number(s.f || 0);
     const base = String(s.type || '受精卵').replace('(指定)', '');
@@ -487,6 +497,28 @@ ${lines.join('\n')}
     });
   }
 
+  /* ========= image DOM sync ========= */
+  function getImageUrlForDino(d) {
+    const k = imageKeyFromBaseName(d._baseName || d.name);
+    return imageCache[k] || '';
+  }
+  function syncThumbInMainListByDino(d, dataUrl) {
+    // メインの恐竜カードのサムネを“その場で”差し替える（再レンダリング依存を捨てる）
+    const cards = $$(`[data-kind="dino"][data-did="${CSS.escape(d.id)}"]`, el.list);
+    cards.forEach(card => {
+      let wrap = $('.miniThumb', card);
+      if (!wrap) {
+        const nw = document.createElement('div');
+        nw.className = 'miniThumb';
+        nw.innerHTML = `<img alt="">`;
+        $('.nameWrap', card)?.appendChild(nw);
+        wrap = nw;
+      }
+      const im = $('img', wrap);
+      if (im) im.src = dataUrl;
+    });
+  }
+
   /* ========= cards ========= */
   function buildDinoCard(d, keyOverride = null) {
     const key = keyOverride || d.id;
@@ -498,8 +530,9 @@ ${lines.join('\n')}
     card.dataset.key = key;
     card.dataset.name = d.name;
     card.dataset.kind = 'dino';
+    card.dataset.did = d.id;
 
-    const imgUrl = dinoImages[d.id];
+    const imgUrl = getImageUrlForDino(d);
 
     card.innerHTML = `
       <div class="cardInner">
@@ -899,7 +932,7 @@ ${lines.join('\n')}
 
         const cIdx = custom.dino.findIndex(x => x.id === id);
         if (cIdx >= 0) {
-          custom.dino[cIdx] = { id, name: newName, defType: newDef };
+          custom.dino[cIdx] = { id, name: newName, defType: newDef, _baseName: custom.dino[cIdx]._baseName || newName };
           saveJSON(LS.DINO_CUSTOM, custom.dino);
         } else {
           dinoOverride[id] = { name: newName, defType: newDef };
@@ -917,8 +950,6 @@ ${lines.join('\n')}
   }
 
   /* ========= Images tab (IndexedDB) ========= */
-
-  // ✅ 画像は圧縮して保存（容量＆描画負荷対策）
   async function fileToDataURLCompressed(file, maxW = 900, quality = 0.78) {
     const img = await new Promise((resolve, reject) => {
       const r = new FileReader();
@@ -955,9 +986,11 @@ ${lines.join('\n')}
       const row = document.createElement('div');
       row.className = 'imgRow';
 
+      const k = imageKeyFromBaseName(d._baseName || d.name);
+      const url = imageCache[k];
+
       const thumb = document.createElement('div');
       thumb.className = 'thumb';
-      const url = dinoImages[d.id];
       if (url) thumb.innerHTML = `<img src="${url}" alt="">`;
       else thumb.textContent = 'No Image';
 
@@ -992,14 +1025,19 @@ ${lines.join('\n')}
         const f = file.files && file.files[0];
         if (!f) return;
 
-        const dataUrl = await fileToDataURLCompressed(f, 900, 0.78);
-
         try {
-          await idbPutImage(d.id, dataUrl);
-          dinoImages[d.id] = dataUrl; // メモリキャッシュ更新
+          const dataUrl = await fileToDataURLCompressed(f, 900, 0.78);
+
+          await idbPutImage(k, dataUrl);
+          imageCache[k] = dataUrl;
+
+          // ✅ 管理画面即反映
           thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
+
+          // ✅ メイン画面即反映（再描画頼みをやめる）
+          syncThumbInMainListByDino(d, dataUrl);
+
           openToast('画像を保存しました');
-          renderList(); // ✅ メイン即反映
         } catch {
           openToast('画像保存に失敗しました');
         }
@@ -1009,18 +1047,25 @@ ${lines.join('\n')}
         const ok = await confirmAsk('画像を削除しますか？');
         if (!ok) return;
         try {
-          await idbDelImage(d.id);
-          delete dinoImages[d.id];
+          await idbDelImage(k);
+          delete imageCache[k];
           thumb.textContent = 'No Image';
+
+          // メイン側も消す
+          const cards = $$(`[data-kind="dino"][data-did="${CSS.escape(d.id)}"]`, el.list);
+          cards.forEach(card => {
+            const t = $('.miniThumb', card);
+            if (t) t.remove();
+          });
+
           openToast('画像を削除しました');
-          renderList();
         } catch {
           openToast('画像削除に失敗しました');
         }
       });
 
       thumb.addEventListener('click', () => {
-        const u = dinoImages[d.id];
+        const u = imageCache[k];
         if (!u) return;
         openImgViewer(u);
       });
@@ -1057,8 +1102,6 @@ ${lines.join('\n')}
   });
 
   /* ========= ROOM ========= */
-
-  // ✅ 受精卵or胚が1つでも選択されているか（(指定)含む）
   function hasEggOrEmbryoSelected() {
     const targets = new Set(['受精卵', '受精卵(指定)', '胚', '胚(指定)']);
     for (const s of inputState.values()) {
@@ -1249,13 +1292,12 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
 
   /* ========= init ========= */
   async function init() {
-    // ✅ 旧localStorage画像があればIDBへ移行
     await migrateOldImagesIfAny();
 
-    // ✅ IDB画像をメモリへロード
+    // ✅ IDB画像ロード
     try {
       const all = await idbGetAllImages();
-      Object.keys(all).forEach(k => { dinoImages[k] = all[k]; });
+      Object.keys(all).forEach(k => { imageCache[k] = all[k]; });
     } catch {
       openToast('画像DBの読み込みに失敗しました');
     }
@@ -1266,7 +1308,15 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
     const baseD = dText.split(/\r?\n/).map(parseDinoLine).filter(Boolean);
     const baseI = iText.split(/\r?\n/).map(parseItemLine).filter(Boolean);
 
-    dinos = baseD.concat(custom.dino.map(x => ({ id: x.id, name: x.name, defType: x.defType, kind: 'dino' })));
+    // customは _baseName を持てない場合があるので name を仮ベースに
+    dinos = baseD.concat(custom.dino.map(x => ({
+      id: x.id,
+      name: x.name,
+      defType: x.defType,
+      kind: 'dino',
+      _baseName: x._baseName || x.name,
+    })));
+
     items = baseI.concat(custom.item.map(x => ({ id: x.id, name: x.name, unit: x.unit, price: x.price, kind: 'item' })));
 
     ensureOrderList(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
