@@ -31,10 +31,8 @@
   const circled = (n) => {
     const x = Number(n);
     if (!Number.isFinite(x) || x <= 0) return String(n);
-    // ①..⑳ (1..20)
-    if (x >= 1 && x <= 20) return String.fromCharCode(0x2460 + (x - 1));
-    // ㉑..㉟ (21..35) ※必要なら
-    if (x >= 21 && x <= 35) return String.fromCharCode(0x3251 + (x - 21));
+    if (x >= 1 && x <= 20) return String.fromCharCode(0x2460 + (x - 1));     // ①..⑳
+    if (x >= 21 && x <= 35) return String.fromCharCode(0x3251 + (x - 21));   // ㉑..㉟
     return String(n);
   };
 
@@ -49,16 +47,12 @@
     PRICES: 'prices_v1',
     DELIVERY: 'delivery_v1',
 
-    // 旧：画像(localStorage)
     DINO_IMAGES_OLD: 'dino_images_v1',
-
     DINO_OVERRIDE: 'dino_override_v1',
 
-    // ROOM
     ROOM_ENTRY_PW: 'room_entry_pw_v1',
     ROOM_PW: 'room_pw_v1',
 
-    // ✅ 特殊入力設定（ガチャ等）
     SPECIAL_CFG: 'special_cfg_v1',
   };
 
@@ -141,11 +135,10 @@
   });
 
   /* ========= IndexedDB (images) ========= */
-  // ✅ 画像保存キーを「恐竜元名（dinos.txtの名前）由来」に固定する
   const IDB = {
     DB_NAME: 'dino_list_db_v3',
     DB_VER: 1,
-    STORE_IMAGES: 'images', // key: imageKey, value: dataUrl
+    STORE_IMAGES: 'images',
   };
 
   let dbPromise = null;
@@ -202,7 +195,6 @@
     });
   }
 
-  // ✅ 旧 localStorage の画像を IDBへ退避（1回だけ）
   async function migrateOldImagesIfAny() {
     const old = loadJSON(LS.DINO_IMAGES_OLD, null);
     if (!old || typeof old !== 'object') return;
@@ -239,16 +231,12 @@
   const typeList = Object.keys(defaultPrices);
   const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
 
-  /* ========= special cfg (ガチャ等) ========= */
-  // cfg: { enabled: true, max: 16, unit: 300, all: 3000 }
+  /* ========= special cfg ========= */
   const specialCfg = Object.assign({}, loadJSON(LS.SPECIAL_CFG, {}));
 
   function getSpecialCfgForDino(d) {
-    // ✅ 既存設定優先
     if (specialCfg[d.id]?.enabled) return specialCfg[d.id];
 
-    // ✅ とりあえず「ガチャ」だけデフォルトで特殊化
-    // （dinos.txt が「ガチャ」または表示名が「ガチャ」の想定）
     const base = String(d._baseName || d.name || '').trim();
     const name = String(d.name || '').trim();
     if (base === 'ガチャ' || name === 'ガチャ') {
@@ -258,7 +246,7 @@
   }
 
   /* ========= images ========= */
-  const imageCache = {}; // { [imageKey]: dataURL }
+  const imageCache = {};
   const dinoOverride = Object.assign({}, loadJSON(LS.DINO_OVERRIDE, {}));
 
   function imageKeyFromBaseName(baseName) {
@@ -356,7 +344,7 @@
       name: ov?.name || nameRaw,
       defType: ov?.defType || defType,
       kind: 'dino',
-      _baseName: nameRaw, // ✅ 画像キーの元
+      _baseName: nameRaw,
     };
   }
 
@@ -398,9 +386,8 @@
       if (spCfg?.enabled) {
         inputState.set(key, {
           mode: 'special',
-          picks: [],      // [1,2,3,3,...]
-          all: false,     // 全種
-          // keep legacy fields (for safety)
+          picks: [],
+          all: false,
           type: defType || '受精卵',
           m: 0,
           f: 0,
@@ -411,12 +398,12 @@
     }
     return inputState.get(key);
   }
+
   function ensureItemState(key) {
     if (!inputState.has(key)) inputState.set(key, { qty: 0 });
     return inputState.get(key);
   }
 
-  // ✅ 幼体/成体には(指定)を付けない
   function autoSpecify(s) {
     const m = Number(s.m || 0), f = Number(s.f || 0);
     const base = String(s.type || '受精卵').replace('(指定)', '');
@@ -436,6 +423,7 @@
     const k = imageKeyFromBaseName(d._baseName || d.name);
     return imageCache[k] || '';
   }
+
   function syncThumbInMainListByDino(d, dataUrl) {
     const cards = $$(`[data-kind="dino"][data-did="${CSS.escape(d.id)}"]`, el.list);
     cards.forEach(card => {
@@ -455,7 +443,6 @@
         else im.removeAttribute('src');
       }
       if (!dataUrl) {
-        // remove thumb container if empty
         wrap.remove();
       }
     });
@@ -479,7 +466,6 @@
         const s = inputState.get(k);
         if (!s) continue;
 
-        // ✅ SPECIAL（ガチャ）
         if (sp?.enabled && s.mode === 'special') {
           const unitPrice = Number(sp.unit || 0);
           const allPrice = Number(sp.all || 0);
@@ -506,7 +492,6 @@
           continue;
         }
 
-        // ✅ NORMAL（従来）
         const type = s.type || d.defType || '受精卵';
         const m = Number(s.m || 0);
         const f = Number(s.f || 0);
@@ -575,13 +560,10 @@ ${lines.join('\n')}
     if (kind === 'dino') {
       const s = inputState.get(key);
       if (!s) return 0;
-
-      // ✅ special qty
       if (s.mode === 'special') {
         if (s.all) return 1;
         return Array.isArray(s.picks) ? s.picks.length : 0;
       }
-
       return (Number(s.m || 0) + Number(s.f || 0));
     } else {
       const s = inputState.get(key);
@@ -589,39 +571,21 @@ ${lines.join('\n')}
     }
   }
 
-function applyCollapseAndSearch() {
-  const q = norm(el.q.value);
+  function applyCollapseAndSearch() {
+    const q = norm(el.q.value);
 
-  $$('[data-card="1"]', el.list).forEach(card => {
-    const name = card.dataset.name || '';
-    const show = !q || norm(name).includes(q);
-    card.style.display = show ? '' : 'none';
+    $$('[data-card="1"]', el.list).forEach(card => {
+      const name = card.dataset.name || '';
+      const show = !q || norm(name).includes(q);
+      card.style.display = show ? '' : 'none';
 
-    const key = card.dataset.key;
-    const kind = card.dataset.kind;
-    const qty = getQtyForCard(key, kind);
-
-    // ✅ 触った直後は勝手に閉じない（iOS select対策）
-    const fu = Number(card.dataset.freezeUntil || 0);
-    if (fu && Date.now() < fu) return;
-
-    // ✅ 検索中は「ヒットしないものは閉じる」
-    if (q) {
-      card.classList.toggle('isCollapsed', !show);
-      return;
-    }
-
-    // ✅ 操作中（フォーカスがカード内）なら勝手に閉じない
-    const ae = document.activeElement;
-    if (ae && card.contains(ae)) return;
-
-    // ✅ 手動トグル優先
-    if (card.dataset.userToggled === '1') return;
-
-    // ✅ 触ってないカードだけ「数量0なら自動で閉じる」
-    card.classList.toggle('isCollapsed', qty === 0);
-  });
-}
+      const key = card.dataset.key;
+      const kind = card.dataset.kind;
+      const qty = getQtyForCard(key, kind);
+      const collapsed = q ? !show : (qty === 0);
+      card.classList.toggle('isCollapsed', collapsed);
+    });
+  }
 
   /* ========= cards ========= */
   function buildDinoCard(d, keyOverride = null) {
@@ -639,7 +603,6 @@ function applyCollapseAndSearch() {
 
     const imgUrl = getImageUrlForDino(d);
 
-    // ✅ special UI
     if (sp?.enabled && s.mode === 'special') {
       const maxN = Math.max(1, Math.min(60, Number(sp.max || 16)));
       const unitPrice = Number(sp.unit || 0);
@@ -665,7 +628,7 @@ function applyCollapseAndSearch() {
             </div>
           </div>
 
-          <div class="controls">
+          <div class="controls" style="display:block;">
             <div class="gWrap" style="margin-top:12px;">
               <div class="gGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
                 ${btns.join('')}
@@ -714,16 +677,13 @@ function applyCollapseAndSearch() {
       };
 
       syncSpecial();
-      const qNow = s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0);
-if (qNow === 0) delete card.dataset.userToggled;
       card.classList.toggle('isCollapsed', (s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0)) === 0);
 
-$('.cardToggle', card).addEventListener('click', (ev) => {
-  ev.preventDefault();
-  if (el.q.value.trim()) return;
-  card.dataset.userToggled = '1';
-  card.classList.toggle('isCollapsed');
-});
+      $('.cardToggle', card).addEventListener('click', (ev) => {
+        ev.preventDefault();
+        if (el.q.value.trim()) return;
+        card.classList.toggle('isCollapsed');
+      });
 
       card.addEventListener('click', (ev) => {
         const btn = ev.target?.closest('button');
@@ -736,7 +696,7 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
           const n = Number(btn.dataset.n || 0);
           if (!Number.isFinite(n) || n <= 0) return;
 
-          s.all = false; // picks優先
+          s.all = false;
           if (!Array.isArray(s.picks)) s.picks = [];
           s.picks.push(n);
 
@@ -759,7 +719,6 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
         }
 
         if (act === 'all') {
-          // all をトグル
           s.all = !s.all;
           if (s.all) s.picks = [];
           syncSpecial();
@@ -773,8 +732,6 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
     }
 
     // ✅ normal card
-    const imgUrl2 = getImageUrlForDino(d);
-
     card.innerHTML = `
       <div class="cardInner">
         <div class="cardHead">
@@ -782,7 +739,7 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
 
           <div class="nameWrap">
             <div class="name"></div>
-            ${imgUrl2 ? `<div class="miniThumb"><img src="${imgUrl2}" alt=""></div>` : ``}
+            ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
           </div>
 
           <div class="right">
@@ -816,6 +773,11 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
     if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
     sel.value = s.type;
 
+    // ✅ 追加：iOS事故防止（toggleに吸われないように）
+    sel.addEventListener('pointerdown', (ev) => ev.stopPropagation(), { passive: true });
+    sel.addEventListener('click', (ev) => ev.stopPropagation());
+    sel.addEventListener('touchstart', (ev) => ev.stopPropagation(), { passive: true });
+
     const unit = $('.unit', card);
     unit.textContent = `単価${prices[s.type] || 0}円`;
 
@@ -828,8 +790,6 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
     card.classList.toggle('isCollapsed', initialQty === 0);
 
     function syncUI() {
-      const qNow = (Number(s.m || 0) + Number(s.f || 0));
-if (qNow === 0) delete card.dataset.userToggled;
       if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
       sel.value = s.type;
       unit.textContent = `単価${prices[s.type] || 0}円`;
@@ -851,44 +811,20 @@ if (qNow === 0) delete card.dataset.userToggled;
       applyCollapseAndSearch();
     }
 
-// ✅ iOS対策：selectを触った時点で「手動操作扱い」にして自動折りたたみを止める
-['pointerdown','mousedown','touchstart','click','focus'].forEach(evt => {
-  sel.addEventListener(evt, (ev) => {
-    ev.stopPropagation();
-    card.dataset.userToggled = '1';
-  }, { passive: true });
-});
+    sel.addEventListener('change', (ev) => {
+      ev.stopPropagation();
+      s.type = sel.value;
+      autoSpecify(s);
+      syncUI();
+      rebuildOutput();
+      applyCollapseAndSearch();
+    });
 
-// ✅ iOS対策：selectを触った瞬間にカードを開いて、短時間「折りたたみ禁止」
-const freezeCard = () => {
-  card.dataset.userToggled = '1';
-  card.dataset.freezeUntil = String(Date.now() + 1200); // 1.2秒フリーズ
-  card.classList.remove('isCollapsed');                 // 強制展開
-};
-
-['pointerdown', 'touchstart', 'mousedown', 'click', 'focus'].forEach(evt => {
-  sel.addEventListener(evt, (ev) => {
-    ev.stopPropagation();
-    freezeCard();
-  }, { passive: true });
-});
-
-sel.addEventListener('change', (ev) => {
-  ev.stopPropagation();
-  freezeCard();
-  s.type = sel.value;
-  autoSpecify(s);
-  syncUI();
-  rebuildOutput();
-  applyCollapseAndSearch();
-});
-
-$('.cardToggle', card).addEventListener('click', (ev) => {
-  ev.preventDefault();
-  if (el.q.value.trim()) return;
-  card.dataset.userToggled = '1';
-  card.classList.toggle('isCollapsed');
-});
+    $('.cardToggle', card).addEventListener('click', (ev) => {
+      ev.preventDefault();
+      if (el.q.value.trim()) return;
+      card.classList.toggle('isCollapsed');
+    });
 
     $$('button[data-act]', card).forEach(btn => {
       btn.addEventListener('click', (ev) => {
@@ -903,8 +839,6 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
         if (act === 'dup') {
           const dupKey = `${d.id}__dup_${uid()}`;
           ephemeralKeys.add(dupKey);
-
-          // dup also respects special cfg if present (but current is normal)
           inputState.set(dupKey, { type: s.type, m: 0, f: 0 });
 
           const dupCard = buildDinoCard(d, dupKey);
@@ -958,12 +892,13 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
     const qEl = $('.js-q', card);
     qEl.textContent = String(s.qty || 0);
 
-$('.cardToggle', card).addEventListener('click', (ev) => {
-  ev.preventDefault();
-  if (el.q.value.trim()) return;
-  card.dataset.userToggled = '1';
-  card.classList.toggle('isCollapsed');
-});
+    card.classList.toggle('isCollapsed', Number(s.qty || 0) === 0);
+
+    $('.cardToggle', card).addEventListener('click', (ev) => {
+      ev.preventDefault();
+      if (el.q.value.trim()) return;
+      card.classList.toggle('isCollapsed');
+    });
 
     $$('button[data-act]', card).forEach(btn => {
       btn.addEventListener('click', (ev) => {
@@ -1227,7 +1162,6 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
         const newDef = ($('#editType', box)?.value || '受精卵');
         if (!newName) return;
 
-        // name/defType
         const cIdx = custom.dino.findIndex(x => x.id === id);
         if (cIdx >= 0) {
           custom.dino[cIdx] = { id, name: newName, defType: newDef, _baseName: custom.dino[cIdx]._baseName || newName };
@@ -1240,7 +1174,6 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
         const di = dinos.findIndex(x => x.id === id);
         if (di >= 0) dinos[di] = Object.assign({}, dinos[di], { name: newName, defType: newDef });
 
-        // special cfg
         if (spEnable?.checked) {
           const max = Math.max(1, Math.min(60, Number($('#spMax', box)?.value || 16)));
           const unit = Math.max(0, Number($('#spUnit', box)?.value || 0));
@@ -1248,7 +1181,6 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
           specialCfg[id] = { enabled: true, max, unit, all };
           saveJSON(LS.SPECIAL_CFG, specialCfg);
 
-          // 既存 state を special に寄せる
           const st = inputState.get(id);
           if (st) {
             st.mode = 'special';
@@ -1262,7 +1194,6 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
           }
           const st = inputState.get(id);
           if (st && st.mode === 'special') {
-            // special解除してもデータは残さない
             inputState.set(id, { type: newDef, m: 0, f: 0 });
           }
         }
@@ -1274,7 +1205,7 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
     });
   }
 
-  /* ========= Images tab (IndexedDB) ========= */
+  /* ========= Images tab ========= */
   async function fileToDataURLCompressed(file, maxW = 900, quality = 0.78) {
     const img = await new Promise((resolve, reject) => {
       const r = new FileReader();
@@ -1321,18 +1252,13 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
   function renderManageImages() {
     const wrap = document.createElement('div');
 
-    // ✅ 画像出力ボタン（上部）
     const topBar = document.createElement('div');
-    topBar.style.display = 'flex';
-    topBar.style.justifyContent = 'flex-end';
-    topBar.style.marginBottom = '10px';
+    topBar.className = 'imgTopBar';
     topBar.innerHTML = `<button id="imgExport" class="pill" type="button">画像出力</button>`;
     wrap.appendChild(topBar);
 
-    // 対象リスト（表示順）
     const list = sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino');
 
-    // ✅ 画像合成（黒背景・縦横指定・上から順に詰める・未設定はスキップ）
     function loadImg(src) {
       return new Promise((resolve) => {
         const im = new Image();
@@ -1369,7 +1295,6 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
         return;
       }
 
-      // セルサイズ（2:1）
       const cellW = 640;
       const cellH = 320;
       const gap = 8;
@@ -1428,7 +1353,6 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
       await exportGrid(rows, cols);
     });
 
-    // ✅ 画像一覧（IDB）
     list.forEach(d => {
       const row = document.createElement('div');
       row.className = 'imgRow';
@@ -1479,8 +1403,6 @@ $('.cardToggle', card).addEventListener('click', (ev) => {
           imageCache[k] = dataUrl;
 
           thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
-
-          // ✅ メインにも即反映（再レンダリングに依存しない）
           syncThumbInMainListByDino(d, dataUrl);
 
           openToast('画像を保存しました');
@@ -1719,7 +1641,6 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
   async function init() {
     await migrateOldImagesIfAny();
 
-    // ✅ IDB画像ロード
     try {
       const all = await idbGetAllImages();
       Object.keys(all).forEach(k => { imageCache[k] = all[k]; });
