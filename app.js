@@ -20,6 +20,30 @@
     return `${prefix}_${stableHash(key)}`;
   }
 
+  function openConfirm(message, onOk) {
+    const ov = $('#confirmOverlay');
+    const tx = $('#confirmText');
+    const ok = $('#confirmOk');
+    const cancel = $('#confirmCancel');
+
+    tx.textContent = message;
+    ov.classList.remove('isHidden');
+
+    const cleanup = () => {
+      ov.classList.add('isHidden');
+      ok.onclick = null;
+      cancel.onclick = null;
+    };
+
+    cancel.onclick = cleanup;
+    ov.onclick = (e) => { if (e.target === ov) cleanup(); };
+
+    ok.onclick = () => {
+      cleanup();
+      onOk && onOk();
+    };
+  }
+
   /* ========= storage keys ========= */
   const LS = {
     DINO_CUSTOM: 'dino_custom_v1',
@@ -34,8 +58,8 @@
     DINO_OVERRIDE: 'dino_override_v1', // { [dinoId]: {name, defType} }
 
     // ✅ ROOM
-    ROOM_ENTRY_PW: 'room_entry_pw_v1', // string
-    ROOM_PW: 'room_pw_v1',             // { ROOM1:'', ... }
+    ROOM_ENTRY_PW: 'room_entry_pw_v1',
+    ROOM_PW: 'room_pw_v1', // { ROOM1:'5412', ... }
   };
 
   const loadJSON = (k, fb) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } };
@@ -53,7 +77,7 @@
   const typeList = Object.keys(defaultPrices);
   const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
 
-  /* ========= images / override ========= */
+  /* ========= images ========= */
   const dinoImages = Object.assign({}, loadJSON(LS.DINO_IMAGES, {})); // id -> dataURL
   const dinoOverride = Object.assign({}, loadJSON(LS.DINO_OVERRIDE, {})); // id -> {name,defType}
 
@@ -77,27 +101,27 @@
     mTabCatalog: $('#mTabCatalog'),
     mTabPrices: $('#mTabPrices'),
 
-    // confirm
-    confirmOverlay: $('#confirmOverlay'),
-    confirmText: $('#confirmText'),
-    confirmCancel: $('#confirmCancel'),
-    confirmOk: $('#confirmOk'),
-
-    // edit
-    editOverlay: $('#editOverlay'),
-    editBody: $('#editBody'),
-    editTitle: $('#editTitle'),
-
-    // image viewer
-    imgOverlay: $('#imgOverlay'),
-    imgClose: $('#imgClose'),
-    imgViewerImg: $('#imgViewerImg'),
-
     // ✅ ROOM
     openRoom: $('#openRoom'),
     roomOverlay: $('#roomOverlay'),
     roomBody: $('#roomBody'),
     closeRoom: $('#closeRoom'),
+
+    // 追加/編集
+    editOverlay: $('#editOverlay'),
+    editBody: $('#editBody'),
+    editTitle: $('#editTitle'),
+
+    // 確認
+    confirmOverlay: $('#confirmOverlay'),
+    confirmText: $('#confirmText'),
+    confirmCancel: $('#confirmCancel'),
+    confirmOk: $('#confirmOk'),
+
+    // 画像ビューア
+    imgOverlay: $('#imgOverlay'),
+    imgClose: $('#imgClose'),
+    imgViewerImg: $('#imgViewerImg'),
   };
 
   /* ========= sanity (reset) ========= */
@@ -125,7 +149,6 @@
   let items = [];
   let activeTab = 'dino';
 
-  // inputState: key -> {type,m,f} or {qty}
   const inputState = new Map();
   const ephemeralKeys = new Set();
 
@@ -200,35 +223,25 @@
     return inputState.get(key);
   }
 
-  // 両方>0なら(指定)へ。両方0なら(指定)解除。
+  // ✅ autoSpecify 暴走停止（受精卵/胚/クローンだけ）
   function autoSpecify(s) {
     const m = Number(s.m || 0), f = Number(s.f || 0);
-    const base = String(s.type || '受精卵').replace('(指定)', '');
-    const hasSpecified = /\(指定\)$/.test(String(s.type || ''));
+    const t = String(s.type || '受精卵');
+    const base = t.replace('(指定)', '');
+
+    const canSpecify = Object.prototype.hasOwnProperty.call(specifiedMap, base);
+    const target = canSpecify ? specifiedMap[base] : null;
+
     if (m > 0 && f > 0) {
-      s.type = specifiedMap[base] || (base + '(指定)');
+      if (canSpecify) {
+        if (t === base || t === target) s.type = target;
+      }
       return;
     }
-    if (m === 0 && f === 0 && hasSpecified) {
-      s.type = base;
-    }
-  }
 
-  /* ========= egg/embryo detection (for ROOM text) ========= */
-  function hasEggOrEmbryoSelectedNow() {
-    // 恐竜：入力があるものの type を見る（複製も含む）
-    for (const [k, s] of inputState.entries()) {
-      if (!s) continue;
-
-      // itemは除外（qtyしかない）
-      if (typeof s.m === 'number' || typeof s.f === 'number') {
-        const qty = Number(s.m || 0) + Number(s.f || 0);
-        if (qty <= 0) continue;
-        const base = String(s.type || '').replace('(指定)', '');
-        if (base === '受精卵' || base === '胚') return true;
-      }
+    if (m === 0 && f === 0) {
+      if (canSpecify && /\(指定\)$/.test(t)) s.type = base;
     }
-    return false;
   }
 
   /* ========= output ========= */
@@ -402,6 +415,9 @@ ${lines.join('\n')}
     card.classList.toggle('isCollapsed', initialQty === 0);
 
     function syncUI() {
+      // ✅ select が未知値になった時に空欄化しない（保険）
+      if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
+
       sel.value = s.type;
       unit.textContent = `単価${prices[s.type] || 0}円`;
       mEl.textContent = String(s.m || 0);
@@ -557,11 +573,11 @@ ${lines.join('\n')}
   }
 
   /* ========= manage modal ========= */
-  function openManage() {
+  function openModal() {
     el.modalOverlay.classList.remove('isHidden');
     setManageTab('catalog');
   }
-  function closeManage() {
+  function closeModal() {
     el.modalOverlay.classList.add('isHidden');
     el.modalBody.innerHTML = '';
   }
@@ -585,7 +601,7 @@ ${lines.join('\n')}
     return new Promise((resolve) => {
       if (!el.confirmOverlay) return resolve(false);
       confirmResolve = resolve;
-      el.confirmText.textContent = text || '確認しますか？';
+      el.confirmText.textContent = text || '削除しますか？';
       el.confirmOverlay.classList.remove('isHidden');
     });
   }
@@ -620,15 +636,6 @@ ${lines.join('\n')}
   el.editOverlay?.addEventListener('click', (e) => {
     if (e.target === el.editOverlay) closeEditModal();
   });
-
-  function escapeHtml(s) {
-    return String(s || '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
-  }
 
   /* ========= manage: prices ========= */
   function renderManagePrices() {
@@ -665,49 +672,15 @@ ${lines.join('\n')}
       });
       saveJSON(LS.PRICES, prices);
       renderList();
-      setManageTab('prices'); // 閉じない
+      setManageTab('prices');
     });
 
     return box;
   }
 
-  /* ========= manage: catalog (並び替え/削除 + 編集) ========= */
+  /* ========= manage: catalog ========= */
   function renderManageCatalog() {
     const wrap = document.createElement('div');
-
-    // 五十音並び替え
-    const sortBar = document.createElement('div');
-    sortBar.style.display = 'flex';
-    sortBar.style.justifyContent = 'flex-end';
-    sortBar.style.margin = '0 0 10px';
-
-    const sortBtn = document.createElement('button');
-    sortBtn.className = 'pill';
-    sortBtn.type = 'button';
-    sortBtn.textContent = '五十音で並び替え';
-    sortBtn.addEventListener('click', async () => {
-      const ok = await confirmAsk('五十音順で並び替えます。よろしいですか？');
-      if (!ok) return;
-
-      const kind = activeTab; // 'dino' or 'item'
-      const list = (kind === 'dino')
-        ? dinos.filter(x => !hidden.dino.has(x.id))
-        : items.filter(x => !hidden.item.has(x.id));
-
-      const ids = list
-        .slice()
-        .sort((a, b) => String(a.name).localeCompare(String(b.name), 'ja'))
-        .map(x => x.id);
-
-      order[kind] = ids;
-      saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ids);
-
-      el.modalBody.innerHTML = '';
-      el.modalBody.appendChild(renderManageCatalog());
-      renderList();
-    });
-    sortBar.appendChild(sortBtn);
-    wrap.appendChild(sortBar);
 
     const list = (activeTab === 'dino')
       ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
@@ -717,7 +690,7 @@ ${lines.join('\n')}
       const r = document.createElement('div');
       r.className = 'mRow';
       r.innerHTML = `
-        <div class="mName">${escapeHtml(obj.name)}</div>
+        <div class="mName">${obj.name}</div>
         ${activeTab === 'dino' ? `<button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">✎</button>` : ``}
         <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
         <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
@@ -743,6 +716,7 @@ ${lines.join('\n')}
         setManageTab('catalog');
         return;
       }
+
       if (act === 'down' && i !== -1 && i < ord.length - 1) {
         [ord[i], ord[i + 1]] = [ord[i + 1], ord[i]];
         order[kind] = ord;
@@ -751,6 +725,7 @@ ${lines.join('\n')}
         setManageTab('catalog');
         return;
       }
+
       if (act === 'del') {
         const ok = await confirmAsk('削除しますか？');
         if (!ok) return;
@@ -766,8 +741,10 @@ ${lines.join('\n')}
         setManageTab('catalog');
         return;
       }
+
       if (act === 'edit' && kind === 'dino') {
         openEditDino(id);
+        return;
       }
     });
 
@@ -780,13 +757,12 @@ ${lines.join('\n')}
 
     const box = document.createElement('div');
     box.className = 'editForm';
-
     box.innerHTML = `
       <div class="editLabel">名前</div>
-      <input class="editInput" id="editName" type="text" value="${escapeHtml(d.name)}" autocomplete="off">
+      <input id="editName" class="editInput" type="text" value="${escapeHtml(d.name)}" autocomplete="off">
 
       <div class="editLabel">デフォルト種類</div>
-      <select class="editSelect" id="editType">
+      <select id="editType" class="editSelect">
         ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
       </select>
 
@@ -834,16 +810,16 @@ ${lines.join('\n')}
     });
   }
 
-  /* ========= manage: images ========= */
-  function fileToDataURL(file) {
-    return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(String(r.result || ''));
-      r.onerror = reject;
-      r.readAsDataURL(file);
-    });
+  function escapeHtml(s) {
+    return String(s || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
   }
 
+  /* ========= Images tab ========= */
   function renderManageImages() {
     const wrap = document.createElement('div');
     const list = sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino');
@@ -892,7 +868,7 @@ ${lines.join('\n')}
         dinoImages[d.id] = dataUrl;
         saveJSON(LS.DINO_IMAGES, dinoImages);
         thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
-        renderList(); // メイン反映
+        renderList();
       });
 
       del.addEventListener('click', async () => {
@@ -926,6 +902,15 @@ ${lines.join('\n')}
     return wrap;
   }
 
+  function fileToDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result || ''));
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+
   function openImgViewer(url) {
     if (!el.imgOverlay || !el.imgViewerImg) return;
     el.imgViewerImg.src = url;
@@ -936,22 +921,17 @@ ${lines.join('\n')}
     el.imgOverlay.classList.add('isHidden');
     if (el.imgViewerImg) el.imgViewerImg.src = '';
   }
+  el.imgClose?.addEventListener('click', closeImgViewer);
+  el.imgOverlay?.addEventListener('click', (e) => {
+    if (e.target === el.imgOverlay) closeImgViewer();
+  });
 
-  /* ========= ROOM ========= */
-  const roomDefaultPw = {
-    ROOM1: '5412',
-    ROOM2: '0000',
-    ROOM3: '0000',
-    ROOM4: '0000',
-    ROOM5: '0000',
-    ROOM6: '0000',
-    ROOM7: '0000',
-    ROOM8: '0000',
-    ROOM9: '0000',
-  };
-
+  /* ===================== ROOM ===================== */
   let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
-  let roomPw = Object.assign({}, roomDefaultPw, loadJSON(LS.ROOM_PW, {}));
+  let roomPw = Object.assign({
+    ROOM1: '5412', ROOM2: '0000', ROOM3: '0000', ROOM4: '0000',
+    ROOM5: '0000', ROOM6: '0000', ROOM7: '0000', ROOM8: '0000', ROOM9: '0000',
+  }, loadJSON(LS.ROOM_PW, {}));
 
   async function copyText(text) {
     try {
@@ -966,21 +946,41 @@ ${lines.join('\n')}
     }
   }
 
-  function buildRoomCopyText(room) {
-    const needsWarning = hasEggOrEmbryoSelectedNow();
+  // ✅ 受精卵 or 胚 が1つでも選択されているか
+  function hasEggOrEmbryoSelected() {
+    const dList = dinos.filter(d => !hidden.dino.has(d.id));
+    for (const d of dList) {
+      const baseKey = d.id;
+      const keys = [baseKey, ...Array.from(ephemeralKeys).filter(k => k.startsWith(baseKey + '__dup'))];
+      for (const k of keys) {
+        const s = inputState.get(k);
+        if (!s) continue;
+        const m = Number(s.m || 0), f = Number(s.f || 0);
+        const qty = m + f;
+        if (qty <= 0) continue;
+        const base = String(s.type || d.defType || '受精卵').replace('(指定)', '');
+        if (base === '受精卵' || base === '胚') return true;
+      }
+    }
+    return false;
+  }
 
-    const base =
-`納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
+  function buildCopyText(room) {
+    const n = Number(String(room).replace('ROOM', '')) || 0;
+    const roomLabel = (n >= 5) ? `2階${room}` : room;
+
+    const warn = hasEggOrEmbryoSelected()
+      ? `
+
+⚠️受精卵はサバイバーのインベントリに入れての転送をしないと消えてしまうバグがあるためご注意してください！`
+      : '';
+
+    return `納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
 
 サーバー番号 : 5041 (アイランド)
 座標 : 87 / 16 (西部2、赤オベ付近)
 入口パスワード【${entryPw}】
-${room}の方にパスワード【${roomPw[room] || '0000'}】で入室をして頂き、冷蔵庫より受け取りお願いします。`;
-
-    const warn =
-`\n\n⚠️受精卵はサバイバーのインベントリに入れての転送をしないと消えてしまうバグがあるためご注意してください！`;
-
-    return needsWarning ? (base + warn) : base;
+${roomLabel}の方にパスワード【${roomPw[room]}】で入室をして頂き、冷蔵庫より受け取りお願いします。${warn}`;
   }
 
   function renderRooms() {
@@ -992,82 +992,58 @@ ${room}の方にパスワード【${roomPw[room] || '0000'}】で入室をして
     wrap.style.flexDirection = 'column';
     wrap.style.gap = '12px';
 
-    // 入口PW（共通）
     const entry = document.createElement('div');
-    entry.className = 'mRow';
+    entry.className = 'roomEntryBox';
     entry.innerHTML = `
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:950;margin-bottom:6px;">入口パスワード（全ルーム共通）</div>
-        <input id="entryPwInput" class="editInput" value="${escapeHtml(entryPw)}" inputmode="numeric" autocomplete="off">
+      <div style="font-weight:900;margin-bottom:6px;">入口パスワード（全ルーム共通）</div>
+      <div class="roomEntryRow">
+        <input id="entryPw" value="${entryPw}" class="roomEntryInput">
+        <button id="saveEntry" class="pill roomBtn" type="button">保存</button>
       </div>
-      <button class="sBtn" type="button" data-act="saveEntry">保存</button>
     `;
     wrap.appendChild(entry);
 
-    // ROOM1-9
-    const rooms = Object.keys(roomDefaultPw);
+    $('#saveEntry', entry).onclick = () => {
+      const v = ($('#entryPw', entry)?.value || '').trim();
+      if (v) {
+        entryPw = v;
+        saveJSON(LS.ROOM_ENTRY_PW, entryPw);
+      }
+    };
+
+    const rooms = Array.from({ length: 9 }, (_, i) => `ROOM${i + 1}`);
     rooms.forEach(room => {
       const row = document.createElement('div');
-      row.className = 'mRow';
+      row.className = 'mRow roomRow';
       row.innerHTML = `
         <div class="mName">${room}</div>
-        <button class="sBtn" type="button" data-act="copy" data-room="${room}">コピー</button>
-        <button class="sBtn" type="button" data-act="pw" data-room="${room}">PW変更</button>
+        <div class="roomBtns">
+          <button class="pill roomBtn" type="button" data-act="copy" data-room="${room}">コピー</button>
+          <button class="pill roomBtn" type="button" data-act="pw" data-room="${room}">PW変更</button>
+        </div>
       `;
       wrap.appendChild(row);
     });
 
     wrap.addEventListener('click', async (e) => {
       const act = e.target?.dataset?.act;
-
-      if (act === 'saveEntry') {
-        const inp = $('#entryPwInput', wrap);
-        const v = (inp?.value || '').trim();
-        if (!v) return;
-        entryPw = v;
-        saveJSON(LS.ROOM_ENTRY_PW, entryPw);
-        e.target.textContent = '保存✓';
-        setTimeout(() => (e.target.textContent = '保存'), 800);
-        return;
-      }
-
       const room = e.target?.dataset?.room;
       if (!act || !room) return;
 
       if (act === 'copy') {
-        await copyText(buildRoomCopyText(room));
-        e.target.textContent = 'コピー済';
-        setTimeout(() => (e.target.textContent = 'コピー'), 900);
-        return;
+        await copyText(buildCopyText(room));
+        const btn = e.target;
+        const prev = btn.textContent;
+        btn.textContent = 'コピー済';
+        btn.disabled = true;
+        setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 900);
       }
 
       if (act === 'pw') {
-        // 変更は confirm + edit modal でやる（promptはUI崩れるので使わない）
-        const box = document.createElement('div');
-        box.className = 'editForm';
-        box.innerHTML = `
-          <div class="editLabel">${room} のパスワード</div>
-          <input class="editInput" id="roomPwInput" value="${escapeHtml(roomPw[room] || '')}" inputmode="numeric" autocomplete="off">
-          <div class="editBtns">
-            <button class="ghost" type="button" data-act="cancel">キャンセル</button>
-            <button class="pill" type="button" data-act="save">保存</button>
-          </div>
-        `;
-        openEditModal('ルームPW変更', box);
-
-        box.addEventListener('click', (ev) => {
-          const a = ev.target?.dataset?.act;
-          if (!a) return;
-          if (a === 'cancel') { closeEditModal(); return; }
-          if (a === 'save') {
-            const v = ($('#roomPwInput', box)?.value || '').trim();
-            if (!v) return;
-            roomPw[room] = v;
-            saveJSON(LS.ROOM_PW, roomPw);
-            closeEditModal();
-            renderRooms(); // 反映
-          }
-        });
+        const npw = prompt(`${room} のパスワードを入力`, roomPw[room] || '');
+        if (!npw) return;
+        roomPw[room] = npw;
+        saveJSON(LS.ROOM_PW, roomPw);
       }
     });
 
@@ -1103,37 +1079,24 @@ ${room}の方にパスワード【${roomPw[room] || '0000'}】で入室をして
   el.copy?.addEventListener('click', async () => {
     const text = el.out.value.trim();
     if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      const prev = el.copy.textContent;
-      el.copy.textContent = 'コピー済み✓';
-      el.copy.disabled = true;
-      setTimeout(() => { el.copy.textContent = prev; el.copy.disabled = false; }, 1100);
-    } catch {
-      el.out.focus();
-      el.out.select();
-      document.execCommand('copy');
-    }
+    await copyText(text);
+    const prev = el.copy.textContent;
+    el.copy.textContent = 'コピー済み✓';
+    el.copy.disabled = true;
+    setTimeout(() => { el.copy.textContent = prev; el.copy.disabled = false; }, 1100);
   });
 
-  // manage
-  el.openManage?.addEventListener('click', openManage);
-  el.closeManage?.addEventListener('click', closeManage);
+  el.openManage?.addEventListener('click', openModal);
+  el.closeManage?.addEventListener('click', closeModal);
   el.modalOverlay?.addEventListener('click', (e) => {
-    if (e.target === el.modalOverlay) closeManage();
+    if (e.target === el.modalOverlay) closeModal();
   });
 
   el.mTabCatalog?.addEventListener('click', () => setManageTab('catalog'));
   el.mTabPrices?.addEventListener('click', () => setManageTab('prices'));
   $('#mTabImages')?.addEventListener('click', () => setManageTab('images'));
 
-  // image viewer
-  el.imgClose?.addEventListener('click', closeImgViewer);
-  el.imgOverlay?.addEventListener('click', (e) => {
-    if (e.target === el.imgOverlay) closeImgViewer();
-  });
-
-  // ✅ ROOM events
+  // ✅ ROOM open/close
   el.openRoom?.addEventListener('click', openRoom);
   el.closeRoom?.addEventListener('click', closeRoom);
   el.roomOverlay?.addEventListener('click', (e) => {
