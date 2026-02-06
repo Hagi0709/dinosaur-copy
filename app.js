@@ -601,6 +601,10 @@ function applyCollapseAndSearch() {
     const kind = card.dataset.kind;
     const qty = getQtyForCard(key, kind);
 
+    // ✅ 触った直後は勝手に閉じない（iOS select対策）
+    const fu = Number(card.dataset.freezeUntil || 0);
+    if (fu && Date.now() < fu) return;
+
     // ✅ 検索中は「ヒットしないものは閉じる」
     if (q) {
       card.classList.toggle('isCollapsed', !show);
@@ -855,9 +859,23 @@ if (qNow === 0) delete card.dataset.userToggled;
   }, { passive: true });
 });
 
+// ✅ iOS対策：selectを触った瞬間にカードを開いて、短時間「折りたたみ禁止」
+const freezeCard = () => {
+  card.dataset.userToggled = '1';
+  card.dataset.freezeUntil = String(Date.now() + 1200); // 1.2秒フリーズ
+  card.classList.remove('isCollapsed');                 // 強制展開
+};
+
+['pointerdown', 'touchstart', 'mousedown', 'click', 'focus'].forEach(evt => {
+  sel.addEventListener(evt, (ev) => {
+    ev.stopPropagation();
+    freezeCard();
+  }, { passive: true });
+});
+
 sel.addEventListener('change', (ev) => {
   ev.stopPropagation();
-  card.dataset.userToggled = '1'; // changeでも念押し
+  freezeCard();
   s.type = sel.value;
   autoSpecify(s);
   syncUI();
