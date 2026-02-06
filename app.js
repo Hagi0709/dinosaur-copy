@@ -978,113 +978,202 @@ ${lines.join('\n')}
     return canvas.toDataURL('image/jpeg', quality);
   }
 
-  function renderManageImages() {
-    const wrap = document.createElement('div');
-    const list = sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino');
+function renderManageImages() {
+  const wrap = document.createElement('div');
 
-    list.forEach(d => {
-      const row = document.createElement('div');
-      row.className = 'imgRow';
+  // ✅ 上部バー（画像出力ボタン）
+  const topBar = document.createElement('div');
+  topBar.className = 'imgTopBar';
+  topBar.innerHTML = `<button id="imgExport" class="pill" type="button">画像出力</button>`;
+  wrap.appendChild(topBar);
 
-      const k = imageKeyFromBaseName(d._baseName || d.name);
-      const url = imageCache[k];
+  // 対象リスト（表示順）
+  const list = sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino');
 
-      const thumb = document.createElement('div');
-      thumb.className = 'thumb';
-      if (url) thumb.innerHTML = `<img src="${url}" alt="">`;
-      else thumb.textContent = 'No Image';
+  // ✅ 画像合成（黒背景・縦横指定・上から順に詰める・未設定はスキップ）
+  function loadImg(src) {
+    return new Promise((resolve) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = () => resolve(null);
+      im.src = src;
+    });
+  }
 
-      const mid = document.createElement('div');
-      mid.className = 'imgMid';
+  async function exportGrid(rows, cols) {
+    const maxCells = rows * cols;
 
-      const name = document.createElement('div');
-      name.className = 'imgName';
-      name.textContent = d.name;
+    // 上から順に画像を集める（未設定はスキップ）
+    const srcs = [];
+    for (const d of list) {
+      const u = dinoImages[d.id];
+      if (u) srcs.push(u);
+      if (srcs.length >= maxCells) break;
+    }
 
-      const btns = document.createElement('div');
-      btns.className = 'imgBtns';
+    if (!srcs.length) {
+      alert('画像が1枚も設定されていません。');
+      return;
+    }
 
-      const pick = document.createElement('button');
-      pick.className = 'pill';
-      pick.type = 'button';
-      pick.textContent = '選択';
+    const ims = [];
+    for (const s of srcs) {
+      const im = await loadImg(s);
+      if (im) ims.push(im);
+      if (ims.length >= maxCells) break;
+    }
+    if (!ims.length) {
+      alert('読み込める画像がありませんでした。');
+      return;
+    }
 
-      const del = document.createElement('button');
-      del.className = 'pill danger';
-      del.type = 'button';
-      del.textContent = '削除';
+    // セルサイズ（管理サムネと同じ 2:1）
+    const cellW = 640;
+    const cellH = 320;
+    const gap = 8;
+    const pad = 8;
 
-      const file = document.createElement('input');
-      file.type = 'file';
-      file.accept = 'image/*';
-      file.style.display = 'none';
+    const outW = cols * cellW + (cols - 1) * gap + pad * 2;
+    const outH = rows * cellH + (rows - 1) * gap + pad * 2;
 
-      pick.addEventListener('click', () => file.click());
+    const canvas = document.createElement('canvas');
+    canvas.width = outW;
+    canvas.height = outH;
+    const ctx = canvas.getContext('2d');
 
-      file.addEventListener('change', async () => {
-        const f = file.files && file.files[0];
-        if (!f) return;
+    // 背景黒
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, outW, outH);
 
-        try {
-          const dataUrl = await fileToDataURLCompressed(f, 900, 0.78);
+    // 左→右、上→下で詰める
+    let idx = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (idx >= ims.length) break;
+        const im = ims[idx++];
 
-          await idbPutImage(k, dataUrl);
-          imageCache[k] = dataUrl;
+        const x = pad + c * (cellW + gap);
+        const y = pad + r * (cellH + gap);
 
-          // ✅ 管理画面即反映
-          thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
+        // cover（比率維持でセルを埋める）
+        const iw = im.naturalWidth || im.width;
+        const ih = im.naturalHeight || im.height;
+        const targetRatio = cellW / cellH;
+        const imgRatio = iw / ih;
 
-          // ✅ メイン画面即反映（再描画頼みをやめる）
-          syncThumbInMainListByDino(d, dataUrl);
-
-          openToast('画像を保存しました');
-        } catch {
-          openToast('画像保存に失敗しました');
+        let sx = 0, sy = 0, sw = iw, sh = ih;
+        if (imgRatio > targetRatio) {
+          // 横長 → 左右をカット
+          sh = ih;
+          sw = ih * targetRatio;
+          sx = (iw - sw) / 2;
+        } else {
+          // 縦長 → 上下をカット
+          sw = iw;
+          sh = iw / targetRatio;
+          sy = (ih - sh) / 2;
         }
-      });
 
-      del.addEventListener('click', async () => {
-        const ok = await confirmAsk('画像を削除しますか？');
-        if (!ok) return;
-        try {
-          await idbDelImage(k);
-          delete imageCache[k];
-          thumb.textContent = 'No Image';
+        ctx.drawImage(im, sx, sy, sw, sh, x, y, cellW, cellH);
+      }
+    }
 
-          // メイン側も消す
-          const cards = $$(`[data-kind="dino"][data-did="${CSS.escape(d.id)}"]`, el.list);
-          cards.forEach(card => {
-            const t = $('.miniThumb', card);
-            if (t) t.remove();
-          });
+    const dataUrl = canvas.toDataURL('image/png', 1.0);
+    openImgViewer(dataUrl); // ✅ 既存の画像ビューアで表示
+  }
 
-          openToast('画像を削除しました');
-        } catch {
-          openToast('画像削除に失敗しました');
-        }
-      });
+  // ✅ クリック処理（この関数内で完結させる）
+  topBar.querySelector('#imgExport').addEventListener('click', async () => {
+    const rows = parseInt(prompt('縦は何枚？（例：5）', '5') || '', 10);
+    const cols = parseInt(prompt('横は何枚？（例：2）', '2') || '', 10);
 
-      thumb.addEventListener('click', () => {
-        const u = imageCache[k];
-        if (!u) return;
-        openImgViewer(u);
-      });
+    if (!Number.isFinite(rows) || !Number.isFinite(cols) || rows <= 0 || cols <= 0) {
+      alert('縦・横は1以上の数字で入力してください。');
+      return;
+    }
+    await exportGrid(rows, cols);
+  });
 
-      btns.appendChild(pick);
-      btns.appendChild(del);
+  // ✅ 画像一覧（従来通り）
+  list.forEach(d => {
+    const row = document.createElement('div');
+    row.className = 'imgRow';
 
-      mid.appendChild(name);
-      mid.appendChild(btns);
+    const thumb = document.createElement('div');
+    thumb.className = 'thumb';
+    const url = dinoImages[d.id];
+    if (url) thumb.innerHTML = `<img src="${url}" alt="">`;
+    else thumb.textContent = 'No Image';
 
-      row.appendChild(thumb);
-      row.appendChild(mid);
-      row.appendChild(file);
+    const mid = document.createElement('div');
+    mid.className = 'imgMid';
 
-      wrap.appendChild(row);
+    const name = document.createElement('div');
+    name.className = 'imgName';
+    name.textContent = d.name;
+
+    const btns = document.createElement('div');
+    btns.className = 'imgBtns';
+
+    const pick = document.createElement('button');
+    pick.className = 'pill';
+    pick.type = 'button';
+    pick.textContent = '選択';
+
+    const del = document.createElement('button');
+    del.className = 'pill danger';
+    del.type = 'button';
+    del.textContent = '削除';
+
+    const file = document.createElement('input');
+    file.type = 'file';
+    file.accept = 'image/*';
+    file.style.display = 'none';
+
+    pick.addEventListener('click', () => file.click());
+
+    file.addEventListener('change', async () => {
+      const f = file.files && file.files[0];
+      if (!f) return;
+      const dataUrl = await fileToDataURL(f);
+      dinoImages[d.id] = dataUrl;
+      saveJSON(LS.DINO_IMAGES, dinoImages);
+      thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
+
+      // ✅ メインにも反映（既存仕様）
+      renderList();
     });
 
-    return wrap;
-  }
+    del.addEventListener('click', async () => {
+      const ok = await confirmAsk('画像を削除しますか？');
+      if (!ok) return;
+      delete dinoImages[d.id];
+      saveJSON(LS.DINO_IMAGES, dinoImages);
+      thumb.textContent = 'No Image';
+      renderList();
+    });
+
+    thumb.addEventListener('click', () => {
+      const u = dinoImages[d.id];
+      if (!u) return;
+      openImgViewer(u);
+    });
+
+    btns.appendChild(pick);
+    btns.appendChild(del);
+
+    mid.appendChild(name);
+    mid.appendChild(btns);
+
+    row.appendChild(thumb);
+    row.appendChild(mid);
+    row.appendChild(file);
+
+    wrap.appendChild(row);
+  });
+
+  return wrap;
+}
 
   function openImgViewer(url) {
     if (!el.imgOverlay || !el.imgViewerImg) return;
