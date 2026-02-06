@@ -1188,11 +1188,39 @@ ROOM${room}の方にパスワード【${roomPw}】で入室をして頂き、冷
   $('#mTabImages')?.addEventListener('click', () => setManageTab('images'));
 
   // ✅ ルーム
-  el.openRoom?.addEventListener('click', openRoom);
-  el.closeRoom?.addEventListener('click', closeRoom);
+    // ✅ ルーム（保険込み：直接 + 委譲）
+  el.openRoom?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openRoom();
+  });
+
+  el.closeRoom?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeRoom();
+  });
+
   el.roomOverlay?.addEventListener('click', (e) => {
     if (e.target === el.roomOverlay) closeRoom();
   });
+
+  // ✅ 保険：HTML差し替え漏れ/描画順/一部DOM差異でも必ず拾う
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (!(t instanceof Element)) return;
+
+    if (t.id === 'openRoom') {
+      e.preventDefault();
+      openRoom();
+      return;
+    }
+    if (t.id === 'closeRoom') {
+      e.preventDefault();
+      closeRoom();
+      return;
+    }
+  }, true);
 
   /* ========= init ========= */
   async function init() {
