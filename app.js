@@ -999,7 +999,6 @@ ${lines.join('\n')}
       meta.className = 'imgMeta';
       meta.innerHTML = `
         <div class="imgName"></div>
-        <div class="imgHint">画像を選択すると保存されます</div>
       `;
       $('.imgName', meta).textContent = d.name;
 
