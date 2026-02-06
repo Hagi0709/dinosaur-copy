@@ -692,8 +692,8 @@ ${lines.join('\n')}
       }
 
       // allowSex: 通常UI（種類＋♂♀）も出す（入力されたら特殊無効）
-      const normalBlock = allowSex ? `
-        <div class="controls" style="margin-top:10px;">
+const normalBlock = allowSex ? `
+        <div class="controls controlsWrap" style="margin-top:10px;">
           <div class="stepper male">
             <button class="btn" type="button" data-act="m-">−</button>
             <div class="val js-m">0</div>
