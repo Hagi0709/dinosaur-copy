@@ -9,7 +9,7 @@
   const toHira = (s) => (s || '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
   const norm = (s) => toHira(String(s || '').toLowerCase()).replace(/\s+/g, '');
 
-  // 安定ID生成（同じ名前 → 同じID）
+  // ✅ 安定ID生成（同じ名前 → 同じID）
   function stableHash(str) {
     let h = 5381;
     for (let i = 0; i < str.length; i++) h = ((h << 5) + h) + str.charCodeAt(i);
@@ -19,14 +19,6 @@
     const key = norm(name);
     return `${prefix}_${stableHash(key)}`;
   }
-
-  const escapeHtml = (s) =>
-    String(s || '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
 
   /* ========= storage keys ========= */
   const LS = {
@@ -39,17 +31,10 @@
     PRICES: 'prices_v1',
     DELIVERY: 'delivery_v1',
     DINO_IMAGES: 'dino_images_v1',     // { [dinoId]: dataURL }
-    DINO_OVERRIDE: 'dino_override_v1', // { [dinoId]: {name, defType} }
+    DINO_OVERRIDE: 'dino_override_v1', // { [dinoId]: {name, defType} } ← ✅ ベース恐竜も編集維持
   };
   const loadJSON = (k, fb) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } };
   const saveJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
-
-  /* ========= sanity (reset) ========= */
-  if (new URL(location.href).searchParams.get('reset') === '1') {
-    Object.values(LS).forEach(k => localStorage.removeItem(k));
-    location.replace(location.pathname);
-    return;
-  }
 
   /* ========= prices ========= */
   const defaultPrices = {
@@ -64,10 +49,9 @@
   const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
 
   /* ========= images / overrides ========= */
-  const dinoImages = Object.assign({}, loadJSON(LS.DINO_IMAGES, {}));      // id -> dataURL
-  const dinoOverride = Object.assign({}, loadJSON(LS.DINO_OVERRIDE, {}));  // id -> {name,defType}
+  const dinoImages = Object.assign({}, loadJSON(LS.DINO_IMAGES, {})); // id -> dataURL
+  const dinoOverride = Object.assign({}, loadJSON(LS.DINO_OVERRIDE, {})); // id -> {name,defType}
 
-  /* ========= DOM ========= */
   /* ========= DOM ========= */
   const el = {
     q: $('#q'),
@@ -88,13 +72,10 @@
     mTabCatalog: $('#mTabCatalog'),
     mTabPrices: $('#mTabPrices'),
 
-    sortKana: $('#sortKana'), // ✅ 追加（index.htmlにボタン追加）
-
     // 追加/編集
     editOverlay: $('#editOverlay'),
     editBody: $('#editBody'),
     editTitle: $('#editTitle'),
-    editClose: $('#editClose'),
 
     // 確認
     confirmOverlay: $('#confirmOverlay'),
@@ -108,13 +89,11 @@
     imgViewerImg: $('#imgViewerImg'),
   };
 
-  // ✅ 追加：ヘッダーを常に画面上部に固定（CSSが壊れてもJS側で保険）
-  const top = document.querySelector('header.top');
-  if (top) {
-    top.style.position = 'sticky';
-    top.style.top = '0';
-    top.style.zIndex = '50';
-    top.style.transform = 'translateZ(0)'; // iOS Safariの描画崩れ対策
+  /* ========= sanity (reset) ========= */
+  if (new URL(location.href).searchParams.get('reset') === '1') {
+    Object.values(LS).forEach(k => localStorage.removeItem(k));
+    location.replace(location.pathname);
+    return;
   }
 
   /* ========= data ========= */
@@ -140,6 +119,15 @@
   // duplicated cards keys (ephemeral)
   const ephemeralKeys = new Set();
 
+  /* ========= fixed header height sync ========= */
+  // ✅ style.css 側で body{ padding-top: var(--topH) } を使う前提
+  function syncTopHeight() {
+    const top = document.querySelector('header.top');
+    if (!top) return;
+    const h = Math.ceil(top.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--topH', h + 'px');
+  }
+
   /* ========= fetch & parse ========= */
   async function fetchTextSafe(path) {
     try {
@@ -157,12 +145,11 @@
 
     const [nameRaw, defRaw] = line.split('|').map(s => (s || '').trim());
     if (!nameRaw) return null;
-
     const defType = (defRaw && prices[defRaw] != null) ? defRaw : '受精卵';
-    const id = stableId('d', nameRaw);
 
-    // ベース恐竜も編集を維持（overrideがあれば適用）
+    const id = stableId('d', nameRaw);
     const ov = dinoOverride[id];
+
     return {
       id,
       name: ov?.name || nameRaw,
@@ -211,8 +198,7 @@
       ? dinos.filter(d => !hidden.dino.has(d.id))
       : items.filter(i => !hidden.item.has(i.id));
 
-    const ids = src
-      .slice()
+    const ids = src.slice()
       .sort((a, b) => String(a.name).localeCompare(String(b.name), 'ja'))
       .map(x => x.id);
 
@@ -230,31 +216,26 @@
     return inputState.get(key);
   }
 
-  // 両方>0なら(指定)へ。両方0なら(指定)解除。
+  // ✅ 修正：指定化は「指定版が存在するタイプ」だけに限定
   function autoSpecify(s) {
     const m = Number(s.m || 0), f = Number(s.f || 0);
+
     const cur = String(s.type || '受精卵');
     const base = cur.replace('(指定)', '');
     const hasSpecified = /\(指定\)$/.test(cur);
 
-    // ✅ 「指定」自動付与は、指定バリエーションが存在する種類のみに限定する
-    const canSpecify = Object.prototype.hasOwnProperty.call(specifiedMap, base);
+    // (指定)を自動付与するのは specifiedMap にあるものだけ
+    const canSpecify = Object.prototype.hasOwnProperty.call(specifiedMap, base) || hasSpecified;
 
-    // 両方>0なら(指定)へ（ただし指定可能な種類のみ）
     if (m > 0 && f > 0 && canSpecify) {
-      s.type = specifiedMap[base];
+      const next = specifiedMap[base] || cur;
+      if (typeList.includes(next)) s.type = next;
       return;
     }
 
-    // 両方0なら(指定)解除（指定可能な種類のみ）
-    if (m === 0 && f === 0 && hasSpecified && canSpecify) {
+    // 両方0なら(指定)解除（指定系のみ）
+    if (m === 0 && f === 0 && hasSpecified && typeList.includes(base)) {
       s.type = base;
-      return;
-    }
-
-    // ✅ 念のため：selectに存在しない値になったらbaseへ戻す
-    if (!typeList.includes(s.type)) {
-      s.type = typeList.includes(base) ? base : '受精卵';
     }
   }
 
@@ -415,6 +396,8 @@ ${lines.join('\n')}
 
     const sel = $('.type', card);
     sel.innerHTML = typeList.map(t => `<option value="${t}">${t}</option>`).join('');
+    // ✅ ここで「選択肢外」になってたら強制的に安全値へ戻す
+    if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
     sel.value = s.type;
 
     const unit = $('.unit', card);
@@ -429,14 +412,15 @@ ${lines.join('\n')}
     card.classList.toggle('isCollapsed', initialQty === 0);
 
     function syncUI() {
+      if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
       sel.value = s.type;
       unit.textContent = `単価${prices[s.type] || 0}円`;
       mEl.textContent = String(s.m || 0);
       fEl.textContent = String(s.f || 0);
 
       if (!el.q.value.trim()) {
-        const qv = (Number(s.m || 0) + Number(s.f || 0));
-        card.classList.toggle('isCollapsed', qv === 0);
+        const q = (Number(s.m || 0) + Number(s.f || 0));
+        card.classList.toggle('isCollapsed', q === 0);
       }
     }
 
@@ -581,6 +565,7 @@ ${lines.join('\n')}
     el.tabDinos.classList.toggle('isActive', tab === 'dino');
     el.tabItems.classList.toggle('isActive', tab === 'item');
     renderList();
+    syncTopHeight(); // ✅ タブ切替で高さが変わる可能性があるので追従
   }
 
   /* ========= manage modal ========= */
@@ -612,7 +597,7 @@ ${lines.join('\n')}
     return new Promise((resolve) => {
       if (!el.confirmOverlay) return resolve(false);
       confirmResolve = resolve;
-      el.confirmText.textContent = text || '実行しますか？';
+      el.confirmText.textContent = text || '削除しますか？';
       el.confirmOverlay.classList.remove('isHidden');
     });
   }
@@ -644,8 +629,6 @@ ${lines.join('\n')}
     el.editOverlay.classList.add('isHidden');
     el.editBody.innerHTML = '';
   }
-  // ×ボタンは不要（HTML側で消してOK）。残ってても安全。
-  el.editClose?.addEventListener('click', closeEditModal);
   el.editOverlay?.addEventListener('click', (e) => {
     if (e.target === el.editOverlay) closeEditModal();
   });
@@ -685,7 +668,7 @@ ${lines.join('\n')}
       });
       saveJSON(LS.PRICES, prices);
       renderList();
-      setManageTab('prices'); // 閉じない
+      setManageTab('prices'); // ✅ 閉じない
     });
 
     return box;
@@ -695,45 +678,27 @@ ${lines.join('\n')}
   function renderManageCatalog() {
     const wrap = document.createElement('div');
 
-    // 上部：追加 / 五十音
-    const bar = document.createElement('div');
-    bar.style.display = 'flex';
-    bar.style.gap = '10px';
-    bar.style.justifyContent = 'space-between';
-    bar.style.alignItems = 'center';
-    bar.style.margin = '0 0 10px';
+    // ✅ 五十音並び替えボタン（管理画面内・確認あり）
+    const sortBar = document.createElement('div');
+    sortBar.style.display = 'flex';
+    sortBar.style.justifyContent = 'flex-end';
+    sortBar.style.margin = '0 0 10px';
 
-    const left = document.createElement('div');
-    const right = document.createElement('div');
-    right.style.display = 'flex';
-    right.style.gap = '10px';
-
-    if (activeTab === 'dino') {
-      const addBtn = document.createElement('button');
-      addBtn.className = 'pill';
-      addBtn.type = 'button';
-      addBtn.textContent = '＋追加';
-      addBtn.addEventListener('click', openAddDino);
-      left.appendChild(addBtn);
-    }
-
-    const kanaBtn = document.createElement('button');
-    kanaBtn.className = 'pill';
-    kanaBtn.type = 'button';
-    kanaBtn.textContent = '五十音で並び替え';
-    kanaBtn.addEventListener('click', async () => {
+    const sortBtn = document.createElement('button');
+    sortBtn.className = 'pill';
+    sortBtn.type = 'button';
+    sortBtn.textContent = '五十音で並び替え';
+    sortBtn.addEventListener('click', async () => {
       const ok = await confirmAsk('五十音順で並び替えます。よろしいですか？');
       if (!ok) return;
-      const kind = activeTab; // dino/item
-      sortOrderKana(kind);
+
+      sortOrderKana(activeTab);
       renderList();
-      setManageTab('catalog'); // 管理画面を閉じず更新
+      setManageTab('catalog'); // ✅ 閉じない
     });
 
-    right.appendChild(kanaBtn);
-    bar.appendChild(left);
-    bar.appendChild(right);
-    wrap.appendChild(bar);
+    sortBar.appendChild(sortBtn);
+    wrap.appendChild(sortBar);
 
     const list = (activeTab === 'dino')
       ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
@@ -757,7 +722,7 @@ ${lines.join('\n')}
       const id = e.target?.dataset?.id;
       if (!act || !id) return;
 
-      const kind = activeTab; // 'dino' or 'item'
+      const kind = activeTab;
       const ord = (order[kind] || []).slice();
       const i = ord.indexOf(id);
 
@@ -766,7 +731,7 @@ ${lines.join('\n')}
         order[kind] = ord;
         saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
         renderList();
-        setManageTab('catalog'); // 閉じない
+        setManageTab('catalog'); // ✅ 閉じない
         return;
       }
 
@@ -775,7 +740,7 @@ ${lines.join('\n')}
         order[kind] = ord;
         saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
         renderList();
-        setManageTab('catalog'); // 閉じない
+        setManageTab('catalog'); // ✅ 閉じない
         return;
       }
 
@@ -791,7 +756,7 @@ ${lines.join('\n')}
           saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item));
         }
         renderList();
-        setManageTab('catalog'); // 閉じない
+        setManageTab('catalog'); // ✅ 閉じない
         return;
       }
 
@@ -804,97 +769,24 @@ ${lines.join('\n')}
     return wrap;
   }
 
-  function openAddDino() {
-    const box = document.createElement('div');
-
-    // 「ラベルは囲まない」→ pKey は使わず、テキストだけ
-    box.innerHTML = `
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <div style="font-weight:950;">恐竜を追加</div>
-
-        <div style="font-weight:900;opacity:.8;">名前</div>
-        <div class="pVal"><input id="addName" type="text" placeholder="例：TEKギガノト" autocomplete="off"></div>
-
-        <div style="font-weight:900;opacity:.8;">デフォルト種類</div>
-        <div class="pVal">
-          <select id="addType">
-            ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
-          </select>
-        </div>
-
-        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
-          <button class="ghost" type="button" data-act="cancel">キャンセル</button>
-          <button class="pill" type="button" data-act="save">追加</button>
-        </div>
-      </div>
-    `;
-
-    openEditModal('追加 / 編集', box);
-
-    box.addEventListener('click', (e) => {
-      const act = e.target?.dataset?.act;
-      if (!act) return;
-
-      if (act === 'cancel') {
-        closeEditModal();
-        return;
-      }
-
-      if (act === 'save') {
-        const name = ($('#addName', box)?.value || '').trim();
-        const defType = ($('#addType', box)?.value || '受精卵');
-        if (!name) return;
-
-        // customは「名前変更してもID維持」したいので、作成時に固定ID
-        const id = stableId('c', name);
-
-        const idx = custom.dino.findIndex(x => x.id === id);
-        if (idx >= 0) custom.dino[idx] = { id, name, defType };
-        else custom.dino.push({ id, name, defType });
-
-        saveJSON(LS.DINO_CUSTOM, custom.dino);
-
-        const exists = dinos.findIndex(d => d.id === id);
-        if (exists >= 0) dinos[exists] = { id, name, defType, kind: 'dino' };
-        else dinos.push({ id, name, defType, kind: 'dino' });
-
-        const ord = (order.dino || []).slice();
-        if (!ord.includes(id)) ord.push(id);
-        order.dino = ord;
-        saveJSON(LS.DINO_ORDER, ord);
-
-        closeEditModal();
-        renderList();
-        setManageTab('catalog');
-      }
-    });
-  }
-
   function openEditDino(id) {
     const d = dinos.find(x => x.id === id);
     if (!d) return;
 
     const box = document.createElement('div');
-
-    // 「ラベルは囲まない」→ pKey は使わない
+    box.className = 'editForm';
     box.innerHTML = `
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <div style="font-weight:950;">恐竜を編集</div>
+      <div class="editLabel">名前</div>
+      <input class="editInput" id="editName" type="text" value="${escapeHtmlAttr(d.name)}" autocomplete="off">
 
-        <div style="font-weight:900;opacity:.8;">名前</div>
-        <div class="pVal"><input id="editName" type="text" value="${escapeHtml(d.name)}" autocomplete="off"></div>
+      <div class="editLabel">デフォルト種類</div>
+      <select class="editSelect" id="editType">
+        ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
+      </select>
 
-        <div style="font-weight:900;opacity:.8;">デフォルト種類</div>
-        <div class="pVal">
-          <select id="editType">
-            ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
-          </select>
-        </div>
-
-        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
-          <button class="ghost" type="button" data-act="cancel">キャンセル</button>
-          <button class="pill" type="button" data-act="save">保存</button>
-        </div>
+      <div class="editBtns">
+        <button class="ghost" type="button" data-act="cancel">キャンセル</button>
+        <button class="pill" type="button" data-act="save">保存</button>
       </div>
     `;
 
@@ -917,7 +809,6 @@ ${lines.join('\n')}
         const newDef = ($('#editType', box)?.value || '受精卵');
         if (!newName) return;
 
-        // custom恐竜なら custom を更新 / ベース恐竜なら override
         const cIdx = custom.dino.findIndex(x => x.id === id);
         if (cIdx >= 0) {
           custom.dino[cIdx] = { id, name: newName, defType: newDef };
@@ -935,6 +826,18 @@ ${lines.join('\n')}
         setManageTab('catalog');
       }
     });
+  }
+
+  function escapeHtml(s) {
+    return String(s || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+  function escapeHtmlAttr(s) {
+    return escapeHtml(s).replaceAll('\n', ' ');
   }
 
   /* ========= Images tab ========= */
@@ -986,9 +889,7 @@ ${lines.join('\n')}
         dinoImages[d.id] = dataUrl;
         saveJSON(LS.DINO_IMAGES, dinoImages);
         thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
-
-        // メインにも即反映（ミニ表示）
-        renderList();
+        renderList(); // ✅ メインリスト即反映
       });
 
       del.addEventListener('click', async () => {
@@ -1031,7 +932,6 @@ ${lines.join('\n')}
     });
   }
 
-  /* ========= image viewer ========= */
   function openImgViewer(url) {
     if (!el.imgOverlay || !el.imgViewerImg) return;
     el.imgViewerImg.src = url;
@@ -1048,6 +948,9 @@ ${lines.join('\n')}
   });
 
   /* ========= events ========= */
+  window.addEventListener('resize', syncTopHeight, { passive: true });
+  window.addEventListener('orientationchange', syncTopHeight, { passive: true });
+
   el.tabDinos?.addEventListener('click', () => setTab('dino'));
   el.tabItems?.addEventListener('click', () => setTab('item'));
 
@@ -1060,6 +963,7 @@ ${lines.join('\n')}
   el.delivery?.addEventListener('change', () => {
     localStorage.setItem(LS.DELIVERY, el.delivery.value);
     rebuildOutput();
+    syncTopHeight();
   });
 
   el.copy?.addEventListener('click', async () => {
@@ -1096,14 +1000,17 @@ ${lines.join('\n')}
     const baseD = dText.split(/\r?\n/).map(parseDinoLine).filter(Boolean);
     const baseI = iText.split(/\r?\n/).map(parseItemLine).filter(Boolean);
 
-    // custom はそのまま（ID固定）
     dinos = baseD.concat(custom.dino.map(x => ({ id: x.id, name: x.name, defType: x.defType, kind: 'dino' })));
     items = baseI.concat(custom.item.map(x => ({ id: x.id, name: x.name, unit: x.unit, price: x.price, kind: 'item' })));
 
     ensureOrderList(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
     ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
 
+    // 初期タブ
     setTab('dino');
+
+    // ✅ 初回もヘッダー高さを確定
+    syncTopHeight();
   }
 
   init();
