@@ -214,16 +214,33 @@ button{cursor:pointer}
    → toggleを下げて、右側(select側)を上げる */
 .cardToggle{
   position:absolute;
-  inset:-12px -12px auto -12px;
+
+  /* ✅ 左半分ほぼ全部にする（右側のselect領域は避ける） */
+  top:-12px;
+  left:-12px;
+  bottom:auto;
+  right:calc(140px + 10px); /* ← .cardHead の右カラム(140px) + gap(10px) */
+
   height:calc(100% + 24px);
+
   border:0;
   background:transparent;
   padding:0;
   margin:0;
   cursor:pointer;
 
-  /* ✅ 左側（名前＋画像）のクリックを全部拾う */
+  /* ✅ 左側クリックを確実に拾う */
   z-index:6;
+}
+
+/* ✅ 右側(select等)はトグルより前面に固定 */
+.right{
+  position:relative;
+  z-index:10;
+}
+.type{
+  position:relative;
+  z-index:11;
 }
 
 /* ✅ 右側（select）はトグルより上にして操作可能にする */
