@@ -601,14 +601,17 @@ function applyCollapseAndSearch() {
     const kind = card.dataset.kind;
     const qty = getQtyForCard(key, kind);
 
-    // ✅ 検索中は「ヒットしないものは閉じる（従来通り）」
+    // ✅ 検索中は「ヒットしないものは閉じる」
     if (q) {
       card.classList.toggle('isCollapsed', !show);
       return;
     }
 
-    // ✅ 検索してない時は「手動トグルが優先」
-    //    userToggled=1 のカードは勝手に開閉しない
+    // ✅ 操作中（フォーカスがカード内）なら勝手に閉じない
+    const ae = document.activeElement;
+    if (ae && card.contains(ae)) return;
+
+    // ✅ 手動トグル優先
     if (card.dataset.userToggled === '1') return;
 
     // ✅ 触ってないカードだけ「数量0なら自動で閉じる」
@@ -844,14 +847,23 @@ if (qNow === 0) delete card.dataset.userToggled;
       applyCollapseAndSearch();
     }
 
-    sel.addEventListener('change', (ev) => {
-      ev.stopPropagation();
-      s.type = sel.value;
-      autoSpecify(s);
-      syncUI();
-      rebuildOutput();
-      applyCollapseAndSearch();
-    });
+// ✅ iOS対策：selectを触った時点で「手動操作扱い」にして自動折りたたみを止める
+['pointerdown','mousedown','touchstart','click','focus'].forEach(evt => {
+  sel.addEventListener(evt, (ev) => {
+    ev.stopPropagation();
+    card.dataset.userToggled = '1';
+  }, { passive: true });
+});
+
+sel.addEventListener('change', (ev) => {
+  ev.stopPropagation();
+  card.dataset.userToggled = '1'; // changeでも念押し
+  s.type = sel.value;
+  autoSpecify(s);
+  syncUI();
+  rebuildOutput();
+  applyCollapseAndSearch();
+});
 
 $('.cardToggle', card).addEventListener('click', (ev) => {
   ev.preventDefault();
