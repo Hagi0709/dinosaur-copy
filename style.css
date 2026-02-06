@@ -215,22 +215,32 @@ button{cursor:pointer}
 .cardToggle{
   position:absolute;
 
-  /* ✅ 左半分ほぼ全部にする（右側のselect領域は避ける） */
+  /* ✅ iOS対策：height指定を捨てて top/bottom で当たり判定を確定 */
   top:-12px;
   left:-12px;
-  bottom:auto;
-  right:calc(140px + 10px); /* ← .cardHead の右カラム(140px) + gap(10px) */
+  bottom:-12px;                 /* ← ここが重要 */
+  right:calc(140px + 10px);      /* 右カラム140 + gap10 を避ける */
 
-  height:calc(100% + 24px);
+  height:auto;                   /* 念のため */
+  width:auto;                    /* 念のため */
+  display:block;                 /* 念のため */
 
   border:0;
   background:transparent;
   padding:0;
   margin:0;
   cursor:pointer;
+  z-index:20;                    /* ✅ 画像の上に確実に乗せる */
+}
 
-  /* ✅ 左側クリックを確実に拾う */
-  z-index:6;
+/* ✅ 右側(select/単価)は必ずトグルより前面にして操作を守る */
+.right{
+  position:relative;
+  z-index:30;
+}
+.type{
+  position:relative;
+  z-index:31;
 }
 
 /* ✅ 右側(select等)はトグルより前面に固定 */
