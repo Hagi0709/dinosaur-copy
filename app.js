@@ -11,19 +11,32 @@
 
   /* ========= storage keys ========= */
   const LS = {
-    DINO_CUSTOM: 'dino_custom_v1',
-    ITEM_CUSTOM: 'item_custom_v1',
-    DINO_HIDDEN: 'dino_hidden_v1',
-    ITEM_HIDDEN: 'item_hidden_v1',
-    DINO_ORDER: 'dino_order_v1',
-    ITEM_ORDER: 'item_order_v1',
     PRICES: 'prices_v1',
     DELIVERY: 'delivery_v1',
+
+    DINO_CUSTOM: 'dino_custom_v1',
+    ITEM_CUSTOM: 'item_custom_v1',
+
+    DINO_HIDDEN: 'dino_hidden_v1',
+    ITEM_HIDDEN: 'item_hidden_v1',
+
+    DINO_ORDER: 'dino_order_v1',
+    ITEM_ORDER: 'item_order_v1',
+
+    DINO_IMAGES: 'dino_images_v1', // { [dinoId]: dataUrl }
   };
+
   const loadJSON = (k, fb) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } };
   const saveJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-  /* ========= prices ========= */
+  /* ========= reset helper ========= */
+  if (new URL(location.href).searchParams.get('reset') === '1') {
+    Object.values(LS).forEach(k => localStorage.removeItem(k));
+    location.replace(location.pathname);
+    return;
+  }
+
+  /* ========= default prices ========= */
   const defaultPrices = {
     '受精卵': 30, '受精卵(指定)': 50,
     '胚': 50, '胚(指定)': 100,
@@ -31,59 +44,9 @@
     '成体': 500,
     'クローン': 500, 'クローン(指定)': 300,
   };
-  const prices = Object.assign({}, defaultPrices, loadJSON(LS.PRICES, {}));
   const typeList = Object.keys(defaultPrices);
   const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
-
-  /* ========= IndexedDB (images) ========= */
-  const IMG_DB = { name: 'dino_images_v1', store: 'images', version: 1 };
-
-  function idbOpen() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(IMG_DB.name, IMG_DB.version);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if (!db.objectStoreNames.contains(IMG_DB.store)) {
-          db.createObjectStore(IMG_DB.store, { keyPath: 'id' }); // {id, blob, updatedAt}
-        }
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async function idbGetImage(id) {
-    const db = await idbOpen();
-    return new Promise((resolve) => {
-      const tx = db.transaction(IMG_DB.store, 'readonly');
-      const st = tx.objectStore(IMG_DB.store);
-      const req = st.get(id);
-      req.onsuccess = () => resolve(req.result ? req.result.blob : null);
-      req.onerror = () => resolve(null);
-    });
-  }
-
-  async function idbSetImage(id, blob) {
-    const db = await idbOpen();
-    return new Promise((resolve) => {
-      const tx = db.transaction(IMG_DB.store, 'readwrite');
-      const st = tx.objectStore(IMG_DB.store);
-      st.put({ id, blob, updatedAt: Date.now() });
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => resolve(false);
-    });
-  }
-
-  async function idbDelImage(id) {
-    const db = await idbOpen();
-    return new Promise((resolve) => {
-      const tx = db.transaction(IMG_DB.store, 'readwrite');
-      const st = tx.objectStore(IMG_DB.store);
-      st.delete(id);
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => resolve(false);
-    });
-  }
+  const prices = Object.assign({}, defaultPrices, loadJSON(LS.PRICES, {}));
 
   /* ========= DOM ========= */
   const el = {
@@ -93,12 +56,12 @@
     copy: $('#copy'),
     total: $('#total'),
     out: $('#out'),
-    openManage: $('#openManage'),
+
     tabDinos: $('#tabDinos'),
     tabItems: $('#tabItems'),
     list: $('#list'),
 
-    // manage modal
+    openManage: $('#openManage'),
     modalOverlay: $('#modalOverlay'),
     closeManage: $('#closeManage'),
     modalBody: $('#modalBody'),
@@ -106,25 +69,20 @@
     mTabPrices: $('#mTabPrices'),
     mTabImages: $('#mTabImages'),
 
-    // confirm modal
     confirmOverlay: $('#confirmOverlay'),
     confirmText: $('#confirmText'),
     confirmCancel: $('#confirmCancel'),
     confirmOk: $('#confirmOk'),
 
-    // edit modal
     editOverlay: $('#editOverlay'),
     editTitle: $('#editTitle'),
     editBody: $('#editBody'),
     editClose: $('#editClose'),
-  };
 
-  /* ========= reset helper ========= */
-  if (new URL(location.href).searchParams.get('reset') === '1') {
-    Object.values(LS).forEach(k => localStorage.removeItem(k));
-    location.replace(location.pathname);
-    return;
-  }
+    imgOverlay: $('#imgOverlay'),
+    imgViewerImg: $('#imgViewerImg'),
+    imgClose: $('#imgClose'),
+  };
 
   /* ========= state ========= */
   const hidden = {
@@ -139,15 +97,15 @@
     dino: loadJSON(LS.DINO_CUSTOM, []), // [{id,name,defType}]
     item: loadJSON(LS.ITEM_CUSTOM, []), // [{id,name,unit,price}]
   };
+  const dinoImages = loadJSON(LS.DINO_IMAGES, {}); // {id:dataUrl}
 
   let dinos = [];
   let items = [];
-  let activeTab = 'dino'; // 'dino' | 'item'
-  let manageTab = 'catalog'; // 'catalog' | 'prices' | 'images'
+  let activeTab = 'dino';
 
-  // inputState: key -> {type,m,f} or {qty}
+  // key -> dinoState {type,m,f} / itemState {qty}
   const inputState = new Map();
-  // duplicated cards are ephemeral
+  // duplicated keys are ephemeral (not persisted)
   const ephemeralKeys = new Set();
 
   /* ========= fetch & parse ========= */
@@ -212,6 +170,7 @@
     return inputState.get(key);
   }
 
+  // 両方>0なら(指定)へ。両方0なら(指定)解除。
   function autoSpecify(s) {
     const m = Number(s.m || 0), f = Number(s.f || 0);
     const base = String(s.type || '受精卵').replace('(指定)', '');
@@ -231,6 +190,7 @@
     let sum = 0;
     let idx = 1;
 
+    // dinos
     const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
     for (const d of dList) {
       const baseKey = d.id;
@@ -272,6 +232,7 @@
       }
     }
 
+    // items
     const iList = sortByOrder(items.filter(it => !hidden.item.has(it.id)), 'item');
     for (const it of iList) {
       const s = inputState.get(it.id);
@@ -303,17 +264,22 @@ ${lines.join('\n')}
 また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
   }
 
-  /* ========= search + collapse ========= */
+  /* ========= collapse & search ========= */
   function applyCollapseAndSearch() {
     const q = norm(el.q.value);
-    $$('[data-card="1"]', el.list).forEach(card => {
-      const name = card.dataset.name || '';
-      const show = !q || norm(name).includes(q);
-      card.style.display = show ? '' : 'none';
+    const cards = $$('[data-card="1"]', el.list);
 
-      const key = card.dataset.key;
+    cards.forEach(cardWrap => {
+      const card = $('.card', cardWrap);
+      const kind = cardWrap.dataset.kind;
+      const name = cardWrap.dataset.name || '';
+      const show = !q || norm(name).includes(q);
+      cardWrap.style.display = show ? '' : 'none';
+
+      const key = cardWrap.dataset.key;
       let qty = 0;
-      if (activeTab === 'dino') {
+
+      if (kind === 'dino') {
         const s = inputState.get(key);
         qty = s ? (Number(s.m || 0) + Number(s.f || 0)) : 0;
       } else {
@@ -333,52 +299,55 @@ ${lines.join('\n')}
 
     const wrap = document.createElement('div');
     wrap.className = 'cardWrap';
+    wrap.dataset.card = '1';
+    wrap.dataset.kind = 'dino';
+    wrap.dataset.key = key;
+    wrap.dataset.name = d.name;
 
-    const card = document.createElement('div');
-    card.className = 'card isCollapsed';
-    card.dataset.card = '1';
-    card.dataset.key = key;
-    card.dataset.name = d.name;
-
-    card.innerHTML = `
-      <div class="cardHead">
-        <div class="name"></div>
-        <div class="right">
-          <select class="type"></select>
-          <div class="unit"></div>
-        </div>
-      </div>
-
-      <div class="controls">
-        <div class="grid2" style="grid-template-columns:1fr 1fr 86px;">
-          <div class="stepper" data-sex="m" style="border-color:rgba(120,190,255,.35); box-shadow:inset 0 0 0 1px rgba(120,190,255,.15);">
-            <button class="btn" data-act="m-" type="button">−</button>
-            <div class="val js-m">0</div>
-            <button class="btn" data-act="m+" type="button">＋</button>
+    wrap.innerHTML = `
+      <div class="card ${Number(s.m||0)+Number(s.f||0)===0 ? 'isCollapsed':''}">
+        <div class="cardHead">
+          <div class="name"></div>
+          <div class="right">
+            <select class="type" data-no-collapse="1"></select>
+            <div class="unit"></div>
           </div>
-
-          <div class="stepper" data-sex="f" style="border-color:rgba(255,130,210,.35); box-shadow:inset 0 0 0 1px rgba(255,130,210,.15);">
-            <button class="btn" data-act="f-" type="button">−</button>
-            <div class="val js-f">0</div>
-            <button class="btn" data-act="f+" type="button">＋</button>
-          </div>
-
-          <button class="mini" data-act="dup" type="button" style="height:48px;border-radius:16px;">複製</button>
         </div>
+
+        <div class="controls">
+          <div class="sexRow">
+            <div class="stepper male" data-sex="m">
+              <button class="btn" type="button" data-act="m-" data-no-collapse="1">−</button>
+              <div class="val js-m">0</div>
+              <button class="btn" type="button" data-act="m+" data-no-collapse="1">＋</button>
+            </div>
+
+            <div class="stepper female" data-sex="f">
+              <button class="btn" type="button" data-act="f-" data-no-collapse="1">−</button>
+              <div class="val js-f">0</div>
+              <button class="btn" type="button" data-act="f+" data-no-collapse="1">＋</button>
+            </div>
+
+            <button class="dupBtn" type="button" data-act="dup" data-no-collapse="1">複製</button>
+          </div>
+        </div>
+
+        <div class="cardTap" data-act="toggle"></div>
       </div>
     `;
 
-    $('.name', card).textContent = d.name;
+    const card = $('.card', wrap);
+    $('.name', wrap).textContent = d.name;
 
-    const sel = $('.type', card);
+    const sel = $('.type', wrap);
     sel.innerHTML = typeList.map(t => `<option value="${t}">${t}</option>`).join('');
     sel.value = s.type;
 
-    const unit = $('.unit', card);
+    const unit = $('.unit', wrap);
     unit.textContent = `単価${prices[s.type] || 0}円`;
 
-    const mEl = $('.js-m', card);
-    const fEl = $('.js-f', card);
+    const mEl = $('.js-m', wrap);
+    const fEl = $('.js-f', wrap);
     mEl.textContent = String(s.m || 0);
     fEl.textContent = String(s.f || 0);
 
@@ -391,53 +360,6 @@ ${lines.join('\n')}
       applyCollapseAndSearch();
     });
 
-    function step(sex, delta) {
-      if (sex === 'm') s.m = Math.max(0, Number(s.m || 0) + delta);
-      if (sex === 'f') s.f = Math.max(0, Number(s.f || 0) + delta);
-      autoSpecify(s);
-      sel.value = s.type;
-      unit.textContent = `単価${prices[s.type] || 0}円`;
-      mEl.textContent = String(s.m || 0);
-      fEl.textContent = String(s.f || 0);
-      rebuildOutput();
-      applyCollapseAndSearch();
-    }
-
-    // クリック判定：ヘッダ全体で折りたたみ/展開（ボタン類は除外）
-    card.addEventListener('click', (e) => {
-      const t = e.target;
-      const act = t?.dataset?.act;
-
-      // ボタン・セレクトは折りたたみトグル対象外
-      if (t.closest('button') || t.closest('select') || t.closest('input')) {
-        if (!act) return;
-      } else {
-        // ヘッダ〜カード領域をタップしたらトグル
-        card.classList.toggle('isCollapsed');
-        return;
-      }
-
-      if (act === 'm-') step('m', -1);
-      if (act === 'm+') step('m', +1);
-      if (act === 'f-') step('f', -1);
-      if (act === 'f+') step('f', +1);
-
-      if (act === 'dup') {
-        const dupKey = `${key}__dup_${uid()}`;
-        ephemeralKeys.add(dupKey);
-        inputState.set(dupKey, { type: s.type, m: 0, f: 0 });
-
-        const dupCard = buildDinoCard({ ...d, id: dupKey });
-        dupCard.dataset.name = d.name;
-        dupCard.dataset.key = dupKey;
-
-        wrap.after(dupCard.closest('.cardWrap'));
-        rebuildOutput();
-        applyCollapseAndSearch();
-      }
-    });
-
-    wrap.appendChild(card);
     return wrap;
   }
 
@@ -446,55 +368,39 @@ ${lines.join('\n')}
 
     const wrap = document.createElement('div');
     wrap.className = 'cardWrap';
+    wrap.dataset.card = '1';
+    wrap.dataset.kind = 'item';
+    wrap.dataset.key = it.id;
+    wrap.dataset.name = it.name;
 
-    const card = document.createElement('div');
-    card.className = 'card isCollapsed';
-    card.dataset.card = '1';
-    card.dataset.key = it.id;
-    card.dataset.name = it.name;
-
-    card.innerHTML = `
-      <div class="cardHead">
-        <div class="name"></div>
-        <div class="right">
-          <div class="unit"></div>
+    wrap.innerHTML = `
+      <div class="card ${Number(s.qty||0)===0 ? 'isCollapsed':''}">
+        <div class="cardHead">
+          <div class="name"></div>
+          <div class="right">
+            <div class="unit"></div>
+          </div>
         </div>
-      </div>
 
-      <div class="controls">
-        <div class="stepper">
-          <button class="btn" data-act="-" type="button">−</button>
-          <div class="val js-q">0</div>
-          <button class="btn" data-act="+" type="button">＋</button>
+        <div class="controls">
+          <div class="sexRow">
+            <div class="stepper" style="border-color:rgba(255,255,255,.12);box-shadow:none;">
+              <button class="btn" type="button" data-act="i-" data-no-collapse="1">−</button>
+              <div class="val js-q">0</div>
+              <button class="btn" type="button" data-act="i+" data-no-collapse="1">＋</button>
+            </div>
+          </div>
         </div>
+
+        <div class="cardTap" data-act="toggle"></div>
       </div>
     `;
 
-    $('.name', card).textContent = it.name;
-    $('.unit', card).textContent = `単価${it.price}円`;
+    $('.name', wrap).textContent = it.name;
+    $('.unit', wrap).textContent = `単価${it.price}円`;
 
-    const qEl = $('.js-q', card);
-    qEl.textContent = String(s.qty || 0);
+    $('.js-q', wrap).textContent = String(s.qty || 0);
 
-    card.addEventListener('click', (e) => {
-      const t = e.target;
-      const act = t?.dataset?.act;
-
-      if (t.closest('button') || t.closest('select') || t.closest('input')) {
-        if (!act) return;
-      } else {
-        card.classList.toggle('isCollapsed');
-        return;
-      }
-
-      if (act === '-') s.qty = Math.max(0, Number(s.qty || 0) - 1);
-      if (act === '+') s.qty = Math.max(0, Number(s.qty || 0) + 1);
-      qEl.textContent = String(s.qty || 0);
-      rebuildOutput();
-      applyCollapseAndSearch();
-    });
-
-    wrap.appendChild(card);
     return wrap;
   }
 
@@ -514,17 +420,100 @@ ${lines.join('\n')}
     applyCollapseAndSearch();
   }
 
+  /* ========= tabs ========= */
   function setTab(tab) {
     activeTab = tab;
+
     el.tabDinos.classList.toggle('isActive', tab === 'dino');
     el.tabItems.classList.toggle('isActive', tab === 'item');
+
     el.tabDinos.setAttribute('aria-selected', tab === 'dino' ? 'true' : 'false');
     el.tabItems.setAttribute('aria-selected', tab === 'item' ? 'true' : 'false');
+
     renderList();
   }
-
   el.tabDinos.addEventListener('click', () => setTab('dino'));
   el.tabItems.addEventListener('click', () => setTab('item'));
+
+  /* ========= list interactions (delegation) ========= */
+  el.list.addEventListener('click', (e) => {
+    const t = e.target;
+    if (!t) return;
+
+    const act = t.dataset.act;
+    const noCollapse = t.dataset.noCollapse === '1';
+
+    const wrap = t.closest('.cardWrap');
+    if (!wrap) return;
+
+    const kind = wrap.dataset.kind;
+    const key = wrap.dataset.key;
+
+    const card = $('.card', wrap);
+
+    if (act === 'toggle') {
+      card.classList.toggle('isCollapsed');
+      return;
+    }
+
+    if (noCollapse) e.stopPropagation();
+
+    if (kind === 'dino') {
+      const s = ensureDinoState(key);
+
+      const sel = $('.type', wrap);
+      const unit = $('.unit', wrap);
+      const mEl = $('.js-m', wrap);
+      const fEl = $('.js-f', wrap);
+
+      const step = (sex, delta) => {
+        if (sex === 'm') s.m = Math.max(0, Number(s.m || 0) + delta);
+        if (sex === 'f') s.f = Math.max(0, Number(s.f || 0) + delta);
+        autoSpecify(s);
+        sel.value = s.type;
+        unit.textContent = `単価${prices[s.type] || 0}円`;
+        mEl.textContent = String(s.m || 0);
+        fEl.textContent = String(s.f || 0);
+        rebuildOutput();
+        applyCollapseAndSearch();
+      };
+
+      if (act === 'm-') step('m', -1);
+      if (act === 'm+') step('m', +1);
+      if (act === 'f-') step('f', -1);
+      if (act === 'f+') step('f', +1);
+
+      if (act === 'dup') {
+        const baseKey = key.includes('__dup_') ? key.split('__dup_')[0] : key;
+        const baseState = inputState.get(baseKey) || s;
+
+        const dupKey = `${baseKey}__dup_${uid()}`;
+        ephemeralKeys.add(dupKey);
+        inputState.set(dupKey, { type: baseState.type, m: 0, f: 0 });
+
+        const base = dinos.find(x => x.id === baseKey) || dinos.find(x => x.id === key);
+        if (!base) return;
+
+        const dupWrap = buildDinoCard({ ...base, id: dupKey });
+        wrap.after(dupWrap);
+
+        rebuildOutput();
+        applyCollapseAndSearch();
+      }
+    }
+
+    if (kind === 'item') {
+      const s = ensureItemState(key);
+      const qEl = $('.js-q', wrap);
+
+      if (act === 'i-') s.qty = Math.max(0, Number(s.qty || 0) - 1);
+      if (act === 'i+') s.qty = Math.max(0, Number(s.qty || 0) + 1);
+
+      qEl.textContent = String(s.qty || 0);
+      rebuildOutput();
+      applyCollapseAndSearch();
+    }
+  });
 
   /* ========= search ========= */
   el.q.addEventListener('input', applyCollapseAndSearch);
@@ -555,53 +544,75 @@ ${lines.join('\n')}
     }
   });
 
-  /* ========= simple modals ========= */
-  function showOverlay(node) {
-    node.classList.remove('isHidden');
-    node.setAttribute('aria-hidden', 'false');
+  /* ========= confirm modal ========= */
+  let confirmResolver = null;
+  function openConfirm(message) {
+    el.confirmText.textContent = message || '削除しますか？';
+    el.confirmOverlay.classList.remove('isHidden');
+    rememberScrollLock(true);
+    return new Promise((resolve) => { confirmResolver = resolve; });
   }
-  function hideOverlay(node) {
-    node.classList.add('isHidden');
-    node.setAttribute('aria-hidden', 'true');
+  function closeConfirm(ans) {
+    el.confirmOverlay.classList.add('isHidden');
+    rememberScrollLock(false);
+    if (confirmResolver) confirmResolver(!!ans);
+    confirmResolver = null;
+  }
+  el.confirmCancel.addEventListener('click', () => closeConfirm(false));
+  el.confirmOk.addEventListener('click', () => closeConfirm(true));
+  el.confirmOverlay.addEventListener('click', (e) => { if (e.target === el.confirmOverlay) closeConfirm(false); });
+
+  /* ========= scroll lock ========= */
+  function rememberScrollLock(on) {
+    if (on) {
+      const y = window.scrollY || 0;
+      document.body.dataset.lockY = String(y);
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${y}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.width = '100%';
+    } else {
+      const y = Number(document.body.dataset.lockY || '0');
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.width = '';
+      delete document.body.dataset.lockY;
+      window.scrollTo(0, y);
+    }
   }
 
-  function confirmDialog(message) {
-    return new Promise((resolve) => {
-      el.confirmText.textContent = message || '削除しますか？';
-      showOverlay(el.confirmOverlay);
-
-      const onCancel = () => {
-        cleanup();
-        resolve(false);
-      };
-      const onOk = () => {
-        cleanup();
-        resolve(true);
-      };
-      function cleanup() {
-        el.confirmCancel.removeEventListener('click', onCancel);
-        el.confirmOk.removeEventListener('click', onOk);
-        hideOverlay(el.confirmOverlay);
-      }
-
-      el.confirmCancel.addEventListener('click', onCancel);
-      el.confirmOk.addEventListener('click', onOk);
-    });
+  /* ========= image viewer (tap to enlarge) ========= */
+  function openImageViewer(src) {
+    if (!src) return;
+    el.imgViewerImg.src = src;
+    el.imgOverlay.classList.remove('isHidden');
+    el.imgOverlay.setAttribute('aria-hidden', 'false');
+    rememberScrollLock(true);
   }
-
-  function openEdit(title, bodyNode) {
-    el.editTitle.textContent = title || '編集';
-    el.editBody.innerHTML = '';
-    el.editBody.appendChild(bodyNode);
-    showOverlay(el.editOverlay);
+  function closeImageViewer() {
+    el.imgOverlay.classList.add('isHidden');
+    el.imgOverlay.setAttribute('aria-hidden', 'true');
+    el.imgViewerImg.src = '';
+    rememberScrollLock(false);
   }
-  function closeEdit() {
-    hideOverlay(el.editOverlay);
-    el.editBody.innerHTML = '';
-  }
-  el.editClose.addEventListener('click', closeEdit);
+  el.imgClose.addEventListener('click', closeImageViewer);
+  el.imgOverlay.addEventListener('click', (e) => { if (e.target === el.imgOverlay) closeImageViewer(); });
 
-  /* ========= manage tab rendering ========= */
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (!el.imgOverlay.classList.contains('isHidden')) closeImageViewer();
+      if (!el.confirmOverlay.classList.contains('isHidden')) closeConfirm(false);
+      if (!el.modalOverlay.classList.contains('isHidden')) closeManage();
+      if (!el.editOverlay.classList.contains('isHidden')) closeEdit();
+    }
+  });
+
+  /* ========= manage modal ========= */
+  let manageTab = 'catalog'; // catalog | prices | images
+
   function setManageTab(tab) {
     manageTab = tab;
     el.mTabCatalog.classList.toggle('isActive', tab === 'catalog');
@@ -610,6 +621,24 @@ ${lines.join('\n')}
     renderManageBody();
   }
 
+  function openManage() {
+    el.modalOverlay.classList.remove('isHidden');
+    el.modalOverlay.setAttribute('aria-hidden', 'false');
+    rememberScrollLock(true);
+    setManageTab('catalog');
+  }
+
+  function closeManage() {
+    el.modalOverlay.classList.add('isHidden');
+    el.modalOverlay.setAttribute('aria-hidden', 'true');
+    el.modalBody.innerHTML = '';
+    rememberScrollLock(false);
+  }
+
+  el.openManage.addEventListener('click', openManage);
+  el.closeManage.addEventListener('click', closeManage);
+  el.modalOverlay.addEventListener('click', (e) => { if (e.target === el.modalOverlay) closeManage(); });
+
   el.mTabCatalog.addEventListener('click', () => setManageTab('catalog'));
   el.mTabPrices.addEventListener('click', () => setManageTab('prices'));
   el.mTabImages.addEventListener('click', () => setManageTab('images'));
@@ -617,108 +646,153 @@ ${lines.join('\n')}
   function renderManageBody() {
     el.modalBody.innerHTML = '';
 
-    if (manageTab === 'catalog') {
-      el.modalBody.appendChild(buildManageCatalog());
-      return;
-    }
     if (manageTab === 'prices') {
-      el.modalBody.appendChild(buildManagePrices());
-      return;
-    }
-    if (manageTab === 'images') {
-      el.modalBody.appendChild(buildManageImages());
-      return;
-    }
-  }
+      const wrap = document.createElement('div');
 
-  function buildManagePrices() {
-    const box = document.createElement('div');
-    box.className = 'card';
+      const grid = document.createElement('div');
+      grid.className = 'priceGrid';
 
-    const title = document.createElement('div');
-    title.className = 'name';
-    title.style.fontSize = '16px';
-    title.style.marginBottom = '10px';
-    title.textContent = '価格設定';
-    box.appendChild(title);
+      typeList.forEach(t => {
+        const key = document.createElement('div');
+        key.className = 'pKey';
+        key.textContent = t;
 
-    const grid = document.createElement('div');
-    grid.className = 'priceGrid';
+        const val = document.createElement('div');
+        val.className = 'pVal';
+        val.innerHTML = `<input type="number" inputmode="numeric" value="${Number(prices[t] || 0)}" data-price-type="${t}">`;
 
-    typeList.forEach(t => {
-      const key = document.createElement('div');
-      key.className = 'pKey';
-      key.textContent = t;
-
-      const val = document.createElement('div');
-      val.className = 'pVal';
-      val.innerHTML = `<input type="number" inputmode="numeric" value="${prices[t] || 0}" data-type="${t}">`;
-
-      grid.appendChild(key);
-      grid.appendChild(val);
-    });
-
-    box.appendChild(grid);
-
-    const btns = document.createElement('div');
-    btns.style.marginTop = '12px';
-    btns.innerHTML = `<button class="primary" type="button" id="savePrices">保存</button>`;
-    box.appendChild(btns);
-
-    btns.querySelector('#savePrices').addEventListener('click', () => {
-      $$('input[data-type]', box).forEach(inp => {
-        const t = inp.dataset.type;
-        prices[t] = Number(inp.value || 0);
+        grid.appendChild(key);
+        grid.appendChild(val);
       });
-      saveJSON(LS.PRICES, prices);
-      renderList();
-      hideManage();
-    });
 
-    return box;
-  }
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'primary';
+      saveBtn.type = 'button';
+      saveBtn.textContent = '保存';
 
-  function buildManageCatalog() {
-    const frag = document.createDocumentFragment();
+      saveBtn.addEventListener('click', () => {
+        $$('input[data-price-type]', grid).forEach(inp => {
+          const t = inp.dataset.priceType;
+          prices[t] = Number(inp.value || 0);
+        });
+        saveJSON(LS.PRICES, prices);
+        renderList();
+        closeManage();
+      });
 
-    // 上部：切替（恐竜/アイテム）
-    const bar = document.createElement('div');
-    bar.className = 'mBar';
+      wrap.appendChild(grid);
+      const spacer = document.createElement('div'); spacer.style.height = '12px';
+      wrap.appendChild(spacer);
+      wrap.appendChild(saveBtn);
 
-    const tabs = document.createElement('div');
-    tabs.className = 'tabs';
-    const bD = document.createElement('button');
-    bD.className = 'tab ' + (activeTab === 'dino' ? 'isActive' : '');
-    bD.type = 'button';
-    bD.textContent = '恐竜';
-    const bI = document.createElement('button');
-    bI.className = 'tab ' + (activeTab === 'item' ? 'isActive' : '');
-    bI.type = 'button';
-    bI.textContent = 'アイテム';
+      el.modalBody.appendChild(wrap);
+      return;
+    }
 
-    bD.addEventListener('click', () => { activeTab = 'dino'; setTab('dino'); setManageTab('catalog'); });
-    bI.addEventListener('click', () => { activeTab = 'item'; setTab('item'); setManageTab('catalog'); });
+    if (manageTab === 'images') {
+      const wrap = document.createElement('div');
 
-    tabs.appendChild(bD);
-    tabs.appendChild(bI);
+      const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
+
+      dList.forEach(d => {
+        const row = document.createElement('div');
+        row.className = 'imgRow';
+
+        const thumb = document.createElement('div');
+        thumb.className = 'imgThumb';
+
+        const src = dinoImages[d.id] || '';
+        if (src) {
+          const img = document.createElement('img');
+          img.src = src;
+          img.alt = d.name;
+          thumb.appendChild(img);
+
+          // タップで拡大
+          thumb.addEventListener('click', () => openImageViewer(src));
+        } else {
+          thumb.style.display = 'flex';
+          thumb.style.alignItems = 'center';
+          thumb.style.justifyContent = 'center';
+          thumb.style.color = 'rgba(255,255,255,.35)';
+          thumb.style.fontWeight = '900';
+          thumb.textContent = 'No Image';
+        }
+
+        const name = document.createElement('div');
+        name.className = 'imgName';
+        name.textContent = d.name;
+
+        const btns = document.createElement('div');
+        btns.className = 'imgBtns';
+
+        const pick = document.createElement('button');
+        pick.type = 'button';
+        pick.className = 'primary';
+        pick.textContent = '選択';
+
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'danger';
+        del.textContent = '削除';
+
+        const file = document.createElement('input');
+        file.type = 'file';
+        file.accept = 'image/*';
+        file.style.display = 'none';
+
+        pick.addEventListener('click', () => file.click());
+
+        file.addEventListener('change', async () => {
+          const f = file.files && file.files[0];
+          if (!f) return;
+          const dataUrl = await fileToDataUrl(f);
+          dinoImages[d.id] = dataUrl;
+          saveJSON(LS.DINO_IMAGES, dinoImages);
+          renderManageBody();
+        });
+
+        del.addEventListener('click', async () => {
+          if (!dinoImages[d.id]) return;
+          const ok = await openConfirm(`「${d.name}」の画像を削除しますか？`);
+          if (!ok) return;
+          delete dinoImages[d.id];
+          saveJSON(LS.DINO_IMAGES, dinoImages);
+          renderManageBody();
+        });
+
+        btns.appendChild(pick);
+        btns.appendChild(del);
+
+        row.appendChild(thumb);
+        row.appendChild(name);
+        row.appendChild(btns);
+        row.appendChild(file);
+
+        wrap.appendChild(row);
+      });
+
+      el.modalBody.appendChild(wrap);
+      return;
+    }
+
+    // catalog
+    const kind = activeTab;
+    const wrap = document.createElement('div');
 
     const addBtn = document.createElement('button');
     addBtn.className = 'primary';
     addBtn.type = 'button';
     addBtn.textContent = '追加';
+    addBtn.addEventListener('click', () => openEdit({ mode: 'add', kind }));
 
-    bar.appendChild(tabs);
-    bar.appendChild(addBtn);
-    frag.appendChild(bar);
-
-    // 並び替え
     const sortBtn = document.createElement('button');
-    sortBtn.className = 'ghost';
+    sortBtn.className = 'primary';
     sortBtn.type = 'button';
     sortBtn.textContent = '50音並び替え';
-    sortBtn.style.marginBottom = '12px';
+    sortBtn.style.marginLeft = '10px';
     sortBtn.addEventListener('click', () => {
-      if (activeTab === 'dino') {
+      if (kind === 'dino') {
         const visible = dinos.filter(x => !hidden.dino.has(x.id));
         visible.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
         order.dino = visible.map(x => x.id);
@@ -730,13 +804,18 @@ ${lines.join('\n')}
         saveJSON(LS.ITEM_ORDER, order.item);
       }
       renderList();
-      hideManage();
+      renderManageBody();
     });
-    frag.appendChild(sortBtn);
 
-    // 一覧
-    const listWrap = document.createElement('div');
-    const list = activeTab === 'dino'
+    const bar = document.createElement('div');
+    bar.style.display = 'flex';
+    bar.style.gap = '10px';
+    bar.style.marginBottom = '12px';
+    bar.appendChild(addBtn);
+    bar.appendChild(sortBtn);
+    wrap.appendChild(bar);
+
+    const list = (kind === 'dino')
       ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
       : sortByOrder(items.filter(x => !hidden.item.has(x.id)), 'item');
 
@@ -744,9 +823,9 @@ ${lines.join('\n')}
       const r = document.createElement('div');
       r.className = 'mRow';
 
-      const name = document.createElement('div');
-      name.className = 'mName';
-      name.textContent = obj.name;
+      const n = document.createElement('div');
+      n.className = 'mName';
+      n.textContent = obj.name;
 
       const up = document.createElement('button');
       up.className = 'sBtn';
@@ -768,13 +847,14 @@ ${lines.join('\n')}
       del.type = 'button';
       del.textContent = '削除';
 
-      up.addEventListener('click', () => moveOrder(activeTab, obj.id, -1));
-      down.addEventListener('click', () => moveOrder(activeTab, obj.id, +1));
-      edit.addEventListener('click', () => openEditItem(activeTab, obj.id));
+      up.addEventListener('click', () => moveOrder(kind, obj.id, -1));
+      down.addEventListener('click', () => moveOrder(kind, obj.id, +1));
+      edit.addEventListener('click', () => openEdit({ mode: 'edit', kind, id: obj.id }));
       del.addEventListener('click', async () => {
-        const ok = await confirmDialog(`「${obj.name}」を削除しますか？`);
+        const ok = await openConfirm(`「${obj.name}」を削除しますか？`);
         if (!ok) return;
-        if (activeTab === 'dino') {
+
+        if (kind === 'dino') {
           hidden.dino.add(obj.id);
           saveJSON(LS.DINO_HIDDEN, Array.from(hidden.dino));
         } else {
@@ -782,333 +862,224 @@ ${lines.join('\n')}
           saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item));
         }
         renderList();
-        hideManage();
+        renderManageBody();
       });
 
-      r.appendChild(name);
+      r.appendChild(n);
       r.appendChild(up);
       r.appendChild(down);
       r.appendChild(edit);
       r.appendChild(del);
-      listWrap.appendChild(r);
+      wrap.appendChild(r);
     });
 
-    frag.appendChild(listWrap);
-
-    // 追加
-    addBtn.addEventListener('click', () => openAdd(activeTab));
-
-    const container = document.createElement('div');
-    container.appendChild(frag);
-    return container;
+    el.modalBody.appendChild(wrap);
   }
 
-  function moveOrder(kind, id, dir) {
-    const key = kind === 'dino' ? 'dino' : 'item';
-    const ord = (order[key] || []).slice();
+  function moveOrder(kind, id, delta) {
+    const ord = (order[kind] || []).slice();
     const i = ord.indexOf(id);
     if (i === -1) return;
-    const ni = i + dir;
+    const ni = i + delta;
     if (ni < 0 || ni >= ord.length) return;
     [ord[i], ord[ni]] = [ord[ni], ord[i]];
-    order[key] = ord;
+    order[kind] = ord;
     saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
     renderList();
-    hideManage();
+    renderManageBody();
   }
 
-  function openAdd(kind) {
-    const form = document.createElement('div');
-    form.className = 'form';
+  /* ========= edit modal ========= */
+  function openEdit({ mode, kind, id }) {
+    el.editOverlay.classList.remove('isHidden');
+    el.editOverlay.setAttribute('aria-hidden', 'false');
+    rememberScrollLock(true);
 
-    if (kind === 'dino') {
-      form.innerHTML = `
-        <div class="field">
-          <label>名前</label>
-          <input id="aName" type="text" placeholder="例：カルカロ">
-        </div>
-        <div class="field">
-          <label>デフォルト</label>
-          <select id="aDef">${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
-        </div>
-        <div class="formBtns">
-          <button class="primary" type="button" id="aSave">保存</button>
-          <button class="ghost" type="button" id="aCancel">キャンセル</button>
-        </div>
-      `;
-    } else {
-      form.innerHTML = `
-        <div class="field">
-          <label>名前</label>
-          <input id="aName" type="text" placeholder="例：TEK天井">
-        </div>
-        <div class="field">
-          <label>個数単位</label>
-          <input id="aUnit" type="number" inputmode="numeric" placeholder="例：100">
-        </div>
-        <div class="field">
-          <label>単価</label>
-          <input id="aPrice" type="number" inputmode="numeric" placeholder="例：100">
-        </div>
-        <div class="formBtns">
-          <button class="primary" type="button" id="aSave">保存</button>
-          <button class="ghost" type="button" id="aCancel">キャンセル</button>
-        </div>
-      `;
-    }
-
-    $('#aCancel', form).addEventListener('click', closeEdit);
-    $('#aSave', form).addEventListener('click', () => {
-      const name = ($('#aName', form).value || '').trim();
-      if (!name) return;
-
-      if (kind === 'dino') {
-        const defType = $('#aDef', form).value;
-        const id = 'd_c_' + uid();
-        custom.dino.push({ id, name, defType });
-        saveJSON(LS.DINO_CUSTOM, custom.dino);
-      } else {
-        const unit = Number($('#aUnit', form).value || 1);
-        const price = Number($('#aPrice', form).value || 0);
-        const id = 'i_c_' + uid();
-        custom.item.push({ id, name, unit, price });
-        saveJSON(LS.ITEM_CUSTOM, custom.item);
-      }
-
-      init().then(() => { closeEdit(); hideManage(); });
-    });
-
-    openEdit('追加', form);
-  }
-
-  function openEditItem(kind, id) {
-    const list = kind === 'dino' ? dinos : items;
-    const obj = list.find(x => x.id === id);
-    if (!obj) return;
+    el.editBody.innerHTML = '';
+    el.editTitle.textContent = mode === 'add' ? '追加' : '編集';
 
     const form = document.createElement('div');
     form.className = 'form';
 
     if (kind === 'dino') {
-      form.innerHTML = `
-        <div class="field">
-          <label>名前</label>
-          <input id="eName" type="text" value="${obj.name}">
-        </div>
-        <div class="field">
-          <label>デフォルト</label>
-          <select id="eDef">${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
-        </div>
-        <div class="formBtns">
-          <button class="primary" type="button" id="eSave">保存</button>
-          <button class="ghost" type="button" id="eCancel">キャンセル</button>
-        </div>
-      `;
-      $('#eDef', form).value = obj.defType || '受精卵';
+      const obj = mode === 'edit' ? dinos.find(x => x.id === id) : null;
+
+      const f1 = document.createElement('div');
+      f1.className = 'field';
+      f1.innerHTML = `<label>名前</label><input id="eName" type="text" value="${obj?.name || ''}" placeholder="例：カルカロ">`;
+
+      const f2 = document.createElement('div');
+      f2.className = 'field';
+      f2.innerHTML = `<label>デフォルト</label><select id="eDef">${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}</select>`;
+
+      form.appendChild(f1);
+      form.appendChild(f2);
+
+      $('#eDef', form).value = obj?.defType || '受精卵';
+
+      const btns = document.createElement('div');
+      btns.className = 'formBtns';
+
+      const save = document.createElement('button');
+      save.className = 'primary';
+      save.type = 'button';
+      save.textContent = '保存';
+
+      const cancel = document.createElement('button');
+      cancel.className = 'ghost';
+      cancel.type = 'button';
+      cancel.textContent = 'キャンセル';
+
+      save.addEventListener('click', () => {
+        const name = $('#eName', form).value.trim();
+        const defType = $('#eDef', form).value;
+        if (!name) return;
+
+        if (mode === 'add') {
+          const newId = 'd_c_' + uid();
+          custom.dino.push({ id: newId, name, defType });
+          saveJSON(LS.DINO_CUSTOM, custom.dino);
+        } else {
+          if (!obj) return;
+          obj.name = name;
+          obj.defType = defType;
+
+          const c = custom.dino.find(x => x.id === obj.id);
+          if (c) { c.name = name; c.defType = defType; }
+          else custom.dino.push({ id: obj.id, name, defType });
+          saveJSON(LS.DINO_CUSTOM, custom.dino);
+        }
+
+        init().then(() => {
+          closeEdit();
+          renderManageBody();
+        });
+      });
+
+      cancel.addEventListener('click', closeEdit);
+
+      btns.appendChild(save);
+      btns.appendChild(cancel);
+      form.appendChild(btns);
     } else {
-      form.innerHTML = `
-        <div class="field">
-          <label>名前</label>
-          <input id="eName" type="text" value="${obj.name}">
-        </div>
-        <div class="field">
-          <label>個数単位</label>
-          <input id="eUnit" type="number" inputmode="numeric" value="${obj.unit}">
-        </div>
-        <div class="field">
-          <label>単価</label>
-          <input id="ePrice" type="number" inputmode="numeric" value="${obj.price}">
-        </div>
-        <div class="formBtns">
-          <button class="primary" type="button" id="eSave">保存</button>
-          <button class="ghost" type="button" id="eCancel">キャンセル</button>
-        </div>
-      `;
-    }
+      const obj = mode === 'edit' ? items.find(x => x.id === id) : null;
 
-    $('#eCancel', form).addEventListener('click', closeEdit);
-    $('#eSave', form).addEventListener('click', () => {
-      const newName = ($('#eName', form).value || '').trim();
-      if (!newName) return;
-      obj.name = newName;
+      const f1 = document.createElement('div');
+      f1.className = 'field';
+      f1.innerHTML = `<label>名前</label><input id="eName" type="text" value="${obj?.name || ''}" placeholder="例：TEK天井">`;
 
-      if (kind === 'dino') obj.defType = $('#eDef', form).value;
-      else {
-        obj.unit = Number($('#eUnit', form).value || 1);
-        obj.price = Number($('#ePrice', form).value || 0);
-      }
+      const f2 = document.createElement('div');
+      f2.className = 'field';
+      f2.innerHTML = `<label>個数単位</label><input id="eUnit" type="number" inputmode="numeric" value="${obj?.unit ?? ''}" placeholder="例：100">`;
 
-      if (kind === 'dino') {
-        const c = custom.dino.find(x => x.id === id);
-        if (c) { c.name = obj.name; c.defType = obj.defType; }
-        else custom.dino.push({ id, name: obj.name, defType: obj.defType });
-        saveJSON(LS.DINO_CUSTOM, custom.dino);
-      } else {
-        const c = custom.item.find(x => x.id === id);
-        if (c) { c.name = obj.name; c.unit = obj.unit; c.price = obj.price; }
-        else custom.item.push({ id, name: obj.name, unit: obj.unit, price: obj.price });
-        saveJSON(LS.ITEM_CUSTOM, custom.item);
-      }
+      const f3 = document.createElement('div');
+      f3.className = 'field';
+      f3.innerHTML = `<label>単価</label><input id="ePrice" type="number" inputmode="numeric" value="${obj?.price ?? ''}" placeholder="例：100">`;
 
-      renderList();
-      closeEdit();
-      hideManage();
-    });
+      form.appendChild(f1);
+      form.appendChild(f2);
+      form.appendChild(f3);
 
-    openEdit('編集', form);
-  }
+      const btns = document.createElement('div');
+      btns.className = 'formBtns';
 
-  /* ========= images tab ========= */
-  const objectUrlCache = new Map(); // id -> url
+      const save = document.createElement('button');
+      save.className = 'primary';
+      save.type = 'button';
+      save.textContent = '保存';
 
-  function revokeUrl(id) {
-    const u = objectUrlCache.get(id);
-    if (u) URL.revokeObjectURL(u);
-    objectUrlCache.delete(id);
-  }
+      const cancel = document.createElement('button');
+      cancel.className = 'ghost';
+      cancel.type = 'button';
+      cancel.textContent = 'キャンセル';
 
-  function buildManageImages() {
-    const wrap = document.createElement('div');
+      save.addEventListener('click', () => {
+        const name = $('#eName', form).value.trim();
+        const unit = Number($('#eUnit', form).value || 0);
+        const price = Number($('#ePrice', form).value || 0);
+        if (!name || !Number.isFinite(unit) || !Number.isFinite(price)) return;
 
-    const hint = document.createElement('div');
-    hint.className = 'card';
-    hint.innerHTML = `
-      <div class="name" style="font-size:16px;margin-bottom:6px;">恐竜画像</div>
-      <div style="color:rgba(255,255,255,.60);font-size:12px;line-height:1.5;">
-        1体につき1枚。2枚目を選ぶと上書き。削除も可能。
-      </div>
-    `;
-    wrap.appendChild(hint);
+        if (mode === 'add') {
+          const newId = 'i_c_' + uid();
+          custom.item.push({ id: newId, name, unit, price });
+          saveJSON(LS.ITEM_CUSTOM, custom.item);
+        } else {
+          if (!obj) return;
+          obj.name = name;
+          obj.unit = unit;
+          obj.price = price;
 
-    const list = document.createElement('div');
-    list.className = 'imgList';
-    wrap.appendChild(list);
+          const c = custom.item.find(x => x.id === obj.id);
+          if (c) { c.name = name; c.unit = unit; c.price = price; }
+          else custom.item.push({ id: obj.id, name, unit, price });
+          saveJSON(LS.ITEM_CUSTOM, custom.item);
+        }
 
-    // 「一覧」と同じ並び（order.dino）で表示
-    const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
-
-    dList.forEach(d => {
-      const row = document.createElement('div');
-      row.className = 'imgRow';
-
-      const thumb = document.createElement('div');
-      thumb.className = 'imgThumb';
-      thumb.innerHTML = `<div style="font-size:11px;color:rgba(255,255,255,.45);">No Image</div>`;
-
-      const meta = document.createElement('div');
-      meta.className = 'imgMeta';
-      meta.innerHTML = `
-        <div class="imgName"></div>
-      `;
-      $('.imgName', meta).textContent = d.name;
-
-      const actions = document.createElement('div');
-      actions.className = 'imgActions';
-
-      const file = document.createElement('input');
-      file.type = 'file';
-      file.accept = 'image/*';
-      file.style.display = 'none';
-
-      const pick = document.createElement('button');
-      pick.className = 'imgBtn';
-      pick.type = 'button';
-      pick.textContent = '選択';
-
-      const del = document.createElement('button');
-      del.className = 'imgBtn danger';
-      del.type = 'button';
-      del.textContent = '削除';
-
-      pick.addEventListener('click', () => file.click());
-
-      file.addEventListener('change', async () => {
-        const f = file.files && file.files[0];
-        if (!f) return;
-
-        // 上書き：保存 → 表示更新
-        await idbSetImage(d.id, f);
-        await refreshThumb(d.id, thumb);
-        file.value = '';
+        init().then(() => {
+          closeEdit();
+          renderManageBody();
+        });
       });
 
-      del.addEventListener('click', async () => {
-        const ok = await confirmDialog(`「${d.name}」の画像を削除しますか？`);
-        if (!ok) return;
-        await idbDelImage(d.id);
-        revokeUrl(d.id);
-        thumb.innerHTML = `<div style="font-size:11px;color:rgba(255,255,255,.45);">No Image</div>`;
-      });
+      cancel.addEventListener('click', closeEdit);
 
-      actions.appendChild(pick);
-      actions.appendChild(del);
-
-      row.appendChild(thumb);
-      row.appendChild(meta);
-      row.appendChild(actions);
-      row.appendChild(file);
-
-      list.appendChild(row);
-
-      // 初期ロード時に表示
-      refreshThumb(d.id, thumb);
-    });
-
-    return wrap;
-  }
-
-  async function refreshThumb(id, thumbEl) {
-    const blob = await idbGetImage(id);
-    if (!blob) {
-      thumbEl.innerHTML = `<div style="font-size:11px;color:rgba(255,255,255,.45);">No Image</div>`;
-      return;
+      btns.appendChild(save);
+      btns.appendChild(cancel);
+      form.appendChild(btns);
     }
-    revokeUrl(id);
-    const url = URL.createObjectURL(blob);
-    objectUrlCache.set(id, url);
-    thumbEl.innerHTML = '';
-    const img = document.createElement('img');
-    img.src = url;
-    img.alt = '';
-    thumbEl.appendChild(img);
+
+    el.editBody.appendChild(form);
   }
 
-  /* ========= manage open/close ========= */
-  function showManage() {
-    showOverlay(el.modalOverlay);
-    setManageTab('catalog');
-  }
-  function hideManage() {
-    hideOverlay(el.modalOverlay);
-    // モーダル閉じたらURLメモリ掃除（必要に応じて）
-    // ※表示を即復帰させたいなら消さない選択もあり
+  function closeEdit() {
+    el.editOverlay.classList.add('isHidden');
+    el.editOverlay.setAttribute('aria-hidden', 'true');
+    el.editBody.innerHTML = '';
+    rememberScrollLock(false);
   }
 
-  el.openManage.addEventListener('click', showManage);
-  el.closeManage.addEventListener('click', hideManage);
-  el.modalOverlay.addEventListener('click', (e) => {
-    if (e.target === el.modalOverlay) hideManage();
-  });
+  el.editClose.addEventListener('click', closeEdit);
+  el.editOverlay.addEventListener('click', (e) => { if (e.target === el.editOverlay) closeEdit(); });
+
+  /* ========= file -> dataURL ========= */
+  function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result || ''));
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
 
   /* ========= init ========= */
   async function init() {
-    const dText = await fetchTextSafe('./dinos.txt');
-    const iText = await fetchTextSafe('./items.txt');
+    // fetch base lists
+    const dinoText = await fetchTextSafe('dinos.txt');
+    const itemText = await fetchTextSafe('items.txt');
 
-    const baseD = dText.split(/\r?\n/).map(parseDinoLine).filter(Boolean);
-    const baseI = iText.split(/\r?\n/).map(parseItemLine).filter(Boolean);
+    const parsedDinos = dinoText.split('\n').map(parseDinoLine).filter(Boolean);
+    const parsedItems = itemText.split('\n').map(parseItemLine).filter(Boolean);
 
-    dinos = baseD.concat(custom.dino.map(x => ({ id: x.id, name: x.name, defType: x.defType, kind: 'dino' })));
-    items = baseI.concat(custom.item.map(x => ({ id: x.id, name: x.name, unit: x.unit, price: x.price, kind: 'item' })));
+    // merge with custom
+    dinos = [
+      ...parsedDinos,
+      ...custom.dino.map(x => ({ id: x.id, name: x.name, defType: x.defType || '受精卵', kind: 'dino' })),
+    ];
+    items = [
+      ...parsedItems,
+      ...custom.item.map(x => ({ id: x.id, name: x.name, unit: x.unit, price: x.price, kind: 'item' })),
+    ];
 
     ensureOrderList(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
     ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
 
-    const savedDelivery = localStorage.getItem(LS.DELIVERY);
-    if (savedDelivery) el.delivery.value = savedDelivery;
+    // ensure state maps for base (not for dup)
+    dinos.forEach(d => ensureDinoState(d.id, d.defType));
+    items.forEach(it => ensureItemState(it.id));
 
     renderList();
   }
 
+  // start
   init();
 })();
