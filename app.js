@@ -1000,17 +1000,22 @@ const fBox = buildStepperBox({
   __patchStyle.textContent = `
     .dinoRow{
       display:grid;
-      grid-template-columns: 1fr 1fr 76px;
+      grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(52px,68px);
       gap:10px;
       align-items:center;
+      padding-right:6px; /* 右端欠け保険 */
     }
     .dinoRow .js-dupBtn{
-      width:76px;
+      width:100%;
+      max-width:68px;
+      min-width:52px;
       height:32px;
       justify-self:end;
       white-space:nowrap;
+      padding:0;
     }
   `;
+  document.head.appendChild(__patchStyle);
   document.head.appendChild(__patchStyle);
 
   init();
