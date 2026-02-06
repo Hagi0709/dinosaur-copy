@@ -598,6 +598,19 @@ button{cursor:pointer}
   align-items:center;
 }
 .pill{
+  /* ✅ 画像タブ：上部ボタン行 */
+.imgTopBar{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  justify-content:flex-end;
+  margin-bottom:12px;
+}
+
+/* ✅ 画像出力ボタン（pillを流用しつつ幅確保） */
+#imgExport{
+  min-width:120px;
+}
   height:40px;
   padding:0 14px;
   border-radius:16px;
