@@ -9,9 +9,6 @@
 
   --male:#57c7ff;   /* 水色 */
   --female:#ff5fcf; /* ピンク */
-
-  /* ✅ 追加：固定ヘッダーの高さ（JSで上書き） */
-  --topH: 0px;
 }
 
 *{box-sizing:border-box}
@@ -27,21 +24,13 @@ body{
   font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
   background:var(--bg);
   color:var(--txt);
-
-  /* ✅ 変更：固定ヘッダー分だけ下げる */
-  padding-top: var(--topH);
-
   padding-bottom:120px;
 }
 button{cursor:pointer}
 
 .top{
-  /* ✅ 変更：sticky → fixed（iOSで確実に固定） */
-  position:fixed;
-  left:0;
-  right:0;
+  position:sticky;
   top:0;
-
   z-index:10;
   background:rgba(11,15,20,.95);
   backdrop-filter:blur(14px);
@@ -172,7 +161,6 @@ button{cursor:pointer}
   border-color:rgba(255,255,255,.18);
 }
 
-/* ✅ 変更：fixed header 前提でOK（body padding-top で確保済み） */
 .list{padding:12px}
 
 /* ================= Cards ================= */
@@ -614,4 +602,46 @@ button{cursor:pointer}
   display:block;
   padding:12px;
   border-radius:18px;
+}
+
+/* ================= Room ================= */
+
+.roomSection{
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.16);
+  border-radius:18px;
+  padding:12px;
+  margin-bottom:12px;
+}
+.roomTitle{
+  font-weight:950;
+  margin-bottom:10px;
+}
+.roomRow{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  padding:10px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.18);
+  margin-bottom:10px;
+}
+.roomName{
+  font-weight:950;
+  min-width:72px;
+}
+.roomPw{
+  flex:1;
+  min-width:0;
+  color:rgba(255,255,255,.85);
+  font-weight:900;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.roomBtns{
+  display:flex;
+  gap:10px;
+  align-items:center;
 }
