@@ -216,7 +216,7 @@ button{cursor:pointer}
   position:absolute;
   top:-12px;
   left:-12px;
-  right:40%;                 /* ✅ 右側40%は“判定外”にして操作可能に */
+  right:40%;                 /* ✅ 右側40%は"判定外"にして操作可能に */
   height:calc(100% + 24px);
   border:0;
   background:transparent;
