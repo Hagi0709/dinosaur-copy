@@ -608,11 +608,30 @@ function sortByOrder(list, kind) {
     return `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
   }
 
+
+  function escapeHtml(s){
+    return String(s ?? '')
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;');
+  }
+
+  // price line in card (未入力は空白1文字、♂♀はオス/メスに置換＋色分け)
+  function priceLineToHtml(line){
+    if (!line || !String(line).trim()) return '&nbsp;';
+    let t = escapeHtml(String(line));
+    t = t.replace(/♂×(\d+)/g, '<span class="male">オス×$1</span>');
+    t = t.replace(/♀×(\d+)/g, '<span class="female">メス×$1</span>');
+    t = t.replace(/♂/g, '<span class="male">オス</span>');
+    t = t.replace(/♀/g, '<span class="female">メス</span>');
+    return t;
+  }
+
   function syncDinoMiniLine(card, d, key) {
     const sp = getSpecialCfgForDino(d);
     const s = inputState.get(key);
     const out = $('.miniOut', card);
-    if (out) out.textContent = dinoSuffixLine(d, s, sp);
+    if (out) out.innerHTML = priceLineToHtml(dinoSuffixLine(d, s, sp));
 
     const unit = $('.unit', card);
     if (unit) {
@@ -878,8 +897,8 @@ ${lines.join('\n')}
                 ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
               </div>
             <div class="unitRow">
-              <div class="miniOut"></div>
               <div class="unit"></div>
+              <div class="miniOut"></div>
             </div>
           </div>
             </div>
@@ -1105,8 +1124,8 @@ ${lines.join('\n')}
               <select class="type" aria-label="種類"></select>
             </div>
             <div class="unitRow">
-            <div class="miniOut"></div>
             <div class="unit"></div>
+            <div class="miniOut"></div>
           </div>
         </div>
           </div>
