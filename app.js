@@ -825,6 +825,9 @@ ${lines.join('\n')}
             </div>
 
             <div class="right">
+              <div class="typeRow">
+                <button class="dupMini" type="button" data-act="dup" title="複製">複製</button>
+              </div>
               <div class="unit" style="font-weight:900;color:rgba(255,255,255,.65);">1体=${unitPrice}円</div>
             </div>
           </div>
