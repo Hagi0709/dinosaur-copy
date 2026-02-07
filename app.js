@@ -1262,6 +1262,8 @@ ${lines.join('\n')}
           </div>
         </div>
 
+        <div class="cardMiniOut" style="margin-top:10px;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.14);color:rgba(255,255,255,.85);font-weight:900;font-size:13px;display:none;"></div>
+
         <div class="controls">
           <div class="stepper" style="flex:1;">
             <button class="btn" type="button" data-act="-">−</button>
