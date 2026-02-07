@@ -1,7 +1,9 @@
 /* =========================
-   Base
+   Dinosaur List UI (Right reference)
+   UI only / CSS only
 ========================= */
-* { box-sizing: border-box; }
+
+*{ box-sizing: border-box; }
 
 :root{
   --bg:#0b0e12;
@@ -11,6 +13,8 @@
   --muted: rgba(233,238,246,.72);
   --line: rgba(255,255,255,.12);
   --green:#9dffb0;
+  --chip: rgba(255,255,255,.12);
+  --chip2: rgba(255,255,255,.16);
 }
 
 body{
@@ -20,26 +24,182 @@ body{
   font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",system-ui,sans-serif;
 }
 
+.app{
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 14px;
+}
+
 /* =========================
-   Card
+   Sticky header
+========================= */
+.top{
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(11,14,18,.86);
+  backdrop-filter: blur(10px);
+  padding: 10px 0 12px;
+}
+
+/* =========================
+   Top toolbar (1 row)
+   search | stock | copy | total
+========================= */
+.toolbar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap: nowrap;
+}
+
+.search-wrap{
+  flex: 1 1 auto;
+  min-width: 0;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--panel2);
+}
+
+.search-icon{
+  opacity:.9;
+  font-size: 16px;
+}
+
+.search{
+  flex:1;
+  min-width: 0;
+  border:0;
+  outline:none;
+  background:transparent;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.clear{
+  flex: 0 0 auto;
+  border:0;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.14);
+  color: var(--text);
+}
+
+.pill{
+  flex: 0 0 auto;
+  border:0;
+  color: var(--text);
+  font-weight: 800;
+  padding: 12px 14px;
+  border-radius: 999px;
+  background: var(--panel2);
+  white-space: nowrap;
+}
+
+.pill-caret{ opacity:.8; margin-left: 4px; }
+
+.btn.copy{
+  flex: 0 0 auto;
+  border:0;
+  padding: 12px 14px;
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--text);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.total{
+  flex: 0 0 auto;
+  font-weight: 900;
+  color: var(--green);
+  white-space: nowrap;
+}
+
+/* =========================
+   Note box
+========================= */
+.note{
+  margin: 12px 0 0;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.05);
+}
+
+.note p{
+  margin: 0;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.rule{
+  height: 1px;
+  background: var(--line);
+  margin: 10px 0;
+}
+
+.summary{
+  margin: 0;
+  min-height: 18px;
+}
+
+/* =========================
+   Tabs (same size, one row)
+========================= */
+.tabs{
+  display:flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.tab{
+  flex: 1 1 0;
+  border:0;
+  height: 44px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  color: var(--text);
+  font-weight: 900;
+}
+
+.tab.active{
+  background: rgba(255,255,255,.18);
+}
+
+/* =========================
+   List
+========================= */
+.list{
+  display:flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 14px;
+}
+
+/* =========================
+   Card (match right)
+   Left: image small
+   Right: header (title + select + price)
+         qty row (2 qty + dup)
 ========================= */
 .card{
-  background: var(--panel);
+  background: rgba(255,255,255,.06);
   border-radius: 18px;
   padding: 12px;
 }
 
-/* カード全体を2カラムに */
 .card-body{
-  display: grid;
-  grid-template-columns: 140px 1fr;   /* 左：画像 / 右：情報 */
+  display:grid;
+  grid-template-columns: 140px 1fr; /* left image / right content */
   gap: 12px;
+  align-items: start;
   margin-top: 8px;
 }
 
-/* =========================
-   Image
-========================= */
 .thumb{
   width: 140px;
   aspect-ratio: 2 / 1;
@@ -55,55 +215,73 @@ body{
   display:block;
 }
 
-/* =========================
-   Right column
-========================= */
-.card-controls{
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.thumb.is-empty{
+  background: rgba(0,0,0,.35);
 }
 
-/* ---- 上段：タイトル + 受精卵 + 単価 ---- */
+.card-controls{
+  min-width: 0;
+  display:flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* header block */
 .card-top{
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  align-items: center;
-  gap: 10px;
+  display:grid;
+  grid-template-columns: 1fr auto;  /* left title / right select+price stack */
+  grid-template-rows: auto auto;
+  gap: 8px 12px;
+  align-items: start;
 }
 
 .card-title{
-  font-size: 20px;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  font-size: 22px;
   font-weight: 900;
+  line-height: 1.15;
+  align-self: center;
 }
 
-/* 受精卵 */
+/* Right stack (select top, price bottom) */
+.card-right{
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display:flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* select (受精卵) */
 .select-pill{
   border:0;
-  padding: 8px 14px;
+  padding: 10px 14px;
   border-radius: 999px;
-  background: rgba(255,255,255,.12);
+  background: var(--chip);
   color: var(--text);
-  font-weight: 800;
+  font-weight: 900;
   white-space: nowrap;
+  max-width: 210px;
 }
 
 .select-pill .caret{
+  opacity:.8;
   margin-left: 6px;
-  opacity:.7;
 }
 
-/* 単価 */
+/* unit price (単価xx円) */
 .unit-price{
-  font-weight: 800;
+  font-weight: 900;
   color: var(--muted);
   white-space: nowrap;
 }
 
-/* ---- 下段：± ± 複製 ---- */
+/* qty row + dup in same line (right image style) */
 .qty-row{
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  display:grid;
+  grid-template-columns: 1fr 1fr auto; /* blue qty / pink qty / dup */
   gap: 10px;
   align-items: center;
 }
@@ -135,26 +313,31 @@ body{
   border: 2px solid rgba(255,100,220,.6);
 }
 
-/* 複製：±と同じ行の右 */
 .dup{
   height: 44px;
   padding: 0 16px;
   border-radius: 14px;
   border:0;
-  background: rgba(255,255,255,.12);
+  background: var(--chip2);
   color: var(--text);
   font-weight: 900;
   white-space: nowrap;
 }
 
 /* =========================
-   Mobile fine tune
+   Small screens
 ========================= */
 @media (max-width: 420px){
+  .pill, .btn.copy{ padding: 12px 10px; }
+  .total{ font-size: 14px; }
+
   .card-body{
     grid-template-columns: 120px 1fr;
   }
   .thumb{
     width: 120px;
+  }
+  .select-pill{
+    max-width: 180px;
   }
 }
