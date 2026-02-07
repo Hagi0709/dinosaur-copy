@@ -205,9 +205,10 @@ button{cursor:pointer}
 .cardHead{
   position:relative;
   display:grid;
-  grid-template-columns:minmax(0,1fr) 140px;
+  grid-template-columns:minmax(0,1fr) 168px;
   gap:10px;
   align-items:start;
+  padding-bottom:6px;
 }
 
 /* ✅ ここが原因：toggleが前面すぎるとselectが押せない
@@ -293,6 +294,7 @@ button{cursor:pointer}
 }
 
 .right{
+  width:168px;
   display:flex;
   flex-direction:column;
   gap:8px;
@@ -303,8 +305,9 @@ button{cursor:pointer}
   z-index:10; /* ✅ toggleより上 */
 }
 .type{
-  height:44px;
+  height:38px;
   width:100%;
+  min-width:168px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
@@ -321,6 +324,7 @@ button{cursor:pointer}
   z-index:11; /* ✅ 念のため */
 }
 .unit{
+  flex:0 0 auto;
   font-size:12px;
   color:var(--mut);
   white-space:nowrap;
@@ -331,11 +335,13 @@ button{cursor:pointer}
 
 .unitRow{
   display:flex;
-  align-items:baseline;
+  align-items:center;
   gap:10px;
+  justify-content:space-between;
 }
+.unit, .miniOut{ line-height:1.4; }
 .miniOut{
-  flex:1;
+  flex:1 1 auto;
   min-width:0;
   overflow:hidden;
   text-overflow:ellipsis;
