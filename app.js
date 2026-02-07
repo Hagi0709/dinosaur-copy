@@ -741,7 +741,6 @@ ${lines.join('\n')}
 
     const imgUrl = getImageUrlForDino(d);
 
-    // ✅ special UI（ガチャ等）
     if (sp?.enabled && s.mode === 'special') {
       const maxN = Math.max(1, Math.min(60, Number(sp.max || 16)));
       const unitPrice = Number(sp.unit || 0);
@@ -753,7 +752,6 @@ ${lines.join('\n')}
         btns.push(`<button class="gBtn" type="button" data-act="pick" data-n="${i}">${i}</button>`);
       }
 
-      // ✅ allowSex: ♂♀入力ブロック（通常と同じ部品）＋複製
       const normalBlock = allowSex ? `
         <div class="controls controlsWrap" style="margin-top:10px;">
           <div class="stepper male">
@@ -768,7 +766,7 @@ ${lines.join('\n')}
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
 
-          <button class="dupBtn" type="button" data-act="dup">複製</button>
+          <select class="type" aria-label="種類"></select>
         </div>
       ` : ``;
 
@@ -783,12 +781,7 @@ ${lines.join('\n')}
             </div>
 
             <div class="right">
-              ${allowSex ? `
-                <select class="type" aria-label="種類"></select>
-                <div class="unit"></div>
-              ` : `
-                <div class="unit" style="font-weight:900;color:rgba(255,255,255,.65);">1体=${unitPrice}円</div>
-              `}
+              <div class="unit" style="font-weight:900;color:rgba(255,255,255,.65);">1体=${unitPrice}円</div>
             </div>
           </div>
 
@@ -811,7 +804,7 @@ ${lines.join('\n')}
               </div>
 
               <div style="margin-top:6px;color:rgba(255,255,255,.55);font-weight:800;font-size:12px;">
-                1体=${unitPrice.toLocaleString('ja-JP')}円 / 全種=${allPrice.toLocaleString('ja-JP')}円
+                全種=${allPrice.toLocaleString('ja-JP')}円
               </div>
             </div>
           </div>
@@ -820,29 +813,20 @@ ${lines.join('\n')}
 
       $('.name', card).textContent = d.name;
 
-      // ✅ 左側ほぼ全部で折りたたみ
       installLeftToggleHit(card);
 
       const inputEl = $('.gInput', card);
       const sumEl = $('.gSum', card);
       const allBtn = $('button[data-act="all"]', card);
 
-      // allowSex 用
       const mEl = $('.js-m', card);
       const fEl = $('.js-f', card);
       const sel = $('.type', card);
-      const unitEl = $('.unit', card);
 
-      // ✅ allowSex: 右側のセレクト＆単価を通常と同じにする
       if (allowSex && sel) {
         sel.innerHTML = typeList.map(t => `<option value="${t}">${t}</option>`).join('');
         if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
         sel.value = s.type;
-        if (unitEl) unitEl.textContent = `単価${prices[s.type] || 0}円`;
-
-        // ✅ select を押しても折りたたまれないように（通常と同じ保険）
-        sel.addEventListener('click', (ev) => ev.stopPropagation());
-        sel.addEventListener('pointerdown', (ev) => ev.stopPropagation());
       }
 
       const syncSpecial = () => {
@@ -922,7 +906,6 @@ ${lines.join('\n')}
         applyCollapseAndSearch();
       };
 
-      // ボタン類（特殊 + allowSex）
       card.addEventListener('click', (ev) => {
         const btn = ev.target?.closest('button');
         if (!btn) return;
@@ -930,35 +913,11 @@ ${lines.join('\n')}
 
         const act = btn.dataset.act;
 
-        // allowSex stepper
         if (act === 'm-') return step('m', -1);
         if (act === 'm+') return step('m', +1);
         if (act === 'f-') return step('f', -1);
         if (act === 'f+') return step('f', +1);
 
-        // ✅ 複製（special + allowSex でもOK）
-        if (act === 'dup') {
-          const dupKey = `${d.id}__dup_${uid()}`;
-          ephemeralKeys.add(dupKey);
-
-          // ✅ 現在の状態をそのまま複製（パターン複製）
-          inputState.set(dupKey, {
-            mode: 'special',
-            picks: Array.isArray(s.picks) ? s.picks.slice() : [],
-            all: !!s.all,
-            type: s.type || d.defType || '受精卵',
-            m: Number(s.m || 0),
-            f: Number(s.f || 0),
-          });
-
-          const dupCard = buildDinoCard(d, dupKey);
-          card.after(dupCard);
-          rebuildOutput();
-          applyCollapseAndSearch();
-          return;
-        }
-
-        // 特殊入力は「通常入力が無いときだけ」有効
         const sexQty = Number(s.m || 0) + Number(s.f || 0);
         if (allowSex && sexQty > 0) {
           openToast('通常入力があるため特殊入力は無効です');
@@ -969,9 +928,7 @@ ${lines.join('\n')}
           const n = Number(btn.dataset.n || 0);
           if (!Number.isFinite(n) || n <= 0) return;
 
-          // ✅ 特殊入力したら通常を無効化
           s.m = 0; s.f = 0;
-
           s.all = false;
           if (!Array.isArray(s.picks)) s.picks = [];
           s.picks.push(n);
@@ -983,7 +940,6 @@ ${lines.join('\n')}
         }
 
         if (act === 'undo') {
-          // ✅ 特殊操作したら通常を無効化
           s.m = 0; s.f = 0;
 
           if (s.all) {
@@ -998,7 +954,6 @@ ${lines.join('\n')}
         }
 
         if (act === 'all') {
-          // ✅ 特殊操作したら通常を無効化
           s.m = 0; s.f = 0;
 
           s.all = !s.all;
