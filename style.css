@@ -850,3 +850,15 @@ button{cursor:pointer}
 
 /* 既存の大きい複製ボタンは残してもいいが、邪魔なら非表示 */
 .dupBig, button[data-act="dup"].dupBig{ display:none !important; }
+
+
+/* ===== overrides: unit/price colors & ordering ===== */
+.unitRow .unit{ opacity:.9; }
+.unitRow .miniOut{ opacity:.9; }
+.unitRow .unit{ order:1; }
+.unitRow .miniOut{ order:2; }
+.typeRow .dupMini{ flex:0 0 auto; }
+.typeRow .type{ flex:1 1 auto; }
+
+/* hide legacy bottom duplicate button if any remains */
+.controls .dupBtn[data-act="dup"]{ display:none !important; }
