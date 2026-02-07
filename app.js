@@ -461,19 +461,6 @@ function sortByOrder(list, kind) {
   });
 }
 
-/* ========= manage: 50音順 ========= */
-function sortKeyKana50(name, kind) {
-  let s = String(name || '').trim();
-  // ✅ 恐竜だけ TEK を無視して並び替え
-  if (kind === 'dino') s = s.replace(/^TEK\s*/i, '');
-  // ✅ カタカナ→ひらがな（既存の toHira を利用）
-  s = toHira(s);
-  // スペース等は除去して比較を安定させる
-  s = s.replace(/\s+/g, '');
-  return s;
-}
-
-
   /* ========= behavior rules ========= */
   function ensureDinoState(key, defType, spCfg = null) {
     if (!inputState.has(key)) {
@@ -547,6 +534,99 @@ function sortKeyKana50(name, kind) {
       if (!dataUrl) wrap.remove();
     });
   }
+
+
+  function dinoSuffixLine(d, s, sp) {
+    if (!s) return '';
+
+    // special mode output (ガチャ等)
+    if (sp?.enabled && s.mode === 'special') {
+      const allowSex = !!sp.allowSex;
+      const m = Number(s.m || 0);
+      const f = Number(s.f || 0);
+      const sexQty = m + f;
+
+      if (allowSex && sexQty > 0) {
+        const type = s.type || d.defType || '受精卵';
+        const unitPrice = prices[type] || 0;
+        const price = unitPrice * sexQty;
+
+        const tOut = String(type).replace('(指定)', '');
+        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+
+        if (isPair) {
+          if (m === f) {
+            return `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+          }
+          const p = [];
+          if (m > 0) p.push(`♂×${m}`);
+          if (f > 0) p.push(`♀×${f}`);
+          return `${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+        }
+
+        return `${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
+      }
+
+      const unitPrice = Number(sp.unit || 0);
+      const allPrice = Number(sp.all || 0);
+
+      if (s.all) {
+        return `全種 = ${allPrice.toLocaleString('ja-JP')}円`;
+      }
+
+      const picks = Array.isArray(s.picks) ? s.picks.slice() : [];
+      if (picks.length <= 0) return '';
+
+      const price = picks.length * unitPrice;
+      const seq = picks.map(n => circled(n)).join('');
+      return `${seq} = ${price.toLocaleString('ja-JP')}円`;
+    }
+
+    // normal mode output
+    const type = s.type || d.defType || '受精卵';
+    const m = Number(s.m || 0);
+    const f = Number(s.f || 0);
+    const qty = m + f;
+    if (qty <= 0) return '';
+
+    const unitPrice = prices[type] || 0;
+    const price = unitPrice * qty;
+
+    const tOut = String(type).replace('(指定)', '');
+    const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+
+    if (isPair) {
+      if (m === f) {
+        return `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+      }
+      const p = [];
+      if (m > 0) p.push(`♂×${m}`);
+      if (f > 0) p.push(`♀×${f}`);
+      return `${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+    }
+
+    return `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+  }
+
+  function syncDinoMiniLine(card, d, key) {
+    const sp = getSpecialCfgForDino(d);
+    const s = inputState.get(key);
+    const out = $('.miniOut', card);
+    if (out) out.textContent = dinoSuffixLine(d, s, sp);
+
+    const unit = $('.unit', card);
+    if (unit) {
+      // 特殊+オスメス（通常入力）は通常単価を表示
+      if (sp?.enabled && s?.mode === 'special' && sp.allowSex) {
+        unit.textContent = `単価${prices[s.type] || 0}円`;
+      } else if (sp?.enabled && s?.mode === 'special') {
+        unit.textContent = `1体=${Number(sp.unit || 0)}円`;
+      } else {
+        unit.textContent = `単価${prices[s?.type] || 0}円`;
+      }
+    }
+  }
+
 
   /* ========= output ========= */
   function rebuildOutput() {
@@ -779,9 +859,9 @@ ${lines.join('\n')}
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
 
-          <select class="type" aria-label="種類"></select>
+          <button class="dupBtn" type="button" data-act="dup">複製</button>
         </div>
-      ` : ``;
+      ` : `<div class="controls controlsWrap" style="margin-top:10px;justify-content:flex-end;"><button class="dupBtn" type="button" data-act="dup">複製</button></div>`;
 
       card.innerHTML = `
         <div class="cardInner">
@@ -794,7 +874,11 @@ ${lines.join('\n')}
             </div>
 
             <div class="right">
-              <div class="unit" style="font-weight:900;color:rgba(255,255,255,.65);">1体=${unitPrice}円</div>
+              ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
+              <div class="unitRow">
+                <div class="unit"></div>
+                <div class="miniOut"></div>
+              </div>
             </div>
           </div>
 
@@ -878,7 +962,9 @@ ${lines.join('\n')}
           }
         }
 
-        if (!el.q.value.trim()) {
+        syncDinoMiniLine(card, d, key);
+
+                if (!el.q.value.trim()) {
           const q = (Number(s.m || 0) + Number(s.f || 0)) > 0
             ? (Number(s.m || 0) + Number(s.f || 0))
             : (s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0));
@@ -925,6 +1011,25 @@ ${lines.join('\n')}
         ev.stopPropagation();
 
         const act = btn.dataset.act;
+
+        if (act === 'dup') {
+          const dupKey = `${d.id}__dup_${uid()}`;
+          ephemeralKeys.add(dupKey);
+          inputState.set(dupKey, {
+            mode: s.mode,
+            type: s.type,
+            m: 0,
+            f: 0,
+            all: false,
+            picks: []
+          });
+
+          const dupCard = buildDinoCard(d, dupKey);
+          card.after(dupCard);
+          rebuildOutput();
+          applyCollapseAndSearch();
+          return;
+        }
 
         if (act === 'm-') return step('m', -1);
         if (act === 'm+') return step('m', +1);
@@ -993,7 +1098,10 @@ ${lines.join('\n')}
 
           <div class="right">
             <select class="type" aria-label="種類"></select>
-            <div class="unit"></div>
+            <div class="unitRow">
+              <div class="unit"></div>
+              <div class="miniOut"></div>
+            </div>
           </div>
         </div>
 
@@ -1026,6 +1134,7 @@ ${lines.join('\n')}
 
     const unit = $('.unit', card);
     unit.textContent = `単価${prices[s.type] || 0}円`;
+    syncDinoMiniLine(card, d, key);
 
     const mEl = $('.js-m', card);
     const fEl = $('.js-f', card);
@@ -1041,6 +1150,7 @@ ${lines.join('\n')}
       unit.textContent = `単価${prices[s.type] || 0}円`;
       mEl.textContent = String(s.m || 0);
       fEl.textContent = String(s.f || 0);
+      syncDinoMiniLine(card, d, key);
 
       if (!el.q.value.trim()) {
         const q = (Number(s.m || 0) + Number(s.f || 0));
@@ -1079,6 +1189,25 @@ ${lines.join('\n')}
       btn.addEventListener('click', (ev) => {
         ev.stopPropagation();
         const act = btn.dataset.act;
+
+        if (act === 'dup') {
+          const dupKey = `${d.id}__dup_${uid()}`;
+          ephemeralKeys.add(dupKey);
+          inputState.set(dupKey, {
+            mode: s.mode,
+            type: s.type,
+            m: 0,
+            f: 0,
+            all: false,
+            picks: []
+          });
+
+          const dupCard = buildDinoCard(d, dupKey);
+          card.after(dupCard);
+          rebuildOutput();
+          applyCollapseAndSearch();
+          return;
+        }
 
         if (act === 'm-') step('m', -1);
         if (act === 'm+') step('m', +1);
@@ -1292,12 +1421,8 @@ ${lines.join('\n')}
     const top = document.createElement('div');
     top.style.display = 'flex';
     top.style.justifyContent = 'flex-end';
-    top.style.gap = '10px';
     top.style.marginBottom = '10px';
-    top.innerHTML = `
-      <button class="pill" type="button" data-act="kana">50音順</button>
-      <button class="pill" type="button" data-act="add">＋追加</button>
-    `;
+    top.innerHTML = `<button class="pill" type="button" data-act="add">＋追加</button>`;
     wrap.appendChild(top);
 
     const list = (activeTab === 'dino')
@@ -1325,35 +1450,6 @@ ${lines.join('\n')}
       if (act === 'add') {
         if (activeTab === 'dino') openAddDino();
         else openAddItem();
-        return;
-      }
-
-      if (act === 'kana') {
-        const kind = activeTab; // 'dino' or 'item'
-        const ok = await confirmAsk('50音順に並び替えますか？');
-        if (!ok) return;
-
-        const src = (kind === 'dino') ? dinos.slice() : items.slice();
-        const sorted = src
-          .slice()
-          .sort((a, b) => {
-            const ak = sortKeyKana50(a.name, kind);
-            const bk = sortKeyKana50(b.name, kind);
-            const c = ak.localeCompare(bk, 'ja');
-            if (c !== 0) return c;
-            // 同一キーのときは元の名前→idで安定化
-            const c2 = String(a.name || '').localeCompare(String(b.name || ''), 'ja');
-            if (c2 !== 0) return c2;
-            return String(a.id).localeCompare(String(b.id));
-          });
-
-        const ord = sorted.map(x => x.id);
-        order[kind] = ord;
-        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
-
-        renderList();
-        setManageTab('catalog');
-        openToast('50音順に並び替えました');
         return;
       }
 
@@ -2126,46 +2222,9 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
     if (e.target === el.roomOverlay) closeRoom();
   });
 
-
-  /* ========= update check ========= */
-  const UPDATE_SNOOZE_KEY = 'app_update_snooze_until';
-  async function checkForUpdates() {
-    try {
-      const snoozeUntil = Number(localStorage.getItem(UPDATE_SNOOZE_KEY) || 0);
-      if (Date.now() < snoozeUntil) return;
-
-      const meta = document.querySelector('meta[name="app-version"]');
-      const current = (meta && meta.content) ? meta.content.trim() : '';
-      if (!current) return;
-
-      const res = await fetch('./version.json?ts=' + Date.now(), { cache: 'no-store' });
-      if (!res.ok) return;
-      const j = await res.json();
-      const latest = String(j.version || '').trim();
-      if (!latest || latest === current) return;
-
-      const ok = await confirmAsk('更新があります。更新しますか？');
-      if (!ok) {
-        // 12時間は黙る
-        localStorage.setItem(UPDATE_SNOOZE_KEY, String(Date.now() + 12 * 60 * 60 * 1000));
-        return;
-      }
-
-      // iOSキャッシュ対策：URLを変えて再読み込み
-      const u = new URL(location.href);
-      u.searchParams.set('v', latest);
-      u.searchParams.set('t', String(Date.now()));
-      location.replace(u.toString());
-    } catch {
-      // 失敗しても静かにスルー
-    }
-  }
-
-
   /* ========= init ========= */
   async function init() {
     await migrateOldImagesIfAny();
-    await checkForUpdates();
 
     try {
       const all = await idbGetAllImages();
