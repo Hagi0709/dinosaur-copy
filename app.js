@@ -503,10 +503,7 @@ function sortByOrder(list, kind) {
       if (specifiedMap[base]) s.type = specifiedMap[base];
       return;
     }
-    if (m === 0 && f === 0 && hasSpecified) {
-      s.type = base;
     }
-  }
 
   /* ========= image DOM sync ========= */
   function getImageUrlForDino(d) {
@@ -997,6 +994,7 @@ ${lines.join('\n')}
       };
 
       syncSpecial();
+      if (getQtyForCard(key, 'dino') > 0) pinOpen.add(key);
       card.classList.toggle('isCollapsed', (getQtyForCard(key, 'dino') === 0) && !pinOpen.has(key));
 
       $('.cardToggle', card).addEventListener('click', (ev) => {
@@ -1011,15 +1009,21 @@ ${lines.join('\n')}
       sel?.addEventListener('change', (ev) => {
         ev.stopPropagation();
         s.type = sel.value;
+        // 指定は0でも選べるようにする（autoSpecifyは“指定→通常”へ戻さない）
         autoSpecify(s);
+        // セレクト変更は“操作中”とみなして開いた状態を保持
+        pinOpen.add(key);
+        card.classList.remove('isCollapsed');
         syncSpecial();
         rebuildOutput();
-        // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
       });
 
       const step = (sex, delta) => {
         if (sex === 'm') s.m = Math.max(0, Number(s.m || 0) + delta);
         if (sex === 'f') s.f = Math.max(0, Number(s.f || 0) + delta);
+        // 数値操作は“操作中”とみなして開いた状態を保持（0になっても自動で閉じない）
+        pinOpen.add(key);
+        card.classList.remove('isCollapsed');
         autoSpecify(s);
 
         if ((Number(s.m || 0) + Number(s.f || 0)) > 0) {
