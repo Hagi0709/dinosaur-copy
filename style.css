@@ -729,3 +729,15 @@ button{cursor:pointer}
   padding:12px;
   border-radius:18px;
 }
+
+/* ✅ モーダル/オーバーレイ内でスクロールを閉じ込める（背面へ抜けない） */
+#modalOverlay, #roomOverlay, #editOverlay, #imgOverlay {
+  overscroll-behavior: contain;
+  touch-action: none; /* 背面へのスクロール伝播を抑える */
+}
+
+#modalBody, #roomBody, #editBody {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
