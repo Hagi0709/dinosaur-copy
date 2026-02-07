@@ -2,8 +2,21 @@
   box-sizing: border-box;
 }
 .toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
   flex-wrap: wrap;
-  padding-bottom: 6px;
+}
+
+/* 右UIのように「検索行」と「操作行」を分離 */
+.toolbar > .search-wrap {
+  flex: 1 1 100%;
+}
+
+.toolbar > .pill,
+.toolbar > .btn.copy,
+.toolbar > .total {
+  flex: 0 0 auto;
 }
 
 .toolbar > * {
@@ -43,9 +56,9 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 999px;
-  padding: 10px;
+  background: rgba(255,255,255,.08);
+  border-radius: 16px;
+  padding: 12px 14px;
 }
 
 .search {
@@ -128,15 +141,16 @@ body {
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255,255,255,.06);
   border-radius: 18px;
-  padding: 12px;
+  padding: 10px 12px;
 }
 
 .card-head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .card-title {
@@ -146,8 +160,9 @@ body {
 
 .card-right {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   align-items: center;
+  font-size: 13px;
 }
 
 .select-pill {
