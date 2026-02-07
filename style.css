@@ -1,21 +1,5 @@
 * { box-sizing: border-box; }
 
-/* --- DEPLOY CHECK --- */
-body::before{
-  content:"CSS反映OK";
-  position:fixed;
-  top:6px;
-  left:6px;
-  z-index:99999;
-  padding:6px 10px;
-  border-radius:10px;
-  font-weight:900;
-  font-size:12px;
-  background:rgba(0,0,0,.65);
-  border:1px solid rgba(255,255,255,.25);
-  color:#9dffb0;
-}
-
 :root{
   --bg:#0b0e12;
   --panel: rgba(255,255,255,.06);
@@ -187,17 +171,17 @@ body{
   margin-top: 14px;
 }
 
+/* ★各カード右上配置の基準にする */
 .card{
+  position: relative;                 /* ← ここが超重要（右上固定の基準） */
   background: rgba(255,255,255,.06);
   border-radius: 18px;
   padding: 12px;
 }
 
-/* ====== ここから右上配置の要 ====== */
+/* タイトル行：右上ブロックと被らないように余白を確保 */
 .card-top{
-  position: relative;                 /* 右上固定の基準 */
-  min-height: 64px;                   /* 右上ブロックとタイトルが干渉しない高さ */
-  padding-right: 230px;               /* 右上ブロック分の逃げ（狭ければ下の@mediaで縮む） */
+  padding-right: 220px;               /* 受精卵+単価+複製の分だけ逃がす */
 }
 
 .card-title{
@@ -205,31 +189,43 @@ body{
   font-weight: 900;
 }
 
-/* 受精卵・単価を右上へ */
+/* =========================
+   受精卵 / 単価：各カードの右上へ固定
+   ========================= */
 .card-right{
   position: absolute;
-  top: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
+  top: 12px;
+  right: 12px;
+  display:flex;
+  align-items:center;
   gap: 10px;
 }
 
-/* 複製を右上（受精卵・単価の“下”）へ */
+/* =========================
+   複製：各カードの右上（受精卵/単価の“下”）へ固定
+   ========================= */
 .dup{
   position: absolute;
-  top: 44px;                          /* 受精卵/単価の下に来る高さ */
-  right: 0;
-  width: 180px;                       /* 右上に収まる固定幅 */
+  top: 56px;
+  right: 12px;
+  width: 180px;
   height: 40px;
-  margin: 0;                          /* 下配置用のmarginを無効化 */
+  margin: 0;
   border-radius: 14px;
   border:0;
   background: rgba(255,255,255,.12);
   color: var(--text);
   font-weight: 900;
 }
-/* ====== 右上配置ここまで ====== */
+
+/* 右上に複製を置くので、カード中身の上余白を少し確保 */
+.card-body{
+  display:flex;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 34px;                  /* 右上の複製と干渉しづらくする */
+  align-items: flex-start;
+}
 
 .select-pill{
   border:0;
@@ -255,13 +251,6 @@ body{
 /* =========================
    画像：小さく、左、横2:縦1固定
    ========================= */
-.card-body{
-  display:flex;
-  gap: 12px;
-  margin-top: 12px;
-  align-items: flex-start;
-}
-
 .thumb{
   flex: 0 0 140px;
   width: 140px;
@@ -288,11 +277,9 @@ body{
   min-width: 0;
 }
 
-/* 複製を右上に移したので、カード内コントロールは上下だけ */
 .qty-row{
   display:flex;
   gap: 10px;
-  margin-top: 36px;                   /* 右上の複製と干渉しないよう少し下げる */
 }
 
 .qty{
@@ -324,7 +311,7 @@ body{
 }
 
 /* =========================
-   スマホ幅：右上ブロックが詰まる時は幅を縮める
+   スマホ幅：右上ブロックが詰まる時の調整
    ========================= */
 @media (max-width: 420px){
   .pill, .btn.copy { padding: 12px 10px; }
@@ -333,9 +320,24 @@ body{
 
   .card-top{
     padding-right: 200px;
-    min-height: 60px;
   }
   .dup{
     width: 160px;
   }
+}
+
+/* --- DEPLOY CHECK --- */
+body::before{
+  content:"CSS反映OK";
+  position:fixed;
+  top:6px;
+  left:6px;
+  z-index:99999;
+  padding:6px 10px;
+  border-radius:10px;
+  font-weight:900;
+  font-size:12px;
+  background:rgba(0,0,0,.65);
+  border:1px solid rgba(255,255,255,.25);
+  color:#9dffb0;
 }
