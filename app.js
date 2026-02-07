@@ -477,6 +477,34 @@ function sortByOrder(list, kind) {
   });
 }
 
+function miniLineToHtml(line){
+  const s = String(line ?? '');
+  if (!s.trim()) return '&nbsp;'; // 未入力時は空白1文字
+  let t = escapeHtml(s);
+
+  // 表示価格では ♂♀ を オス/メス に置換し色付け
+  t = t.replace(/♂×(\d+)/g, '<span class="male">オス×$1</span>');
+  t = t.replace(/♀×(\d+)/g, '<span class="female">メス×$1</span>');
+  // 念のため単体記号も置換
+  t = t.replace(/♂/g, '<span class="male">オス</span>');
+  t = t.replace(/♀/g, '<span class="female">メス</span>');
+  return t;
+}
+
+
+
+/* ========= manage: 50音順 ========= */
+function sortKeyKana50(name, kind) {
+  let s = String(name || '').trim();
+  // ✅ 恐竜だけ TEK を無視して並び替え
+  if (kind === 'dino') s = s.replace(/^TEK\s*/i, '');
+  // ✅ カタカナ→ひらがな（既存の toHira を利用）
+  s = toHira(s);
+  s = s.replace(/\s+/g, '');
+  return s;
+}
+
+
   /* ========= behavior rules ========= */
   function ensureDinoState(key, defType, spCfg = null) {
     if (!inputState.has(key)) {
@@ -803,7 +831,7 @@ ${lines.join('\n')}
 
           ${normalBlock}
 
-          <div class="controls gachaWrap" style="display:block;margin-top:10px;">
+          <div class="controls gachaWrap" style="display:block;margin-top:10px;padding-bottom:10px;">
             <div class="gWrap">
               <div class="gGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
                 ${btns.join('')}
@@ -819,7 +847,7 @@ ${lines.join('\n')}
                 </div>
               </div>
 
-              <div style="margin-top:6px;color:rgba(255,255,255,.55);font-weight:800;font-size:12px;">
+              <div style="margin-top:6px;color:rgba(255,255,255,.55);font-weight:800;font-size:12px;line-height:1.4;padding-bottom:6px;">
                 全種=${allPrice.toLocaleString('ja-JP')}円
               </div>
             </div>
@@ -995,7 +1023,7 @@ ${lines.join('\n')}
           </div>
 
           <div class="right">
-            <select class="type" aria-label="種類"></select>
+            <div class="typeRow"><button class="dupMini" type="button" data-act="dup" title="複製">複製</button><select class="type" aria-label="種類"></select></div>
             <div class="unit"></div>
           </div>
         </div>
@@ -1013,7 +1041,7 @@ ${lines.join('\n')}
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
 
-          <button class="dupBtn" type="button" data-act="dup">複製</button>
+          
         </div>
       </div>
     `;
@@ -1295,8 +1323,12 @@ ${lines.join('\n')}
     const top = document.createElement('div');
     top.style.display = 'flex';
     top.style.justifyContent = 'flex-end';
+    top.style.gap = '10px';
     top.style.marginBottom = '10px';
-    top.innerHTML = `<button class="pill" type="button" data-act="add">＋追加</button>`;
+    top.innerHTML = `
+      <button class="pill" type="button" data-act="kana">50音順</button>
+      <button class="pill" type="button" data-act="add">＋追加</button>
+    `;
     wrap.appendChild(top);
 
     const list = (activeTab === 'dino')
@@ -1326,6 +1358,34 @@ ${lines.join('\n')}
         else openAddItem();
         return;
       }
+
+
+if (act === 'kana') {
+  const kind = activeTab; // 'dino' or 'item'
+  const ok = await confirmAsk('50音順に並び替えますか？');
+  if (!ok) return;
+
+  const src = (kind === 'dino') ? dinos.slice() : items.slice();
+  const sorted = src.slice().sort((a, b) => {
+    const ak = sortKeyKana50(a.name, kind);
+    const bk = sortKeyKana50(b.name, kind);
+    const c = ak.localeCompare(bk, 'ja');
+    if (c !== 0) return c;
+    const c2 = String(a.name || '').localeCompare(String(b.name || ''), 'ja');
+    if (c2 !== 0) return c2;
+    return String(a.id).localeCompare(String(b.id));
+  });
+
+  const ord = sorted.map(x => x.id);
+  order[kind] = ord;
+  saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
+
+  renderList();
+  setManageTab('catalog');
+  openToast('50音順に並び替えました');
+  return;
+}
+
 
       if (!act || !id) return;
 
