@@ -214,25 +214,23 @@ button{cursor:pointer}
    → toggleを下げて、右側(select側)を上げる */
 .cardToggle{
   position:absolute;
-
-  /* ✅ iOS対策：height指定を捨てて top/bottom で当たり判定を確定 */
   top:-12px;
   left:-12px;
-  bottom:-12px;                 /* ← ここが重要 */
-  right:calc(140px + 10px);      /* 右カラム140 + gap10 を避ける */
-
-  height:auto;                   /* 念のため */
-  width:auto;                    /* 念のため */
-  display:block;                 /* 念のため */
-
+  right:40%;                 /* ✅ 右側40%は“判定外”にして操作可能に */
+  height:calc(100% + 24px);
   border:0;
   background:transparent;
   padding:0;
   margin:0;
   cursor:pointer;
-  z-index:20;                    /* ✅ 画像の上に確実に乗せる */
+  z-index:2;                 /* 右側UIより下でOK */
 }
 
+/* ✅ 右側（select等）は必ずタップを受け取る */
+.right{
+  position:relative;
+  z-index:3;
+}
 /* ✅ 右側(select/単価)は必ずトグルより前面にして操作を守る */
 .right{
   position:relative;
@@ -336,6 +334,26 @@ button{cursor:pointer}
   align-items:center;
   flex-wrap:nowrap;
   overflow:visible;
+}
+
+/* ✅ モバイルは折り返し許可（selectが潰れたり被るのを防ぐ） */
+@media (max-width: 520px){
+  .controls{ flex-wrap:wrap; }
+
+  .controls .stepper{
+    flex:1 1 calc(50% - 5px);
+    min-width:140px;
+  }
+
+  .controls .type{
+    flex:1 1 100%;
+    width:100%;
+  }
+
+  /* 複製ボタンがあるカードは下段に落として崩れ防止 */
+  .controls .dupBtn{
+    flex:1 1 100%;
+  }
 }
 
 /* ✅ 特殊＋オスメス用：折り返しを許可して崩れを防ぐ */
