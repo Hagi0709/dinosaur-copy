@@ -630,6 +630,7 @@ function miniLineToHtml(line){
   return t;
 }
 
+
 function syncDinoMiniLine(card, d, key) {
   const sp = getSpecialCfgForDino(d);
   const s = inputState.get(key);
