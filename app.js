@@ -1116,29 +1116,7 @@ ${lines.join('\n')}
         if (act === 'f-') step('f', -1);
         if (act === 'f+') step('f', +1);
 
-        if (act === 'dup') {
-  const dupKey = `${d.id}__dup_${uid()}`;
-  ephemeralKeys.add(dupKey);
-
-  // ✅ 特殊/通常で初期化を分岐（機能を巻き戻さない）
-  if (s.mode === 'special') {
-    inputState.set(dupKey, {
-      mode: 'special',
-      picks: [],
-      all: false,
-      type: s.type || '受精卵',
-      m: 0,
-      f: 0,
-    });
-  } else {
-    inputState.set(dupKey, { type: s.type || '受精卵', m: 0, f: 0 });
-  }
-
-  const dupCard = buildDinoCard(d, dupKey);
-  card.after(dupCard);
-  rebuildOutput();
-  applyCollapseAndSearch();
-}
+        if (act === 'dup') { doDup(); }
       });
     });
 
