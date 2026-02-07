@@ -810,8 +810,7 @@ ${lines.join('\n')}
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
 
-          <select class="type" aria-label="種類"></select>
-        </div>
+          </div>
       ` : ``;
 
       card.innerHTML = `
@@ -825,9 +824,7 @@ ${lines.join('\n')}
             </div>
 
             <div class="right">
-              <div class="typeRow">
-                <button class="dupMini" type="button" data-act="dup" title="複製">複製</button>
-              </div>
+              ${allowSex ? `<div class="typeRow"><button class="dupMini" type="button" data-act="dup" title="複製">複製</button><select class="type" aria-label="種類"></select></div>` : `<div class="typeRow"><button class="dupMini" type="button" data-act="dup" title="複製">複製</button></div>`}
               <div class="unit" style="font-weight:900;color:rgba(255,255,255,.65);">1体=${unitPrice}円</div>
             </div>
           </div>
@@ -1027,7 +1024,7 @@ ${lines.join('\n')}
 
           <div class="right">
             <div class="typeRow"><button class="dupMini" type="button" data-act="dup" title="複製">複製</button><select class="type" aria-label="種類"></select></div>
-            <div class="unit"></div>
+            <div class="unitRow"><div class="unit"></div><div class="miniOut"></div></div>
           </div>
         </div>
 
@@ -1120,15 +1117,28 @@ ${lines.join('\n')}
         if (act === 'f+') step('f', +1);
 
         if (act === 'dup') {
-          const dupKey = `${d.id}__dup_${uid()}`;
-          ephemeralKeys.add(dupKey);
-          inputState.set(dupKey, { type: s.type, m: 0, f: 0 });
+  const dupKey = `${d.id}__dup_${uid()}`;
+  ephemeralKeys.add(dupKey);
 
-          const dupCard = buildDinoCard(d, dupKey);
-          card.after(dupCard);
-          rebuildOutput();
-          applyCollapseAndSearch();
-        }
+  // ✅ 特殊/通常で初期化を分岐（機能を巻き戻さない）
+  if (s.mode === 'special') {
+    inputState.set(dupKey, {
+      mode: 'special',
+      picks: [],
+      all: false,
+      type: s.type || '受精卵',
+      m: 0,
+      f: 0,
+    });
+  } else {
+    inputState.set(dupKey, { type: s.type || '受精卵', m: 0, f: 0 });
+  }
+
+  const dupCard = buildDinoCard(d, dupKey);
+  card.after(dupCard);
+  rebuildOutput();
+  applyCollapseAndSearch();
+}
       });
     });
 
