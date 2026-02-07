@@ -758,6 +758,7 @@ ${lines.join('\n')}
     const previewEl = $('.cardPreview', card);
 
     // special elements
+    const normalWrap = $('.normalControls', card);
     const spWrap = $('.specialControls', card);
     const grid = $('.gGrid', card);
     const inputEl = $('.gInput', card);
@@ -786,9 +787,16 @@ ${lines.join('\n')}
       if (!spWrap) return;
       if (!(sp?.enabled) || !s.spEnabled) {
         spWrap.style.display = 'none';
+        if (normalWrap) normalWrap.style.display = '';
         return;
       }
       spWrap.style.display = 'block';
+
+      // V2 UI: 特殊入力が有効で allowSex=false の場合は通常(♂♀)エリアを隠す
+      if (normalWrap) {
+        const allowSex = !!sp.allowSex;
+        normalWrap.style.display = allowSex ? '' : 'none';
+      }
 
       const maxN = Math.max(1, Math.min(60, Number(sp.max || 16)));
       const unitPrice = Number(sp.unit || 0);
@@ -1980,16 +1988,4 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
 
     items = baseI.concat(custom.item.map(x => ({ id: x.id, name: x.name, unit: x.unit, price: x.price, kind: 'item' })));
 
-    ensureOrderList(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
-    ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
-
-    // ✅ V3: outは常に表示（CSSがどうでもJS側で担保）
-    el.out.style.display = 'block';
-    el.out.style.visibility = 'visible';
-    el.out.style.opacity = '1';
-
-    setTab('dino');
-  }
-
-  init();
-})();
+    ensureOrderList(dinos.filter(d => 
