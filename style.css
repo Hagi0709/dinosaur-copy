@@ -205,7 +205,7 @@ button{cursor:pointer}
 .cardHead{
   position:relative;
   display:grid;
-  grid-template-columns:minmax(0,1fr) 156px;
+  grid-template-columns:minmax(0,1fr) 176px;
   gap:10px;
   align-items:start;
   padding-bottom:12px;
@@ -825,40 +825,48 @@ button{cursor:pointer}
   max-width:100%;
 }
 
+/* ===== fix: type clipped & price display ===== */
+.right{ width:200px; }
+.cardHead{ grid-template-columns:minmax(0,1fr) 200px; }
 
-/* ===== overrides: type+dup in header & clipping fix ===== */
-.right{ width:156px; }                 /* 受精卵(指定)が入る最小寄り */
-.type{ min-width:156px; height:36px; font-size:12px; }
-.typeRow{ display:flex; align-items:center; gap:8px; }
+.typeRow{ display:flex; align-items:center; gap:8px; min-width:0; }
+.type{ flex:1 1 auto; min-width:0; max-width:100%; }
 
 .dupMini{
-  height:36px;
-  padding:0 12px;
+  flex:0 0 auto;
+  height:34px;
+  padding:0 10px;
+  font-size:11px;
   border-radius:999px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.06);
-  color:rgba(255,255,255,.9);
-  font-weight:700;
-  font-size:12px;
 }
 
-.unitRow{ padding-bottom:6px; }        /* 文字の下の見切れ対策 */
-.miniOut, .unit{
-  line-height:1.55;                   /* ♂♀ の下が切れるのを防ぐ */
+.unitRow{
+  margin-top:auto;
+  gap:2px;
+  padding:2px 0 6px; /* 下切れ対策 */
+}
+
+/* 単価と表示価格の色・サイズ・高さを統一（表示価格の色に合わせる） */
+.unit, .miniOut{
+  font-size:11px;
+  font-weight:600;
+  line-height:1.55;            /* オス/メス 下切れ対策 */
+  color:rgba(255,255,255,.72); /* 今の表示価格の色 */
+  min-height:1.55em;           /* 単価に合わせた枠高さ */
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
   overflow:visible;
 }
 
-/* 既存の大きい複製ボタンは残してもいいが、邪魔なら非表示 */
-.dupBig, button[data-act="dup"].dupBig{ display:none !important; }
+.miniOut{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:clip; /* …は出さない */
+}
 
+.male{ color:#6fd3ff; font-weight:800; }   /* オス：水色 */
+.female{ color:#ff6fb3; font-weight:800; } /* メス：ピンク */
 
-/* ===== overrides: unit/price colors & ordering ===== */
-.unitRow .unit{ opacity:.9; }
-.unitRow .miniOut{ opacity:.9; }
-.unitRow .unit{ order:1; }
-.unitRow .miniOut{ order:2; }
-.typeRow .dupMini{ flex:0 0 auto; }
-.typeRow .type{ flex:1 1 auto; }
-
-/* hide legacy bottom duplicate button if any remains */
-.controls .dupBtn[data-act="dup"]{ display:none !important; }
+/* 特殊枠の下が見切れ対策 */
+.controls.gachaWrap{ overflow:visible; }
