@@ -11,6 +11,11 @@
   <link rel="icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
 
   <link rel="stylesheet" href="style.css" />
+  <!-- style.css が読み込めない時でも真っ白にならない最低限のフォールバック -->
+  <style>
+    body{margin:0;background:#0b0f14;color:#fff;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;}
+    #list{min-height:40vh;}
+  </style>
   <script defer src="app.js"></script>
 </head>
 
@@ -53,7 +58,6 @@
         <div class="modalTitle">管理</div>
         <button id="closeManage" class="iconBtn" type="button">×</button>
       </div>
-
 
       <div class="modalTabs">
         <button id="mTabCatalog" class="mTab isActive">一覧</button>
