@@ -875,11 +875,12 @@ ${lines.join('\n')}
 
             <div class="right">
               ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
-              </div>
+              
             <div class="unitRow">
               <div class="miniOut"></div>
               <div class="unit"></div>
             </div>
+          </div>
             </div>
           </div>
 
@@ -1099,11 +1100,11 @@ ${lines.join('\n')}
 
           <div class="right">
             <select class="type" aria-label="種類"></select>
-            </div>
-          <div class="unitRow">
+            <div class="unitRow">
             <div class="miniOut"></div>
             <div class="unit"></div>
           </div>
+        </div>
           </div>
         </div>
 
