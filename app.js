@@ -618,6 +618,16 @@ function sortByOrder(list, kind) {
     return `${it.name} × ${totalCount} = ${price.toLocaleString('ja-JP')}円`;
   }
 
+    // ✅ カードを開いた瞬間などに「出力エリア(#out)」を強制表示
+  function ensureOutputVisible() {
+    if (!el.out) return;
+    // CSSで display:none / height:0 などがあっても確実に見せる
+    el.out.style.display = 'block';
+    el.out.style.visibility = 'visible';
+    // 高さが潰されている場合の保険（必要なら調整）
+    if (!el.out.style.minHeight) el.out.style.minHeight = '120px';
+  }
+
   function rebuildOutput() {
     const lines = [];
     let sum = 0;
@@ -991,7 +1001,12 @@ ${lines.join('\n')}
       $('.cardToggle', card).addEventListener('click', (ev) => {
         ev.preventDefault();
         if (el.q.value.trim()) return;
+
+        const wasCollapsed = card.classList.contains('isCollapsed');
         card.classList.toggle('isCollapsed');
+
+        // ✅ 「開いた瞬間」に出力エリアを表示
+        if (wasCollapsed) ensureOutputVisible();
       });
 
       sel?.addEventListener('click', (ev) => ev.stopPropagation());
@@ -1206,11 +1221,16 @@ ${lines.join('\n')}
       applyCollapseAndSearch();
     });
 
-    $('.cardToggle', card).addEventListener('click', (ev) => {
-      ev.preventDefault();
-      if (el.q.value.trim()) return;
-      card.classList.toggle('isCollapsed');
-    });
+        $('.cardToggle', card).addEventListener('click', (ev) => {
+        ev.preventDefault();
+        if (el.q.value.trim()) return;
+
+        const wasCollapsed = card.classList.contains('isCollapsed');
+        card.classList.toggle('isCollapsed');
+
+        // ✅ 「開いた瞬間」に出力エリアを表示
+        if (wasCollapsed) ensureOutputVisible();
+      });
 
     $$('button[data-act]', card).forEach(btn => {
       btn.addEventListener('click', (ev) => {
@@ -1303,7 +1323,12 @@ ${lines.join('\n')}
     toggle?.addEventListener('click', (ev) => {
       ev.preventDefault();
       if (el.q.value.trim()) return;
+
+      const wasCollapsed = card.classList.contains('isCollapsed');
       card.classList.toggle('isCollapsed');
+
+      // ✅ 「開いた瞬間」に出力エリアを表示
+      if (wasCollapsed) ensureOutputVisible();
     });
 
     $$('button[data-act]', card).forEach(btn => {
