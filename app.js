@@ -54,6 +54,10 @@
     PRICES: 'prices_v1',
     DELIVERY: 'delivery_v1',
 
+
+    // ✅ fetch fallback cache
+    DINOS_TXT_CACHE: 'dinos_txt_cache_v1',
+    ITEMS_TXT_CACHE: 'items_txt_cache_v1',
     DINO_IMAGES_OLD: 'dino_images_v1', // 旧：画像(localStorage)
 
     DINO_OVERRIDE: 'dino_override_v1',
@@ -424,6 +428,16 @@
     } catch { return ''; }
   }
 
+  function cacheText(key, text) {
+    const t = String(text || '').trim();
+    if (!t) return;
+    try { localStorage.setItem(key, t); } catch {}
+  }
+  function loadCachedText(key) {
+    try { return (localStorage.getItem(key) || '').trim(); } catch { return ''; }
+  }
+
+
   function parseDinoLine(line) {
     line = (line || '').trim();
     if (!line || line.startsWith('#')) return null;
@@ -758,7 +772,6 @@ ${lines.join('\n')}
     const previewEl = $('.cardPreview', card);
 
     // special elements
-    const normalWrap = $('.normalControls', card);
     const spWrap = $('.specialControls', card);
     const grid = $('.gGrid', card);
     const inputEl = $('.gInput', card);
@@ -787,16 +800,9 @@ ${lines.join('\n')}
       if (!spWrap) return;
       if (!(sp?.enabled) || !s.spEnabled) {
         spWrap.style.display = 'none';
-        if (normalWrap) normalWrap.style.display = '';
         return;
       }
       spWrap.style.display = 'block';
-
-      // V2 UI: 特殊入力が有効で allowSex=false の場合は通常(♂♀)エリアを隠す
-      if (normalWrap) {
-        const allowSex = !!sp.allowSex;
-        normalWrap.style.display = allowSex ? '' : 'none';
-      }
 
       const maxN = Math.max(1, Math.min(60, Number(sp.max || 16)));
       const unitPrice = Number(sp.unit || 0);
@@ -1972,11 +1978,24 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
       openToast('画像DBの読み込みに失敗しました');
     }
 
-    const dText = await fetchTextSafe('./dinos.txt');
-    const iText = await fetchTextSafe('./items.txt');
+    let dText = await fetchTextSafe('./dinos.txt');
+    let iText = await fetchTextSafe('./items.txt');
+
+    // ✅ dinos.txt / items.txt が取得できない場合は直近キャッシュを使う（GitHub Pagesのパス不整合対策）
+    if (!String(dText || '').trim()) dText = loadCachedText(LS.DINOS_TXT_CACHE);
+    if (!String(iText || '').trim()) iText = loadCachedText(LS.ITEMS_TXT_CACHE);
+
+    // 取得できたらキャッシュ更新
+    cacheText(LS.DINOS_TXT_CACHE, dText);
+    cacheText(LS.ITEMS_TXT_CACHE, iText);
+
 
     const baseD = dText.split(/\r?\n/).map(parseDinoLine).filter(Boolean);
     const baseI = iText.split(/\r?\n/).map(parseItemLine).filter(Boolean);
+
+    if (baseD.length === 0 && baseI.length === 0 && (!custom.dino || custom.dino.length === 0) && (!custom.item || custom.item.length === 0)) {
+      openToast('dinos.txt / items.txt が読み込めません（index.html と同じフォルダに配置されているか確認してください）');
+    }
 
     dinos = baseD.concat(custom.dino.map(x => ({
       id: x.id,
@@ -1988,4 +2007,16 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
 
     items = baseI.concat(custom.item.map(x => ({ id: x.id, name: x.name, unit: x.unit, price: x.price, kind: 'item' })));
 
-    ensureOrderList(dinos.filter(d => 
+    ensureOrderList(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
+    ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
+
+    // ✅ V3: outは常に表示（CSSがどうでもJS側で担保）
+    el.out.style.display = 'block';
+    el.out.style.visibility = 'visible';
+    el.out.style.opacity = '1';
+
+    setTab('dino');
+  }
+
+  init();
+})();
