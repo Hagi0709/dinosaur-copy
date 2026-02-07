@@ -209,6 +209,7 @@ button{cursor:pointer}
   gap:10px;
   align-items:start;
   padding-bottom:12px;
+  overflow:visible;
 }
 
 /* ✅ ここが原因：toggleが前面すぎるとselectが押せない
@@ -795,4 +796,31 @@ button{cursor:pointer}
 .unit{
   white-space:nowrap;
   opacity:.75;
+}
+
+
+/* ===== overrides: unit/price fit & no clipping ===== */
+.right{
+  flex-direction:column;
+  gap:6px;
+}
+.unitRow{
+  margin-top:auto;          /* 右カラムの下に寄せて、高さを増やしにくくする */
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:2px;
+  padding:2px 0 4px;        /* 下の見切れ対策 */
+}
+.miniOut, .unit{
+  font-size:11px;
+  line-height:1.35;         /* 文字の下が切れない */
+  font-weight:600;
+}
+.unit{ opacity:.75; }
+.miniOut{
+  white-space:nowrap;       /* 表示価格は1行 */
+  overflow:hidden;
+  text-overflow:clip;       /* …は出さない */
+  max-width:100%;
 }
