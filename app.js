@@ -667,302 +667,284 @@ ${lines.join('\n')}
 
   /* ========= cards ========= */
   function buildDinoCard(d, cardKey) {
-  const sp = getSpecialCfgForDino(d);
-  const key = cardKey || d.id;
-  const s = ensureDinoState(key, d, sp);
+    const sp = getSpecialCfgForDino(d);
+    const key = cardKey || d.id;
+    const s = ensureDinoState(key, d, sp);
 
-  const card = document.createElement('div');
-  card.className = 'card isCollapsed';
-  card.dataset.card = '1';
-  card.dataset.key = key;
-  card.dataset.name = d.name;
-  card.dataset.kind = 'dino';
-  card.dataset.did = d.id;
+    const card = document.createElement('div');
+    card.className = 'card isCollapsed';
+    card.dataset.card = '1';
+    card.dataset.key = key;
+    card.dataset.name = d.name;
+    card.dataset.kind = 'dino';
+    card.dataset.did = d.id;
 
-  const imgUrl = getImageUrlForDino(d);
+    const imgUrl = getImageUrlForDino(d);
 
-  const hasSpecial = !!(sp?.enabled) && !!s.spEnabled;
-  const allowSex = !!(sp?.allowSex);
+    // ✅ V3: headerは共通（単価/セレクト/プレビューを揃える）
+    card.innerHTML = `
+      <div class="cardInner">
+        <div class="cardHead">
+          <button class="cardToggle" type="button" aria-label="開閉" data-act="toggle"></button>
 
-  // ===== header (V2寄せ：余計なプレビュー表示は無し) =====
-  card.innerHTML = `
-    <div class="cardInner">
-      <div class="cardHead">
-        <button class="cardToggle" type="button" aria-label="開閉" data-act="toggle"></button>
+          <div class="nameWrap">
+            <div class="name"></div>
+            ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
+            <div class="cardPreview" style="margin-top:6px;color:rgba(255,255,255,.72);font-weight:900;font-size:12px;"></div>
+          </div>
 
-        <div class="nameWrap">
-          <div class="name"></div>
-          ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
+          <div class="right">
+            <select class="type" aria-label="種類"></select>
+            <div class="unit"></div>
+          </div>
         </div>
 
-        <div class="right">
-          ${(!hasSpecial || allowSex) ? `<select class="type" aria-label="種類"></select><div class="unit"></div>` : `<div class="unit onlyUnit"></div>`}
-        </div>
-      </div>
+        <div class="controls normalControls">
+          <div class="stepper male">
+            <button class="btn" type="button" data-act="m-">−</button>
+            <div class="val js-m">0</div>
+            <button class="btn" type="button" data-act="m+">＋</button>
+          </div>
 
-      <div class="controls normalControls">
-        <div class="stepper male">
-          <button class="btn" type="button" data-act="m-">−</button>
-          <div class="val js-m">0</div>
-          <button class="btn" type="button" data-act="m+">＋</button>
-        </div>
+          <div class="stepper female">
+            <button class="btn" type="button" data-act="f-">−</button>
+            <div class="val js-f">0</div>
+            <button class="btn" type="button" data-act="f+">＋</button>
+          </div>
 
-        <div class="stepper female">
-          <button class="btn" type="button" data-act="f-">−</button>
-          <div class="val js-f">0</div>
-          <button class="btn" type="button" data-act="f+">＋</button>
+          <button class="dupBtn" type="button" data-act="dup">複製</button>
         </div>
 
-        <button class="dupBtn" type="button" data-act="dup">複製</button>
-      </div>
+        <div class="controls specialControls" style="display:none;">
+          <div class="gWrap" style="width:100%;">
+            <div class="gHead" style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
+              <div class="gMeta" style="font-weight:950;color:rgba(255,255,255,.7);">特殊入力</div>
+              <div class="gMeta2" style="font-weight:950;color:rgba(255,255,255,.7);">1体=${Number(sp?.unit||0)}円 / 全種=${Number(sp?.all||0).toLocaleString('ja-JP')}円</div>
+            </div>
 
-      <div class="controls specialControls" style="display:none;">
-        <div class="gWrap" style="width:100%;">
-          <div class="gGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;"></div>
+            <div class="gGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;"></div>
 
-          <div class="gFoot" style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap;">
-            <button class="dupBtn" type="button" data-act="sp-undo" style="min-width:120px;">− 取消</button>
-            <button class="dupBtn" type="button" data-act="sp-all" style="min-width:120px;">全種</button>
-            <button class="dupBtn" type="button" data-act="dup" style="min-width:120px;">複製</button>
+            <div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap;">
+              <button class="dupBtn" type="button" data-act="sp-undo" style="min-width:120px;background:rgba(185,74,85,.22);border-color:rgba(185,74,85,.35);">− 取消</button>
+              <button class="dupBtn" type="button" data-act="sp-all" style="min-width:120px;">全種</button>
+              <button class="dupBtn" type="button" data-act="dup" style="min-width:120px;">複製</button>
 
-            <div style="flex:1;min-width:220px;color:rgba(255,255,255,.7);font-weight:900;">
-              <div class="gLine">入力：<span class="gInput">(未入力)</span></div>
-              <div class="gLine">小計：<span class="gSum">0円</span></div>
+              <div style="flex:1;min-width:220px;color:rgba(255,255,255,.7);font-weight:900;">
+                <div class="gLine">入力：<span class="gInput">(未入力)</span></div>
+                <div class="gLine">小計：<span class="gSum">0円</span></div>
+              </div>
             </div>
           </div>
         </div>
+
       </div>
+    `;
 
-    </div>
-  `;
+    $('.name', card).textContent = d.name;
 
-  $('.name', card).textContent = d.name;
+    // ✅ 左側ほぼ全部で折りたたみ（右のselectは邪魔しない）
+    installLeftToggleHit(card, 170);
 
-  // ✅ 左側ほぼ全部で折りたたみ（右のselectは邪魔しない）
-  installLeftToggleHit(card, 170);
-
-  const sel = $('.type', card);
-  const unit = $('.unit', card);
-
-  // normal els
-  const mEl = $('.js-m', card);
-  const fEl = $('.js-f', card);
-
-  // special els
-  const spWrap = $('.specialControls', card);
-  const grid = $('.gGrid', card);
-  const inputEl = $('.gInput', card);
-  const sumEl = $('.gSum', card);
-  const allBtn = $('button[data-act="sp-all"]', card);
-
-  // ===== type / unit =====
-  if (sel) {
+    const sel = $('.type', card);
     sel.innerHTML = typeList.map(t => `<option value="${t}">${t}</option>`).join('');
     if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
     sel.value = s.type;
-  }
 
-  function syncUnit() {
-    if (!unit) return;
+    const unit = $('.unit', card);
+    unit.textContent = `単価${prices[s.type] || 0}円`;
 
-    if (hasSpecial && !allowSex) {
-      // special-only: V2寄せ（右上に 1体=xxx円）
-      unit.textContent = `1体=${Number(sp?.unit || 0).toLocaleString('ja-JP')}円`;
-      return;
+    const mEl = $('.js-m', card);
+    const fEl = $('.js-f', card);
+    const previewEl = $('.cardPreview', card);
+
+    // special elements
+    const spWrap = $('.specialControls', card);
+    const grid = $('.gGrid', card);
+    const inputEl = $('.gInput', card);
+    const sumEl = $('.gSum', card);
+    const allBtn = $('button[data-act="sp-all"]', card);
+
+    function syncPreview() {
+      previewEl.textContent = getCardPreviewText(key, d, null);
     }
-    const t = s.type || d.defType || '受精卵';
-    unit.textContent = `単価${prices[t] || 0}円`;
-  }
 
-  function syncNormalUI() {
-    if (sel) {
+    function syncNormalUI() {
       if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
       sel.value = s.type;
-    }
-    syncUnit();
-    if (mEl) mEl.textContent = String(s.m || 0);
-    if (fEl) fEl.textContent = String(s.f || 0);
+      unit.textContent = `単価${prices[s.type] || 0}円`;
+      mEl.textContent = String(s.m || 0);
+      fEl.textContent = String(s.f || 0);
+      syncPreview();
 
-    if (!el.q.value.trim()) {
-      const q = getQtyForCardKey(key);
-      card.classList.toggle('isCollapsed', q === 0);
-    }
-  }
-
-  function syncSpecialUI() {
-    if (!spWrap) return;
-
-    if (!(sp?.enabled) || !s.spEnabled) {
-      spWrap.style.display = 'none';
-      return;
-    }
-    spWrap.style.display = 'block';
-
-    const maxN = Math.max(1, Math.min(60, Number(sp.max || 16)));
-    const unitPrice = Number(sp.unit || 0);
-    const allPrice = Number(sp.all || 0);
-
-    // build buttons once
-    if (grid && grid.childElementCount === 0) {
-      const frag = document.createDocumentFragment();
-      for (let i = 1; i <= maxN; i++) {
-        const b = document.createElement('button');
-        b.className = 'gBtn';
-        b.type = 'button';
-        b.dataset.act = 'sp-pick';
-        b.dataset.n = String(i);
-        b.textContent = String(i);
-        frag.appendChild(b);
+      if (!el.q.value.trim()) {
+        const q = getQtyForCardKey(key);
+        card.classList.toggle('isCollapsed', q === 0);
       }
-      grid.appendChild(frag);
     }
 
-    const picks = Array.isArray(s.picks) ? s.picks : [];
-    if (s.spAll) {
-      if (inputEl) inputEl.textContent = '全種';
-      if (sumEl) sumEl.textContent = yen(allPrice);
-      if (allBtn) allBtn.textContent = '全種✓';
-    } else {
-      if (inputEl) inputEl.textContent = picks.length ? picks.map(n => circled(n)).join('') : '(未入力)';
-      if (sumEl) sumEl.textContent = yen(picks.length * unitPrice);
-      if (allBtn) allBtn.textContent = '全種';
+    function syncSpecialUI() {
+      if (!spWrap) return;
+      if (!(sp?.enabled) || !s.spEnabled) {
+        spWrap.style.display = 'none';
+        return;
+      }
+      spWrap.style.display = 'block';
+
+      const maxN = Math.max(1, Math.min(60, Number(sp.max || 16)));
+      const unitPrice = Number(sp.unit || 0);
+      const allPrice = Number(sp.all || 0);
+
+      // build buttons once
+      if (grid && grid.childElementCount === 0) {
+        const frag = document.createDocumentFragment();
+        for (let i = 1; i <= maxN; i++) {
+          const b = document.createElement('button');
+          b.className = 'gBtn';
+          b.type = 'button';
+          b.dataset.act = 'sp-pick';
+          b.dataset.n = String(i);
+          b.textContent = String(i);
+          frag.appendChild(b);
+        }
+        grid.appendChild(frag);
+      }
+
+      const picks = Array.isArray(s.picks) ? s.picks : [];
+      if (s.spAll) {
+        if (inputEl) inputEl.textContent = '全種';
+        if (sumEl) sumEl.textContent = yen(allPrice);
+        if (allBtn) allBtn.textContent = '全種✓';
+      } else {
+        if (inputEl) inputEl.textContent = picks.length ? picks.map(n => circled(n)).join('') : '(未入力)';
+        if (sumEl) sumEl.textContent = yen(picks.length * unitPrice);
+        if (allBtn) allBtn.textContent = '全種';
+      }
+      syncPreview();
+
+      if (!el.q.value.trim()) {
+        const q = getQtyForCardKey(key);
+        card.classList.toggle('isCollapsed', q === 0);
+      }
     }
 
-    // allowSex=false の場合、通常入力側の表示だけ消す（データは保持）
-    if (hasSpecial && !allowSex) {
-      const nc = $('.normalControls', card);
-      if (nc) nc.style.display = 'none';
-      if (sel) sel.style.display = 'none';
-    } else {
-      const nc = $('.normalControls', card);
-      if (nc) nc.style.display = '';
-      if (sel) sel.style.display = '';
-    }
-
-    syncUnit();
-
-    if (!el.q.value.trim()) {
-      const q = getQtyForCardKey(key);
-      card.classList.toggle('isCollapsed', q === 0);
-    }
-  }
-
-  // initial
-  syncNormalUI();
-  syncSpecialUI();
-
-  // ✅ select を押しても折りたたまれない
-  sel?.addEventListener('click', (ev) => ev.stopPropagation());
-  sel?.addEventListener('pointerdown', (ev) => ev.stopPropagation());
-  sel?.addEventListener('change', (ev) => {
-    ev.stopPropagation();
-    s.type = sel.value;
-    autoSpecify(s);
-    saveState();
+    // initial
     syncNormalUI();
-    rebuildOutput();
-    applyCollapseAndSearch();
-  });
-
-  // toggle
-  $('.cardToggle', card).addEventListener('click', (ev) => {
-    ev.preventDefault();
-    if (el.q.value.trim()) return;
-    card.classList.toggle('isCollapsed');
-
-    // out は常に表示（CSSに依存しない）
-    el.out.style.display = 'block';
-    el.out.style.visibility = 'visible';
-    el.out.style.opacity = '1';
-  });
-
-  function step(sex, delta) {
-    if (sex === 'm') s.m = Math.max(0, Number(s.m || 0) + delta);
-    if (sex === 'f') s.f = Math.max(0, Number(s.f || 0) + delta);
-    autoSpecify(s);
-    saveState();
-    syncNormalUI();
-    rebuildOutput();
-    applyCollapseAndSearch();
-  }
-
-  function dupCard() {
-    const dupKey = `${d.id}__dup_${uid()}`;
-    const clone = JSON.parse(JSON.stringify(s));
-    state[dupKey] = clone;
-    saveState();
-
-    const dup = buildDinoCard(d, dupKey);
-    card.after(dup);
-    rebuildOutput();
-    applyCollapseAndSearch();
-  }
-
-  // event delegation
-  card.addEventListener('click', (ev) => {
-    const btn = ev.target?.closest('button');
-    if (!btn) return;
-
-    const act = btn.dataset.act;
-    if (!act) return;
-
-    // 折りたたみトグル領域以外のボタン操作は畳まない
-    ev.stopPropagation();
-
-    if (act === 'm-') return step('m', -1);
-    if (act === 'm+') return step('m', +1);
-    if (act === 'f-') return step('f', -1);
-    if (act === 'f+') return step('f', +1);
-
-    if (act === 'dup') return dupCard();
-
-    // special
-    if (act === 'sp-pick') {
-      if (!(sp?.enabled) || !s.spEnabled) return;
-      const n = Number(btn.dataset.n || 0);
-      if (!Number.isFinite(n) || n <= 0) return;
-      s.spAll = false;
-      if (!Array.isArray(s.picks)) s.picks = [];
-      s.picks.push(n);
-      saveState();
-      syncSpecialUI();
-      rebuildOutput();
-      applyCollapseAndSearch();
-      return;
-    }
-
-    if (act === 'sp-undo') {
-      if (!(sp?.enabled) || !s.spEnabled) return;
-      if (s.spAll) s.spAll = false;
-      else if (Array.isArray(s.picks) && s.picks.length) s.picks.pop();
-      saveState();
-      syncSpecialUI();
-      rebuildOutput();
-      applyCollapseAndSearch();
-      return;
-    }
-
-    if (act === 'sp-all') {
-      if (!(sp?.enabled) || !s.spEnabled) return;
-      s.spAll = !s.spAll;
-      if (s.spAll) s.picks = [];
-      saveState();
-      syncSpecialUI();
-      rebuildOutput();
-      applyCollapseAndSearch();
-      return;
-    }
-  });
-
-  // special config がある恐竜は特殊欄を表示
-  if (sp?.enabled) {
-    s.spEnabled = true;
-    saveState();
     syncSpecialUI();
-  }
 
-  return card;
-}
+    // ✅ select を押しても折りたたまれない
+    sel.addEventListener('click', (ev) => ev.stopPropagation());
+    sel.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+    sel.addEventListener('change', (ev) => {
+      ev.stopPropagation();
+      s.type = sel.value;
+      autoSpecify(s);
+      saveState();
+      syncNormalUI();
+      rebuildOutput();
+      applyCollapseAndSearch();
+    });
+
+    // toggle
+    $('.cardToggle', card).addEventListener('click', (ev) => {
+      ev.preventDefault();
+      if (el.q.value.trim()) return;
+      card.classList.toggle('isCollapsed');
+
+      // ✅ 「カードを開いた時点で出力エリアを表示」= out を必ず見える状態にする
+      // （CSS側で潰されてても、ここで強制）
+      el.out.style.display = 'block';
+      el.out.style.visibility = 'visible';
+      el.out.style.opacity = '1';
+    });
+
+    function step(sex, delta) {
+      if (sex === 'm') s.m = Math.max(0, Number(s.m || 0) + delta);
+      if (sex === 'f') s.f = Math.max(0, Number(s.f || 0) + delta);
+      autoSpecify(s);
+      saveState();
+      syncNormalUI();
+      rebuildOutput();
+      applyCollapseAndSearch();
+    }
+
+    function dupCard() {
+      const dupKey = `${d.id}__dup_${uid()}`;
+      // ✅ “見た目”ではなく state を丸ごと複製（特殊＋♂♀も含む）
+      const clone = JSON.parse(JSON.stringify(s));
+      state[dupKey] = clone;
+      saveState();
+
+      const dup = buildDinoCard(d, dupKey);
+      card.after(dup);
+      rebuildOutput();
+      applyCollapseAndSearch();
+    }
+
+    // event delegation
+    card.addEventListener('click', (ev) => {
+      const btn = ev.target?.closest('button');
+      if (!btn) return;
+
+      const act = btn.dataset.act;
+      if (!act) return;
+
+      // 折りたたみトグル領域以外のボタン操作は畳まない
+      ev.stopPropagation();
+
+      if (act === 'm-') return step('m', -1);
+      if (act === 'm+') return step('m', +1);
+      if (act === 'f-') return step('f', -1);
+      if (act === 'f+') return step('f', +1);
+
+      if (act === 'dup') return dupCard();
+
+      // special
+      if (act === 'sp-pick') {
+        if (!(sp?.enabled) || !s.spEnabled) return;
+        const n = Number(btn.dataset.n || 0);
+        if (!Number.isFinite(n) || n <= 0) return;
+        s.spAll = false;
+        if (!Array.isArray(s.picks)) s.picks = [];
+        s.picks.push(n);
+        saveState();
+        syncSpecialUI();
+        rebuildOutput();
+        applyCollapseAndSearch();
+        return;
+      }
+
+      if (act === 'sp-undo') {
+        if (!(sp?.enabled) || !s.spEnabled) return;
+        if (s.spAll) s.spAll = false;
+        else if (Array.isArray(s.picks) && s.picks.length) s.picks.pop();
+        saveState();
+        syncSpecialUI();
+        rebuildOutput();
+        applyCollapseAndSearch();
+        return;
+      }
+
+      if (act === 'sp-all') {
+        if (!(sp?.enabled) || !s.spEnabled) return;
+        s.spAll = !s.spAll;
+        if (s.spAll) s.picks = [];
+        saveState();
+        syncSpecialUI();
+        rebuildOutput();
+        applyCollapseAndSearch();
+        return;
+      }
+    });
+
+    // ✅ special config がある恐竜は特殊欄を表示（allowSex は “同居可”なので排他しない）
+    if (sp?.enabled) {
+      s.spEnabled = true;
+      saveState();
+      syncSpecialUI();
+    }
+
+    return card;
+  }
 
   function buildItemCard(it) {
     const key = it.id;
