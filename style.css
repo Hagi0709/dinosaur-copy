@@ -39,7 +39,7 @@ body{
   display:flex;
   align-items:center;
   gap:10px;
-  flex-wrap: nowrap;        /* ← 1行固定 */
+  flex-wrap: nowrap;
 }
 
 .search-wrap{
@@ -148,9 +148,9 @@ body{
 }
 
 .tab{
-  flex: 1 1 0;              /* ← 全部同じ幅 */
+  flex: 1 1 0;
   border:0;
-  height: 44px;             /* ← 全部同じ高さ */
+  height: 44px;
   border-radius: 999px;
   background: rgba(255,255,255,.08);
   color: var(--text);
@@ -177,11 +177,11 @@ body{
   padding: 12px;
 }
 
+/* ====== ここから右上配置の要 ====== */
 .card-top{
-  display:flex;
-  align-items:center;
-  justify-content: space-between;
-  gap: 10px;
+  position: relative;                 /* 右上固定の基準 */
+  min-height: 64px;                   /* 右上ブロックとタイトルが干渉しない高さ */
+  padding-right: 230px;               /* 右上ブロック分の逃げ（狭ければ下の@mediaで縮む） */
 }
 
 .card-title{
@@ -189,11 +189,31 @@ body{
   font-weight: 900;
 }
 
+/* 受精卵・単価を右上へ */
 .card-right{
-  display:flex;
-  align-items:center;
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
+
+/* 複製を右上（受精卵・単価の“下”）へ */
+.dup{
+  position: absolute;
+  top: 44px;                          /* 受精卵/単価の下に来る高さ */
+  right: 0;
+  width: 180px;                       /* 右上に収まる固定幅 */
+  height: 40px;
+  margin: 0;                          /* 下配置用のmarginを無効化 */
+  border-radius: 14px;
+  border:0;
+  background: rgba(255,255,255,.12);
+  color: var(--text);
+  font-weight: 900;
+}
+/* ====== 右上配置ここまで ====== */
 
 .select-pill{
   border:0;
@@ -227,9 +247,9 @@ body{
 }
 
 .thumb{
-  flex: 0 0 140px;          /* ← 小さく固定（3枚目寄せ） */
+  flex: 0 0 140px;
   width: 140px;
-  aspect-ratio: 2 / 1;      /* ← 横2：縦1 */
+  aspect-ratio: 2 / 1;
   border-radius: 14px;
   overflow: hidden;
   background: #000;
@@ -252,9 +272,11 @@ body{
   min-width: 0;
 }
 
+/* 複製を右上に移したので、カード内コントロールは上下だけ */
 .qty-row{
   display:flex;
   gap: 10px;
+  margin-top: 36px;                   /* 右上の複製と干渉しないよう少し下げる */
 }
 
 .qty{
@@ -285,22 +307,19 @@ body{
   border: 2px solid rgba(255,100,220,.6);
 }
 
-.dup{
-  margin-top: 10px;
-  width: 100%;
-  height: 44px;
-  border-radius: 14px;
-  border:0;
-  background: rgba(255,255,255,.12);
-  color: var(--text);
-  font-weight: 900;
-}
-
 /* =========================
-   スマホ微調整：横幅が狭い時でも「ツールバー1行」を優先
+   スマホ幅：右上ブロックが詰まる時は幅を縮める
    ========================= */
 @media (max-width: 420px){
   .pill, .btn.copy { padding: 12px 10px; }
   .total { font-size: 14px; }
   .thumb{ flex-basis: 120px; width: 120px; }
+
+  .card-top{
+    padding-right: 200px;
+    min-height: 60px;
+  }
+  .dup{
+    width: 160px;
+  }
 }
