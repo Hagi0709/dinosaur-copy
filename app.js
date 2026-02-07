@@ -621,11 +621,17 @@ function sortByOrder(list, kind) {
     // ✅ カードを開いた瞬間などに「出力エリア(#out)」を強制表示
   function ensureOutputVisible() {
     if (!el.out) return;
-    // CSSで display:none / height:0 などがあっても確実に見せる
-    el.out.style.display = 'block';
-    el.out.style.visibility = 'visible';
-    // 高さが潰されている場合の保険（必要なら調整）
-    if (!el.out.style.minHeight) el.out.style.minHeight = '120px';
+
+    // ✅ CSSの !important を確実に上書きする
+    el.out.style.setProperty('display', 'block', 'important');
+    el.out.style.setProperty('visibility', 'visible', 'important');
+    el.out.style.setProperty('opacity', '1', 'important');
+    el.out.style.setProperty('height', '160px', 'important');
+    el.out.style.setProperty('min-height', '160px', 'important');
+    el.out.style.setProperty('max-height', '320px', 'important');
+    el.out.style.setProperty('padding', '10px 12px', 'important');
+    el.out.style.setProperty('margin-top', '10px', 'important');
+    el.out.style.setProperty('pointer-events', 'auto', 'important');
   }
 
   function rebuildOutput() {
@@ -824,6 +830,12 @@ ${lines.join('\n')}
     const s = ensureDinoState(key, d.defType, sp);
 
     const card = document.createElement('div');
+        // ✅ 応急：同一カード内で controls が重複したら後ろを消す（2重表示対策）
+    function dedupeControlsInCard(root) {
+      const list = $$('.controls', root);
+      if (list.length <= 1) return;
+      for (let i = 1; i < list.length; i++) list[i].remove();
+    }
     card.className = 'card isCollapsed';
     card.dataset.card = '1';
     card.dataset.key = key;
@@ -916,6 +928,7 @@ ${lines.join('\n')}
           </div>
         </div>
       `;
+            dedupeControlsInCard(card);
 
       $('.name', card).textContent = d.name;
 
@@ -1159,6 +1172,7 @@ ${lines.join('\n')}
         </div>
       </div>
     `;
+          dedupeControlsInCard(card);
 
     $('.name', card).textContent = d.name;
 
@@ -1293,6 +1307,7 @@ ${lines.join('\n')}
         </div>
       </div>
     `;
+          dedupeControlsInCard(card);
 
     $('.name', card).textContent = it.name;
     $('.unit', card).textContent = `単価${it.price}円`;
@@ -1367,9 +1382,9 @@ ${lines.join('\n')}
     }
 
     rebuildOutput();
+    ensureOutputVisible(); // ✅ 初期でも必ず見せる
     applyCollapseAndSearch();
   }
-
   function setTab(tab) {
     activeTab = tab;
     el.tabDinos.classList.toggle('isActive', tab === 'dino');
