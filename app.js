@@ -28,6 +28,18 @@
   }
 
   /* ========= circled numbers ========= */
+    /* ========= circled numbers ========= */
+
+  // ✅ iOS等で CSS.escape が未定義の環境があるので保険（ここで落ちると後続が一切描画されない）
+  if (!window.CSS) window.CSS = {};
+  if (typeof window.CSS.escape !== 'function') {
+    window.CSS.escape = (value) => {
+      const s = String(value ?? '');
+      // 最低限：セレクタに使えない文字をバックスラッシュエスケープ
+      return s.replace(/[^a-zA-Z0-9_\u00A0-\uFFFF-]/g, (ch) => '\\' + ch);
+    };
+  }
+
   const circled = (n) => {
     const x = Number(n);
     if (!Number.isFinite(x) || x <= 0) return String(n);
@@ -1170,15 +1182,42 @@ ${lines.join('\n')}
   }
 
   /* ========= render ========= */
-  function renderList() {
+    function renderList() {
     el.list.innerHTML = '';
+
+    const appendErrorCard = (label, err) => {
+      console.error(label, err);
+      const c = document.createElement('div');
+      c.className = 'card';
+      c.style.padding = '12px';
+      c.style.border = '1px solid rgba(255,80,80,.35)';
+      c.style.background = 'rgba(255,80,80,.10)';
+      c.style.borderRadius = '18px';
+      c.style.color = '#fff';
+      c.style.fontWeight = '900';
+      c.style.whiteSpace = 'pre-wrap';
+      c.textContent = `描画エラー: ${label}\n${String(err?.message || err)}`;
+      el.list.appendChild(c);
+    };
 
     if (activeTab === 'dino') {
       const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
-      dList.forEach(d => el.list.appendChild(buildDinoCard(d)));
+      dList.forEach(d => {
+        try {
+          el.list.appendChild(buildDinoCard(d));
+        } catch (e) {
+          appendErrorCard(d?.name || d?.id || '(unknown dino)', e);
+        }
+      });
     } else {
       const iList = sortByOrder(items.filter(i => !hidden.item.has(i.id)), 'item');
-      iList.forEach(it => el.list.appendChild(buildItemCard(it)));
+      iList.forEach(it => {
+        try {
+          el.list.appendChild(buildItemCard(it));
+        } catch (e) {
+          appendErrorCard(it?.name || it?.id || '(unknown item)', e);
+        }
+      });
     }
 
     rebuildOutput();
