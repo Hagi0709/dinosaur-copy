@@ -327,6 +327,24 @@ button{cursor:pointer}
   text-align:right;
 }
 
+
+
+.unitRow{
+  display:flex;
+  align-items:baseline;
+  gap:10px;
+}
+.miniOut{
+  flex:1;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-weight:900;
+  color:rgba(255,255,255,.6);
+  font-size:12px;
+}
+
 .controls{
   margin-top:10px;
   display:flex;
