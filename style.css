@@ -771,3 +771,28 @@ button{cursor:pointer}
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
 }
+
+/* ===== overrides: price line ===== */
+.unitRow{
+  grid-column:1 / -1;          /* span full header width */
+  display:flex;
+  flex-direction:column;       /* 単価と表示価格を上下 */
+  align-items:flex-end;
+  gap:2px;
+  padding-top:2px;
+}
+.miniOut, .unit{
+  font-size:11px;              /* 文字サイズを揃えて小さく */
+  line-height:1.25;
+  opacity:.9;
+}
+.miniOut{
+  white-space:nowrap;          /* 表示価格を1行 */
+  overflow:hidden;
+  text-overflow:clip;          /* 省略記号は出さない */
+  max-width:100%;
+}
+.unit{
+  white-space:nowrap;
+  opacity:.75;
+}
