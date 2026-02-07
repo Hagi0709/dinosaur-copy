@@ -1,37 +1,71 @@
 (() => {
   'use strict';
 
-  /* ========= global error trap (diagnostic) ========= */
-  function showFatal(msg) {
+  // ================================
+  // IMPORTANT
+  // 「何も表示されない」時は、JSが止まっているか、dinos.txt / items.txt の取得に失敗しています。
+  // ここでは *必ず* 画面上に原因を出す（サイレント失敗を禁止）
+  // ================================
+
+  // Global hard-fail guard: 例外で全停止しても最低限メッセージを出す
+  window.addEventListener('error', (ev) => {
     try {
-      const host = document.getElementById('list') || document.body;
-      let box = document.getElementById('fatalBox');
+      const msg = String(ev?.message || ev?.error?.message || ev?.error || 'Unknown error');
+      // toast がまだ無い可能性があるので、簡易表示
+      let box = document.getElementById('bootError');
       if (!box) {
         box = document.createElement('div');
-        box.id = 'fatalBox';
-        box.style.margin = '12px 0';
-        box.style.padding = '12px 14px';
+        box.id = 'bootError';
+        box.style.position = 'fixed';
+        box.style.left = '12px';
+        box.style.right = '12px';
+        box.style.bottom = '12px';
+        box.style.zIndex = '99999';
+        box.style.padding = '12px';
         box.style.borderRadius = '16px';
         box.style.border = '1px solid rgba(255,80,80,.35)';
-        box.style.background = 'rgba(120,0,0,.18)';
+        box.style.background = 'rgba(120,0,0,.22)';
+        box.style.backdropFilter = 'blur(10px)';
         box.style.color = '#fff';
         box.style.fontWeight = '900';
+        box.style.fontSize = '13px';
         box.style.whiteSpace = 'pre-wrap';
-        box.style.wordBreak = 'break-word';
-        host.prepend(box);
+        document.body.appendChild(box);
       }
-      box.textContent = msg;
-    } catch {}
-  }
-  window.addEventListener('error', (ev) => {
-    const e = ev?.error;
-    showFatal('JSエラー: ' + (e?.message || ev?.message || 'unknown'));
-  });
-  window.addEventListener('unhandledrejection', (ev) => {
-    const r = ev?.reason;
-    showFatal('Promiseエラー: ' + (r?.message || String(r)));
+      box.textContent = `JSエラー: ${msg}`;
+    } catch {
+      // ignore
+    }
   });
 
+  window.addEventListener('unhandledrejection', (ev) => {
+    try {
+      const msg = String(ev?.reason?.message || ev?.reason || 'Unhandled rejection');
+      let box = document.getElementById('bootError');
+      if (!box) {
+        box = document.createElement('div');
+        box.id = 'bootError';
+        box.style.position = 'fixed';
+        box.style.left = '12px';
+        box.style.right = '12px';
+        box.style.bottom = '12px';
+        box.style.zIndex = '99999';
+        box.style.padding = '12px';
+        box.style.borderRadius = '16px';
+        box.style.border = '1px solid rgba(255,80,80,.35)';
+        box.style.background = 'rgba(120,0,0,.22)';
+        box.style.backdropFilter = 'blur(10px)';
+        box.style.color = '#fff';
+        box.style.fontWeight = '900';
+        box.style.fontSize = '13px';
+        box.style.whiteSpace = 'pre-wrap';
+        document.body.appendChild(box);
+      }
+      box.textContent = `Promiseエラー: ${msg}`;
+    } catch {
+      // ignore
+    }
+  });
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -448,17 +482,51 @@
   }
 
   /* ========= fetch & parse ========= */
-  async function fetchTextSafe(path) {
-    // returns { ok, status, text, url }
-    const url = path + '?ts=' + Date.now();
+  async function fetchTextDiag(path) {
+    const url = `${path}?ts=${Date.now()}`;
     try {
       const r = await fetch(url, { cache: 'no-store' });
-      if (!r.ok) return { ok: false, status: r.status, text: '', url };
-      const t = await r.text();
-      return { ok: true, status: r.status, text: t, url };
+      const txt = r.ok ? await r.text() : '';
+      return { ok: r.ok, status: r.status, url, text: txt };
     } catch (e) {
-      return { ok: false, status: 0, text: '', url, error: String(e?.message || e) };
+      return { ok: false, status: 0, url, text: '', err: String(e?.message || e) };
     }
+  }
+
+  function renderFatalEmpty(reason, details) {
+    // list が空でも「無反応」にしない
+    if (!el.list) return;
+    el.list.innerHTML = '';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.border = '1px solid rgba(255,80,80,.35)';
+    card.style.background = 'rgba(120,0,0,.18)';
+    card.style.padding = '14px';
+    card.style.borderRadius = '16px';
+    card.innerHTML = `
+      <div style="font-weight:950;margin-bottom:8px;">表示できません</div>
+      <div style="font-weight:800;color:rgba(255,255,255,.78);font-size:12px;line-height:1.45;white-space:pre-wrap;">${escapeHtml(reason || '')}</div>
+      ${details ? `<div style="margin-top:10px;font-weight:800;color:rgba(255,255,255,.68);font-size:12px;white-space:pre-wrap;">${escapeHtml(details)}</div>` : ''}
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="pill" type="button" id="reloadBtn" style="height:40px;">再読み込み</button>
+        <button class="pill" type="button" id="resetBtn" style="height:40px;background:rgba(185,74,85,.22);border-color:rgba(185,74,85,.35);">状態リセット</button>
+      </div>
+    `;
+    el.list.appendChild(card);
+
+    $('#reloadBtn', card)?.addEventListener('click', () => location.reload());
+    $('#resetBtn', card)?.addEventListener('click', () => {
+      // 安全のため確認
+      confirmAsk('入力状態・設定を全てリセットしますか？').then(ok => {
+        if (!ok) return;
+        try {
+          Object.values(LS).forEach(k => localStorage.removeItem(k));
+        } catch {}
+        try { indexedDB.deleteDatabase(IDB.DB_NAME); } catch {}
+        location.reload();
+      });
+    });
   }
 
   function parseDinoLine(line) {
@@ -1066,23 +1134,6 @@ ${lines.join('\n')}
   /* ========= render ========= */
   function renderList() {
     el.list.innerHTML = '';
-
-    // empty state
-    if ((activeTab === 'dino' && dinos.filter(d => !hidden.dino.has(d.id)).length === 0) ||
-        (activeTab === 'item' && items.filter(i => !hidden.item.has(i.id)).length === 0)) {
-      const empty = document.createElement('div');
-      empty.className = 'card';
-      empty.style.padding = '16px';
-      empty.style.borderRadius = '18px';
-      empty.style.border = '1px solid rgba(255,255,255,.10)';
-      empty.style.background = 'rgba(0,0,0,.18)';
-      empty.innerHTML = `<div style="font-weight:950;margin-bottom:6px;">データがありません</div>
-        <div style="font-weight:800;color:rgba(255,255,255,.72);font-size:12px;line-height:1.6;">
-          dinos.txt / items.txt の読み込みに失敗している可能性があります。<br>
-          上部に赤いエラーが出ていたら、その内容に従ってください。
-        </div>`;
-      el.list.appendChild(empty);
-    }
 
     if (activeTab === 'dino') {
       const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
@@ -2018,35 +2069,13 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
       openToast('画像DBの読み込みに失敗しました');
     }
 
-    const dRes = await fetchTextSafe('./dinos.txt');
-    const iRes = await fetchTextSafe('./items.txt');
+    const dRes = await fetchTextDiag('./dinos.txt');
+    const iRes = await fetchTextDiag('./items.txt');
+    const dText = dRes.text || '';
+    const iText = iRes.text || '';
 
-    if (!dRes.ok) {
-      showFatal(
-        `dinos.txt を読み込めませんでした。
-` +
-        `URL: ${dRes.url}
-` +
-        `status: ${dRes.status}${dRes.error ? `
-error: ${dRes.error}` : ''}
-
-` +
-        `・GitHub Pages は大文字/小文字を区別します（dinos.txt / items.txt）。
-` +
-        `・同階層に置いてコミット/デプロイ済みか確認してください。`
-      );
-    }
-    if (!iRes.ok) {
-      // items は任意なので致命傷扱いにはしないが表示は出す
-      openToast('items.txt を読み込めませんでした');
-    }
-
-    const baseD = (dRes.text || '').split(/
-?
-/).map(parseDinoLine).filter(Boolean);
-    const baseI = (iRes.text || '').split(/
-?
-/).map(parseItemLine).filter(Boolean);
+    const baseD = dText.split(/\r?\n/).map(parseDinoLine).filter(Boolean);
+    const baseI = iText.split(/\r?\n/).map(parseItemLine).filter(Boolean);
 
     dinos = baseD.concat(custom.dino.map(x => ({
       id: x.id,
@@ -2058,28 +2087,24 @@ error: ${dRes.error}` : ''}
 
     items = baseI.concat(custom.item.map(x => ({ id: x.id, name: x.name, unit: x.unit, price: x.price, kind: 'item' })));
 
-    // ✅ 何も無い場合でもUIが「真っ白」にならないようにする
-    if (!dinos.length && !items.length) {
-      // renderList の empty state に任せる
+    // 何も表示されない最大原因：txtが読めてない or txtが空
+    // → ここで必ず画面に理由を出す
+    if (baseD.length === 0 && custom.dino.length === 0) {
+      renderFatalEmpty({ d: dRes, i: iRes });
+      // ここで止める（空リストで進めると「何もない」見た目になる）
+      return;
     }
 
     ensureOrderList(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
     ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
 
     // ✅ V3: outは常に表示（CSSがどうでもJS側で担保）
-    if (el.out) {
-      el.out.style.display = 'block';
-      el.out.style.visibility = 'visible';
-      el.out.style.opacity = '1';
-    }
+    el.out.style.display = 'block';
+    el.out.style.visibility = 'visible';
+    el.out.style.opacity = '1';
 
     setTab('dino');
   }
 
-  // Safari で稀に defer が効かない/DOMが未構築のタイミングがあるので保険
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init, { once: true });
-  } else {
-    init();
-  }
+  init();
 })();
