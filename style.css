@@ -209,6 +209,3 @@ button{cursor:pointer}
   max-height:86vh;
 }
 .imgViewer img{max-width:100%;height:auto}
-
-/* A: harden output visibility */
-.out{display:block;visibility:visible;opacity:1;}
