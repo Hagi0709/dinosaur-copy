@@ -22,7 +22,7 @@
         <button id="qClear" class="qClear" type="button" aria-label="検索をクリア">×</button>
       </div>
 
-      <select id="delivery" class="delivery" aria-label="納品目安">
+      <select id="delivery" class="delivery">
         <option value="即納品可能">即納品可能</option>
         <option value="本日夜">本日夜</option>
       </select>
@@ -31,59 +31,53 @@
       <div id="total" class="total">0円</div>
     </div>
 
-    <!-- ✅ 出力エリア：常時表示（CSSで強制表示もする前提） -->
-    <textarea id="out" class="out" readonly aria-label="出力"></textarea>
+    <textarea id="out" class="out" readonly></textarea>
 
     <div class="subrow">
       <button id="openManage" class="ghost" type="button">管理</button>
       <button id="openRoom" class="ghost" type="button">ルーム</button>
 
       <div class="tabs" role="tablist" aria-label="表示切替">
-        <button id="tabDinos" class="tab isActive" type="button" role="tab" aria-selected="true">恐竜</button>
-        <button id="tabItems" class="tab" type="button" role="tab" aria-selected="false">アイテム</button>
+        <button id="tabDinos" class="tab isActive" type="button">恐竜</button>
+        <button id="tabItems" class="tab" type="button">アイテム</button>
       </div>
     </div>
   </header>
 
-  <main class="list" id="list" aria-label="リスト"></main>
+  <main class="list" id="list"></main>
 
   <!-- Manage Modal -->
-  <div id="modalOverlay" class="modalOverlay isHidden" aria-hidden="true">
-    <div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="管理">
+  <div id="modalOverlay" class="modalOverlay isHidden">
+    <div class="modal">
       <div class="modalHead">
         <div class="modalTitle">管理</div>
-        <button id="closeManage" class="iconBtn" type="button" aria-label="閉じる">×</button>
+        <button id="closeManage" class="iconBtn" type="button">×</button>
       </div>
 
       <div class="modalTabs">
-        <button id="mTabCatalog" class="mTab isActive" type="button">一覧</button>
-        <button id="mTabPrices" class="mTab" type="button">価格</button>
-        <button id="mTabImages" class="mTab" type="button">画像</button>
+        <button id="mTabCatalog" class="mTab isActive">一覧</button>
+        <button id="mTabPrices" class="mTab">価格</button>
+        <button id="mTabImages" class="mTab">画像</button>
       </div>
 
-      <div class="modalBody" id="modalBody">
-        <!-- injected -->
-      </div>
+      <div class="modalBody" id="modalBody"></div>
     </div>
   </div>
 
   <!-- Room Modal -->
-  <div id="roomOverlay" class="modalOverlay isHidden" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-label="ルーム">
+  <div id="roomOverlay" class="modalOverlay isHidden">
+    <div class="modal">
       <div class="modalHead">
         <div class="modalTitle">ルーム</div>
-        <button id="closeRoom" class="iconBtn" type="button" aria-label="閉じる">×</button>
+        <button id="closeRoom" class="iconBtn" type="button">×</button>
       </div>
-
-      <div class="modalBody" id="roomBody">
-        <!-- injected -->
-      </div>
+      <div class="modalBody" id="roomBody"></div>
     </div>
   </div>
 
   <!-- Confirm Modal -->
-  <div id="confirmOverlay" class="modalOverlay isHidden" aria-hidden="true">
-    <div class="confirm" role="dialog" aria-modal="true" aria-label="確認">
+  <div id="confirmOverlay" class="modalOverlay isHidden">
+    <div class="confirm">
       <div class="confirmTitle">確認</div>
       <div class="confirmText" id="confirmText">削除しますか？</div>
       <div class="confirmBtns">
@@ -93,24 +87,21 @@
     </div>
   </div>
 
-  <!-- Image Viewer Modal (tap to enlarge) -->
-  <div id="imgOverlay" class="modalOverlay isHidden" aria-hidden="true">
-    <div class="imgViewer" role="dialog" aria-modal="true" aria-label="画像">
-      <button id="imgClose" class="iconBtn imgClose" type="button" aria-label="閉じる">×</button>
+  <!-- Image Viewer -->
+  <div id="imgOverlay" class="modalOverlay isHidden">
+    <div class="imgViewer">
+      <button id="imgClose" class="iconBtn imgClose" type="button">×</button>
       <img id="imgViewerImg" alt="画像" />
     </div>
   </div>
 
   <!-- Edit/Add Modal -->
-  <div id="editOverlay" class="modalOverlay isHidden" aria-hidden="true">
-    <div class="edit" role="dialog" aria-modal="true" aria-label="編集">
+  <div id="editOverlay" class="modalOverlay isHidden">
+    <div class="edit">
       <div class="editHead">
         <div class="editTitle" id="editTitle">追加 / 編集</div>
       </div>
-
-      <div class="editBody" id="editBody">
-        <!-- injected -->
-      </div>
+      <div class="editBody" id="editBody"></div>
     </div>
   </div>
 </body>
