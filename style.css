@@ -870,3 +870,21 @@ button{cursor:pointer}
 
 /* 特殊枠の下が見切れ対策 */
 .controls.gachaWrap{ overflow:visible; }
+
+/* ===== tweak: dup button style & collapse whitespace ===== */
+.dupMini{
+  height:38px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-size:14px;
+  font-weight:900;
+  padding:0 12px;
+  line-height:1;
+}
+
+/* 折りたたみ時：下の無駄スペースを削る（controlsは既に非表示） */
+.card.isCollapsed .cardHead{
+  padding-bottom:0;
+}
