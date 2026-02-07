@@ -910,12 +910,19 @@ select.type{
 /* 折りたたみ時：余計な下スペースを削る */
 .card.isCollapsed .cardHead{ padding-bottom:0; }
 .card.isCollapsed .cardInner{ padding-bottom:10px; }
-.card.isCollapsed .nameWrap{ gap:6px; }
-
-
 /* === stabilize thumb height === */
 .miniThumb{height:56px; flex-shrink:0;}
 
 /* === color stepper values by sex === */
 .stepper.male .val{color:var(--male);}
 .stepper.female .val{color:var(--female);}
+
+
+/* ===== miniOut 性別色（価格表示内） ===== */
+.miniOut .male{ color: var(--male); }
+.miniOut .female{ color: var(--female); }
+
+/* ===== 数値（ステッパー）性別色 ===== */
+.stepper.male .val{ color: var(--male); }
+.stepper.female .val{ color: var(--female); }
+
