@@ -537,6 +537,87 @@ function sortByOrder(list, kind) {
   }
 
   /* ========= output ========= */
+
+  /* ========= output ========= */
+
+  // ✅ カード内表示用：恐竜の小計行を生成
+  function buildDinoMiniLine(d, s, sp) {
+    if (!d || !s) return '';
+
+    // SPECIAL（ガチャ等）
+    if (sp?.enabled && s.mode === 'special') {
+      const allowSex = !!sp.allowSex;
+      const m = Number(s.m || 0);
+      const f = Number(s.f || 0);
+      const sexQty = m + f;
+
+      // allowSexで通常入力がある場合 → 通常扱い
+      if (allowSex && sexQty > 0) {
+        const type = s.type || d.defType || '受精卵';
+        const unitPrice = prices[type] || 0;
+        const price = unitPrice * sexQty;
+
+        const tOut = String(type).replace('(指定)', '');
+        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+
+        if (isPair) {
+          if (m === f) return `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+          const p = [];
+          if (m > 0) p.push(`♂×${m}`);
+          if (f > 0) p.push(`♀×${f}`);
+          return `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+        }
+        return `${d.name}${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
+      }
+
+      const unitPrice = Number(sp.unit || 0);
+      const allPrice = Number(sp.all || 0);
+
+      if (s.all) {
+        if (allPrice <= 0) return '';
+        return `${d.name}全種 = ${allPrice.toLocaleString('ja-JP')}円`;
+      }
+
+      const picks = Array.isArray(s.picks) ? s.picks : [];
+      if (!picks.length) return '';
+      const price = picks.length * unitPrice;
+      const seq = picks.map(n => circled(n)).join('');
+      return `${d.name}${seq} = ${price.toLocaleString('ja-JP')}円`;
+    }
+
+    // NORMAL（従来）
+    const type = s.type || d.defType || '受精卵';
+    const m = Number(s.m || 0);
+    const f = Number(s.f || 0);
+    const qty = m + f;
+    if (qty <= 0) return '';
+
+    const unitPrice = prices[type] || 0;
+    const price = unitPrice * qty;
+
+    const tOut = String(type).replace('(指定)', '');
+    const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+
+    if (isPair) {
+      if (m === f) return `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+      const p = [];
+      if (m > 0) p.push(`♂×${m}`);
+      if (f > 0) p.push(`♀×${f}`);
+      return `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+    }
+    return `${d.name}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+  }
+
+  // ✅ カード内表示用：アイテム小計行
+  function buildItemMiniLine(it, s) {
+    if (!it || !s) return '';
+    const qty = Number(s.qty || 0);
+    if (qty <= 0) return '';
+    const totalCount = qty * Number(it.unit || 1);
+    const price = qty * Number(it.price || 0);
+    return `${it.name} × ${totalCount} = ${price.toLocaleString('ja-JP')}円`;
+  }
+
   function rebuildOutput() {
     const lines = [];
     let sum = 0;
@@ -740,7 +821,10 @@ ${lines.join('\n')}
     card.dataset.kind = 'dino';
     card.dataset.did = d.id;
 
-    const imgUrl = getImageUrlForDino(d);
+        const imgUrl = getImageUrlForDino(d);
+
+    // ✅ カード内小計表示（後で更新）
+    const miniStyle = `style="margin-top:10px;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.14);color:rgba(255,255,255,.85);font-weight:900;font-size:13px;display:none;"`;
 
     // ✅ special UI（ガチャ等）
     if (sp?.enabled && s.mode === 'special') {
@@ -795,6 +879,10 @@ ${lines.join('\n')}
 
           ${normalBlock}
 
+                    ${normalBlock}
+
+          <div class="cardMiniOut" ${miniStyle}></div>
+
           <div class="controls gachaWrap" style="display:block;margin-top:10px;">
             <div class="gWrap">
               <div class="gGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
@@ -824,7 +912,8 @@ ${lines.join('\n')}
       // ✅ 左側ほぼ全部で折りたたみ
       installLeftToggleHit(card);
 
-      const inputEl = $('.gInput', card);
+            const inputEl = $('.gInput', card);
+      const miniOut = $('.cardMiniOut', card);
       const sumEl = $('.gSum', card);
       const allBtn = $('button[data-act="all"]', card);
 
@@ -887,6 +976,12 @@ ${lines.join('\n')}
             ? (Number(s.m || 0) + Number(s.f || 0))
             : (s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0));
           card.classList.toggle('isCollapsed', q === 0);
+        }
+        // ✅ カード内小計
+        if (miniOut) {
+          const line = buildDinoMiniLine(d, s, sp);
+          miniOut.textContent = line || '';
+          miniOut.style.display = line ? '' : 'none';
         }
       };
 
@@ -1030,6 +1125,8 @@ ${lines.join('\n')}
           </div>
         </div>
 
+        <div class="cardMiniOut" ${miniStyle}></div>
+
         <div class="controls">
           <div class="stepper male">
             <button class="btn" type="button" data-act="m-">−</button>
@@ -1057,7 +1154,8 @@ ${lines.join('\n')}
     if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
     sel.value = s.type;
 
-    const unit = $('.unit', card);
+        const unit = $('.unit', card);
+    const miniOut = $('.cardMiniOut', card);
     unit.textContent = `単価${prices[s.type] || 0}円`;
 
     const mEl = $('.js-m', card);
@@ -1078,6 +1176,12 @@ ${lines.join('\n')}
       if (!el.q.value.trim()) {
         const q = (Number(s.m || 0) + Number(s.f || 0));
         card.classList.toggle('isCollapsed', q === 0);
+      }
+            // ✅ カード内小計
+      if (miniOut) {
+        const line = buildDinoMiniLine(d, s, null);
+        miniOut.textContent = line || '';
+        miniOut.style.display = line ? '' : 'none';
       }
     }
 
@@ -1182,8 +1286,15 @@ ${lines.join('\n')}
       toggle.style.zIndex = '5';
     }
 
-    const qEl = $('.js-q', card);
+        const qEl = $('.js-q', card);
+    const miniOut = $('.cardMiniOut', card);
     qEl.textContent = String(s.qty || 0);
+        // ✅ 初期表示
+    if (miniOut) {
+      const line = buildItemMiniLine(it, s);
+      miniOut.textContent = line || '';
+      miniOut.style.display = line ? '' : 'none';
+    }
 
     card.classList.toggle('isCollapsed', Number(s.qty || 0) === 0);
 
@@ -1201,7 +1312,11 @@ ${lines.join('\n')}
         if (act === '+') s.qty = Math.max(0, Number(s.qty || 0) + 1);
 
         qEl.textContent = String(s.qty || 0);
-
+        if (miniOut) {
+          const line = buildItemMiniLine(it, s);
+          miniOut.textContent = line || '';
+          miniOut.style.display = line ? '' : 'none';
+        }
         if (!el.q.value.trim()) card.classList.toggle('isCollapsed', Number(s.qty || 0) === 0);
 
         rebuildOutput();
