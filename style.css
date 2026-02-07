@@ -868,3 +868,42 @@ select.type{
 .cardHead .right{
   overflow:visible;
 }
+
+
+/* === patched: compact collapsed card + dupMini left of select === */
+
+/* 右側カラムを固定幅にしない（複製＋セレクトの並びに対応） */
+.cardHead{ grid-template-columns: minmax(0,1fr) auto; }
+.right{ width:auto !important; }
+.selRow{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  justify-content:flex-end;
+}
+
+/* 受精卵(指定)が入る程度に少し細く固定 */
+.type{
+  width:156px;
+  min-width:156px;
+}
+
+/* 複製は小さく、見た目はセレクトに寄せる */
+.dupMini{
+  height:38px;
+  width:66px;
+  min-width:66px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-size:13px;
+  font-weight:900;
+  padding:0 10px;
+  white-space:nowrap;
+}
+
+/* 折りたたみ時：余計な下スペースを削る */
+.card.isCollapsed .cardHead{ padding-bottom:0; }
+.card.isCollapsed .cardInner{ padding-bottom:10px; }
+.card.isCollapsed .nameWrap{ gap:6px; }
