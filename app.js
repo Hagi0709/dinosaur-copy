@@ -787,6 +787,8 @@ ${lines.join('\n')}
   }
 
   /* ========= collapse & search ========= */
+  const pinOpen = new Set();
+
   function getQtyForCard(key, kind) {
     if (kind === 'dino') {
       const s = inputState.get(key);
@@ -816,7 +818,7 @@ ${lines.join('\n')}
       const key = card.dataset.key;
       const kind = card.dataset.kind;
       const qty = getQtyForCard(key, kind);
-      const collapsed = q ? !show : (qty === 0);
+      const collapsed = q ? !show : (qty === 0 && !pinOpen.has(key));
       card.classList.toggle('isCollapsed', collapsed);
     });
   }
@@ -995,12 +997,14 @@ ${lines.join('\n')}
       };
 
       syncSpecial();
-      card.classList.toggle('isCollapsed', getQtyForCard(key, 'dino') === 0);
+      card.classList.toggle('isCollapsed', (getQtyForCard(key, 'dino') === 0) && !pinOpen.has(key));
 
       $('.cardToggle', card).addEventListener('click', (ev) => {
         ev.preventDefault();
         if (el.q.value.trim()) return;
-        card.classList.toggle('isCollapsed');
+        const nowCollapsed = card.classList.toggle('isCollapsed');
+        if (nowCollapsed) pinOpen.delete(key);
+        else pinOpen.add(key);
       });
 
       sel?.addEventListener('click', (ev) => ev.stopPropagation());
@@ -1010,7 +1014,7 @@ ${lines.join('\n')}
         autoSpecify(s);
         syncSpecial();
         rebuildOutput();
-        applyCollapseAndSearch();
+        // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
       });
 
       const step = (sex, delta) => {
@@ -1024,7 +1028,7 @@ ${lines.join('\n')}
         }
         syncSpecial();
         rebuildOutput();
-        applyCollapseAndSearch();
+        // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
       };
 
       card.addEventListener('click', (ev) => {
@@ -1049,7 +1053,7 @@ ${lines.join('\n')}
           const dupCard = buildDinoCard(d, dupKey);
           card.after(dupCard);
           rebuildOutput();
-          applyCollapseAndSearch();
+          // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
           return;
         }
 
@@ -1075,7 +1079,7 @@ ${lines.join('\n')}
 
           syncSpecial();
           rebuildOutput();
-          applyCollapseAndSearch();
+          // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
           return;
         }
 
@@ -1089,7 +1093,7 @@ ${lines.join('\n')}
           }
           syncSpecial();
           rebuildOutput();
-          applyCollapseAndSearch();
+          // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
           return;
         }
 
@@ -1100,7 +1104,7 @@ ${lines.join('\n')}
           if (s.all) s.picks = [];
           syncSpecial();
           rebuildOutput();
-          applyCollapseAndSearch();
+          // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
           return;
         }
       });
@@ -1229,7 +1233,7 @@ ${lines.join('\n')}
           const dupCard = buildDinoCard(d, dupKey);
           card.after(dupCard);
           rebuildOutput();
-          applyCollapseAndSearch();
+          // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
           return;
         }
 
@@ -1246,7 +1250,7 @@ ${lines.join('\n')}
           const dupCard = buildDinoCard(d, dupKey);
           card.after(dupCard);
           rebuildOutput();
-          applyCollapseAndSearch();
+          // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
         }
       });
     });
@@ -1325,7 +1329,7 @@ ${lines.join('\n')}
         if (!el.q.value.trim()) card.classList.toggle('isCollapsed', Number(s.qty || 0) === 0);
 
         rebuildOutput();
-        applyCollapseAndSearch();
+        // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
       });
     });
 
