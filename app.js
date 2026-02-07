@@ -1319,92 +1319,134 @@ ${lines.join('\n')}
   }
 
   /* ========= manage: catalog ========= */
-  function renderManageCatalog() {
-    const wrap = document.createElement('div');
+function renderManageCatalog() {
+  const wrap = document.createElement('div');
 
-    const top = document.createElement('div');
-    top.style.display = 'flex';
-    top.style.justifyContent = 'flex-end';
-    top.style.marginBottom = '10px';
-    top.innerHTML = `<button class="pill" type="button" data-act="add">＋追加</button>`;
-    wrap.appendChild(top);
+  // ✅ 上部バー（追加 / 五十音並び替え）
+  const top = document.createElement('div');
+  top.style.display = 'flex';
+  top.style.justifyContent = 'flex-end';
+  top.style.gap = '10px';
+  top.style.marginBottom = '10px';
 
-    const list = (activeTab === 'dino')
-      ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
-      : sortByOrder(items.filter(x => !hidden.item.has(x.id)), 'item');
+  // 恐竜タブのときだけ「五十音」ボタンを出す
+  top.innerHTML = `
+    ${activeTab === 'dino' ? `<button class="pill" type="button" data-act="sortKana">五十音</button>` : ``}
+    <button class="pill" type="button" data-act="add">＋追加</button>
+  `;
+  wrap.appendChild(top);
 
-    list.forEach(obj => {
-      const r = document.createElement('div');
-      r.className = 'mRow';
-      r.innerHTML = `
-        <div class="mName">${escapeHtml(obj.name)}</div>
-        ${activeTab === 'dino' ? `<button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">✎</button>` : ``}
-        <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
-        <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
-        <button class="sBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
-      `;
-      wrap.appendChild(r);
-    });
+  const list = (activeTab === 'dino')
+    ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
+    : sortByOrder(items.filter(x => !hidden.item.has(x.id)), 'item');
 
-    wrap.addEventListener('click', async (e) => {
-      const btn = e.target?.closest('button');
-      const act = btn?.dataset?.act;
-      const id = btn?.dataset?.id;
+  list.forEach(obj => {
+    const r = document.createElement('div');
+    r.className = 'mRow';
+    r.innerHTML = `
+      <div class="mName">${escapeHtml(obj.name)}</div>
+      ${activeTab === 'dino' ? `<button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">✎</button>` : ``}
+      <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
+      <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
+      <button class="sBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
+    `;
+    wrap.appendChild(r);
+  });
 
-      if (act === 'add') {
-        if (activeTab === 'dino') openAddDino();
-        else openAddItem();
-        return;
+  // ✅ 五十音ソートキー（TEKはTEK以降で判定）
+  const kanaKey = (name) => {
+    let s = String(name || '').trim();
+    // TEKで始まる恐竜は、TEK以降をキーにする（大小区別なし）
+    s = s.replace(/^TEK/i, '').trim();
+    // カタカナ→ひらがな（既存ユーティリティ）
+    s = toHira(s);
+    // 空白は無視
+    s = s.replace(/\s+/g, '');
+    return s;
+  };
+
+  wrap.addEventListener('click', async (e) => {
+    const btn = e.target?.closest('button');
+    const act = btn?.dataset?.act;
+    const id = btn?.dataset?.id;
+
+    // ✅ 五十音並び替え（恐竜のみ）
+    if (act === 'sortKana' && activeTab === 'dino') {
+      const visible = dinos.filter(x => !hidden.dino.has(x.id)).slice();
+
+      visible.sort((a, b) => {
+        const ak = kanaKey(a.name);
+        const bk = kanaKey(b.name);
+        const c = ak.localeCompare(bk, 'ja');
+        if (c !== 0) return c;
+        // 同キー時の安定化（元の名前で比較）
+        return String(a.name || '').localeCompare(String(b.name || ''), 'ja');
+      });
+
+      const ord = visible.map(x => x.id);
+      order.dino = ord;
+      saveJSON(LS.DINO_ORDER, ord);
+
+      renderList();
+      setManageTab('catalog');
+      openToast('五十音順に並び替えました');
+      return;
+    }
+
+    if (act === 'add') {
+      if (activeTab === 'dino') openAddDino();
+      else openAddItem();
+      return;
+    }
+
+    if (!act || !id) return;
+
+    const kind = activeTab;
+    const ord = (order[kind] || []).slice();
+    const i = ord.indexOf(id);
+
+    if (act === 'up' && i > 0) {
+      [ord[i], ord[i - 1]] = [ord[i - 1], ord[i]];
+      order[kind] = ord;
+      saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
+      renderList();
+      setManageTab('catalog');
+      return;
+    }
+
+    if (act === 'down' && i !== -1 && i < ord.length - 1) {
+      [ord[i], ord[i + 1]] = [ord[i + 1], ord[i]];
+      order[kind] = ord;
+      saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
+      renderList();
+      setManageTab('catalog');
+      return;
+    }
+
+    if (act === 'del') {
+      const ok = await confirmAsk('削除しますか？');
+      if (!ok) return;
+
+      if (kind === 'dino') {
+        hidden.dino.add(id);
+        saveJSON(LS.DINO_HIDDEN, Array.from(hidden.dino));
+      } else {
+        hidden.item.add(id);
+        saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item));
       }
+      renderList();
+      setManageTab('catalog');
+      return;
+    }
 
-      if (!act || !id) return;
+    if (act === 'edit' && kind === 'dino') {
+      openEditDino(id);
+      return;
+    }
+  });
 
-      const kind = activeTab;
-      const ord = (order[kind] || []).slice();
-      const i = ord.indexOf(id);
-
-      if (act === 'up' && i > 0) {
-        [ord[i], ord[i - 1]] = [ord[i - 1], ord[i]];
-        order[kind] = ord;
-        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
-        renderList();
-        setManageTab('catalog');
-        return;
-      }
-
-      if (act === 'down' && i !== -1 && i < ord.length - 1) {
-        [ord[i], ord[i + 1]] = [ord[i + 1], ord[i]];
-        order[kind] = ord;
-        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
-        renderList();
-        setManageTab('catalog');
-        return;
-      }
-
-      if (act === 'del') {
-        const ok = await confirmAsk('削除しますか？');
-        if (!ok) return;
-
-        if (kind === 'dino') {
-          hidden.dino.add(id);
-          saveJSON(LS.DINO_HIDDEN, Array.from(hidden.dino));
-        } else {
-          hidden.item.add(id);
-          saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item));
-        }
-        renderList();
-        setManageTab('catalog');
-        return;
-      }
-
-      if (act === 'edit' && kind === 'dino') {
-        openEditDino(id);
-        return;
-      }
-    });
-
-    return wrap;
-  }
+  return wrap;
+}
 
   // ---- 以下、あなたの元コードの残り（画像管理 / ROOM / events / init）は
   // ScrollLockを openRoom/closeRoom, openImgViewer/closeImgViewer にも適用した上でそのままです。
