@@ -2255,5 +2255,6 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
     setTab('dino');
   }
 
+
   init();
 })();
