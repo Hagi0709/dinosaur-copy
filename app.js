@@ -1,22 +1,6 @@
 (() => {
   'use strict';
 
-/* ========= crash overlay (iOS standalone用) ========= */
-const showCrash = (label, err) => {
-  try {
-    const msg = (err && (err.message || err.reason || err.toString())) || String(err || '');
-    const pre = document.createElement('pre');
-    pre.id = 'crashBox';
-    pre.textContent = `[${label}]\n` + msg;
-    pre.style.cssText = 'position:fixed;left:12px;right:12px;top:12px;z-index:99999;padding:10px 12px;background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.18);border-radius:12px;color:#fff;font:12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;white-space:pre-wrap;word-break:break-word;';
-    const old = document.getElementById('crashBox');
-    if (old) old.remove();
-    document.body.appendChild(pre);
-  } catch {}
-};
-window.addEventListener('error', (e) => showCrash('error', e.error || e.message));
-window.addEventListener('unhandledrejection', (e) => showCrash('promise', e.reason));
-
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -401,6 +385,76 @@ window.addEventListener('unhandledrejection', (e) => showCrash('promise', e.reas
   const inputState = new Map();
   const ephemeralKeys = new Set();
 
+
+  /* ========= duplication (global safe) ========= */
+  const deepCopy = (v) => {
+    try {
+      return (typeof structuredClone === 'function') ? structuredClone(v) : JSON.parse(JSON.stringify(v));
+    } catch {
+      return JSON.parse(JSON.stringify(v || {}));
+    }
+  };
+
+  function formatInlinePriceHTML(type, m, f, unitPrice) {
+    const mm = Number(m||0);
+    const ff = Number(f||0);
+    const qty = mm + ff;
+    if (!qty) return '　';
+    const sub = qty * (Number(unitPrice||0));
+    const parts = [];
+    if (mm) parts.push(`<span class="maleTxt">オス×${mm}</span>`);
+    if (ff) parts.push(`<span class="femaleTxt">メス×${ff}</span>`);
+    return `${type} ${parts.join(' ')} = ${yen(sub)}`;
+  }
+
+  function doDuplicateFromCard(card) {
+    const kind = card?.dataset?.kind;
+    if (!kind) return;
+
+    if (kind === 'dino') {
+      const did = card.dataset.did;
+      const key = card.dataset.key;
+      const d = dinos.find(x => x.id === did);
+      if (!d) return;
+
+      const src = inputState.get(key) || {};
+      const dupKey = `${did}__dup_${uid()}`;
+      ephemeralKeys.add(dupKey);
+      inputState.set(dupKey, deepCopy(src));
+
+      const dupCard = buildDinoCard(d, dupKey);
+      card.after(dupCard);
+      rebuildOutput();
+      applyCollapseAndSearch();
+      return;
+    }
+
+    if (kind === 'item') {
+      const iid = card.dataset.iid;
+      const key = card.dataset.key || iid;
+      const it = items.find(x => x.id === iid);
+      if (!it) return;
+
+      const src = inputState.get(key) || {};
+      const dupKey = `${iid}__dup_${uid()}`;
+      ephemeralKeys.add(dupKey);
+      inputState.set(dupKey, deepCopy(src));
+
+      const dupCard = buildItemCard(it, dupKey);
+      card.after(dupCard);
+      rebuildOutput();
+      applyCollapseAndSearch();
+      return;
+    }
+  }
+
+  // Backward-compatible global for older cached HTML/handlers
+  window.doDup = function(arg) {
+    const el = (arg && arg.target) ? arg.target : arg;
+    const btn = (el instanceof Element) ? el : null;
+    const card = btn ? btn.closest('.card') : null;
+    if (card) doDuplicateFromCard(card);
+  };
   /* ========= fetch & parse ========= */
   async function fetchTextSafe(path) {
     try {
@@ -476,34 +530,6 @@ function sortByOrder(list, kind) {
     return an.localeCompare(bn, 'ja');
   });
 }
-
-function miniLineToHtml(line){
-  const s = String(line ?? '');
-  if (!s.trim()) return '&nbsp;'; // 未入力時は空白1文字
-  let t = escapeHtml(s);
-
-  // 表示価格では ♂♀ を オス/メス に置換し色付け
-  t = t.replace(/♂×(\d+)/g, '<span class="male">オス×$1</span>');
-  t = t.replace(/♀×(\d+)/g, '<span class="female">メス×$1</span>');
-  // 念のため単体記号も置換
-  t = t.replace(/♂/g, '<span class="male">オス</span>');
-  t = t.replace(/♀/g, '<span class="female">メス</span>');
-  return t;
-}
-
-
-
-/* ========= manage: 50音順 ========= */
-function sortKeyKana50(name, kind) {
-  let s = String(name || '').trim();
-  // ✅ 恐竜だけ TEK を無視して並び替え
-  if (kind === 'dino') s = s.replace(/^TEK\s*/i, '');
-  // ✅ カタカナ→ひらがな（既存の toHira を利用）
-  s = toHira(s);
-  s = s.replace(/\s+/g, '');
-  return s;
-}
-
 
   /* ========= behavior rules ========= */
   function ensureDinoState(key, defType, spCfg = null) {
@@ -726,6 +752,24 @@ ${lines.join('\n')}
 
       if (s.mode === 'special') {
         const sexQty = Number(s.m || 0) + Number(s.f || 0);
+
+        // inline price line (same height as unit).
+        if (allowSex && priceEl) {
+          const type = s.type || d.defType || '受精卵';
+          const unitP = prices[type] || 0;
+          priceEl.innerHTML = formatInlinePriceHTML(type, s.m, s.f, unitP);
+        } else if (priceEl) {
+          priceEl.textContent = '　';
+        }
+        if (unitEl) {
+          // unit line stays visible even when price is empty
+          if (allowSex) {
+            const type = s.type || d.defType || '受精卵';
+            unitEl.textContent = `単価${prices[type] || 0}円`;
+          } else {
+            unitEl.textContent = `1体=${unitPrice}円`;
+          }
+        }
         if (sexQty > 0) return sexQty;
         if (s.all) return 1;
         return Array.isArray(s.picks) ? s.picks.length : 0;
@@ -810,7 +854,8 @@ ${lines.join('\n')}
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
 
-          </div>
+          <select class="type" aria-label="種類"></select>
+        </div>
       ` : ``;
 
       card.innerHTML = `
@@ -824,14 +869,18 @@ ${lines.join('\n')}
             </div>
 
             <div class="right">
-              ${allowSex ? `<div class="typeRow"><button class="dupMini" type="button" data-act="dup" title="複製">複製</button><select class="type" aria-label="種類"></select></div>` : `<div class="typeRow"><button class="dupMini" type="button" data-act="dup" title="複製">複製</button></div>`}
-              <div class="unit" style="font-weight:900;color:rgba(255,255,255,.65);">1体=${unitPrice}円</div>
-            </div>
+  <div class="rightTop" style="display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap;">
+    <button class="dupBtn" type="button" onclick="doDup(this)">複製</button>
+    ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
+  </div>
+  <div class="priceLine js-price">　</div>
+  <div class="unit">1体=${unitPrice}円</div>
+</div>
           </div>
 
           ${normalBlock}
 
-          <div class="controls gachaWrap" style="display:block;margin-top:10px;padding-bottom:10px;">
+          <div class="controls gachaWrap" style="display:block;margin-top:10px;">
             <div class="gWrap">
               <div class="gGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
                 ${btns.join('')}
@@ -847,7 +896,7 @@ ${lines.join('\n')}
                 </div>
               </div>
 
-              <div style="margin-top:6px;color:rgba(255,255,255,.55);font-weight:800;font-size:12px;line-height:1.4;padding-bottom:6px;">
+              <div style="margin-top:6px;color:rgba(255,255,255,.55);font-weight:800;font-size:12px;">
                 全種=${allPrice.toLocaleString('ja-JP')}円
               </div>
             </div>
@@ -859,9 +908,19 @@ ${lines.join('\n')}
 
       installLeftToggleHit(card);
 
+    const dupBtn = $('.dupBtn[data-act=\"dup\"]', card);
+    if (dupBtn) dupBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); doDuplicateFromCard(card); });
+
       const inputEl = $('.gInput', card);
       const sumEl = $('.gSum', card);
       const allBtn = $('button[data-act="all"]', card);
+
+      const priceEl = $('.js-price', card);
+      const unitEl = $('.unit', card);
+      const dupBtn = $('.dupBtn[data-act=\"dup\"]', card);
+      if (dupBtn) {
+        dupBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); doDuplicateFromCard(card); });
+      }
 
       const mEl = $('.js-m', card);
       const fEl = $('.js-f', card);
@@ -957,6 +1016,8 @@ ${lines.join('\n')}
 
         const act = btn.dataset.act;
 
+        if (act === 'dup') { doDuplicateFromCard(card); return; }
+
         if (act === 'm-') return step('m', -1);
         if (act === 'm+') return step('m', +1);
         if (act === 'f-') return step('f', -1);
@@ -1023,8 +1084,8 @@ ${lines.join('\n')}
           </div>
 
           <div class="right">
-            <div class="typeRow"><button class="dupMini" type="button" data-act="dup" title="複製">複製</button><select class="type" aria-label="種類"></select></div>
-            <div class="unitRow"><div class="unit"></div><div class="miniOut"></div></div>
+            <select class="type" aria-label="種類"></select>
+            <div class="unit"></div>
           </div>
         </div>
 
@@ -1041,7 +1102,7 @@ ${lines.join('\n')}
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
 
-          
+          <button class="dupBtn" type="button" onclick="doDup(this)">複製</button>
         </div>
       </div>
     `;
@@ -1058,6 +1119,11 @@ ${lines.join('\n')}
     const unit = $('.unit', card);
     unit.textContent = `単価${prices[s.type] || 0}円`;
 
+    const priceEl = $('.js-price', card);
+    if (priceEl) {
+      priceEl.innerHTML = formatInlinePriceHTML(s.type || d.defType || '受精卵', s.m, s.f, prices[s.type] || 0);
+    }
+
     const mEl = $('.js-m', card);
     const fEl = $('.js-f', card);
     mEl.textContent = String(s.m || 0);
@@ -1072,6 +1138,9 @@ ${lines.join('\n')}
       unit.textContent = `単価${prices[s.type] || 0}円`;
       mEl.textContent = String(s.m || 0);
       fEl.textContent = String(s.f || 0);
+
+      const priceEl2 = $('.js-price', card);
+      if (priceEl2) priceEl2.innerHTML = formatInlinePriceHTML(s.type || d.defType || '受精卵', s.m, s.f, prices[s.type] || 0);
 
       if (!el.q.value.trim()) {
         const q = (Number(s.m || 0) + Number(s.f || 0));
@@ -1117,41 +1186,31 @@ ${lines.join('\n')}
         if (act === 'f+') step('f', +1);
 
         if (act === 'dup') {
-  const dupKey = `${d.id}__dup_${uid()}`;
-  ephemeralKeys.add(dupKey);
+          const dupKey = `${d.id}__dup_${uid()}`;
+          ephemeralKeys.add(dupKey);
+          inputState.set(dupKey, { type: s.type, m: 0, f: 0 });
 
-  // ✅ 特殊/通常で初期化を分岐
-  if (s.mode === 'special') {
-    inputState.set(dupKey, {
-      mode: 'special',
-      picks: [],
-      all: false,
-      type: s.type || '受精卵',
-      m: 0,
-      f: 0,
-    });
-  } else {
-    inputState.set(dupKey, { type: s.type || '受精卵', m: 0, f: 0 });
-  }
-
-  const dupCard = buildDinoCard(d, dupKey);
-  card.after(dupCard);
-  rebuildOutput();
-  applyCollapseAndSearch();
-}
+          const dupCard = buildDinoCard(d, dupKey);
+          card.after(dupCard);
+          rebuildOutput();
+          applyCollapseAndSearch();
+        }
       });
     });
 
     return card;
   }
 
-  function buildItemCard(it) {
-    const s = ensureItemState(it.id);
+  function buildItemCard(it, keyOverride = null) {
+    const key = keyOverride || it.id;
+    const s = ensureItemState(key);
 
     const card = document.createElement('div');
     card.className = 'card isCollapsed';
     card.dataset.card = '1';
-    card.dataset.key = it.id;
+    card.dataset.key = key;
+    card.dataset.kind = 'item';
+    card.dataset.iid = it.id;
     card.dataset.name = it.name;
     card.dataset.kind = 'item';
 
@@ -1165,8 +1224,9 @@ ${lines.join('\n')}
           </div>
 
           <div class="right">
-            <div class="unit"></div>
-          </div>
+  <div class="priceLine js-price">　</div>
+  <div class="unit"></div>
+</div>
         </div>
 
         <div class="controls">
@@ -1336,12 +1396,8 @@ ${lines.join('\n')}
     const top = document.createElement('div');
     top.style.display = 'flex';
     top.style.justifyContent = 'flex-end';
-    top.style.gap = '10px';
     top.style.marginBottom = '10px';
-    top.innerHTML = `
-      <button class="pill" type="button" data-act="kana">50音順</button>
-      <button class="pill" type="button" data-act="add">＋追加</button>
-    `;
+    top.innerHTML = `<button class="pill" type="button" data-act="add">＋追加</button>`;
     wrap.appendChild(top);
 
     const list = (activeTab === 'dino')
@@ -1371,34 +1427,6 @@ ${lines.join('\n')}
         else openAddItem();
         return;
       }
-
-
-if (act === 'kana') {
-  const kind = activeTab; // 'dino' or 'item'
-  const ok = await confirmAsk('50音順に並び替えますか？');
-  if (!ok) return;
-
-  const src = (kind === 'dino') ? dinos.slice() : items.slice();
-  const sorted = src.slice().sort((a, b) => {
-    const ak = sortKeyKana50(a.name, kind);
-    const bk = sortKeyKana50(b.name, kind);
-    const c = ak.localeCompare(bk, 'ja');
-    if (c !== 0) return c;
-    const c2 = String(a.name || '').localeCompare(String(b.name || ''), 'ja');
-    if (c2 !== 0) return c2;
-    return String(a.id).localeCompare(String(b.id));
-  });
-
-  const ord = sorted.map(x => x.id);
-  order[kind] = ord;
-  saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
-
-  renderList();
-  setManageTab('catalog');
-  openToast('50音順に並び替えました');
-  return;
-}
-
 
       if (!act || !id) return;
 
