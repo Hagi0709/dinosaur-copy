@@ -874,11 +874,14 @@ ${lines.join('\n')}
             </div>
 
             <div class="right">
-              ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
+              <div class="typeRow">
+                ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
+                <button class="dupMini" type="button" data-act="dup" title="複製">複製</button>
+              </div>
               
             <div class="unitRow">
-              <div class="miniOut"></div>
               <div class="unit"></div>
+              <div class="miniOut"></div>
             </div>
           </div>
             </div>
@@ -1099,7 +1102,10 @@ ${lines.join('\n')}
           </div>
 
           <div class="right">
-            <select class="type" aria-label="種類"></select>
+              <div class="typeRow">
+                <select class="type" aria-label="種類"></select>
+                <button class="dupMini" type="button" data-act="dup" title="複製">複製</button>
+              </div>
             <div class="unitRow">
             <div class="miniOut"></div>
             <div class="unit"></div>
