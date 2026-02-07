@@ -1,113 +1,88 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>恐竜リスト</title>
-
-  <!-- PWA / iOS icon -->
-  <link rel="apple-touch-icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
-  <link rel="icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
-
   <link rel="stylesheet" href="style.css" />
-  <!-- style.css が読み込めない時でも真っ白にならない最低限のフォールバック -->
-  <style>
-    body{margin:0;background:#0b0f14;color:#fff;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;}
-    #list{min-height:40vh;}
-  </style>
-  <script defer src="app.js"></script>
 </head>
-
 <body>
+<main class="app">
   <header class="top">
-    <div class="row">
-      <div class="search">
-        <input id="q" type="text" placeholder="検索" autocomplete="off" />
-        <button id="qClear" class="qClear" type="button" aria-label="検索をクリア">×</button>
+    <div class="toolbar">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input class="search" type="search" placeholder="検索" />
+        <button class="clear" type="button">×</button>
       </div>
 
-      <select id="delivery" class="delivery">
-        <option value="即納品可能">即納品可能</option>
-        <option value="本日夜">本日夜</option>
-      </select>
-
-      <button id="copy" class="copy" type="button">コピー</button>
-      <div id="total" class="total">0円</div>
-    </div>
-
-    <textarea id="out" class="out" readonly></textarea>
-
-    <div class="subrow">
-      <button id="openManage" class="ghost" type="button">管理</button>
-      <button id="openRoom" class="ghost" type="button">ルーム</button>
-
-      <div class="tabs" role="tablist" aria-label="表示切替">
-        <button id="tabDinos" class="tab isActive" type="button">恐竜</button>
-        <button id="tabItems" class="tab" type="button">アイテム</button>
+      <div class="pill">
+        <span>即納品可能</span><span class="pill-caret">▾</span>
       </div>
+
+      <button class="btn copy" type="button">コピー</button>
+      <div class="total">0円</div>
     </div>
+
+    <div class="note">
+      <p>この度はご検討いただきありがとうございます！<br>ご希望内容は以下となります👇</p>
+      <div class="rule"></div>
+      <pre class="summary"></pre>
+    </div>
+
+    <nav class="tabs">
+      <button class="tab active">管理</button>
+      <button class="tab">ルーム</button>
+      <button class="tab">恐竜</button>
+      <button class="tab">アイテム</button>
+    </nav>
   </header>
 
-  <main class="list" id="list"></main>
+  <section class="content">
+    <div class="list">
 
-  <!-- Manage Modal -->
-  <div id="modalOverlay" class="modalOverlay isHidden">
-    <div class="modal">
-      <div class="modalHead">
-        <div class="modalTitle">管理</div>
-        <button id="closeManage" class="iconBtn" type="button">×</button>
-      </div>
+      <article class="card">
+        <div class="card-head">
+          <div class="card-title">カマキリ</div>
+          <div class="card-right">
+            <div class="select-pill">受精卵 ▾</div>
+            <div class="unit-price">単価30円</div>
+          </div>
+        </div>
 
-      <div class="modalTabs">
-        <button id="mTabCatalog" class="mTab isActive">一覧</button>
-        <button id="mTabPrices" class="mTab">価格</button>
-        <button id="mTabImages" class="mTab">画像</button>
-      </div>
+        <div class="thumb">
+          <img src="https://via.placeholder.com/640x360.png?text=IMG" alt="">
+        </div>
 
-      <div class="modalBody" id="modalBody"></div>
+        <div class="qty-row">
+          <div class="qty blue"><button>−</button><span>0</span><button>＋</button></div>
+          <div class="qty pink"><button>−</button><span>0</span><button>＋</button></div>
+        </div>
+
+        <button class="dup">複製</button>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <div class="card-title">カルカロ</div>
+          <div class="card-right">
+            <div class="select-pill">受精卵 ▾</div>
+            <div class="unit-price">単価30円</div>
+          </div>
+        </div>
+
+        <div class="qty-row">
+          <div class="qty blue"><button>−</button><span>0</span><button>＋</button></div>
+          <div class="qty pink"><button>−</button><span>0</span><button>＋</button></div>
+        </div>
+
+        <button class="dup">複製</button>
+      </article>
+
     </div>
-  </div>
+  </section>
+</main>
 
-  <!-- Room Modal -->
-  <div id="roomOverlay" class="modalOverlay isHidden">
-    <div class="modal">
-      <div class="modalHead">
-        <div class="modalTitle">ルーム</div>
-        <button id="closeRoom" class="iconBtn" type="button">×</button>
-      </div>
-      <div class="modalBody" id="roomBody"></div>
-    </div>
-  </div>
-
-  <!-- Confirm Modal -->
-  <div id="confirmOverlay" class="modalOverlay isHidden">
-    <div class="confirm">
-      <div class="confirmTitle">確認</div>
-      <div class="confirmText" id="confirmText">削除しますか？</div>
-      <div class="confirmBtns">
-        <button id="confirmCancel" class="ghost" type="button">キャンセル</button>
-        <button id="confirmOk" class="ghost" type="button">OK</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Image Viewer -->
-  <div id="imgOverlay" class="modalOverlay isHidden">
-    <div class="imgViewer">
-      <button id="imgClose" class="iconBtn imgClose" type="button">×</button>
-      <img id="imgViewerImg" alt="画像" />
-    </div>
-  </div>
-
-  <!-- Edit/Add Modal -->
-  <div id="editOverlay" class="modalOverlay isHidden">
-    <div class="edit">
-      <div class="editHead">
-        <div class="editTitle" id="editTitle">追加 / 編集</div>
-      </div>
-      <div class="editBody" id="editBody"></div>
-    </div>
-  </div>
+<script src="app.js"></script>
 </body>
 </html>
