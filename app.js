@@ -1,5 +1,6 @@
 (() => {
   'use strict';
+  console.log('DINO LIST APP VERSION: 2026-02-07-01');
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
