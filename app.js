@@ -810,7 +810,10 @@ ${lines.join('\n')}
         sel.value = s.type;
       }
 
-      const syncSpecial = () => {
+            const syncSpecial = () => {
+        // ✅ DOMが崩れても落とさない（ここで落ちると以降の描画が止まる）
+        if (!inputEl || !sumEl || !allBtn) return;
+
         const picks = Array.isArray(s.picks) ? s.picks : [];
         const sexQty = Number(s.m || 0) + Number(s.f || 0);
 
@@ -854,7 +857,6 @@ ${lines.join('\n')}
           card.classList.toggle('isCollapsed', q === 0);
         }
       };
-
       syncSpecial();
       card.classList.toggle('isCollapsed', getQtyForCard(key, 'dino') === 0);
 
