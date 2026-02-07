@@ -858,10 +858,9 @@ ${lines.join('\n')}
             <div class="val js-f">0</div>
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
-
-          <button class="dupBtn" type="button" data-act="dup">複製</button>
-        </div>
-      ` : `<div class="controls controlsWrap" style="margin-top:10px;justify-content:flex-end;"><button class="dupBtn" type="button" data-act="dup">複製</button></div>`;
+</div>
+      ` : `<div class="controls controlsWrap" style="margin-top:10px;justify-content:flex-end;">
+</div>`;
 
       card.innerHTML = `
         <div class="cardInner">
@@ -874,8 +873,10 @@ ${lines.join('\n')}
             </div>
 
             <div class="right">
-              ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
-              
+              <div class="selRow">
+                <button class="dupMini" type="button" data-act="dup">複製</button>
+                ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
+              </div>
             <div class="unitRow">
               <div class="miniOut"></div>
               <div class="unit"></div>
@@ -1099,7 +1100,10 @@ ${lines.join('\n')}
           </div>
 
           <div class="right">
-            <select class="type" aria-label="種類"></select>
+            <div class="selRow">
+              <button class="dupMini" type="button" data-act="dup">複製</button>
+              <select class="type" aria-label="種類"></select>
+            </div>
             <div class="unitRow">
             <div class="miniOut"></div>
             <div class="unit"></div>
@@ -1120,9 +1124,7 @@ ${lines.join('\n')}
             <div class="val js-f">0</div>
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
-
-          <button class="dupBtn" type="button" data-act="dup">複製</button>
-        </div>
+</div>
       </div>
     `;
 
