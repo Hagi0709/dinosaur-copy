@@ -1,6 +1,5 @@
 (() => {
   'use strict';
-  console.log('DINO LIST APP VERSION: 2026-02-07-01');
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -32,7 +31,9 @@
   const circled = (n) => {
     const x = Number(n);
     if (!Number.isFinite(x) || x <= 0) return String(n);
+    // ①..⑳ (1..20)
     if (x >= 1 && x <= 20) return String.fromCharCode(0x2460 + (x - 1));
+    // ㉑..㉟ (21..35)
     if (x >= 21 && x <= 35) return String.fromCharCode(0x3251 + (x - 21));
     return String(n);
   };
@@ -47,10 +48,17 @@
     ITEM_ORDER: 'item_order_v1',
     PRICES: 'prices_v1',
     DELIVERY: 'delivery_v1',
+
+    // 旧：画像(localStorage)
     DINO_IMAGES_OLD: 'dino_images_v1',
+
     DINO_OVERRIDE: 'dino_override_v1',
+
+    // ROOM
     ROOM_ENTRY_PW: 'room_entry_pw_v1',
     ROOM_PW: 'room_pw_v1',
+
+    // ✅ 特殊入力設定（ガチャ等）
     SPECIAL_CFG: 'special_cfg_v1',
   };
 
@@ -132,78 +140,11 @@
     if (e.target === $('#confirmOverlay')) confirmClose(false);
   });
 
-  /* ========= ✅ scroll lock (modal/overlay) ========= */
-  // 目的：
-  // - モーダル表示中に「背面のbody」がスクロールしないようにする（iOS含む）
-  // - 前面要素のスクロールだけ有効にする
-  const ScrollLock = (() => {
-    let lockCount = 0;
-    let savedY = 0;
-    let savedX = 0;
-
-    const lock = () => {
-      lockCount++;
-      if (lockCount !== 1) return;
-
-      savedY = window.scrollY || 0;
-      savedX = window.scrollX || 0;
-
-      // iOS対策: bodyをfixedにして位置を固定
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${savedY}px`;
-      document.body.style.left = `-${savedX}px`;
-      document.body.style.right = '0';
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-      document.body.style.touchAction = 'none';
-    };
-
-    const unlock = () => {
-      if (lockCount <= 0) return;
-      lockCount--;
-      if (lockCount !== 0) return;
-
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.left = '';
-      document.body.style.right = '';
-      document.body.style.width = '';
-      document.body.style.overflow = '';
-      document.body.style.touchAction = '';
-
-      window.scrollTo(savedX, savedY);
-    };
-
-    return { lock, unlock };
-  })();
-
-  function installOverlayScrollGuard(overlayEl, scrollBodyEl) {
-    if (!overlayEl) return;
-
-    // オーバーレイ自身(背景)でのスクロール/ドラッグは無効化して「背面へ抜ける」を防ぐ
-    const stopIfBackdrop = (e) => {
-      // 背景を触ってる時だけ止める（body側でスクロールさせない）
-      if (e.target === overlayEl) {
-        e.preventDefault();
-      }
-    };
-
-    overlayEl.addEventListener('wheel', stopIfBackdrop, { passive: false });
-    overlayEl.addEventListener('touchmove', stopIfBackdrop, { passive: false });
-
-    // 前面のスクロール領域からさらに外へ「スクロールが伝播」するのを抑制
-    if (scrollBodyEl) {
-      scrollBodyEl.style.overscrollBehavior = 'contain';
-      // iOS向け: 慣性スクロール
-      scrollBodyEl.style.webkitOverflowScrolling = 'touch';
-    }
-  }
-
   /* ========= IndexedDB (images) ========= */
   const IDB = {
     DB_NAME: 'dino_list_db_v3',
     DB_VER: 1,
-    STORE_IMAGES: 'images',
+    STORE_IMAGES: 'images', // key: imageKey, value: dataUrl
   };
 
   let dbPromise = null;
@@ -297,10 +238,14 @@
   const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
 
   /* ========= special cfg (ガチャ等) ========= */
+  // cfg: { enabled: true, max: 16, unit: 300, all: 3000, allowSex: false }
   const specialCfg = Object.assign({}, loadJSON(LS.SPECIAL_CFG, {}));
 
   function getSpecialCfgForDino(d) {
+    // ✅ 既存設定優先
     if (specialCfg[d.id]?.enabled) return specialCfg[d.id];
+
+    // ✅ とりあえず「ガチャ」だけデフォルトで特殊化
     const base = String(d._baseName || d.name || '').trim();
     const name = String(d.name || '').trim();
     if (base === 'ガチャ' || name === 'ガチャ') {
@@ -310,7 +255,7 @@
   }
 
   /* ========= images ========= */
-  const imageCache = {};
+  const imageCache = {}; // { [imageKey]: dataURL }
   const dinoOverride = Object.assign({}, loadJSON(LS.DINO_OVERRIDE, {}));
   function imageKeyFromBaseName(baseName) {
     return `img_${stableHash(norm(baseName))}`;
@@ -350,12 +295,6 @@
     imgClose: $('#imgClose'),
     imgViewerImg: $('#imgViewerImg'),
   };
-
-  // ✅ オーバーレイのスクロールガード（前面だけ）
-  installOverlayScrollGuard(el.modalOverlay, el.modalBody);
-  installOverlayScrollGuard(el.roomOverlay, el.roomBody);
-  installOverlayScrollGuard(el.editOverlay, el.editBody);
-  installOverlayScrollGuard(el.imgOverlay, el.imgOverlay); // 画像ビューは全体OK
 
   /* ========= sanity (reset) ========= */
   if (new URL(location.href).searchParams.get('reset') === '1') {
@@ -413,7 +352,7 @@
       name: ov?.name || nameRaw,
       defType: ov?.defType || defType,
       kind: 'dino',
-      _baseName: nameRaw,
+      _baseName: nameRaw, // ✅ 画像キーの元
     };
   }
 
@@ -438,29 +377,16 @@
     saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
   }
 
-function sortByOrder(list, kind) {
-  const ord = order[kind] || [];
-  const idx = new Map(ord.map((id, i) => [id, i]));
-
-  // ✅ ソート用名称を生成（TEKは除外）
-  const sortName = (name) => {
-    if (!name) return '';
-    return name.startsWith('TEK')
-      ? name.slice(3).trim()
-      : name;
-  };
-
-  return list.slice().sort((a, b) => {
-    const ai = idx.has(a.id) ? idx.get(a.id) : 1e9;
-    const bi = idx.has(b.id) ? idx.get(b.id) : 1e9;
-    if (ai !== bi) return ai - bi;
-
-    const an = sortName(a.name);
-    const bn = sortName(b.name);
-
-    return an.localeCompare(bn, 'ja');
-  });
-}
+  function sortByOrder(list, kind) {
+    const ord = order[kind] || [];
+    const idx = new Map(ord.map((id, i) => [id, i]));
+    return list.slice().sort((a, b) => {
+      const ai = idx.has(a.id) ? idx.get(a.id) : 1e9;
+      const bi = idx.has(b.id) ? idx.get(b.id) : 1e9;
+      if (ai !== bi) return ai - bi;
+      return a.name.localeCompare(b.name, 'ja');
+    });
+  }
 
   /* ========= behavior rules ========= */
   function ensureDinoState(key, defType, spCfg = null) {
@@ -468,8 +394,9 @@ function sortByOrder(list, kind) {
       if (spCfg?.enabled) {
         inputState.set(key, {
           mode: 'special',
-          picks: [],
-          all: false,
+          picks: [],      // [1,2,3,3,...]
+          all: false,     // 全種
+          // ✅ allowSex時に通常入力も持つ
           type: defType || '受精卵',
           m: 0,
           f: 0,
@@ -478,6 +405,7 @@ function sortByOrder(list, kind) {
         inputState.set(key, { type: defType || '受精卵', m: 0, f: 0 });
       }
     } else {
+      // 既存stateがある場合、special化されたら必要フィールドだけ補完
       const s = inputState.get(key);
       if (spCfg?.enabled) {
         if (s.mode !== 'special') s.mode = 'special';
@@ -495,6 +423,7 @@ function sortByOrder(list, kind) {
     return inputState.get(key);
   }
 
+  // ✅ 幼体/成体には(指定)を付けない
   function autoSpecify(s) {
     const m = Number(s.m || 0), f = Number(s.f || 0);
     const base = String(s.type || '受精卵').replace('(指定)', '');
@@ -538,91 +467,10 @@ function sortByOrder(list, kind) {
 
   /* ========= output ========= */
 
-  /* ========= output ========= */
-
-  // ✅ カード内表示用：恐竜の小計行を生成
-  function buildDinoMiniLine(d, s, sp) {
-    if (!d || !s) return '';
-
-    // SPECIAL（ガチャ等）
-    if (sp?.enabled && s.mode === 'special') {
-      const allowSex = !!sp.allowSex;
-      const m = Number(s.m || 0);
-      const f = Number(s.f || 0);
-      const sexQty = m + f;
-
-      // allowSexで通常入力がある場合 → 通常扱い
-      if (allowSex && sexQty > 0) {
-        const type = s.type || d.defType || '受精卵';
-        const unitPrice = prices[type] || 0;
-        const price = unitPrice * sexQty;
-
-        const tOut = String(type).replace('(指定)', '');
-        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
-
-        if (isPair) {
-          if (m === f) return `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
-          const p = [];
-          if (m > 0) p.push(`♂×${m}`);
-          if (f > 0) p.push(`♀×${f}`);
-          return `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
-        }
-        return `${d.name}${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
-      }
-
-      const unitPrice = Number(sp.unit || 0);
-      const allPrice = Number(sp.all || 0);
-
-      if (s.all) {
-        if (allPrice <= 0) return '';
-        return `${d.name}全種 = ${allPrice.toLocaleString('ja-JP')}円`;
-      }
-
-      const picks = Array.isArray(s.picks) ? s.picks : [];
-      if (!picks.length) return '';
-      const price = picks.length * unitPrice;
-      const seq = picks.map(n => circled(n)).join('');
-      return `${d.name}${seq} = ${price.toLocaleString('ja-JP')}円`;
-    }
-
-    // NORMAL（従来）
-    const type = s.type || d.defType || '受精卵';
-    const m = Number(s.m || 0);
-    const f = Number(s.f || 0);
-    const qty = m + f;
-    if (qty <= 0) return '';
-
-    const unitPrice = prices[type] || 0;
-    const price = unitPrice * qty;
-
-    const tOut = String(type).replace('(指定)', '');
-    const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
-
-    if (isPair) {
-      if (m === f) return `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
-      const p = [];
-      if (m > 0) p.push(`♂×${m}`);
-      if (f > 0) p.push(`♀×${f}`);
-      return `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
-    }
-    return `${d.name}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
-  }
-
-  // ✅ カード内表示用：アイテム小計行
-  function buildItemMiniLine(it, s) {
-    if (!it || !s) return '';
-    const qty = Number(s.qty || 0);
-    if (qty <= 0) return '';
-    const totalCount = qty * Number(it.unit || 1);
-    const price = qty * Number(it.price || 0);
-    return `${it.name} × ${totalCount} = ${price.toLocaleString('ja-JP')}円`;
-  }
-
-    // ✅ カードを開いた瞬間などに「出力エリア(#out)」を強制表示
+  // ✅ 出力エリアの強制表示（CSSの !important も上書き）
   function ensureOutputVisible() {
     if (!el.out) return;
 
-    // ✅ CSSの !important を確実に上書きする
     el.out.style.setProperty('display', 'block', 'important');
     el.out.style.setProperty('visibility', 'visible', 'important');
     el.out.style.setProperty('opacity', '1', 'important');
@@ -650,12 +498,14 @@ function sortByOrder(list, kind) {
         const s = inputState.get(k);
         if (!s) continue;
 
+        // ✅ SPECIAL（ガチャ等）
         if (sp?.enabled && s.mode === 'special') {
           const allowSex = !!sp.allowSex;
           const m = Number(s.m || 0);
           const f = Number(s.f || 0);
           const sexQty = m + f;
 
+          // ✅ allowSexで通常入力がある場合は「特殊無効（通常扱い）」
           if (allowSex && sexQty > 0) {
             const type = s.type || d.defType || '受精卵';
             const unitPrice = prices[type] || 0;
@@ -684,6 +534,7 @@ function sortByOrder(list, kind) {
             continue;
           }
 
+          // ✅ 特殊入力（全種 or picks）
           const unitPrice = Number(sp.unit || 0);
           const allPrice = Number(sp.all || 0);
 
@@ -709,6 +560,7 @@ function sortByOrder(list, kind) {
           continue;
         }
 
+        // ✅ NORMAL（従来）
         const type = s.type || d.defType || '受精卵';
         const m = Number(s.m || 0);
         const f = Number(s.f || 0);
@@ -770,6 +622,8 @@ ${lines.join('\n')}
 ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻
 
 また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
+
+    ensureOutputVisible(); // ✅ いつでも出力エリアを見せる
   }
 
   /* ========= collapse & search ========= */
@@ -809,15 +663,19 @@ ${lines.join('\n')}
 
   /* ========= Toggle hit area (左側ほぼ全部) ========= */
   function installLeftToggleHit(card) {
+    // JSで「左側の当たり」を確実にする（CSSが何でも動くように）
+    // - 右側( select 等 ) は絶対に邪魔しない
+    // - nameWrap / miniThumb / 左側余白で反応
     const head = $('.cardHead', card);
     const toggle = $('.cardToggle', card);
     if (!head || !toggle) return;
 
+    // 右列が140px想定 + gapなどを見込んで 170px を除外
     toggle.style.inset = 'auto';
     toggle.style.left = '-12px';
     toggle.style.top = '-12px';
     toggle.style.bottom = '-12px';
-    toggle.style.width = 'calc(100% - 170px)';
+    toggle.style.width = 'calc(100% - 170px)'; // ✅ 左側ほぼ全部
     toggle.style.height = 'calc(100% + 24px)';
     toggle.style.zIndex = '5';
     toggle.style.pointerEvents = 'auto';
@@ -830,12 +688,14 @@ ${lines.join('\n')}
     const s = ensureDinoState(key, d.defType, sp);
 
     const card = document.createElement('div');
-        // ✅ 応急：同一カード内で controls が重複したら後ろを消す（2重表示対策）
+
+    // ✅ 応急：同一カード内で controls が重複したら後ろを消す（2重表示対策）
     function dedupeControlsInCard(root) {
       const list = $$('.controls', root);
       if (list.length <= 1) return;
       for (let i = 1; i < list.length; i++) list[i].remove();
     }
+
     card.className = 'card isCollapsed';
     card.dataset.card = '1';
     card.dataset.key = key;
@@ -843,10 +703,7 @@ ${lines.join('\n')}
     card.dataset.kind = 'dino';
     card.dataset.did = d.id;
 
-        const imgUrl = getImageUrlForDino(d);
-
-    // ✅ カード内小計表示（後で更新）
-    const miniStyle = `style="margin-top:10px;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.14);color:rgba(255,255,255,.85);font-weight:900;font-size:13px;display:none;"`;
+    const imgUrl = getImageUrlForDino(d);
 
     // ✅ special UI（ガチャ等）
     if (sp?.enabled && s.mode === 'special') {
@@ -860,7 +717,7 @@ ${lines.join('\n')}
         btns.push(`<button class="gBtn" type="button" data-act="pick" data-n="${i}">${i}</button>`);
       }
 
-      // ✅ allowSex: ♂♀入力ブロック（通常と同じ部品）＋複製
+      // allowSex: 通常UI（種類＋♂♀）も出す（入力されたら特殊無効）
       const normalBlock = allowSex ? `
         <div class="controls controlsWrap" style="margin-top:10px;">
           <div class="stepper male">
@@ -875,7 +732,7 @@ ${lines.join('\n')}
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
 
-          <button class="dupBtn" type="button" data-act="dup">複製</button>
+          <select class="type" aria-label="種類"></select>
         </div>
       ` : ``;
 
@@ -890,20 +747,11 @@ ${lines.join('\n')}
             </div>
 
             <div class="right">
-              ${allowSex ? `
-                <select class="type" aria-label="種類"></select>
-                <div class="unit"></div>
-              ` : `
-                <div class="unit" style="font-weight:900;color:rgba(255,255,255,.65);">1体=${unitPrice}円</div>
-              `}
+              <div class="unit" style="font-weight:900;color:rgba(255,255,255,.65);">1体=${unitPrice}円</div>
             </div>
           </div>
 
           ${normalBlock}
-
-                    ${normalBlock}
-
-          <div class="cardMiniOut" ${miniStyle}></div>
 
           <div class="controls gachaWrap" style="display:block;margin-top:10px;">
             <div class="gWrap">
@@ -922,21 +770,20 @@ ${lines.join('\n')}
               </div>
 
               <div style="margin-top:6px;color:rgba(255,255,255,.55);font-weight:800;font-size:12px;">
-                1体=${unitPrice.toLocaleString('ja-JP')}円 / 全種=${allPrice.toLocaleString('ja-JP')}円
+                全種=${allPrice.toLocaleString('ja-JP')}円
               </div>
             </div>
           </div>
         </div>
       `;
-            dedupeControlsInCard(card);
+      dedupeControlsInCard(card);
 
       $('.name', card).textContent = d.name;
 
       // ✅ 左側ほぼ全部で折りたたみ
       installLeftToggleHit(card);
 
-            const inputEl = $('.gInput', card);
-      const miniOut = $('.cardMiniOut', card);
+      const inputEl = $('.gInput', card);
       const sumEl = $('.gSum', card);
       const allBtn = $('button[data-act="all"]', card);
 
@@ -944,24 +791,18 @@ ${lines.join('\n')}
       const mEl = $('.js-m', card);
       const fEl = $('.js-f', card);
       const sel = $('.type', card);
-      const unitEl = $('.unit', card);
 
-      // ✅ allowSex: 右側のセレクト＆単価を通常と同じにする
       if (allowSex && sel) {
         sel.innerHTML = typeList.map(t => `<option value="${t}">${t}</option>`).join('');
         if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
         sel.value = s.type;
-        if (unitEl) unitEl.textContent = `単価${prices[s.type] || 0}円`;
-
-        // ✅ select を押しても折りたたまれないように（通常と同じ保険）
-        sel.addEventListener('click', (ev) => ev.stopPropagation());
-        sel.addEventListener('pointerdown', (ev) => ev.stopPropagation());
       }
 
       const syncSpecial = () => {
         const picks = Array.isArray(s.picks) ? s.picks : [];
         const sexQty = Number(s.m || 0) + Number(s.f || 0);
 
+        // allowSexで通常入力が入ったら特殊は表示だけ（無効扱い）
         if (allowSex) {
           if (mEl) mEl.textContent = String(s.m || 0);
           if (fEl) fEl.textContent = String(s.f || 0);
@@ -1000,28 +841,20 @@ ${lines.join('\n')}
             : (s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0));
           card.classList.toggle('isCollapsed', q === 0);
         }
-        // ✅ カード内小計
-        if (miniOut) {
-          const line = buildDinoMiniLine(d, s, sp);
-          miniOut.textContent = line || '';
-          miniOut.style.display = line ? '' : 'none';
-        }
       };
 
       syncSpecial();
       card.classList.toggle('isCollapsed', getQtyForCard(key, 'dino') === 0);
 
+      // 折りたたみ
       $('.cardToggle', card).addEventListener('click', (ev) => {
         ev.preventDefault();
+        ensureOutputVisible(); // ✅ 開いた時点で出力エリア見せる
         if (el.q.value.trim()) return;
-
-        const wasCollapsed = card.classList.contains('isCollapsed');
         card.classList.toggle('isCollapsed');
-
-        // ✅ 「開いた瞬間」に出力エリアを表示
-        if (wasCollapsed) ensureOutputVisible();
       });
 
+      // allowSex: 種類変更
       sel?.addEventListener('click', (ev) => ev.stopPropagation());
       sel?.addEventListener('change', (ev) => {
         ev.stopPropagation();
@@ -1032,11 +865,13 @@ ${lines.join('\n')}
         applyCollapseAndSearch();
       });
 
+      // allowSex: step
       const step = (sex, delta) => {
         if (sex === 'm') s.m = Math.max(0, Number(s.m || 0) + delta);
         if (sex === 'f') s.f = Math.max(0, Number(s.f || 0) + delta);
         autoSpecify(s);
 
+        // ✅ 通常入力が入ったら特殊無効（併用しない）
         if ((Number(s.m || 0) + Number(s.f || 0)) > 0) {
           s.all = false;
           s.picks = [];
@@ -1059,28 +894,6 @@ ${lines.join('\n')}
         if (act === 'm+') return step('m', +1);
         if (act === 'f-') return step('f', -1);
         if (act === 'f+') return step('f', +1);
-
-        // ✅ 複製（special + allowSex でもOK）
-        if (act === 'dup') {
-          const dupKey = `${d.id}__dup_${uid()}`;
-          ephemeralKeys.add(dupKey);
-
-          // ✅ 現在の状態をそのまま複製（パターン複製）
-          inputState.set(dupKey, {
-            mode: 'special',
-            picks: Array.isArray(s.picks) ? s.picks.slice() : [],
-            all: !!s.all,
-            type: s.type || d.defType || '受精卵',
-            m: Number(s.m || 0),
-            f: Number(s.f || 0),
-          });
-
-          const dupCard = buildDinoCard(d, dupKey);
-          card.after(dupCard);
-          rebuildOutput();
-          applyCollapseAndSearch();
-          return;
-        }
 
         // 特殊入力は「通常入力が無いときだけ」有効
         const sexQty = Number(s.m || 0) + Number(s.f || 0);
@@ -1137,6 +950,7 @@ ${lines.join('\n')}
       return card;
     }
 
+    // ✅ normal card
     card.innerHTML = `
       <div class="cardInner">
         <div class="cardHead">
@@ -1152,8 +966,6 @@ ${lines.join('\n')}
             <div class="unit"></div>
           </div>
         </div>
-
-        <div class="cardMiniOut" ${miniStyle}></div>
 
         <div class="controls">
           <div class="stepper male">
@@ -1172,10 +984,11 @@ ${lines.join('\n')}
         </div>
       </div>
     `;
-          dedupeControlsInCard(card);
+    dedupeControlsInCard(card);
 
     $('.name', card).textContent = d.name;
 
+    // ✅ 左側ほぼ全部で折りたたみ（右のselectは邪魔しない）
     installLeftToggleHit(card);
 
     const sel = $('.type', card);
@@ -1183,8 +996,7 @@ ${lines.join('\n')}
     if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
     sel.value = s.type;
 
-        const unit = $('.unit', card);
-    const miniOut = $('.cardMiniOut', card);
+    const unit = $('.unit', card);
     unit.textContent = `単価${prices[s.type] || 0}円`;
 
     const mEl = $('.js-m', card);
@@ -1206,12 +1018,6 @@ ${lines.join('\n')}
         const q = (Number(s.m || 0) + Number(s.f || 0));
         card.classList.toggle('isCollapsed', q === 0);
       }
-            // ✅ カード内小計
-      if (miniOut) {
-        const line = buildDinoMiniLine(d, s, null);
-        miniOut.textContent = line || '';
-        miniOut.style.display = line ? '' : 'none';
-      }
     }
 
     function step(sex, delta) {
@@ -1223,6 +1029,7 @@ ${lines.join('\n')}
       applyCollapseAndSearch();
     }
 
+    // ✅ select を押しても折りたたまれないように（保険）
     sel.addEventListener('click', (ev) => ev.stopPropagation());
     sel.addEventListener('pointerdown', (ev) => ev.stopPropagation());
 
@@ -1235,16 +1042,12 @@ ${lines.join('\n')}
       applyCollapseAndSearch();
     });
 
-        $('.cardToggle', card).addEventListener('click', (ev) => {
-        ev.preventDefault();
-        if (el.q.value.trim()) return;
-
-        const wasCollapsed = card.classList.contains('isCollapsed');
-        card.classList.toggle('isCollapsed');
-
-        // ✅ 「開いた瞬間」に出力エリアを表示
-        if (wasCollapsed) ensureOutputVisible();
-      });
+    $('.cardToggle', card).addEventListener('click', (ev) => {
+      ev.preventDefault();
+      ensureOutputVisible(); // ✅ 開いた時点で出力エリア見せる
+      if (el.q.value.trim()) return;
+      card.classList.toggle('isCollapsed');
+    });
 
     $$('button[data-act]', card).forEach(btn => {
       btn.addEventListener('click', (ev) => {
@@ -1259,7 +1062,21 @@ ${lines.join('\n')}
         if (act === 'dup') {
           const dupKey = `${d.id}__dup_${uid()}`;
           ephemeralKeys.add(dupKey);
-          inputState.set(dupKey, { type: s.type, m: 0, f: 0 });
+
+          // ✅ 現在のstateを複製（通常も特殊も含む）
+          const cur = inputState.get(key);
+          if (cur && cur.mode === 'special') {
+            inputState.set(dupKey, {
+              mode: 'special',
+              picks: Array.isArray(cur.picks) ? cur.picks.slice() : [],
+              all: !!cur.all,
+              type: cur.type || s.type,
+              m: Number(cur.m || 0),
+              f: Number(cur.f || 0),
+            });
+          } else {
+            inputState.set(dupKey, { type: s.type, m: 0, f: 0 });
+          }
 
           const dupCard = buildDinoCard(d, dupKey);
           card.after(dupCard);
@@ -1296,8 +1113,6 @@ ${lines.join('\n')}
           </div>
         </div>
 
-        <div class="cardMiniOut" style="margin-top:10px;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.14);color:rgba(255,255,255,.85);font-weight:900;font-size:13px;display:none;"></div>
-
         <div class="controls">
           <div class="stepper" style="flex:1;">
             <button class="btn" type="button" data-act="-">−</button>
@@ -1307,11 +1122,11 @@ ${lines.join('\n')}
         </div>
       </div>
     `;
-          dedupeControlsInCard(card);
 
     $('.name', card).textContent = it.name;
     $('.unit', card).textContent = `単価${it.price}円`;
 
+    // ✅ 左側ほぼ全部で折りたたみ（右側なしなので広く）
     const toggle = $('.cardToggle', card);
     if (toggle) {
       toggle.style.inset = 'auto';
@@ -1323,27 +1138,16 @@ ${lines.join('\n')}
       toggle.style.zIndex = '5';
     }
 
-        const qEl = $('.js-q', card);
-    const miniOut = $('.cardMiniOut', card);
+    const qEl = $('.js-q', card);
     qEl.textContent = String(s.qty || 0);
-        // ✅ 初期表示
-    if (miniOut) {
-      const line = buildItemMiniLine(it, s);
-      miniOut.textContent = line || '';
-      miniOut.style.display = line ? '' : 'none';
-    }
 
     card.classList.toggle('isCollapsed', Number(s.qty || 0) === 0);
 
     toggle?.addEventListener('click', (ev) => {
       ev.preventDefault();
+      ensureOutputVisible(); // ✅ 開いた時点で出力エリア見せる
       if (el.q.value.trim()) return;
-
-      const wasCollapsed = card.classList.contains('isCollapsed');
       card.classList.toggle('isCollapsed');
-
-      // ✅ 「開いた瞬間」に出力エリアを表示
-      if (wasCollapsed) ensureOutputVisible();
     });
 
     $$('button[data-act]', card).forEach(btn => {
@@ -1354,11 +1158,7 @@ ${lines.join('\n')}
         if (act === '+') s.qty = Math.max(0, Number(s.qty || 0) + 1);
 
         qEl.textContent = String(s.qty || 0);
-        if (miniOut) {
-          const line = buildItemMiniLine(it, s);
-          miniOut.textContent = line || '';
-          miniOut.style.display = line ? '' : 'none';
-        }
+
         if (!el.q.value.trim()) card.classList.toggle('isCollapsed', Number(s.qty || 0) === 0);
 
         rebuildOutput();
@@ -1385,6 +1185,7 @@ ${lines.join('\n')}
     ensureOutputVisible(); // ✅ 初期でも必ず見せる
     applyCollapseAndSearch();
   }
+
   function setTab(tab) {
     activeTab = tab;
     el.tabDinos.classList.toggle('isActive', tab === 'dino');
@@ -1394,14 +1195,12 @@ ${lines.join('\n')}
 
   /* ========= manage modal ========= */
   function openModal() {
-    ScrollLock.lock(); // ✅ 背面スクロール禁止
     el.modalOverlay.classList.remove('isHidden');
     setManageTab('catalog');
   }
   function closeModal() {
     el.modalOverlay.classList.add('isHidden');
     el.modalBody.innerHTML = '';
-    ScrollLock.unlock(); // ✅ 戻す
   }
 
   function setManageTab(kind) {
@@ -1418,7 +1217,6 @@ ${lines.join('\n')}
   /* ========= edit/add modal ========= */
   function openEditModal(title, bodyEl) {
     if (!el.editOverlay) return;
-    ScrollLock.lock(); // ✅
     el.editTitle.textContent = title;
     el.editBody.innerHTML = '';
     el.editBody.appendChild(bodyEl);
@@ -1428,7 +1226,6 @@ ${lines.join('\n')}
     if (!el.editOverlay) return;
     el.editOverlay.classList.add('isHidden');
     el.editBody.innerHTML = '';
-    ScrollLock.unlock(); // ✅
   }
   el.editOverlay?.addEventListener('click', (e) => {
     if (e.target === el.editOverlay) closeEditModal();
@@ -1476,138 +1273,93 @@ ${lines.join('\n')}
   }
 
   /* ========= manage: catalog ========= */
-function renderManageCatalog() {
-  const wrap = document.createElement('div');
+  function renderManageCatalog() {
+    const wrap = document.createElement('div');
 
-  // ✅ 上部バー（追加 / 五十音並び替え）
-  const top = document.createElement('div');
-  top.style.display = 'flex';
-  top.style.justifyContent = 'flex-end';
-  top.style.gap = '10px';
-  top.style.marginBottom = '10px';
+    // ✅ 追加ボタン（復活）
+    const top = document.createElement('div');
+    top.style.display = 'flex';
+    top.style.justifyContent = 'flex-end';
+    top.style.marginBottom = '10px';
+    top.innerHTML = `<button class="pill" type="button" data-act="add">＋追加</button>`;
+    wrap.appendChild(top);
 
-  // 恐竜タブのときだけ「五十音」ボタンを出す
-  top.innerHTML = `
-    ${activeTab === 'dino' ? `<button class="pill" type="button" data-act="sortKana">五十音</button>` : ``}
-    <button class="pill" type="button" data-act="add">＋追加</button>
-  `;
-  wrap.appendChild(top);
+    const list = (activeTab === 'dino')
+      ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
+      : sortByOrder(items.filter(x => !hidden.item.has(x.id)), 'item');
 
-  const list = (activeTab === 'dino')
-    ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
-    : sortByOrder(items.filter(x => !hidden.item.has(x.id)), 'item');
+    list.forEach(obj => {
+      const r = document.createElement('div');
+      r.className = 'mRow';
+      r.innerHTML = `
+        <div class="mName">${escapeHtml(obj.name)}</div>
+        ${activeTab === 'dino' ? `<button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">✎</button>` : ``}
+        <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
+        <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
+        <button class="sBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
+      `;
+      wrap.appendChild(r);
+    });
 
-  list.forEach(obj => {
-    const r = document.createElement('div');
-    r.className = 'mRow';
-    r.innerHTML = `
-      <div class="mName">${escapeHtml(obj.name)}</div>
-      ${activeTab === 'dino' ? `<button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">✎</button>` : ``}
-      <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
-      <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
-      <button class="sBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
-    `;
-    wrap.appendChild(r);
-  });
+    wrap.addEventListener('click', async (e) => {
+      const btn = e.target?.closest('button');
+      const act = btn?.dataset?.act;
+      const id = btn?.dataset?.id;
 
-  // ✅ 五十音ソートキー（TEKはTEK以降で判定）
-  const kanaKey = (name) => {
-    let s = String(name || '').trim();
-    // TEKで始まる恐竜は、TEK以降をキーにする（大小区別なし）
-    s = s.replace(/^TEK/i, '').trim();
-    // カタカナ→ひらがな（既存ユーティリティ）
-    s = toHira(s);
-    // 空白は無視
-    s = s.replace(/\s+/g, '');
-    return s;
-  };
-
-  wrap.addEventListener('click', async (e) => {
-    const btn = e.target?.closest('button');
-    const act = btn?.dataset?.act;
-    const id = btn?.dataset?.id;
-
-    // ✅ 五十音並び替え（恐竜のみ）
-    if (act === 'sortKana' && activeTab === 'dino') {
-      const visible = dinos.filter(x => !hidden.dino.has(x.id)).slice();
-
-      visible.sort((a, b) => {
-        const ak = kanaKey(a.name);
-        const bk = kanaKey(b.name);
-        const c = ak.localeCompare(bk, 'ja');
-        if (c !== 0) return c;
-        // 同キー時の安定化（元の名前で比較）
-        return String(a.name || '').localeCompare(String(b.name || ''), 'ja');
-      });
-
-      const ord = visible.map(x => x.id);
-      order.dino = ord;
-      saveJSON(LS.DINO_ORDER, ord);
-
-      renderList();
-      setManageTab('catalog');
-      openToast('五十音順に並び替えました');
-      return;
-    }
-
-    if (act === 'add') {
-      if (activeTab === 'dino') openAddDino();
-      else openAddItem();
-      return;
-    }
-
-    if (!act || !id) return;
-
-    const kind = activeTab;
-    const ord = (order[kind] || []).slice();
-    const i = ord.indexOf(id);
-
-    if (act === 'up' && i > 0) {
-      [ord[i], ord[i - 1]] = [ord[i - 1], ord[i]];
-      order[kind] = ord;
-      saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
-      renderList();
-      setManageTab('catalog');
-      return;
-    }
-
-    if (act === 'down' && i !== -1 && i < ord.length - 1) {
-      [ord[i], ord[i + 1]] = [ord[i + 1], ord[i]];
-      order[kind] = ord;
-      saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
-      renderList();
-      setManageTab('catalog');
-      return;
-    }
-
-    if (act === 'del') {
-      const ok = await confirmAsk('削除しますか？');
-      if (!ok) return;
-
-      if (kind === 'dino') {
-        hidden.dino.add(id);
-        saveJSON(LS.DINO_HIDDEN, Array.from(hidden.dino));
-      } else {
-        hidden.item.add(id);
-        saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item));
+      if (act === 'add') {
+        if (activeTab === 'dino') openAddDino();
+        else openAddItem();
+        return;
       }
-      renderList();
-      setManageTab('catalog');
-      return;
-    }
 
-    if (act === 'edit' && kind === 'dino') {
-      openEditDino(id);
-      return;
-    }
-  });
+      if (!act || !id) return;
 
-  return wrap;
-}
+      const kind = activeTab;
+      const ord = (order[kind] || []).slice();
+      const i = ord.indexOf(id);
 
-  // ---- 以下、あなたの元コードの残り（画像管理 / ROOM / events / init）は
-  // ScrollLockを openRoom/closeRoom, openImgViewer/closeImgViewer にも適用した上でそのままです。
-  // 省略すると「全置換」できないので、ここから先も“元コード通り”＋必要箇所だけScrollLock追加しています。
+      if (act === 'up' && i > 0) {
+        [ord[i], ord[i - 1]] = [ord[i - 1], ord[i]];
+        order[kind] = ord;
+        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
+        renderList();
+        setManageTab('catalog');
+        return;
+      }
+
+      if (act === 'down' && i !== -1 && i < ord.length - 1) {
+        [ord[i], ord[i + 1]] = [ord[i + 1], ord[i]];
+        order[kind] = ord;
+        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
+        renderList();
+        setManageTab('catalog');
+        return;
+      }
+
+      if (act === 'del') {
+        const ok = await confirmAsk('削除しますか？');
+        if (!ok) return;
+
+        if (kind === 'dino') {
+          hidden.dino.add(id);
+          saveJSON(LS.DINO_HIDDEN, Array.from(hidden.dino));
+        } else {
+          hidden.item.add(id);
+          saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item));
+        }
+        renderList();
+        setManageTab('catalog');
+        return;
+      }
+
+      if (act === 'edit' && kind === 'dino') {
+        openEditDino(id);
+        return;
+      }
+    });
+
+    return wrap;
+  }
 
   function openAddDino() {
     const box = document.createElement('div');
@@ -1678,13 +1430,16 @@ function renderManageCatalog() {
         const defType = ($('#addType', box)?.value || '受精卵');
         if (!name) return openToast('名前を入力してください');
 
+        // ✅ カスタム恐竜として追加
         const id = stableId('d', name);
+        // 既にあるなら上書き（重複事故回避）
         const existIdx = custom.dino.findIndex(x => x.id === id);
         const rec = { id, name, defType, _baseName: name };
         if (existIdx >= 0) custom.dino[existIdx] = rec;
         else custom.dino.push(rec);
         saveJSON(LS.DINO_CUSTOM, custom.dino);
 
+        // special cfg
         if (spEnable?.checked) {
           const max = Math.max(1, Math.min(60, Number($('#spMax', box)?.value || 16)));
           const unit = Math.max(0, Number($('#spUnit', box)?.value || 0));
@@ -1695,6 +1450,7 @@ function renderManageCatalog() {
         }
 
         closeEditModal();
+        // 再構築
         dinos = dinos.concat([{ id, name, defType, kind: 'dino', _baseName: name }]);
         ensureOrderList(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
         renderList();
@@ -1840,6 +1596,7 @@ function renderManageCatalog() {
         const newDef = ($('#editType', box)?.value || '受精卵');
         if (!newName) return;
 
+        // name/defType
         const cIdx = custom.dino.findIndex(x => x.id === id);
         if (cIdx >= 0) {
           custom.dino[cIdx] = { id, name: newName, defType: newDef, _baseName: custom.dino[cIdx]._baseName || newName };
@@ -1852,6 +1609,7 @@ function renderManageCatalog() {
         const di = dinos.findIndex(x => x.id === id);
         if (di >= 0) dinos[di] = Object.assign({}, dinos[di], { name: newName, defType: newDef });
 
+        // special cfg
         if (spEnable?.checked) {
           const max = Math.max(1, Math.min(60, Number($('#spMax', box)?.value || 16)));
           const unit = Math.max(0, Number($('#spUnit', box)?.value || 0));
@@ -1860,6 +1618,7 @@ function renderManageCatalog() {
           specialCfg[id] = { enabled: true, max, unit, all, allowSex };
           saveJSON(LS.SPECIAL_CFG, specialCfg);
 
+          // state整形
           const st = inputState.get(id);
           if (st) {
             st.mode = 'special';
@@ -1918,7 +1677,6 @@ function renderManageCatalog() {
 
   function openImgViewer(url) {
     if (!el.imgOverlay || !el.imgViewerImg) return;
-    ScrollLock.lock(); // ✅
     el.imgViewerImg.src = url;
     el.imgOverlay.classList.remove('isHidden');
   }
@@ -1926,7 +1684,6 @@ function renderManageCatalog() {
     if (!el.imgOverlay) return;
     el.imgOverlay.classList.add('isHidden');
     if (el.imgViewerImg) el.imgViewerImg.src = '';
-    ScrollLock.unlock(); // ✅
   }
   el.imgClose?.addEventListener('click', closeImgViewer);
   el.imgOverlay?.addEventListener('click', (e) => {
@@ -1936,6 +1693,7 @@ function renderManageCatalog() {
   function renderManageImages() {
     const wrap = document.createElement('div');
 
+    // ✅ 画像出力ボタン（上部）
     const topBar = document.createElement('div');
     topBar.style.display = 'flex';
     topBar.style.justifyContent = 'flex-end';
@@ -1943,6 +1701,7 @@ function renderManageCatalog() {
     topBar.innerHTML = `<button id="imgExport" class="pill" type="button">画像出力</button>`;
     wrap.appendChild(topBar);
 
+    // 対象リスト（表示順）
     const list = sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino');
 
     function loadImg(src) {
@@ -1981,6 +1740,7 @@ function renderManageCatalog() {
         return;
       }
 
+      // セルサイズ（2:1）
       const cellW = 640;
       const cellH = 320;
       const gap = 8;
@@ -2039,6 +1799,7 @@ function renderManageCatalog() {
       await exportGrid(rows, cols);
     });
 
+    // ✅ 画像一覧（IDB）
     list.forEach(d => {
       const row = document.createElement('div');
       row.className = 'imgRow';
@@ -2089,6 +1850,8 @@ function renderManageCatalog() {
           imageCache[k] = dataUrl;
 
           thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
+
+          // ✅ メインにも即反映
           syncThumbInMainListByDino(d, dataUrl);
 
           openToast('画像を保存しました');
@@ -2267,7 +2030,6 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
 
   function openRoom() {
     if (!el.roomOverlay) return;
-    ScrollLock.lock(); // ✅
     el.roomOverlay.classList.remove('isHidden');
     renderRooms();
   }
@@ -2275,7 +2037,6 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
     if (!el.roomOverlay) return;
     el.roomOverlay.classList.add('isHidden');
     if (el.roomBody) el.roomBody.innerHTML = '';
-    ScrollLock.unlock(); // ✅
   }
 
   /* ========= events ========= */
@@ -2329,6 +2090,7 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
   async function init() {
     await migrateOldImagesIfAny();
 
+    // ✅ IDB画像ロード
     try {
       const all = await idbGetAllImages();
       Object.keys(all).forEach(k => { imageCache[k] = all[k]; });
@@ -2356,6 +2118,7 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
     ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
 
     setTab('dino');
+    ensureOutputVisible(); // ✅ 起動直後も必ず表示
   }
 
   init();
