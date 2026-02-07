@@ -343,23 +343,6 @@
   let activeTab = 'dino';
 
   /* ========= V3 state ========= */
-  // state shape:
-  // {
-  //   [cardKey]: {
-  //     kind: 'dino'|'item',
-  //     baseId: 'd_xxx' or 'i_xxx' (複製でも元を辿れる)
-  //     dinoId?: 'd_xxx',
-  //     itemId?: 'i_xxx',
-  //     // normal input
-  //     type?: '受精卵' etc,
-  //     m?: number,
-  //     f?: number,
-  //     // special input
-  //     spEnabled?: boolean,  // card instanceとして特殊UI出すか
-  //     spAll?: boolean,
-  //     picks?: number[],
-  //   }
-  // }
   const state = loadJSON(LS.STATE_V3, {});
   function saveState() { saveJSON(LS.STATE_V3, state); }
 
@@ -483,7 +466,6 @@
     if (!s) return 0;
     if (s.kind === 'item') return Number(s.qty || 0);
 
-    // dino
     const normalQty = Number(s.m || 0) + Number(s.f || 0);
     const specialQty = s.spAll ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0);
     return Math.max(normalQty, specialQty);
@@ -521,13 +503,11 @@
 
   /* ========= Output build ========= */
   function buildLineForDinoState(d, s, spCfg) {
-    // normal part
     const type = s.type || d.defType || '受精卵';
     const m = Number(s.m || 0);
     const f = Number(s.f || 0);
     const qty = m + f;
 
-    // special part
     const spOn = !!(spCfg?.enabled) && !!s.spEnabled;
     const unitPriceSp = Number(spCfg?.unit || 0);
     const allPrice = Number(spCfg?.all || 0);
@@ -579,7 +559,6 @@
       }
     }
 
-    // if both exist, output uses both lines (V3では両方保持できる)
     return { lines: parts, sum };
   }
 
@@ -590,9 +569,7 @@
 
     const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
     for (const d of dList) {
-      // base + dup keys（V3は state の key を走査する）
       const keys = Object.keys(state).filter(k => state[k]?.kind === 'dino' && state[k]?.dinoId === d.id);
-      // baseが無い場合に備え、必ず base を作る
       if (!keys.includes(d.id)) keys.unshift(d.id);
 
       const sp = getSpecialCfgForDino(d);
@@ -605,7 +582,6 @@
         if (!r.lines.length) continue;
         sum += r.sum;
 
-        // 1カードに2行以上あり得る（通常＋特殊）
         for (const ln of r.lines) {
           lines.push(`${idx}. ${ln}`);
           idx++;
@@ -660,14 +636,14 @@ ${lines.join('\n')}
     const sp = getSpecialCfgForDino(d);
     const r = buildLineForDinoState(d, s, sp);
     if (!r.lines.length) return '未入力';
-
-    // card内は短く：複数ある場合は「 / 」で繋ぐ
     return r.lines.join(' / ');
   }
 
   /* ========= cards ========= */
   function buildDinoCard(d, cardKey) {
     const sp = getSpecialCfgForDino(d);
+    const allowSex = !!sp?.allowSex;
+
     const key = cardKey || d.id;
     const s = ensureDinoState(key, d, sp);
 
@@ -681,7 +657,9 @@ ${lines.join('\n')}
 
     const imgUrl = getImageUrlForDino(d);
 
-    // ✅ V3: headerは共通（単価/セレクト/プレビューを揃える）
+    // ✅ 2重表示対策：allowSex=true の時は「特殊側の複製ボタン」は出さない
+    const spDupHtml = allowSex ? '' : `<button class="dupBtn" type="button" data-act="dup" style="min-width:120px;">複製</button>`;
+
     card.innerHTML = `
       <div class="cardInner">
         <div class="cardHead">
@@ -727,7 +705,7 @@ ${lines.join('\n')}
             <div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap;">
               <button class="dupBtn" type="button" data-act="sp-undo" style="min-width:120px;background:rgba(185,74,85,.22);border-color:rgba(185,74,85,.35);">− 取消</button>
               <button class="dupBtn" type="button" data-act="sp-all" style="min-width:120px;">全種</button>
-              <button class="dupBtn" type="button" data-act="dup" style="min-width:120px;">複製</button>
+              ${spDupHtml}
 
               <div style="flex:1;min-width:220px;color:rgba(255,255,255,.7);font-weight:900;">
                 <div class="gLine">入力：<span class="gInput">(未入力)</span></div>
@@ -757,12 +735,21 @@ ${lines.join('\n')}
     const fEl = $('.js-f', card);
     const previewEl = $('.cardPreview', card);
 
+    const normalWrap = $('.normalControls', card);
+
     // special elements
     const spWrap = $('.specialControls', card);
     const grid = $('.gGrid', card);
     const inputEl = $('.gInput', card);
     const sumEl = $('.gSum', card);
     const allBtn = $('button[data-act="sp-all"]', card);
+
+    function ensureOutVisible() {
+      if (!el.out) return;
+      el.out.style.display = 'block';
+      el.out.style.visibility = 'visible';
+      el.out.style.opacity = '1';
+    }
 
     function syncPreview() {
       previewEl.textContent = getCardPreviewText(key, d, null);
@@ -784,10 +771,18 @@ ${lines.join('\n')}
 
     function syncSpecialUI() {
       if (!spWrap) return;
-      if (!(sp?.enabled) || !s.spEnabled) {
+
+      const spOn = !!(sp?.enabled) && !!s.spEnabled;
+      if (!spOn) {
         spWrap.style.display = 'none';
+        // special無しなら通常は必ず見せる
+        if (normalWrap) normalWrap.style.display = 'flex';
         return;
       }
+
+      // ✅ allowSex=false の時は、通常♂♀を出さない（2重表示の根本対策）
+      if (normalWrap) normalWrap.style.display = allowSex ? 'flex' : 'none';
+
       spWrap.style.display = 'block';
 
       const maxN = Math.max(1, Math.min(60, Number(sp.max || 16)));
@@ -849,15 +844,14 @@ ${lines.join('\n')}
       ev.preventDefault();
       if (el.q.value.trim()) return;
       card.classList.toggle('isCollapsed');
-
-      // ✅ 「カードを開いた時点で出力エリアを表示」= out を必ず見える状態にする
-      // （CSS側で潰されてても、ここで強制）
-      el.out.style.display = 'block';
-      el.out.style.visibility = 'visible';
-      el.out.style.opacity = '1';
+      // ✅ 「カードを開いた時点で出力エリアを表示」
+      ensureOutVisible();
     });
 
     function step(sex, delta) {
+      // allowSex=false の特殊恐竜は♂♀操作自体を無効化（UIが残っても破綻させない）
+      if (sp?.enabled && s.spEnabled && !allowSex) return;
+
       if (sex === 'm') s.m = Math.max(0, Number(s.m || 0) + delta);
       if (sex === 'f') s.f = Math.max(0, Number(s.f || 0) + delta);
       autoSpecify(s);
@@ -869,7 +863,6 @@ ${lines.join('\n')}
 
     function dupCard() {
       const dupKey = `${d.id}__dup_${uid()}`;
-      // ✅ “見た目”ではなく state を丸ごと複製（特殊＋♂♀も含む）
       const clone = JSON.parse(JSON.stringify(s));
       state[dupKey] = clone;
       saveState();
@@ -936,7 +929,7 @@ ${lines.join('\n')}
       }
     });
 
-    // ✅ special config がある恐竜は特殊欄を表示（allowSex は “同居可”なので排他しない）
+    // ✅ special config がある恐竜は特殊欄を表示
     if (sp?.enabled) {
       s.spEnabled = true;
       saveState();
@@ -990,6 +983,13 @@ ${lines.join('\n')}
     const qEl = $('.js-q', card);
     const prevEl = $('.cardPreview', card);
 
+    function ensureOutVisible() {
+      if (!el.out) return;
+      el.out.style.display = 'block';
+      el.out.style.visibility = 'visible';
+      el.out.style.opacity = '1';
+    }
+
     function sync() {
       qEl.textContent = String(s.qty || 0);
       prevEl.textContent = getCardPreviewText(key, null, it);
@@ -1001,10 +1001,7 @@ ${lines.join('\n')}
       ev.preventDefault();
       if (el.q.value.trim()) return;
       card.classList.toggle('isCollapsed');
-
-      el.out.style.display = 'block';
-      el.out.style.visibility = 'visible';
-      el.out.style.opacity = '1';
+      ensureOutVisible();
     });
 
     card.addEventListener('click', (ev) => {
@@ -1152,7 +1149,6 @@ ${lines.join('\n')}
     const sorted = target.slice().sort((a, b) => {
       const ak = norm(stripTEK(a.name));
       const bk = norm(stripTEK(b.name));
-      // まず「TEK以外/TEK」混在時も同じロジックで並ぶ
       if (ak < bk) return -1;
       if (ak > bk) return 1;
       return a.name.localeCompare(b.name, 'ja');
@@ -1772,7 +1768,7 @@ ${lines.join('\n')}
     return wrap;
   }
 
-  /* ========= ROOM（元のまま） ========= */
+  /* ========= ROOM ========= */
   function hasEggOrEmbryoSelected() {
     const targets = new Set(['受精卵', '受精卵(指定)', '胚', '胚(指定)']);
     for (const k of Object.keys(state)) {
@@ -1983,10 +1979,12 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
     ensureOrderList(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
     ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
 
-    // ✅ V3: outは常に表示（CSSがどうでもJS側で担保）
-    el.out.style.display = 'block';
-    el.out.style.visibility = 'visible';
-    el.out.style.opacity = '1';
+    // ✅ outは常に表示（CSSがどうでもJS側で担保）
+    if (el.out) {
+      el.out.style.display = 'block';
+      el.out.style.visibility = 'visible';
+      el.out.style.opacity = '1';
+    }
 
     setTab('dino');
   }
