@@ -11,7 +11,7 @@
   <link rel="icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
 
   <link rel="stylesheet" href="style.css" />
-  <script defer src="app.js?v=20260207_09"></script>
+  <script defer src="app.js"></script>
 </head>
 
 <body>
@@ -22,7 +22,7 @@
         <button id="qClear" class="qClear" type="button" aria-label="検索をクリア">×</button>
       </div>
 
-      <select id="delivery" class="delivery">
+      <select id="delivery" class="delivery" aria-label="納品目安">
         <option value="即納品可能">即納品可能</option>
         <option value="本日夜">本日夜</option>
       </select>
@@ -31,7 +31,8 @@
       <div id="total" class="total">0円</div>
     </div>
 
-    <textarea id="out" class="out" readonly></textarea>
+    <!-- ✅ 出力エリア：常時表示（CSSで強制表示もする前提） -->
+    <textarea id="out" class="out" readonly aria-label="出力"></textarea>
 
     <div class="subrow">
       <button id="openManage" class="ghost" type="button">管理</button>
@@ -44,7 +45,7 @@
     </div>
   </header>
 
-  <main class="list" id="list"></main>
+  <main class="list" id="list" aria-label="リスト"></main>
 
   <!-- Manage Modal -->
   <div id="modalOverlay" class="modalOverlay isHidden" aria-hidden="true">
