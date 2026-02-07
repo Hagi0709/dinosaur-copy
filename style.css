@@ -328,7 +328,7 @@ body{
 
 /* --- DEPLOY CHECK --- */
 body::before{
-  content:"CSS反映OK";
+  content:"CSS反映OK1";
   position:fixed;
   top:6px;
   left:6px;
