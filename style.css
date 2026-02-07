@@ -889,9 +889,11 @@ button{cursor:pointer}
   padding-bottom:0;
 }
 
-/* ===== type width: fit "受精卵(指定)" ===== */
+/* ===== type width: fit "受精卵(指定)" (narrow & fixed) ===== */
 .typeRow{ justify-content:flex-end; }
 .type{
-  flex:0 0 auto;
-  width:160px; /* "受精卵(指定)" が入る最小幅 */
+  flex:0 0 auto !important;
+  width:160px !important;
+  min-width:160px !important; /* 以前の min-width:176px を上書き */
+  max-width:160px !important;
 }
