@@ -461,6 +461,18 @@ function sortByOrder(list, kind) {
   });
 }
 
+/* ========= manage: 50音順 ========= */
+function sortKeyKana50(name, kind) {
+  let s = String(name || '').trim();
+  // ✅ 恐竜だけ TEK を無視して並び替え
+  if (kind === 'dino') s = s.replace(/^TEK\s*/i, '');
+  // ✅ カタカナ→ひらがな（既存の toHira を利用）
+  s = toHira(s);
+  // スペース等は除去して比較を安定させる
+  s = s.replace(/\s+/g, '');
+  return s;
+}
+
   /* ========= behavior rules ========= */
   function ensureDinoState(key, defType, spCfg = null) {
     if (!inputState.has(key)) {
@@ -1276,13 +1288,16 @@ ${lines.join('\n')}
   function renderManageCatalog() {
     const wrap = document.createElement('div');
 
-    const top = document.createElement('div');
-    top.style.display = 'flex';
-    top.style.justifyContent = 'flex-end';
-    top.style.marginBottom = '10px';
-    top.innerHTML = `<button class="pill" type="button" data-act="add">＋追加</button>`;
-    wrap.appendChild(top);
-
+const top = document.createElement('div');
+top.style.display = 'flex';
+top.style.justifyContent = 'flex-end';
+top.style.gap = '10px';
+top.style.marginBottom = '10px';
+top.innerHTML = `
+  <button class="pill" type="button" data-act="kana">50音順</button>
+  <button class="pill" type="button" data-act="add">＋追加</button>
+`;
+wrap.appendChild(top);
     const list = (activeTab === 'dino')
       ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
       : sortByOrder(items.filter(x => !hidden.item.has(x.id)), 'item');
@@ -1305,13 +1320,42 @@ ${lines.join('\n')}
       const act = btn?.dataset?.act;
       const id = btn?.dataset?.id;
 
-      if (act === 'add') {
-        if (activeTab === 'dino') openAddDino();
-        else openAddItem();
-        return;
-      }
+if (act === 'add') {
+  if (activeTab === 'dino') openAddDino();
+  else openAddItem();
+  return;
+}
 
-      if (!act || !id) return;
+if (act === 'kana') {
+  const kind = activeTab; // 'dino' or 'item'
+  const ok = await confirmAsk('50音順に並び替えますか？');
+  if (!ok) return;
+
+  const src = (kind === 'dino') ? dinos.slice() : items.slice();
+  const sorted = src
+    .slice()
+    .sort((a, b) => {
+      const ak = sortKeyKana50(a.name, kind);
+      const bk = sortKeyKana50(b.name, kind);
+      const c = ak.localeCompare(bk, 'ja');
+      if (c !== 0) return c;
+      // 同一キーのときは元の名前→idで安定化
+      const c2 = String(a.name || '').localeCompare(String(b.name || ''), 'ja');
+      if (c2 !== 0) return c2;
+      return String(a.id).localeCompare(String(b.id));
+    });
+
+  const ord = sorted.map(x => x.id);
+  order[kind] = ord;
+  saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
+
+  renderList();
+  setManageTab('catalog');
+  openToast('50音順に並び替えました');
+  return;
+}
+
+if (!act || !id) return;
 
       const kind = activeTab;
       const ord = (order[kind] || []).slice();
