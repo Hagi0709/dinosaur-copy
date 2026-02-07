@@ -1,6 +1,38 @@
 (() => {
   'use strict';
 
+  /* ========= global error trap (diagnostic) ========= */
+  function showFatal(msg) {
+    try {
+      const host = document.getElementById('list') || document.body;
+      let box = document.getElementById('fatalBox');
+      if (!box) {
+        box = document.createElement('div');
+        box.id = 'fatalBox';
+        box.style.margin = '12px 0';
+        box.style.padding = '12px 14px';
+        box.style.borderRadius = '16px';
+        box.style.border = '1px solid rgba(255,80,80,.35)';
+        box.style.background = 'rgba(120,0,0,.18)';
+        box.style.color = '#fff';
+        box.style.fontWeight = '900';
+        box.style.whiteSpace = 'pre-wrap';
+        box.style.wordBreak = 'break-word';
+        host.prepend(box);
+      }
+      box.textContent = msg;
+    } catch {}
+  }
+  window.addEventListener('error', (ev) => {
+    const e = ev?.error;
+    showFatal('JSエラー: ' + (e?.message || ev?.message || 'unknown'));
+  });
+  window.addEventListener('unhandledrejection', (ev) => {
+    const r = ev?.reason;
+    showFatal('Promiseエラー: ' + (r?.message || String(r)));
+  });
+
+
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -54,10 +86,6 @@
     PRICES: 'prices_v1',
     DELIVERY: 'delivery_v1',
 
-
-    // ✅ fetch fallback cache
-    DINOS_TXT_CACHE: 'dinos_txt_cache_v1',
-    ITEMS_TXT_CACHE: 'items_txt_cache_v1',
     DINO_IMAGES_OLD: 'dino_images_v1', // 旧：画像(localStorage)
 
     DINO_OVERRIDE: 'dino_override_v1',
@@ -421,22 +449,17 @@
 
   /* ========= fetch & parse ========= */
   async function fetchTextSafe(path) {
+    // returns { ok, status, text, url }
+    const url = path + '?ts=' + Date.now();
     try {
-      const r = await fetch(path + '?ts=' + Date.now(), { cache: 'no-store' });
-      if (!r.ok) return '';
-      return await r.text();
-    } catch { return ''; }
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) return { ok: false, status: r.status, text: '', url };
+      const t = await r.text();
+      return { ok: true, status: r.status, text: t, url };
+    } catch (e) {
+      return { ok: false, status: 0, text: '', url, error: String(e?.message || e) };
+    }
   }
-
-  function cacheText(key, text) {
-    const t = String(text || '').trim();
-    if (!t) return;
-    try { localStorage.setItem(key, t); } catch {}
-  }
-  function loadCachedText(key) {
-    try { return (localStorage.getItem(key) || '').trim(); } catch { return ''; }
-  }
-
 
   function parseDinoLine(line) {
     line = (line || '').trim();
@@ -1043,6 +1066,23 @@ ${lines.join('\n')}
   /* ========= render ========= */
   function renderList() {
     el.list.innerHTML = '';
+
+    // empty state
+    if ((activeTab === 'dino' && dinos.filter(d => !hidden.dino.has(d.id)).length === 0) ||
+        (activeTab === 'item' && items.filter(i => !hidden.item.has(i.id)).length === 0)) {
+      const empty = document.createElement('div');
+      empty.className = 'card';
+      empty.style.padding = '16px';
+      empty.style.borderRadius = '18px';
+      empty.style.border = '1px solid rgba(255,255,255,.10)';
+      empty.style.background = 'rgba(0,0,0,.18)';
+      empty.innerHTML = `<div style="font-weight:950;margin-bottom:6px;">データがありません</div>
+        <div style="font-weight:800;color:rgba(255,255,255,.72);font-size:12px;line-height:1.6;">
+          dinos.txt / items.txt の読み込みに失敗している可能性があります。<br>
+          上部に赤いエラーが出ていたら、その内容に従ってください。
+        </div>`;
+      el.list.appendChild(empty);
+    }
 
     if (activeTab === 'dino') {
       const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
@@ -1978,24 +2018,35 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
       openToast('画像DBの読み込みに失敗しました');
     }
 
-    let dText = await fetchTextSafe('./dinos.txt');
-    let iText = await fetchTextSafe('./items.txt');
+    const dRes = await fetchTextSafe('./dinos.txt');
+    const iRes = await fetchTextSafe('./items.txt');
 
-    // ✅ dinos.txt / items.txt が取得できない場合は直近キャッシュを使う（GitHub Pagesのパス不整合対策）
-    if (!String(dText || '').trim()) dText = loadCachedText(LS.DINOS_TXT_CACHE);
-    if (!String(iText || '').trim()) iText = loadCachedText(LS.ITEMS_TXT_CACHE);
+    if (!dRes.ok) {
+      showFatal(
+        `dinos.txt を読み込めませんでした。
+` +
+        `URL: ${dRes.url}
+` +
+        `status: ${dRes.status}${dRes.error ? `
+error: ${dRes.error}` : ''}
 
-    // 取得できたらキャッシュ更新
-    cacheText(LS.DINOS_TXT_CACHE, dText);
-    cacheText(LS.ITEMS_TXT_CACHE, iText);
-
-
-    const baseD = dText.split(/\r?\n/).map(parseDinoLine).filter(Boolean);
-    const baseI = iText.split(/\r?\n/).map(parseItemLine).filter(Boolean);
-
-    if (baseD.length === 0 && baseI.length === 0 && (!custom.dino || custom.dino.length === 0) && (!custom.item || custom.item.length === 0)) {
-      openToast('dinos.txt / items.txt が読み込めません（index.html と同じフォルダに配置されているか確認してください）');
+` +
+        `・GitHub Pages は大文字/小文字を区別します（dinos.txt / items.txt）。
+` +
+        `・同階層に置いてコミット/デプロイ済みか確認してください。`
+      );
     }
+    if (!iRes.ok) {
+      // items は任意なので致命傷扱いにはしないが表示は出す
+      openToast('items.txt を読み込めませんでした');
+    }
+
+    const baseD = (dRes.text || '').split(/
+?
+/).map(parseDinoLine).filter(Boolean);
+    const baseI = (iRes.text || '').split(/
+?
+/).map(parseItemLine).filter(Boolean);
 
     dinos = baseD.concat(custom.dino.map(x => ({
       id: x.id,
@@ -2007,16 +2058,28 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
 
     items = baseI.concat(custom.item.map(x => ({ id: x.id, name: x.name, unit: x.unit, price: x.price, kind: 'item' })));
 
+    // ✅ 何も無い場合でもUIが「真っ白」にならないようにする
+    if (!dinos.length && !items.length) {
+      // renderList の empty state に任せる
+    }
+
     ensureOrderList(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
     ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
 
     // ✅ V3: outは常に表示（CSSがどうでもJS側で担保）
-    el.out.style.display = 'block';
-    el.out.style.visibility = 'visible';
-    el.out.style.opacity = '1';
+    if (el.out) {
+      el.out.style.display = 'block';
+      el.out.style.visibility = 'visible';
+      el.out.style.opacity = '1';
+    }
 
     setTab('dino');
   }
 
-  init();
+  // Safari で稀に defer が効かない/DOMが未構築のタイミングがあるので保険
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
 })();
