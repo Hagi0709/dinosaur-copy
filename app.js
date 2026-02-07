@@ -437,16 +437,29 @@
     saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
   }
 
-  function sortByOrder(list, kind) {
-    const ord = order[kind] || [];
-    const idx = new Map(ord.map((id, i) => [id, i]));
-    return list.slice().sort((a, b) => {
-      const ai = idx.has(a.id) ? idx.get(a.id) : 1e9;
-      const bi = idx.has(b.id) ? idx.get(b.id) : 1e9;
-      if (ai !== bi) return ai - bi;
-      return a.name.localeCompare(b.name, 'ja');
-    });
-  }
+function sortByOrder(list, kind) {
+  const ord = order[kind] || [];
+  const idx = new Map(ord.map((id, i) => [id, i]));
+
+  // ✅ ソート用名称を生成（TEKは除外）
+  const sortName = (name) => {
+    if (!name) return '';
+    return name.startsWith('TEK')
+      ? name.slice(3).trim()
+      : name;
+  };
+
+  return list.slice().sort((a, b) => {
+    const ai = idx.has(a.id) ? idx.get(a.id) : 1e9;
+    const bi = idx.has(b.id) ? idx.get(b.id) : 1e9;
+    if (ai !== bi) return ai - bi;
+
+    const an = sortName(a.name);
+    const bn = sortName(b.name);
+
+    return an.localeCompare(bn, 'ja');
+  });
+}
 
   /* ========= behavior rules ========= */
   function ensureDinoState(key, defType, spCfg = null) {
