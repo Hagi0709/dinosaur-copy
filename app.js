@@ -1,6 +1,5 @@
 (() => {
   'use strict';
-  console.log('DINO LIST APP VERSION: 2026-02-07-01');
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -537,103 +536,6 @@ function sortByOrder(list, kind) {
   }
 
   /* ========= output ========= */
-
-  /* ========= output ========= */
-
-  // ✅ カード内表示用：恐竜の小計行を生成
-  function buildDinoMiniLine(d, s, sp) {
-    if (!d || !s) return '';
-
-    // SPECIAL（ガチャ等）
-    if (sp?.enabled && s.mode === 'special') {
-      const allowSex = !!sp.allowSex;
-      const m = Number(s.m || 0);
-      const f = Number(s.f || 0);
-      const sexQty = m + f;
-
-      // allowSexで通常入力がある場合 → 通常扱い
-      if (allowSex && sexQty > 0) {
-        const type = s.type || d.defType || '受精卵';
-        const unitPrice = prices[type] || 0;
-        const price = unitPrice * sexQty;
-
-        const tOut = String(type).replace('(指定)', '');
-        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
-
-        if (isPair) {
-          if (m === f) return `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
-          const p = [];
-          if (m > 0) p.push(`♂×${m}`);
-          if (f > 0) p.push(`♀×${f}`);
-          return `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
-        }
-        return `${d.name}${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
-      }
-
-      const unitPrice = Number(sp.unit || 0);
-      const allPrice = Number(sp.all || 0);
-
-      if (s.all) {
-        if (allPrice <= 0) return '';
-        return `${d.name}全種 = ${allPrice.toLocaleString('ja-JP')}円`;
-      }
-
-      const picks = Array.isArray(s.picks) ? s.picks : [];
-      if (!picks.length) return '';
-      const price = picks.length * unitPrice;
-      const seq = picks.map(n => circled(n)).join('');
-      return `${d.name}${seq} = ${price.toLocaleString('ja-JP')}円`;
-    }
-
-    // NORMAL（従来）
-    const type = s.type || d.defType || '受精卵';
-    const m = Number(s.m || 0);
-    const f = Number(s.f || 0);
-    const qty = m + f;
-    if (qty <= 0) return '';
-
-    const unitPrice = prices[type] || 0;
-    const price = unitPrice * qty;
-
-    const tOut = String(type).replace('(指定)', '');
-    const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
-
-    if (isPair) {
-      if (m === f) return `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
-      const p = [];
-      if (m > 0) p.push(`♂×${m}`);
-      if (f > 0) p.push(`♀×${f}`);
-      return `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
-    }
-    return `${d.name}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
-  }
-
-  // ✅ カード内表示用：アイテム小計行
-  function buildItemMiniLine(it, s) {
-    if (!it || !s) return '';
-    const qty = Number(s.qty || 0);
-    if (qty <= 0) return '';
-    const totalCount = qty * Number(it.unit || 1);
-    const price = qty * Number(it.price || 0);
-    return `${it.name} × ${totalCount} = ${price.toLocaleString('ja-JP')}円`;
-  }
-
-    // ✅ カードを開いた瞬間などに「出力エリア(#out)」を強制表示
-  function ensureOutputVisible() {
-    if (!el.out) return;
-
-    // ✅ CSSの !important を確実に上書きする
-    el.out.style.setProperty('display', 'block', 'important');
-    el.out.style.setProperty('visibility', 'visible', 'important');
-    el.out.style.setProperty('opacity', '1', 'important');
-    el.out.style.setProperty('height', '160px', 'important');
-    el.out.style.setProperty('min-height', '160px', 'important');
-    el.out.style.setProperty('max-height', '320px', 'important');
-    el.out.style.setProperty('padding', '10px 12px', 'important');
-    el.out.style.setProperty('margin-top', '10px', 'important');
-    el.out.style.setProperty('pointer-events', 'auto', 'important');
-  }
-
   function rebuildOutput() {
     const lines = [];
     let sum = 0;
@@ -830,12 +732,6 @@ ${lines.join('\n')}
     const s = ensureDinoState(key, d.defType, sp);
 
     const card = document.createElement('div');
-        // ✅ 応急：同一カード内で controls が重複したら後ろを消す（2重表示対策）
-    function dedupeControlsInCard(root) {
-      const list = $$('.controls', root);
-      if (list.length <= 1) return;
-      for (let i = 1; i < list.length; i++) list[i].remove();
-    }
     card.className = 'card isCollapsed';
     card.dataset.card = '1';
     card.dataset.key = key;
@@ -843,10 +739,7 @@ ${lines.join('\n')}
     card.dataset.kind = 'dino';
     card.dataset.did = d.id;
 
-        const imgUrl = getImageUrlForDino(d);
-
-    // ✅ カード内小計表示（後で更新）
-    const miniStyle = `style="margin-top:10px;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.14);color:rgba(255,255,255,.85);font-weight:900;font-size:13px;display:none;"`;
+    const imgUrl = getImageUrlForDino(d);
 
     // ✅ special UI（ガチャ等）
     if (sp?.enabled && s.mode === 'special') {
@@ -901,10 +794,6 @@ ${lines.join('\n')}
 
           ${normalBlock}
 
-                    ${normalBlock}
-
-          <div class="cardMiniOut" ${miniStyle}></div>
-
           <div class="controls gachaWrap" style="display:block;margin-top:10px;">
             <div class="gWrap">
               <div class="gGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
@@ -928,15 +817,13 @@ ${lines.join('\n')}
           </div>
         </div>
       `;
-            dedupeControlsInCard(card);
 
       $('.name', card).textContent = d.name;
 
       // ✅ 左側ほぼ全部で折りたたみ
       installLeftToggleHit(card);
 
-            const inputEl = $('.gInput', card);
-      const miniOut = $('.cardMiniOut', card);
+      const inputEl = $('.gInput', card);
       const sumEl = $('.gSum', card);
       const allBtn = $('button[data-act="all"]', card);
 
@@ -1000,12 +887,6 @@ ${lines.join('\n')}
             : (s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0));
           card.classList.toggle('isCollapsed', q === 0);
         }
-        // ✅ カード内小計
-        if (miniOut) {
-          const line = buildDinoMiniLine(d, s, sp);
-          miniOut.textContent = line || '';
-          miniOut.style.display = line ? '' : 'none';
-        }
       };
 
       syncSpecial();
@@ -1014,12 +895,7 @@ ${lines.join('\n')}
       $('.cardToggle', card).addEventListener('click', (ev) => {
         ev.preventDefault();
         if (el.q.value.trim()) return;
-
-        const wasCollapsed = card.classList.contains('isCollapsed');
         card.classList.toggle('isCollapsed');
-
-        // ✅ 「開いた瞬間」に出力エリアを表示
-        if (wasCollapsed) ensureOutputVisible();
       });
 
       sel?.addEventListener('click', (ev) => ev.stopPropagation());
@@ -1153,8 +1029,6 @@ ${lines.join('\n')}
           </div>
         </div>
 
-        <div class="cardMiniOut" ${miniStyle}></div>
-
         <div class="controls">
           <div class="stepper male">
             <button class="btn" type="button" data-act="m-">−</button>
@@ -1172,7 +1046,6 @@ ${lines.join('\n')}
         </div>
       </div>
     `;
-          dedupeControlsInCard(card);
 
     $('.name', card).textContent = d.name;
 
@@ -1183,8 +1056,7 @@ ${lines.join('\n')}
     if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
     sel.value = s.type;
 
-        const unit = $('.unit', card);
-    const miniOut = $('.cardMiniOut', card);
+    const unit = $('.unit', card);
     unit.textContent = `単価${prices[s.type] || 0}円`;
 
     const mEl = $('.js-m', card);
@@ -1205,12 +1077,6 @@ ${lines.join('\n')}
       if (!el.q.value.trim()) {
         const q = (Number(s.m || 0) + Number(s.f || 0));
         card.classList.toggle('isCollapsed', q === 0);
-      }
-            // ✅ カード内小計
-      if (miniOut) {
-        const line = buildDinoMiniLine(d, s, null);
-        miniOut.textContent = line || '';
-        miniOut.style.display = line ? '' : 'none';
       }
     }
 
@@ -1235,16 +1101,11 @@ ${lines.join('\n')}
       applyCollapseAndSearch();
     });
 
-        $('.cardToggle', card).addEventListener('click', (ev) => {
-        ev.preventDefault();
-        if (el.q.value.trim()) return;
-
-        const wasCollapsed = card.classList.contains('isCollapsed');
-        card.classList.toggle('isCollapsed');
-
-        // ✅ 「開いた瞬間」に出力エリアを表示
-        if (wasCollapsed) ensureOutputVisible();
-      });
+    $('.cardToggle', card).addEventListener('click', (ev) => {
+      ev.preventDefault();
+      if (el.q.value.trim()) return;
+      card.classList.toggle('isCollapsed');
+    });
 
     $$('button[data-act]', card).forEach(btn => {
       btn.addEventListener('click', (ev) => {
@@ -1296,8 +1157,6 @@ ${lines.join('\n')}
           </div>
         </div>
 
-        <div class="cardMiniOut" style="margin-top:10px;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.14);color:rgba(255,255,255,.85);font-weight:900;font-size:13px;display:none;"></div>
-
         <div class="controls">
           <div class="stepper" style="flex:1;">
             <button class="btn" type="button" data-act="-">−</button>
@@ -1307,7 +1166,6 @@ ${lines.join('\n')}
         </div>
       </div>
     `;
-          dedupeControlsInCard(card);
 
     $('.name', card).textContent = it.name;
     $('.unit', card).textContent = `単価${it.price}円`;
@@ -1323,27 +1181,15 @@ ${lines.join('\n')}
       toggle.style.zIndex = '5';
     }
 
-        const qEl = $('.js-q', card);
-    const miniOut = $('.cardMiniOut', card);
+    const qEl = $('.js-q', card);
     qEl.textContent = String(s.qty || 0);
-        // ✅ 初期表示
-    if (miniOut) {
-      const line = buildItemMiniLine(it, s);
-      miniOut.textContent = line || '';
-      miniOut.style.display = line ? '' : 'none';
-    }
 
     card.classList.toggle('isCollapsed', Number(s.qty || 0) === 0);
 
     toggle?.addEventListener('click', (ev) => {
       ev.preventDefault();
       if (el.q.value.trim()) return;
-
-      const wasCollapsed = card.classList.contains('isCollapsed');
       card.classList.toggle('isCollapsed');
-
-      // ✅ 「開いた瞬間」に出力エリアを表示
-      if (wasCollapsed) ensureOutputVisible();
     });
 
     $$('button[data-act]', card).forEach(btn => {
@@ -1354,11 +1200,7 @@ ${lines.join('\n')}
         if (act === '+') s.qty = Math.max(0, Number(s.qty || 0) + 1);
 
         qEl.textContent = String(s.qty || 0);
-        if (miniOut) {
-          const line = buildItemMiniLine(it, s);
-          miniOut.textContent = line || '';
-          miniOut.style.display = line ? '' : 'none';
-        }
+
         if (!el.q.value.trim()) card.classList.toggle('isCollapsed', Number(s.qty || 0) === 0);
 
         rebuildOutput();
@@ -1382,9 +1224,9 @@ ${lines.join('\n')}
     }
 
     rebuildOutput();
-    ensureOutputVisible(); // ✅ 初期でも必ず見せる
     applyCollapseAndSearch();
   }
+
   function setTab(tab) {
     activeTab = tab;
     el.tabDinos.classList.toggle('isActive', tab === 'dino');
@@ -1476,134 +1318,92 @@ ${lines.join('\n')}
   }
 
   /* ========= manage: catalog ========= */
-function renderManageCatalog() {
-  const wrap = document.createElement('div');
+  function renderManageCatalog() {
+    const wrap = document.createElement('div');
 
-  // ✅ 上部バー（追加 / 五十音並び替え）
-  const top = document.createElement('div');
-  top.style.display = 'flex';
-  top.style.justifyContent = 'flex-end';
-  top.style.gap = '10px';
-  top.style.marginBottom = '10px';
+    const top = document.createElement('div');
+    top.style.display = 'flex';
+    top.style.justifyContent = 'flex-end';
+    top.style.marginBottom = '10px';
+    top.innerHTML = `<button class="pill" type="button" data-act="add">＋追加</button>`;
+    wrap.appendChild(top);
 
-  // 恐竜タブのときだけ「五十音」ボタンを出す
-  top.innerHTML = `
-    ${activeTab === 'dino' ? `<button class="pill" type="button" data-act="sortKana">五十音</button>` : ``}
-    <button class="pill" type="button" data-act="add">＋追加</button>
-  `;
-  wrap.appendChild(top);
+    const list = (activeTab === 'dino')
+      ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
+      : sortByOrder(items.filter(x => !hidden.item.has(x.id)), 'item');
 
-  const list = (activeTab === 'dino')
-    ? sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino')
-    : sortByOrder(items.filter(x => !hidden.item.has(x.id)), 'item');
+    list.forEach(obj => {
+      const r = document.createElement('div');
+      r.className = 'mRow';
+      r.innerHTML = `
+        <div class="mName">${escapeHtml(obj.name)}</div>
+        ${activeTab === 'dino' ? `<button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">✎</button>` : ``}
+        <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
+        <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
+        <button class="sBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
+      `;
+      wrap.appendChild(r);
+    });
 
-  list.forEach(obj => {
-    const r = document.createElement('div');
-    r.className = 'mRow';
-    r.innerHTML = `
-      <div class="mName">${escapeHtml(obj.name)}</div>
-      ${activeTab === 'dino' ? `<button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">✎</button>` : ``}
-      <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
-      <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
-      <button class="sBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
-    `;
-    wrap.appendChild(r);
-  });
+    wrap.addEventListener('click', async (e) => {
+      const btn = e.target?.closest('button');
+      const act = btn?.dataset?.act;
+      const id = btn?.dataset?.id;
 
-  // ✅ 五十音ソートキー（TEKはTEK以降で判定）
-  const kanaKey = (name) => {
-    let s = String(name || '').trim();
-    // TEKで始まる恐竜は、TEK以降をキーにする（大小区別なし）
-    s = s.replace(/^TEK/i, '').trim();
-    // カタカナ→ひらがな（既存ユーティリティ）
-    s = toHira(s);
-    // 空白は無視
-    s = s.replace(/\s+/g, '');
-    return s;
-  };
-
-  wrap.addEventListener('click', async (e) => {
-    const btn = e.target?.closest('button');
-    const act = btn?.dataset?.act;
-    const id = btn?.dataset?.id;
-
-    // ✅ 五十音並び替え（恐竜のみ）
-    if (act === 'sortKana' && activeTab === 'dino') {
-      const visible = dinos.filter(x => !hidden.dino.has(x.id)).slice();
-
-      visible.sort((a, b) => {
-        const ak = kanaKey(a.name);
-        const bk = kanaKey(b.name);
-        const c = ak.localeCompare(bk, 'ja');
-        if (c !== 0) return c;
-        // 同キー時の安定化（元の名前で比較）
-        return String(a.name || '').localeCompare(String(b.name || ''), 'ja');
-      });
-
-      const ord = visible.map(x => x.id);
-      order.dino = ord;
-      saveJSON(LS.DINO_ORDER, ord);
-
-      renderList();
-      setManageTab('catalog');
-      openToast('五十音順に並び替えました');
-      return;
-    }
-
-    if (act === 'add') {
-      if (activeTab === 'dino') openAddDino();
-      else openAddItem();
-      return;
-    }
-
-    if (!act || !id) return;
-
-    const kind = activeTab;
-    const ord = (order[kind] || []).slice();
-    const i = ord.indexOf(id);
-
-    if (act === 'up' && i > 0) {
-      [ord[i], ord[i - 1]] = [ord[i - 1], ord[i]];
-      order[kind] = ord;
-      saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
-      renderList();
-      setManageTab('catalog');
-      return;
-    }
-
-    if (act === 'down' && i !== -1 && i < ord.length - 1) {
-      [ord[i], ord[i + 1]] = [ord[i + 1], ord[i]];
-      order[kind] = ord;
-      saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
-      renderList();
-      setManageTab('catalog');
-      return;
-    }
-
-    if (act === 'del') {
-      const ok = await confirmAsk('削除しますか？');
-      if (!ok) return;
-
-      if (kind === 'dino') {
-        hidden.dino.add(id);
-        saveJSON(LS.DINO_HIDDEN, Array.from(hidden.dino));
-      } else {
-        hidden.item.add(id);
-        saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item));
+      if (act === 'add') {
+        if (activeTab === 'dino') openAddDino();
+        else openAddItem();
+        return;
       }
-      renderList();
-      setManageTab('catalog');
-      return;
-    }
 
-    if (act === 'edit' && kind === 'dino') {
-      openEditDino(id);
-      return;
-    }
-  });
+      if (!act || !id) return;
 
-  return wrap;
-}
+      const kind = activeTab;
+      const ord = (order[kind] || []).slice();
+      const i = ord.indexOf(id);
+
+      if (act === 'up' && i > 0) {
+        [ord[i], ord[i - 1]] = [ord[i - 1], ord[i]];
+        order[kind] = ord;
+        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
+        renderList();
+        setManageTab('catalog');
+        return;
+      }
+
+      if (act === 'down' && i !== -1 && i < ord.length - 1) {
+        [ord[i], ord[i + 1]] = [ord[i + 1], ord[i]];
+        order[kind] = ord;
+        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, ord);
+        renderList();
+        setManageTab('catalog');
+        return;
+      }
+
+      if (act === 'del') {
+        const ok = await confirmAsk('削除しますか？');
+        if (!ok) return;
+
+        if (kind === 'dino') {
+          hidden.dino.add(id);
+          saveJSON(LS.DINO_HIDDEN, Array.from(hidden.dino));
+        } else {
+          hidden.item.add(id);
+          saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item));
+        }
+        renderList();
+        setManageTab('catalog');
+        return;
+      }
+
+      if (act === 'edit' && kind === 'dino') {
+        openEditDino(id);
+        return;
+      }
+    });
+
+    return wrap;
+  }
 
   // ---- 以下、あなたの元コードの残り（画像管理 / ROOM / events / init）は
   // ScrollLockを openRoom/closeRoom, openImgViewer/closeImgViewer にも適用した上でそのままです。
