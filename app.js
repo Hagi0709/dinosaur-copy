@@ -630,7 +630,6 @@ function miniLineToHtml(line){
   return t;
 }
 
-
 function syncDinoMiniLine(card, d, key) {
   const sp = getSpecialCfgForDino(d);
   const s = inputState.get(key);
@@ -648,4 +647,5 @@ function syncDinoMiniLine(card, d, key) {
       unit.textContent = `単価${prices[s?.type] || 0}円`;
     }
   }
+}
 })();
