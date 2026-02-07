@@ -911,3 +911,11 @@ select.type{
 .card.isCollapsed .cardHead{ padding-bottom:0; }
 .card.isCollapsed .cardInner{ padding-bottom:10px; }
 .card.isCollapsed .nameWrap{ gap:6px; }
+
+
+/* === stabilize thumb height === */
+.miniThumb{height:56px; flex-shrink:0;}
+
+/* === color stepper values by sex === */
+.stepper.male .val{color:var(--male);}
+.stepper.female .val{color:var(--female);}
