@@ -1,3 +1,6 @@
+/* =========================
+   Base
+========================= */
 * { box-sizing: border-box; }
 
 :root{
@@ -17,242 +20,27 @@ body{
   font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",system-ui,sans-serif;
 }
 
-.app{
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 14px;
-}
-
-.top{
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: rgba(11,14,18,.86);
-  backdrop-filter: blur(10px);
-  padding-bottom: 10px;
-}
-
 /* =========================
-   1行固定：検索/即納/コピー/0円
-   ========================= */
-.toolbar{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex-wrap: nowrap;
-}
-
-.search-wrap{
-  flex: 1 1 auto;
-  min-width: 0;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: var(--panel2);
-}
-
-.search-icon{
-  opacity:.85;
-  font-size: 16px;
-}
-
-.search{
-  flex:1;
-  min-width: 0;
-  border:0;
-  outline:none;
-  background:transparent;
-  color: var(--text);
-  font-size: 15px;
-}
-
-.clear{
-  border:0;
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.14);
-  color: var(--text);
-}
-
-.pill{
-  flex: 0 0 auto;
-  border:0;
-  color: var(--text);
-  font-weight: 800;
-  padding: 12px 14px;
-  border-radius: 999px;
-  background: var(--panel2);
-  white-space: nowrap;
-}
-
-.pill-caret{
-  opacity:.8;
-  margin-left: 4px;
-}
-
-.btn.copy{
-  flex: 0 0 auto;
-  border:0;
-  padding: 12px 14px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.12);
-  color: var(--text);
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.total{
-  flex: 0 0 auto;
-  font-weight: 900;
-  color: var(--green);
-  white-space: nowrap;
-}
-
-/* =========================
-   note
-   ========================= */
-.note{
-  margin: 12px 0;
-  padding: 12px;
-  border-radius: 14px;
-  background: rgba(255,255,255,.05);
-}
-
-.note p{
-  margin: 0;
-  line-height: 1.35;
-  font-weight: 700;
-}
-
-.rule{
-  height: 1px;
-  background: var(--line);
-  margin: 10px 0;
-}
-
-.summary{
-  margin: 0;
-  min-height: 18px;
-}
-
-/* =========================
-   tabs：同サイズ・横一列
-   ========================= */
-.tabs{
-  display:flex;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.tab{
-  flex: 1 1 0;
-  border:0;
-  height: 44px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.08);
-  color: var(--text);
-  font-weight: 900;
-}
-
-.tab.active{
-  background: rgba(255,255,255,.18);
-}
-
-/* =========================
-   list & card
-   ========================= */
-.list{
-  display:flex;
-  flex-direction: column;
-  gap: 18px;
-  margin-top: 14px;
-}
-
-/* ★各カード右上配置の基準にする */
+   Card
+========================= */
 .card{
-  position: relative;                 /* ← ここが超重要（右上固定の基準） */
-  background: rgba(255,255,255,.06);
+  background: var(--panel);
   border-radius: 18px;
   padding: 12px;
 }
 
-/* タイトル行：右上ブロックと被らないように余白を確保 */
-.card-top{
-  padding-right: 220px;               /* 受精卵+単価+複製の分だけ逃がす */
-}
-
-.card-title{
-  font-size: 22px;
-  font-weight: 900;
-}
-
-/* =========================
-   受精卵 / 単価：各カードの右上へ固定
-   ========================= */
-.card-right{
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  display:flex;
-  align-items:center;
-  gap: 10px;
-}
-
-/* =========================
-   複製：各カードの右上（受精卵/単価の“下”）へ固定
-   ========================= */
-.dup{
-  position: absolute;
-  top: 56px;
-  right: 12px;
-  width: 180px;
-  height: 40px;
-  margin: 0;
-  border-radius: 14px;
-  border:0;
-  background: rgba(255,255,255,.12);
-  color: var(--text);
-  font-weight: 900;
-}
-
-/* 右上に複製を置くので、カード中身の上余白を少し確保 */
+/* カード全体を2カラムに */
 .card-body{
-  display:flex;
+  display: grid;
+  grid-template-columns: 140px 1fr;   /* 左：画像 / 右：情報 */
   gap: 12px;
-  margin-top: 18px;
-  padding-top: 34px;                  /* 右上の複製と干渉しづらくする */
-  align-items: flex-start;
-}
-
-.select-pill{
-  border:0;
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.12);
-  color: var(--text);
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.select-pill .caret{
-  opacity:.8;
-  margin-left: 6px;
-}
-
-.unit-price{
-  font-weight: 900;
-  color: var(--muted);
-  white-space: nowrap;
+  margin-top: 8px;
 }
 
 /* =========================
-   画像：小さく、左、横2:縦1固定
-   ========================= */
+   Image
+========================= */
 .thumb{
-  flex: 0 0 140px;
   width: 140px;
   aspect-ratio: 2 / 1;
   border-radius: 14px;
@@ -267,29 +55,66 @@ body{
   display:block;
 }
 
-.thumb.is-empty{
-  background: rgba(0,0,0,.35);
-}
-
-/* 右側：操作ブロック */
+/* =========================
+   Right column
+========================= */
 .card-controls{
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.qty-row{
-  display:flex;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
 }
 
+/* ---- 上段：タイトル + 受精卵 + 単価 ---- */
+.card-top{
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-title{
+  font-size: 20px;
+  font-weight: 900;
+}
+
+/* 受精卵 */
+.select-pill{
+  border:0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+  color: var(--text);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.select-pill .caret{
+  margin-left: 6px;
+  opacity:.7;
+}
+
+/* 単価 */
+.unit-price{
+  font-weight: 800;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ---- 下段：± ± 複製 ---- */
+.qty-row{
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
 .qty{
-  flex: 1 1 0;
   display:flex;
   align-items:center;
   justify-content: space-between;
   padding: 10px 12px;
   border-radius: 14px;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 900;
 }
 
@@ -298,8 +123,8 @@ body{
   background: transparent;
   color: var(--text);
   font-size: 22px;
-  width: 38px;
-  height: 34px;
+  width: 34px;
+  height: 30px;
 }
 
 .qty.blue{
@@ -310,34 +135,26 @@ body{
   border: 2px solid rgba(255,100,220,.6);
 }
 
-/* =========================
-   スマホ幅：右上ブロックが詰まる時の調整
-   ========================= */
-@media (max-width: 420px){
-  .pill, .btn.copy { padding: 12px 10px; }
-  .total { font-size: 14px; }
-  .thumb{ flex-basis: 120px; width: 120px; }
-
-  .card-top{
-    padding-right: 200px;
-  }
-  .dup{
-    width: 160px;
-  }
+/* 複製：±と同じ行の右 */
+.dup{
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border:0;
+  background: rgba(255,255,255,.12);
+  color: var(--text);
+  font-weight: 900;
+  white-space: nowrap;
 }
 
-/* --- DEPLOY CHECK --- */
-body::before{
-  content:"CSS反映OK1";
-  position:fixed;
-  top:6px;
-  left:6px;
-  z-index:99999;
-  padding:6px 10px;
-  border-radius:10px;
-  font-weight:900;
-  font-size:12px;
-  background:rgba(0,0,0,.65);
-  border:1px solid rgba(255,255,255,.25);
-  color:#9dffb0;
+/* =========================
+   Mobile fine tune
+========================= */
+@media (max-width: 420px){
+  .card-body{
+    grid-template-columns: 120px 1fr;
+  }
+  .thumb{
+    width: 120px;
+  }
 }
