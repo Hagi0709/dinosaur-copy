@@ -205,7 +205,7 @@ button{cursor:pointer}
 .cardHead{
   position:relative;
   display:grid;
-  grid-template-columns:minmax(0,1fr) 176px;
+  grid-template-columns:minmax(0,1fr) 156px;
   gap:10px;
   align-items:start;
   padding-bottom:12px;
@@ -824,3 +824,29 @@ button{cursor:pointer}
   text-overflow:clip;       /* …は出さない */
   max-width:100%;
 }
+
+
+/* ===== overrides: type+dup in header & clipping fix ===== */
+.right{ width:156px; }                 /* 受精卵(指定)が入る最小寄り */
+.type{ min-width:156px; height:36px; font-size:12px; }
+.typeRow{ display:flex; align-items:center; gap:8px; }
+
+.dupMini{
+  height:36px;
+  padding:0 12px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);
+  color:rgba(255,255,255,.9);
+  font-weight:700;
+  font-size:12px;
+}
+
+.unitRow{ padding-bottom:6px; }        /* 文字の下の見切れ対策 */
+.miniOut, .unit{
+  line-height:1.55;                   /* ♂♀ の下が切れるのを防ぐ */
+  overflow:visible;
+}
+
+/* 既存の大きい複製ボタンは残してもいいが、邪魔なら非表示 */
+.dupBig, button[data-act="dup"].dupBig{ display:none !important; }
