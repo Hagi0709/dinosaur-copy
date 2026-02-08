@@ -1,6 +1,10 @@
 (() => {
   'use strict';
 
+  // cards once-expanded (prevents auto-collapse when qty becomes empty)
+  const openedOnce = new Set();
+
+
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -626,7 +630,7 @@ function dinoSuffixLine(d, s, sp) {
     const sp = getSpecialCfgForDino(d);
     const s = inputState.get(key);
     const out = $('.miniOut', card);
-    if (out) out.innerHTML = formatMiniOutHtml(dinoSuffixLine(d, s, sp));
+    if (out) out.textContent = dinoSuffixLine(d, s, sp);
 
     const unit = $('.unit', card);
     if (unit) {
@@ -811,7 +815,7 @@ ${lines.join('\n')}
       const key = card.dataset.key;
       const kind = card.dataset.kind;
       const qty = getQtyForCard(key, kind);
-      const collapsed = q ? !show : (qty === 0);
+      const collapsed = q ? !show : ((qty === 0) && !openedOnce.has(key));
       card.classList.toggle('isCollapsed', collapsed);
     });
   }
@@ -891,7 +895,8 @@ ${lines.join('\n')}
                 <button class="dupMini" type="button" data-act="dup">複製</button>
                 ${allowSex ? `<select class="type typeSel" aria-label="種類"></select>` : ``}
               </div>
-              <div class="unitRow">
+
+            <div class="unitRow">
             <div class="unit"></div>
             <div class="miniOut">&nbsp;</div>
           </div>
@@ -989,17 +994,20 @@ ${lines.join('\n')}
           const q = (Number(s.m || 0) + Number(s.f || 0)) > 0
             ? (Number(s.m || 0) + Number(s.f || 0))
             : (s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0));
-          card.classList.toggle('isCollapsed', q === 0);
+          if (q > 0) openedOnce.add(key);
+          card.classList.toggle('isCollapsed', (q === 0) && !openedOnce.has(key));
         }
       };
 
       syncSpecial();
-      card.classList.toggle('isCollapsed', getQtyForCard(key, 'dino') === 0);
+      if (getQtyForCard(key, 'dino') > 0) openedOnce.add(key);
+      card.classList.toggle('isCollapsed', (getQtyForCard(key, 'dino') === 0) && !openedOnce.has(key));
 
       $('.cardToggle', card).addEventListener('click', (ev) => {
         ev.preventDefault();
         if (el.q.value.trim()) return;
         card.classList.toggle('isCollapsed');
+        if (!card.classList.contains('isCollapsed')) openedOnce.add(key);
       });
 
       sel?.addEventListener('click', (ev) => ev.stopPropagation());
@@ -1008,6 +1016,7 @@ ${lines.join('\n')}
         s.type = sel.value;
         autoSpecify(s);
         syncSpecial();
+        openedOnce.add(key);
         rebuildOutput();
         applyCollapseAndSearch();
       });
@@ -1022,6 +1031,7 @@ ${lines.join('\n')}
           s.picks = [];
         }
         syncSpecial();
+        openedOnce.add(key);
         rebuildOutput();
         applyCollapseAndSearch();
       };
@@ -1118,10 +1128,7 @@ ${lines.join('\n')}
           </div>
 
           <div class="right">
-            <div class="typeRow">
-              <button class="dupMini" type="button" data-act="dup">複製</button>
-              <select class="type typeSel" aria-label="種類"></select>
-            </div>
+            <select class="type" aria-label="種類"></select>
             <div class="unitRow">
             <div class="unit"></div>
             <div class="miniOut">&nbsp;</div>
@@ -1206,7 +1213,8 @@ ${lines.join('\n')}
       ev.preventDefault();
       if (el.q.value.trim()) return;
       card.classList.toggle('isCollapsed');
-    });
+        if (!card.classList.contains('isCollapsed')) openedOnce.add(key);
+      });
 
     $$('button[data-act]', card).forEach(btn => {
       btn.addEventListener('click', (ev) => {
@@ -1310,7 +1318,8 @@ ${lines.join('\n')}
       ev.preventDefault();
       if (el.q.value.trim()) return;
       card.classList.toggle('isCollapsed');
-    });
+        if (!card.classList.contains('isCollapsed')) openedOnce.add(key);
+      });
 
     $$('button[data-act]', card).forEach(btn => {
       btn.addEventListener('click', (ev) => {
@@ -1323,6 +1332,7 @@ ${lines.join('\n')}
 
         if (!el.q.value.trim()) card.classList.toggle('isCollapsed', Number(s.qty || 0) === 0);
 
+        openedOnce.add(key);
         rebuildOutput();
         applyCollapseAndSearch();
       });
@@ -1448,12 +1458,9 @@ ${lines.join('\n')}
 
     const top = document.createElement('div');
     top.style.display = 'flex';
-    top.style.justifyContent = 'space-between';
+    top.style.justifyContent = 'flex-end';
     top.style.marginBottom = '10px';
-    top.innerHTML = `
-      <button class="pill" type="button" data-act="kana">50音順</button>
-      <button class="pill" type="button" data-act="add">＋追加</button>
-    `;
+    top.innerHTML = `<button class="pill" type="button" data-act="add">＋追加</button>`;
     wrap.appendChild(top);
 
     const list = (activeTab === 'dino')
@@ -1481,40 +1488,6 @@ ${lines.join('\n')}
       if (act === 'add') {
         if (activeTab === 'dino') openAddDino();
         else openAddItem();
-        return;
-      }
-
-
-      if (act === 'kana') {
-        if (activeTab !== 'dino') {
-          openToast('50音順ソートは恐竜のみ対応です');
-          return;
-        }
-        const ok = await confirmAsk('恐竜リストを50音順に並び替えますか？\n（TEKは無視して並べます）');
-        if (!ok) return;
-
-        const sortKey = (name) => {
-          const raw = String(name || '');
-          const base = raw.replace(/^TEK\s*/i, '');
-          return norm(base);
-        };
-
-        const visible = dinos.filter(x => !hidden.dino.has(x.id));
-        const sorted = visible.slice().sort((a, b) => {
-          const ak = sortKey(a.name);
-          const bk = sortKey(b.name);
-          if (ak === bk) return a.name.localeCompare(b.name, 'ja');
-          return ak < bk ? -1 : 1;
-        }).map(x => x.id);
-
-        const cur = (order.dino || []);
-        const rest = cur.filter(id => !sorted.includes(id));
-        order.dino = [...sorted, ...rest];
-        saveJSON(LS.DINO_ORDER, order.dino);
-
-        renderList();
-        openToast('50音順で並び替えました');
-        renderManage(); // 一覧再描画
         return;
       }
 
@@ -1549,7 +1522,8 @@ if (act === 'kana') {
     saveJSON(LS.ITEM_ORDER, order.item);
   }
 
-  applyOrderAndRender();
+  renderList();
+  setManageTab('catalog');
   return;
 }
 
@@ -2387,9 +2361,13 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
   init();
 })();
 
+// ===== build timestamp (manage only) =====
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('buildStamp');
+  if (el) el.textContent = 'build: 2026-02-08 06:56:43';
+});
 
 // ===== build timestamp (manage only) =====
-const BUILD_ISO = '2026-02-08T09:57:33Z';
 function formatJST(d){
   try{
     const dtf = new Intl.DateTimeFormat('ja-JP', {
@@ -2406,13 +2384,12 @@ function formatJST(d){
     const get = (t) => (parts.find(p => p.type === t)?.value || '00');
     return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`;
   }catch(e){
+    // Fallback: assume local time is JST (not guaranteed)
     const pad = (n) => String(n).padStart(2,'0');
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
   }
 }
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('buildStamp');
-  if (!el) return;
-  el.textContent = 'build: ' + formatJST(new Date(BUILD_ISO));
+  if (el) el.textContent = 'build: ' + formatJST(new Date());
 });
-
