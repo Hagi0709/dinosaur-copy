@@ -7,8 +7,8 @@
   --ok:#78ffb3;
   --danger:#b94a55;
 
-  --male:#bfeaff;
-  --female:#ffd1e8;
+  --male:#57c7ff;
+  --female:#ff5fcf;
 
   /* ✅ 固定ヘッダー高さ（JS不要。CSSで確実に下げる） */
   --topPad: 246px; /* 初期値（画面幅で後半で調整） */
@@ -205,9 +205,11 @@ button{cursor:pointer}
 .cardHead{
   position:relative;
   display:grid;
-  grid-template-columns:minmax(0,1fr) 140px;
+  grid-template-columns:minmax(0,1fr) 176px;
   gap:10px;
   align-items:start;
+  padding-bottom:12px;
+  overflow:visible;
 }
 
 /* ✅ ここが原因：toggleが前面すぎるとselectが押せない
@@ -230,34 +232,6 @@ button{cursor:pointer}
 .right{
   position:relative;
   z-index:3;
-}
-
-.right .unitRow{
-  display:flex;
-  flex-direction:column;
-  align-items:flex-end;
-  gap:2px;
-}
-.unitRow .unit,
-.unitRow .miniOut{
-  font-size:12px;
-  line-height:1.35;
-  color:var(--mut);
-  text-align:right;
-  padding-bottom:2px; /* ♂♀などの下が欠けないように */
-  white-space:nowrap;
-}
-.unitRow .miniOut{ opacity:.95; }
-.maleText{ color:var(--male); }
-.femaleText{ color:var(--female); }
-
-.memoLine{
-  margin-top:10px;
-  font-size:12px;
-  line-height:1.35;
-  color:var(--mut);
-  padding-bottom:2px;
-  white-space:pre-wrap;
 }
 /* ✅ 右側(select/単価)は必ずトグルより前面にして操作を守る */
 .right{
@@ -321,6 +295,7 @@ button{cursor:pointer}
 }
 
 .right{
+  width:176px;
   display:flex;
   flex-direction:column;
   gap:8px;
@@ -331,8 +306,9 @@ button{cursor:pointer}
   z-index:10; /* ✅ toggleより上 */
 }
 .type{
-  height:44px;
+  height:38px;
   width:100%;
+  min-width:176px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
@@ -349,10 +325,37 @@ button{cursor:pointer}
   z-index:11; /* ✅ 念のため */
 }
 .unit{
-  font-size:12px;
-  color:var(--mut);
   white-space:nowrap;
-  text-align:right;
+  opacity:.85;
+}
+
+
+
+.unitRow{
+  display:grid;
+  grid-template-columns:1fr auto;
+  column-gap:10px;
+  row-gap:2px;
+  align-items:start;
+  padding-top:2px;
+}
+.unit, .miniOut{
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  word-break:break-word;
+}
+.miniOut{
+  /* 価格表示は省略せず全表示 */
+  min-width:0;
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  word-break:break-word;
+  font-weight:900;
+  color:rgba(255,255,255,.6);
+  font-size:12px;
+  line-height:1.4;
 }
 
 .controls{
@@ -768,4 +771,150 @@ button{cursor:pointer}
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
+}
+
+/* ===== overrides: price line ===== */
+.unitRow{
+  grid-column:1 / -1;          /* span full header width */
+  display:flex;
+  flex-direction:column;       /* 単価と表示価格を上下 */
+  align-items:flex-end;
+  gap:2px;
+  padding-top:2px;
+}
+.miniOut, .unit{
+  font-size:11px;              /* 文字サイズを揃えて小さく */
+  line-height:1.25;
+  opacity:.9;
+}
+.miniOut{
+  white-space:nowrap;          /* 表示価格を1行 */
+  overflow:hidden;
+  text-overflow:clip;          /* 省略記号は出さない */
+  max-width:100%;
+}
+.unit{
+  white-space:nowrap;
+  opacity:.75;
+}
+
+
+/* ===== overrides: unit/price fit & no clipping ===== */
+.right{
+  flex-direction:column;
+  gap:6px;
+}
+.unitRow{
+  margin-top:auto;          /* 右カラムの下に寄せて、高さを増やしにくくする */
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:2px;
+  padding:2px 0 4px;        /* 下の見切れ対策 */
+}
+.miniOut, .unit{
+  font-size:11px;
+  line-height:1.35;         /* 文字の下が切れない */
+  font-weight:600;
+}
+.unit{ opacity:.75; }
+.miniOut{
+  white-space:nowrap;       /* 表示価格は1行 */
+  overflow:hidden;
+  text-overflow:clip;       /* …は出さない */
+  max-width:100%;
+}
+
+
+/* === overrides: type/dup compact + no clipping === */
+.typeRow{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  justify-content:flex-end;
+  flex-wrap:nowrap;
+  overflow:visible;
+}
+
+select.type{
+  height:40px;
+  padding:0 14px;
+  padding-right:34px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.10);
+  color:#fff;
+  font-weight:950;
+  white-space:nowrap;
+  width:9.8em;          /* fits "受精卵(指定)" */
+  flex:0 0 auto;        /* prevent stretching */
+  -webkit-appearance:none;
+  appearance:none;
+}
+
+/* duplicate button same look as select */
+.dupBtn{
+  height:40px;
+  padding:0 14px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.10);
+  color:#fff;
+  font-weight:950;
+  white-space:nowrap;
+}
+
+/* keep right area from clipping */
+.cardHead .right{
+  overflow:visible;
+}
+
+
+/* === patched: compact collapsed card + dupMini left of select === */
+
+/* 右側カラムを固定幅にしない（複製＋セレクトの並びに対応） */
+.cardHead{ grid-template-columns: minmax(0,1fr) auto; }
+.right{ width:auto !important; }
+.selRow{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  justify-content:flex-end;
+}
+
+/* 受精卵(指定)が入る程度に少し細く固定 */
+.type{
+  width:156px;
+  min-width:156px;
+}
+
+/* 複製は小さく、見た目はセレクトに寄せる */
+.dupMini{
+  height:38px;
+  width:66px;
+  min-width:66px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-size:13px;
+  font-weight:900;
+  padding:0 10px;
+  white-space:nowrap;
+}
+
+/* 折りたたみ時：余計な下スペースを削る */
+.card.isCollapsed .cardHead{ padding-bottom:0; }
+.card.isCollapsed .cardInner{ padding-bottom:10px; }
+.card.isCollapsed .nameWrap{ gap:6px; }
+
+/* ===== build timestamp ===== */
+#buildTime{
+  position: fixed;
+  left: 8px;
+  top: 8px;
+  font-size: 11px;
+  opacity: .6;
+  z-index: 9999;
+  pointer-events: none;
 }
