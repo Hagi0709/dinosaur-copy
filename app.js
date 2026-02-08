@@ -1,6 +1,8 @@
 (() => {
   'use strict';
 
+  const BUILD_JST = '2026-02-09 08:00:23';
+
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -53,19 +55,6 @@
     ROOM_PW: 'room_pw_v1',
     SPECIAL_CFG: 'special_cfg_v1',
   };
-  // ===== memos (per-card notes) =====
-  const loadMemos = () => {
-    try{
-      const raw = localStorage.getItem(LS.MEMOS);
-      const obj = raw ? JSON.parse(raw) : {};
-      return (obj && typeof obj === 'object') ? obj : {};
-    }catch(e){ return {}; }
-  };
-  const saveMemos = (memos) => {
-    try{ localStorage.setItem(LS.MEMOS, JSON.stringify(memos || {})); }catch(e){}
-  };
-  const memoKey = (kind, id) => `${kind}:${id}`;
-
 
   const loadJSON = (k, fb) => {
     try {
@@ -476,6 +465,12 @@ function sortByOrder(list, kind) {
     return an.localeCompare(bn, 'ja');
   });
 }
+
+  function formatPriceLineHTML(line){
+    const safe = escapeHtml(String(line));
+    return safe.replace(/♂/g,'<span class="sex male">オス</span>').replace(/♀/g,'<span class="sex female">メス</span>');
+  }
+
 
   /* ========= behavior rules ========= */
   function ensureDinoState(key, defType, spCfg = null) {
@@ -2362,7 +2357,7 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
 // ===== build timestamp (manage only) =====
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('buildStamp');
-  if (el) el.textContent = 'build: 2026-02-08 23:45:52';
+  if (el) el.textContent = 'build: 2026-02-08 06:56:43';
 });
 
 // ===== build timestamp (manage only) =====
