@@ -2351,3 +2351,30 @@ document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('buildStamp');
   if (el) el.textContent = 'build: 2026-02-08 06:56:43';
 });
+
+// ===== build timestamp (manage only) =====
+function formatJST(d){
+  try{
+    const dtf = new Intl.DateTimeFormat('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+    const parts = dtf.formatToParts(d);
+    const get = (t) => (parts.find(p => p.type === t)?.value || '00');
+    return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`;
+  }catch(e){
+    // Fallback: assume local time is JST (not guaranteed)
+    const pad = (n) => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('buildStamp');
+  if (el) el.textContent = 'build: ' + formatJST(new Date());
+});
