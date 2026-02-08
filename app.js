@@ -535,99 +535,6 @@ function sortByOrder(list, kind) {
     });
   }
 
-
-  function dinoSuffixLine(d, s, sp) {
-    if (!s) return '';
-
-    // special mode output (ガチャ等)
-    if (sp?.enabled && s.mode === 'special') {
-      const allowSex = !!sp.allowSex;
-      const m = Number(s.m || 0);
-      const f = Number(s.f || 0);
-      const sexQty = m + f;
-
-      if (allowSex && sexQty > 0) {
-        const type = s.type || d.defType || '受精卵';
-        const unitPrice = prices[type] || 0;
-        const price = unitPrice * sexQty;
-
-        const tOut = String(type).replace('(指定)', '');
-        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
-
-        if (isPair) {
-          if (m === f) {
-            return `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
-          }
-          const p = [];
-          if (m > 0) p.push(`♂×${m}`);
-          if (f > 0) p.push(`♀×${f}`);
-          return `${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
-        }
-
-        return `${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
-      }
-
-      const unitPrice = Number(sp.unit || 0);
-      const allPrice = Number(sp.all || 0);
-
-      if (s.all) {
-        return `全種 = ${allPrice.toLocaleString('ja-JP')}円`;
-      }
-
-      const picks = Array.isArray(s.picks) ? s.picks.slice() : [];
-      if (picks.length <= 0) return '';
-
-      const price = picks.length * unitPrice;
-      const seq = picks.map(n => circled(n)).join('');
-      return `${seq} = ${price.toLocaleString('ja-JP')}円`;
-    }
-
-    // normal mode output
-    const type = s.type || d.defType || '受精卵';
-    const m = Number(s.m || 0);
-    const f = Number(s.f || 0);
-    const qty = m + f;
-    if (qty <= 0) return '';
-
-    const unitPrice = prices[type] || 0;
-    const price = unitPrice * qty;
-
-    const tOut = String(type).replace('(指定)', '');
-    const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
-
-    if (isPair) {
-      if (m === f) {
-        return `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
-      }
-      const p = [];
-      if (m > 0) p.push(`♂×${m}`);
-      if (f > 0) p.push(`♀×${f}`);
-      return `${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
-    }
-
-    return `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
-  }
-
-  function syncDinoMiniLine(card, d, key) {
-    const sp = getSpecialCfgForDino(d);
-    const s = inputState.get(key);
-    const out = $('.miniOut', card);
-    if (out) out.textContent = dinoSuffixLine(d, s, sp);
-
-    const unit = $('.unit', card);
-    if (unit) {
-      // 特殊+オスメス（通常入力）は通常単価を表示
-      if (sp?.enabled && s?.mode === 'special' && sp.allowSex) {
-        unit.textContent = `単価${prices[s.type] || 0}円`;
-      } else if (sp?.enabled && s?.mode === 'special') {
-        unit.textContent = `1体=${Number(sp.unit || 0)}円`;
-      } else {
-        unit.textContent = `単価${prices[s?.type] || 0}円`;
-      }
-    }
-  }
-
-
   /* ========= output ========= */
   function rebuildOutput() {
     const lines = [];
@@ -858,9 +765,10 @@ ${lines.join('\n')}
             <div class="val js-f">0</div>
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
-</div>
-      ` : `<div class="controls controlsWrap" style="margin-top:10px;justify-content:flex-end;">
-</div>`;
+
+          <select class="type" aria-label="種類"></select>
+        </div>
+      ` : ``;
 
       card.innerHTML = `
         <div class="cardInner">
@@ -873,15 +781,7 @@ ${lines.join('\n')}
             </div>
 
             <div class="right">
-              <div class="selRow">
-                <button class="dupMini" type="button" data-act="dup">複製</button>
-                ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
-              </div>
-            <div class="unitRow">
-              <div class="miniOut"></div>
-              <div class="unit"></div>
-            </div>
-          </div>
+              <div class="unit" style="font-weight:900;color:rgba(255,255,255,.65);">1体=${unitPrice}円</div>
             </div>
           </div>
 
@@ -965,9 +865,7 @@ ${lines.join('\n')}
           }
         }
 
-        syncDinoMiniLine(card, d, key);
-
-                if (!el.q.value.trim()) {
+        if (!el.q.value.trim()) {
           const q = (Number(s.m || 0) + Number(s.f || 0)) > 0
             ? (Number(s.m || 0) + Number(s.f || 0))
             : (s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0));
@@ -1014,25 +912,6 @@ ${lines.join('\n')}
         ev.stopPropagation();
 
         const act = btn.dataset.act;
-
-        if (act === 'dup') {
-          const dupKey = `${d.id}__dup_${uid()}`;
-          ephemeralKeys.add(dupKey);
-          inputState.set(dupKey, {
-            mode: s.mode,
-            type: s.type,
-            m: 0,
-            f: 0,
-            all: false,
-            picks: []
-          });
-
-          const dupCard = buildDinoCard(d, dupKey);
-          card.after(dupCard);
-          rebuildOutput();
-          applyCollapseAndSearch();
-          return;
-        }
 
         if (act === 'm-') return step('m', -1);
         if (act === 'm+') return step('m', +1);
@@ -1100,15 +979,8 @@ ${lines.join('\n')}
           </div>
 
           <div class="right">
-            <div class="selRow">
-              <button class="dupMini" type="button" data-act="dup">複製</button>
-              <select class="type" aria-label="種類"></select>
-            </div>
-            <div class="unitRow">
-            <div class="miniOut"></div>
+            <select class="type" aria-label="種類"></select>
             <div class="unit"></div>
-          </div>
-        </div>
           </div>
         </div>
 
@@ -1124,7 +996,9 @@ ${lines.join('\n')}
             <div class="val js-f">0</div>
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
-</div>
+
+          <button class="dupBtn" type="button" data-act="dup">複製</button>
+        </div>
       </div>
     `;
 
@@ -1139,7 +1013,6 @@ ${lines.join('\n')}
 
     const unit = $('.unit', card);
     unit.textContent = `単価${prices[s.type] || 0}円`;
-    syncDinoMiniLine(card, d, key);
 
     const mEl = $('.js-m', card);
     const fEl = $('.js-f', card);
@@ -1155,7 +1028,6 @@ ${lines.join('\n')}
       unit.textContent = `単価${prices[s.type] || 0}円`;
       mEl.textContent = String(s.m || 0);
       fEl.textContent = String(s.f || 0);
-      syncDinoMiniLine(card, d, key);
 
       if (!el.q.value.trim()) {
         const q = (Number(s.m || 0) + Number(s.f || 0));
@@ -1194,25 +1066,6 @@ ${lines.join('\n')}
       btn.addEventListener('click', (ev) => {
         ev.stopPropagation();
         const act = btn.dataset.act;
-
-        if (act === 'dup') {
-          const dupKey = `${d.id}__dup_${uid()}`;
-          ephemeralKeys.add(dupKey);
-          inputState.set(dupKey, {
-            mode: s.mode,
-            type: s.type,
-            m: 0,
-            f: 0,
-            all: false,
-            picks: []
-          });
-
-          const dupCard = buildDinoCard(d, dupKey);
-          card.after(dupCard);
-          rebuildOutput();
-          applyCollapseAndSearch();
-          return;
-        }
 
         if (act === 'm-') step('m', -1);
         if (act === 'm+') step('m', +1);
@@ -1319,12 +1172,7 @@ ${lines.join('\n')}
 
     if (activeTab === 'dino') {
       const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
-      dList.forEach(d => {
-        el.list.appendChild(buildDinoCard(d));
-        // render duplicated cards (same dino, multiple lines)
-        const dups = Array.from(ephemeralKeys).filter(k => k.startsWith(d.id + '__dup_'));
-        dups.forEach(k => el.list.appendChild(buildDinoCard(d, k)));
-      });
+      dList.forEach(d => el.list.appendChild(buildDinoCard(d)));
     } else {
       const iList = sortByOrder(items.filter(i => !hidden.item.has(i.id)), 'item');
       iList.forEach(it => el.list.appendChild(buildItemCard(it)));
