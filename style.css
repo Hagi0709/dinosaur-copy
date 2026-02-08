@@ -1,770 +1,842 @@
-:root{
-  --bg:#0b0f14;
-  --card:#141a22;
-  --stroke:rgba(255,255,255,.10);
-  --txt:rgba(255,255,255,.92);
-  --mut:rgba(255,255,255,.60);
-  --ok:#78ffb3;
-  --danger:#b94a55;
+      :root{
+        --bg:#0b0f14;
+        --card:#141a22;
+        --stroke:rgba(255,255,255,.10);
+        --txt:rgba(255,255,255,.92);
+        --mut:rgba(255,255,255,.60);
+        --ok:#78ffb3;
+        --danger:#b94a55;
 
-  --male:#57c7ff;
-  --female:#ff5fcf;
+        --male:#57c7ff;
+        --female:#ff5fcf;
 
-  /* ✅ 固定ヘッダー高さ（JS不要。CSSで確実に下げる） */
-  --topPad: 246px; /* 初期値（画面幅で後半で調整） */
-}
+        /* ✅ 固定ヘッダー高さ（JS不要。CSSで確実に下げる） */
+        --topPad: 246px; /* 初期値（画面幅で後半で調整） */
+      }
 
-*{box-sizing:border-box}
-html,body{height:100%}
+      *{box-sizing:border-box}
+      html,body{height:100%}
 
-/* ✅ iOS Safari の select が白巨大化するのを抑止 */
-html{color-scheme:dark}
-button,select,input,textarea{touch-action:manipulation; font:inherit}
-select{appearance:none; -webkit-appearance:none}
+      /* ✅ iOS Safari の select が白巨大化するのを抑止 */
+      html{color-scheme:dark}
+      button,select,input,textarea{touch-action:manipulation; font:inherit}
+      select{appearance:none; -webkit-appearance:none}
 
-body{
-  margin:0;
-  font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
-  background:var(--bg);
-  color:var(--txt);
+      body{
+        margin:0;
+        font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+        background:var(--bg);
+        color:var(--txt);
 
-  /* ✅ fixed header の分だけ押し下げる */
-  padding-top: calc(var(--topPad) + env(safe-area-inset-top));
-  padding-bottom:120px;
-}
-button{cursor:pointer}
+        /* ✅ fixed header の分だけ押し下げる */
+        padding-top: calc(var(--topPad) + env(safe-area-inset-top));
+        padding-bottom:120px;
+      }
+      button{cursor:pointer}
 
-/* =========================
-   ✅ Header 固定（stickyではなくfixedで安定化）
-========================= */
-.top{
-  position:fixed;
-  top:0;
-  left:0;
-  right:0;
-  z-index:999; /* これより上はモーダルだけ */
+      /* =========================
+         ✅ Header 固定（stickyではなくfixedで安定化）
+      ========================= */
+      .top{
+        position:fixed;
+        top:0;
+        left:0;
+        right:0;
+        z-index:999; /* これより上はモーダルだけ */
 
-  background:rgba(11,15,20,.95);
-  backdrop-filter:blur(14px);
+        background:rgba(11,15,20,.95);
+        backdrop-filter:blur(14px);
 
-  padding:10px;
-  padding-top:calc(10px + env(safe-area-inset-top));
-  border-bottom:1px solid rgba(255,255,255,.06);
+        padding:10px;
+        padding-top:calc(10px + env(safe-area-inset-top));
+        border-bottom:1px solid rgba(255,255,255,.06);
 
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  will-change: transform;
-}
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+        will-change: transform;
+      }
 
-/* ✅ ヘッダー内の高さは内容で決まるので分岐 */
-@media (max-width: 420px){
-  :root{ --topPad: 248px; }
-}
-@media (max-width: 360px){
-  :root{ --topPad: 260px; }
-}
+      /* ✅ ヘッダー内の高さは内容で決まるので分岐 */
+      @media (max-width: 420px){
+        :root{ --topPad: 248px; }
+      }
+      @media (max-width: 360px){
+        :root{ --topPad: 260px; }
+      }
 
-/* ✅ listの上余白はbody側で持つので不要 */
-.list{padding:12px}
+      /* ✅ listの上余白はbody側で持つので不要 */
+      .list{padding:12px}
 
-/* ================= Top bar ================= */
+      /* ================= Top bar ================= */
 
-.row{
-  display:flex;
-  gap:8px;
-  align-items:center;
-  flex-wrap:wrap;
-}
+      .row{
+        display:flex;
+        gap:8px;
+        align-items:center;
+        flex-wrap:wrap;
+      }
 
-.search{
-  flex:1;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  height:36px;
-  padding:0 10px;
-  border-radius:14px;
-  background:rgba(255,255,255,.07);
-  border:1px solid rgba(255,255,255,.12);
-  min-width:0;
-}
-.search input{
-  flex:1;
-  border:0;
-  outline:none;
-  background:transparent;
-  color:var(--txt);
-  font-size:14px;
-  min-width:0;
-}
-.qClear{
-  width:28px;height:28px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.06);
-  color:#fff;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  line-height:1;
-  font-size:18px;
-}
+      .search{
+        flex:1;
+        display:flex;
+        align-items:center;
+        gap:8px;
+        height:36px;
+        padding:0 10px;
+        border-radius:14px;
+        background:rgba(255,255,255,.07);
+        border:1px solid rgba(255,255,255,.12);
+        min-width:0;
+      }
+      .search input{
+        flex:1;
+        border:0;
+        outline:none;
+        background:transparent;
+        color:var(--txt);
+        font-size:14px;
+        min-width:0;
+      }
+      .qClear{
+        width:28px;height:28px;
+        border-radius:999px;
+        border:1px solid rgba(255,255,255,.14);
+        background:rgba(255,255,255,.06);
+        color:#fff;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        line-height:1;
+        font-size:18px;
+      }
 
-.delivery{
-  height:36px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-size:13px;
-  padding:0 34px 0 10px;
-  position:relative;
-  background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
-                   linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
-  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
-  background-size: 6px 6px, 6px 6px;
-  background-repeat:no-repeat;
-}
-.copy{
-  height:36px;
-  padding:0 12px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-weight:900;
-}
-.total{
-  margin-left:auto;
-  font-size:14px;
-  color:var(--ok);
-  font-weight:900;
-  white-space:nowrap;
-}
+      .delivery{
+        height:36px;
+        border-radius:14px;
+        border:1px solid rgba(255,255,255,.14);
+        background:rgba(255,255,255,.08);
+        color:#fff;
+        font-size:13px;
+        padding:0 34px 0 10px;
+        position:relative;
+        background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
+                         linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
+        background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+        background-size: 6px 6px, 6px 6px;
+        background-repeat:no-repeat;
+      }
+      .copy{
+        height:36px;
+        padding:0 12px;
+        border-radius:14px;
+        border:1px solid rgba(255,255,255,.14);
+        background:rgba(255,255,255,.08);
+        color:#fff;
+        font-weight:900;
+      }
+      .total{
+        margin-left:auto;
+        font-size:14px;
+        color:var(--ok);
+        font-weight:900;
+        white-space:nowrap;
+      }
 
-.out{
-  width:100%;
-  margin-top:8px;
-  height:120px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.22);
-  color:#fff;
-  padding:10px;
-  font-size:12px;
-  line-height:1.45;
-}
+      .out{
+        width:100%;
+        margin-top:8px;
+        height:120px;
+        border-radius:14px;
+        border:1px solid rgba(255,255,255,.12);
+        background:rgba(0,0,0,.22);
+        color:#fff;
+        padding:10px;
+        font-size:12px;
+        line-height:1.45;
+      }
 
-.subrow{
-  margin-top:10px;
-  display:flex;
-  gap:10px;
-  align-items:center;
-  flex-wrap:wrap;
-}
-.ghost{
-  height:34px;
-  padding:0 12px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.06);
-  color:#fff;
-  font-weight:800;
-}
+      .subrow{
+        margin-top:10px;
+        display:flex;
+        gap:10px;
+        align-items:center;
+        flex-wrap:wrap;
+      }
+      .ghost{
+        height:34px;
+        padding:0 12px;
+        border-radius:14px;
+        border:1px solid rgba(255,255,255,.14);
+        background:rgba(255,255,255,.06);
+        color:#fff;
+        font-weight:800;
+      }
 
-.tabs{
-  flex:1;
-  display:flex;
-  gap:10px;
-}
-.tab{
-  flex:1;
-  height:44px;
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.06);
-  color:#fff;
-  font-weight:900;
-}
-.tab.isActive{
-  background:rgba(255,255,255,.10);
-  border-color:rgba(255,255,255,.18);
-}
+      .tabs{
+        flex:1;
+        display:flex;
+        gap:10px;
+      }
+      .tab{
+        flex:1;
+        height:44px;
+        border-radius:18px;
+        border:1px solid rgba(255,255,255,.12);
+        background:rgba(255,255,255,.06);
+        color:#fff;
+        font-weight:900;
+      }
+      .tab.isActive{
+        background:rgba(255,255,255,.10);
+        border-color:rgba(255,255,255,.18);
+      }
 
-/* ================= Cards ================= */
+      /* ================= Cards ================= */
 
-.card{
-  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
-  border:1px solid rgba(255,255,255,.10);
-  border-radius:18px;
-  margin-bottom:10px;
-  overflow:hidden;
-}
-.cardInner{padding:12px}
+      .card{
+        background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+        border:1px solid rgba(255,255,255,.10);
+        border-radius:18px;
+        margin-bottom:10px;
+        overflow:hidden;
+      }
+      .cardInner{padding:12px}
 
-.cardHead{
-  position:relative;
-  display:grid;
-  grid-template-columns:minmax(0,1fr) 140px;
-  gap:10px;
-  align-items:start;
-}
+      .cardHead{
+        position:relative;
+        display:grid;
+        grid-template-columns:minmax(0,1fr) 140px;
+        gap:10px;
+        align-items:start;
+      }
 
-/* ✅ ここが原因：toggleが前面すぎるとselectが押せない
-   → toggleを下げて、右側(select側)を上げる */
-.cardToggle{
-  position:absolute;
-  top:-12px;
-  left:-12px;
-  right:40%;                 /* ✅ 右側40%は"判定外"にして操作可能に */
-  height:calc(100% + 24px);
-  border:0;
-  background:transparent;
-  padding:0;
-  margin:0;
-  cursor:pointer;
-  z-index:2;                 /* 右側UIより下でOK */
-}
+      /* ✅ ここが原因：toggleが前面すぎるとselectが押せない
+         → toggleを下げて、右側(select側)を上げる */
+      .cardToggle{
+        position:absolute;
+        top:-12px;
+        left:-12px;
+        right:40%;                 /* ✅ 右側40%は"判定外"にして操作可能に */
+        height:calc(100% + 24px);
+        border:0;
+        background:transparent;
+        padding:0;
+        margin:0;
+        cursor:pointer;
+        z-index:2;                 /* 右側UIより下でOK */
+      }
 
-/* ✅ 右側（select等）は必ずタップを受け取る */
-.right{
-  position:relative;
-  z-index:3;
-}
-/* ✅ 右側(select/単価)は必ずトグルより前面にして操作を守る */
-.right{
-  position:relative;
-  z-index:30;
-}
-.type{
-  position:relative;
-  z-index:31;
-}
+      /* ✅ 右側（select等）は必ずタップを受け取る */
+      .right{
+        position:relative;
+        z-index:3;
+      }
+      /* ✅ 右側(select/単価)は必ずトグルより前面にして操作を守る */
+      .right{
+        position:relative;
+        z-index:30;
+      }
+      .type{
+        position:relative;
+        z-index:31;
+      }
 
-/* ✅ 右側(select等)はトグルより前面に固定 */
-.right{
-  position:relative;
-  z-index:10;
-}
-.type{
-  position:relative;
-  z-index:11;
-}
+      /* ✅ 右側(select等)はトグルより前面に固定 */
+      .right{
+        position:relative;
+        z-index:10;
+      }
+      .type{
+        position:relative;
+        z-index:11;
+      }
 
-/* ✅ 右側（select）はトグルより上にして操作可能にする */
-.right{
-  position:relative;
-  z-index:10;
-}
-.type{
-  position:relative;
-  z-index:11;
-}
+      /* ✅ 右側（select）はトグルより上にして操作可能にする */
+      .right{
+        position:relative;
+        z-index:10;
+      }
+      .type{
+        position:relative;
+        z-index:11;
+      }
 
-.nameWrap{
-  min-width:0;
+      .nameWrap{
+        min-width:0;
+        display:flex;
+        flex-direction:column;
+        gap:8px;
+        padding-right:6px;
+        position:relative;
+        z-index:2;
+      }
+      .name{
+        font-weight:950;
+        letter-spacing:.2px;
+        font-size:18px;
+        line-height:1.1;
+        word-break:break-word;
+      }
+      .miniThumb{
+        width:112px;
+        aspect-ratio:2 / 1;
+        border-radius:12px;
+        overflow:hidden;
+        border:1px solid rgba(255,255,255,.12);
+        background:rgba(255,255,255,.05);
+      }
+      .miniThumb img{
+        width:100%;
+        height:100%;
+        object-fit:cover;
+        display:block;
+      }
+
+      .right{
+        display:flex;
+        flex-direction:column;
+        gap:8px;
+        align-items:stretch;
+        justify-self:end;
+
+        position:relative;
+        z-index:10; /* ✅ toggleより上 */
+      }
+      .type{
+        height:44px;
+        width:100%;
+        border-radius:16px;
+        border:1px solid rgba(255,255,255,.14);
+        background:rgba(255,255,255,.08);
+        color:#fff;
+        font-size:14px;
+        font-weight:900;
+        padding:0 34px 0 12px;
+        background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
+                         linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
+        background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+        background-size: 6px 6px, 6px 6px;
+        background-repeat:no-repeat;
+        position:relative;
+        z-index:11; /* ✅ 念のため */
+      }
+      .unit{
+        font-size:12px;
+        color:var(--mut);
+        white-space:nowrap;
+        text-align:right;
+      }
+
+      .controls{
+        margin-top:10px;
+        display:flex;
+        gap:10px;
+        align-items:center;
+        flex-wrap:nowrap;
+        overflow:visible;
+      }
+
+      /* ✅ モバイルは折り返し許可（selectが潰れたり被るのを防ぐ） */
+      @media (max-width: 520px){
+        .controls{ flex-wrap:wrap; }
+
+        .controls .stepper{
+          flex:1 1 calc(50% - 5px);
+          min-width:140px;
+        }
+
+        .controls .type{
+          flex:1 1 100%;
+          width:100%;
+        }
+
+        /* 複製ボタンがあるカードは下段に落として崩れ防止 */
+        .controls .dupBtn{
+          flex:1 1 100%;
+        }
+      }
+
+      /* ✅ 特殊＋オスメス用：折り返しを許可して崩れを防ぐ */
+      .controls.controlsWrap{
+        flex-wrap:wrap;
+      }
+
+      /* ✅ wrap時：stepperは2列、selectは下段100% */
+      .controls.controlsWrap .stepper{
+        flex:1 1 calc(50% - 5px);
+        min-width:140px;
+      }
+      .controls.controlsWrap .type{
+        flex:1 1 100%;
+        width:100%;
+        height:44px;
+      }
+
+      .stepper{
+        flex:1;
+        min-width:0;
+        display:flex;
+        align-items:center;
+        gap:8px;
+        padding:8px;
+        border-radius:16px;
+        border:1px solid rgba(255,255,255,.12);
+        background:rgba(255,255,255,.04);
+      }
+      .stepper.male{
+        border-color:color-mix(in srgb, var(--male) 55%, rgba(255,255,255,.12));
+        box-shadow:0 0 0 1px color-mix(in srgb, var(--male) 30%, transparent) inset;
+      }
+      .stepper.female{
+        border-color:color-mix(in srgb, var(--female) 55%, rgba(255,255,255,.12));
+        box-shadow:0 0 0 1px color-mix(in srgb, var(--female) 30%, transparent) inset;
+      }
+
+      .btn{
+        width:44px;
+        height:32px;
+        border-radius:12px;
+        border:1px solid rgba(255,255,255,.14);
+        background:rgba(255,255,255,.10);
+        color:#fff;
+        font-size:18px;
+        font-weight:950;
+        line-height:1;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+      }
+      .val{
+        flex:1;
+        text-align:center;
+        font-weight:950;
+        font-size:16px;
+        min-width:28px;
+      }
+
+      .dupBtn{
+        flex:0 0 auto;
+        height:40px;
+        padding:0 14px;
+        border-radius:16px;
+        border:1px solid rgba(255,255,255,.14);
+        background:rgba(255,255,255,.10);
+        color:#fff;
+        font-weight:950;
+        white-space:nowrap;
+      }
+
+      .card.isCollapsed .controls{display:none}
+
+      /* ✅ special UI を閉じる（JS側class名に合わせるならここも調整可）
+         今のJSでは gWrap/gGrid を使っているので gachaWrap では閉じない。
+         ただし controls 自体を block にしてる special では折りたたみ時に隠す必要がある。
+      */
+      .card.isCollapsed .gWrap{display:none}
+
+      /* ================= Modal ================= */
+
+      .modalOverlay{
+        position:fixed;
+        inset:0;
+        z-index:2000;
+        background:rgba(0,0,0,.55);
+        backdrop-filter:blur(8px);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:14px;
+      }
+      .modalOverlay.isHidden{display:none}
+
+      .modal{
+        width:min(720px, 100%);
+        max-height:min(86vh, 900px);
+        background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+        border:1px solid rgba(255,255,255,.14);
+        border-radius:22px;
+        overflow:hidden;
+        display:flex;
+        flex-direction:column;
+      }
+      .modalHead{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        padding:14px 14px 10px;
+      }
+      .modalTitle{font-weight:950;font-size:18px}
+      .iconBtn{
+        width:44px;height:44px;
+        border-radius:16px;
+        border:1px solid rgba(255,255,255,.14);
+        background:rgba(255,255,255,.08);
+        color:#fff;
+        font-size:22px;
+        line-height:1;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+      }
+
+      .modalTabs{
+        display:flex;
+        gap:10px;
+        padding:0 14px 12px;
+      }
+      .mTab{
+        flex:1;
+        height:40px;
+        border-radius:16px;
+        border:1px solid rgba(255,255,255,.12);
+        background:rgba(255,255,255,.06);
+        color:#fff;
+        font-weight:900;
+      }
+      .mTab.isActive{
+        background:rgba(255,255,255,.10);
+        border-color:rgba(255,255,255,.18);
+      }
+
+      .modalBody{
+        padding:14px;
+        overflow:auto;
+        -webkit-overflow-scrolling:touch;
+      }
+
+      /* Manage rows */
+      .mRow{
+        display:flex;
+        gap:10px;
+        align-items:center;
+        padding:10px;
+        border-radius:18px;
+        border:1px solid rgba(255,255,255,.12);
+        background:rgba(0,0,0,.18);
+        margin-bottom:10px;
+      }
+      .mName{
+        flex:1;
+        font-weight:900;
+        font-size:16px;
+        line-height:1.2;
+        word-break:break-word;
+      }
+      .sBtn{
+        width:44px;height:38px;
+        border-radius:14px;
+        border:1px solid rgba(255,255,255,.14);
+        background:rgba(255,255,255,.08);
+        color:#fff;
+        font-weight:950;
+      }
+      .sBtn.danger{
+        background:rgba(185,74,85,.22);
+        border-color:rgba(185,74,85,.35);
+      }
+
+      /* Prices */
+      .priceGrid{
+        display:grid;
+        grid-template-columns:1fr 140px;
+        gap:10px;
+      }
+      .pKey{
+        padding:12px 10px;
+        border-radius:16px;
+        border:1px solid rgba(255,255,255,.10);
+        background:rgba(0,0,0,.16);
+        font-weight:900;
+      }
+      .pVal input{
+        width:100%;
+        padding:12px 10px;
+        border-radius:16px;
+        border:1px solid rgba(255,255,255,.12);
+        background:rgba(0,0,0,.18);
+        color:#fff;
+        outline:none;
+        text-align:right;
+        font-weight:950;
+      }
+
+      /* ✅ Edit/Add */
+      .edit{
+        width:min(560px, 100%);
+        max-height:min(86vh, 900px);
+        background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+        border:1px solid rgba(255,255,255,.14);
+        border-radius:22px;
+        overflow:hidden;
+        display:flex;
+        flex-direction:column;
+      }
+      .editHead{
+        padding:14px 14px 8px;
+      }
+      .editTitle{
+        font-weight:950;
+        font-size:18px;
+      }
+      .editBody{
+        padding:14px;
+        overflow:auto;
+      }
+      .editForm{
+        display:flex;
+        flex-direction:column;
+        gap:12px;
+      }
+      .editLabel{
+        font-weight:900;
+        color:rgba(255,255,255,.78);
+        margin:2px 2px 0;
+      }
+      .editInput, .editSelect{
+        width:100%;
+        height:46px;
+        border-radius:16px;
+        border:1px solid rgba(255,255,255,.14);
+        background:rgba(0,0,0,.18);
+        color:#fff;
+        outline:none;
+        padding:0 12px;
+        font-weight:900;
+      }
+      .editSelect{
+        padding-right:34px;
+        background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
+                         linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
+        background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+        background-size: 6px 6px, 6px 6px;
+        background-repeat:no-repeat;
+      }
+      .editBtns{
+        display:flex;
+        gap:10px;
+        justify-content:flex-end;
+        margin-top:4px;
+      }
+
+      /* Confirm */
+      .confirm{
+        width:min(520px, 96vw);
+        border-radius:22px;
+        overflow:hidden;
+        border:1px solid rgba(255,255,255,.14);
+        background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+        padding:14px;
+      }
+      .confirmTitle{font-weight:950;font-size:18px;margin-bottom:6px}
+      .confirmText{color:rgba(255,255,255,.85);font-weight:800;margin-bottom:10px}
+      .confirmBtns{display:flex;gap:10px;justify-content:flex-end}
+
+      /* ================= Image Manager ================= */
+
+      .imgRow{
+        display:grid;
+        grid-template-columns:140px minmax(0,1fr);
+        gap:10px 12px;
+        align-items:center;
+        padding:12px;
+        border-radius:18px;
+        border:1px solid rgba(255,255,255,.12);
+        background:rgba(0,0,0,.18);
+        margin-bottom:10px;
+      }
+      .thumb{
+        width:140px;
+        aspect-ratio:2 / 1;
+        border-radius:14px;
+        overflow:hidden;
+        border:1px solid rgba(255,255,255,.12);
+        background:rgba(255,255,255,.06);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        color:rgba(255,255,255,.45);
+        font-weight:900;
+      }
+      .thumb img{
+        width:100%;
+        height:100%;
+        object-fit:cover;
+        display:block;
+      }
+      .imgMid{
+        min-width:0;
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+      }
+      .imgName{
+        min-width:0;
+        font-weight:950;
+        font-size:16px;
+        line-height:1.2;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+      }
+      .imgBtns{
+        display:flex;
+        gap:10px;
+        align-items:center;
+      }
+
+      /* ✅ 画像タブ：上部ボタン行 */
+      .imgTopBar{
+        display:flex;
+        gap:10px;
+        align-items:center;
+        justify-content:flex-end;
+        margin-bottom:12px;
+      }
+      /* ✅ 画像出力ボタンの幅 */
+      #imgExport{ min-width:120px; }
+
+      .pill{
+        height:40px;
+        padding:0 14px;
+        border-radius:16px;
+        border:1px solid rgba(255,255,255,.14);
+        background:rgba(255,255,255,.10);
+        color:#fff;
+        font-weight:950;
+        white-space:nowrap;
+      }
+      .pill.danger{
+        border-color:rgba(185,74,85,.35);
+        background:rgba(185,74,85,.22);
+      }
+
+      /* Image viewer */
+      .imgViewer{
+        width:min(960px, 96vw);
+        max-height:min(86vh, 900px);
+        border-radius:22px;
+        overflow:hidden;
+        border:1px solid rgba(255,255,255,.14);
+        background:rgba(0,0,0,.55);
+        display:flex;
+        flex-direction:column;
+      }
+      .imgClose{align-self:flex-end;margin:12px}
+      #imgViewerImg{
+        width:100%;
+        height:auto;
+        display:block;
+        padding:12px;
+        border-radius:18px;
+      }
+
+      /* ✅ モーダル/オーバーレイ内でスクロールを閉じ込める（背面へ抜けない） */
+      #modalOverlay, #roomOverlay, #editOverlay, #imgOverlay {
+        overscroll-behavior: contain;
+        touch-action: none; /* 背面へのスクロール伝播を抑える */
+      }
+
+      #modalBody, #roomBody, #editBody {
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+      }
+
+      /* === patched: fixed select width === */
+      .typeSel{
+        width:160px;
+        min-width:160px;
+      }
+      .dupPill{
+        width:90px;
+        min-width:90px;
+      }
+      .miniOut{font-size:12px; color:var(--mut); line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right; padding-top:2px;}
+      .male{color:var(--male);} .female{color:var(--female);} 
+
+
+      /* ===== build timestamp (manage only) ===== */
+      .modalHead .modalTitleWrap{
+        display:flex;
+        flex-direction:column;
+        gap:2px;
+      }
+      #buildStamp.buildStamp{
+        font-size:11px;
+        line-height:1.1;
+        opacity:.6;
+        white-space:nowrap;
+        user-select:text;
+      }
+
+
+/* ===== v2 tweaks: unit/price, dupMini, sex colors, memo ===== */
+.unitRow{
   display:flex;
   flex-direction:column;
-  gap:8px;
-  padding-right:6px;
-  position:relative;
-  z-index:2;
-}
-.name{
-  font-weight:950;
-  letter-spacing:.2px;
-  font-size:18px;
-  line-height:1.1;
-  word-break:break-word;
-}
-.miniThumb{
-  width:112px;
-  aspect-ratio:2 / 1;
-  border-radius:12px;
-  overflow:hidden;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.05);
-}
-.miniThumb img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:block;
-}
-
-.right{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  align-items:stretch;
-  justify-self:end;
-
-  position:relative;
-  z-index:10; /* ✅ toggleより上 */
-}
-.type{
-  height:44px;
-  width:100%;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-size:14px;
-  font-weight:900;
-  padding:0 34px 0 12px;
-  background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
-                   linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
-  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
-  background-size: 6px 6px, 6px 6px;
-  background-repeat:no-repeat;
-  position:relative;
-  z-index:11; /* ✅ 念のため */
-}
-.unit{
-  font-size:12px;
-  color:var(--mut);
-  white-space:nowrap;
-  text-align:right;
-}
-
-.controls{
-  margin-top:10px;
-  display:flex;
-  gap:10px;
-  align-items:center;
-  flex-wrap:nowrap;
-  overflow:visible;
-}
-
-/* ✅ モバイルは折り返し許可（selectが潰れたり被るのを防ぐ） */
-@media (max-width: 520px){
-  .controls{ flex-wrap:wrap; }
-
-  .controls .stepper{
-    flex:1 1 calc(50% - 5px);
-    min-width:140px;
-  }
-
-  .controls .type{
-    flex:1 1 100%;
-    width:100%;
-  }
-
-  /* 複製ボタンがあるカードは下段に落として崩れ防止 */
-  .controls .dupBtn{
-    flex:1 1 100%;
-  }
-}
-
-/* ✅ 特殊＋オスメス用：折り返しを許可して崩れを防ぐ */
-.controls.controlsWrap{
-  flex-wrap:wrap;
-}
-
-/* ✅ wrap時：stepperは2列、selectは下段100% */
-.controls.controlsWrap .stepper{
-  flex:1 1 calc(50% - 5px);
-  min-width:140px;
-}
-.controls.controlsWrap .type{
-  flex:1 1 100%;
-  width:100%;
-  height:44px;
-}
-
-.stepper{
-  flex:1;
-  min-width:0;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:8px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.04);
-}
-.stepper.male{
-  border-color:color-mix(in srgb, var(--male) 55%, rgba(255,255,255,.12));
-  box-shadow:0 0 0 1px color-mix(in srgb, var(--male) 30%, transparent) inset;
-}
-.stepper.female{
-  border-color:color-mix(in srgb, var(--female) 55%, rgba(255,255,255,.12));
-  box-shadow:0 0 0 1px color-mix(in srgb, var(--female) 30%, transparent) inset;
-}
-
-.btn{
-  width:44px;
-  height:32px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.10);
-  color:#fff;
-  font-size:18px;
-  font-weight:950;
-  line-height:1;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-}
-.val{
-  flex:1;
-  text-align:center;
-  font-weight:950;
-  font-size:16px;
-  min-width:28px;
-}
-
-.dupBtn{
-  flex:0 0 auto;
-  height:40px;
-  padding:0 14px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.10);
-  color:#fff;
-  font-weight:950;
-  white-space:nowrap;
-}
-
-.card.isCollapsed .controls{display:none}
-
-/* ✅ special UI を閉じる（JS側class名に合わせるならここも調整可）
-   今のJSでは gWrap/gGrid を使っているので gachaWrap では閉じない。
-   ただし controls 自体を block にしてる special では折りたたみ時に隠す必要がある。
-*/
-.card.isCollapsed .gWrap{display:none}
-
-/* ================= Modal ================= */
-
-.modalOverlay{
-  position:fixed;
-  inset:0;
-  z-index:2000;
-  background:rgba(0,0,0,.55);
-  backdrop-filter:blur(8px);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:14px;
-}
-.modalOverlay.isHidden{display:none}
-
-.modal{
-  width:min(720px, 100%);
-  max-height:min(86vh, 900px);
-  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
-  border:1px solid rgba(255,255,255,.14);
-  border-radius:22px;
-  overflow:hidden;
-  display:flex;
-  flex-direction:column;
-}
-.modalHead{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:14px 14px 10px;
-}
-.modalTitle{font-weight:950;font-size:18px}
-.iconBtn{
-  width:44px;height:44px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-size:22px;
-  line-height:1;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.modalTabs{
-  display:flex;
-  gap:10px;
-  padding:0 14px 12px;
-}
-.mTab{
-  flex:1;
-  height:40px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.06);
-  color:#fff;
-  font-weight:900;
-}
-.mTab.isActive{
-  background:rgba(255,255,255,.10);
-  border-color:rgba(255,255,255,.18);
-}
-
-.modalBody{
-  padding:14px;
-  overflow:auto;
-  -webkit-overflow-scrolling:touch;
-}
-
-/* Manage rows */
-.mRow{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  padding:10px;
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.18);
-  margin-bottom:10px;
-}
-.mName{
-  flex:1;
-  font-weight:900;
-  font-size:16px;
-  line-height:1.2;
-  word-break:break-word;
-}
-.sBtn{
-  width:44px;height:38px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-weight:950;
-}
-.sBtn.danger{
-  background:rgba(185,74,85,.22);
-  border-color:rgba(185,74,85,.35);
-}
-
-/* Prices */
-.priceGrid{
-  display:grid;
-  grid-template-columns:1fr 140px;
-  gap:10px;
-}
-.pKey{
-  padding:12px 10px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(0,0,0,.16);
-  font-weight:900;
-}
-.pVal input{
-  width:100%;
-  padding:12px 10px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.18);
-  color:#fff;
-  outline:none;
-  text-align:right;
-  font-weight:950;
-}
-
-/* ✅ Edit/Add */
-.edit{
-  width:min(560px, 100%);
-  max-height:min(86vh, 900px);
-  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
-  border:1px solid rgba(255,255,255,.14);
-  border-radius:22px;
-  overflow:hidden;
-  display:flex;
-  flex-direction:column;
-}
-.editHead{
-  padding:14px 14px 8px;
-}
-.editTitle{
-  font-weight:950;
-  font-size:18px;
-}
-.editBody{
-  padding:14px;
-  overflow:auto;
-}
-.editForm{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.editLabel{
-  font-weight:900;
-  color:rgba(255,255,255,.78);
-  margin:2px 2px 0;
-}
-.editInput, .editSelect{
-  width:100%;
-  height:46px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(0,0,0,.18);
-  color:#fff;
-  outline:none;
-  padding:0 12px;
-  font-weight:900;
-}
-.editSelect{
-  padding-right:34px;
-  background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
-                   linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
-  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
-  background-size: 6px 6px, 6px 6px;
-  background-repeat:no-repeat;
-}
-.editBtns{
-  display:flex;
-  gap:10px;
-  justify-content:flex-end;
-  margin-top:4px;
-}
-
-/* Confirm */
-.confirm{
-  width:min(520px, 96vw);
-  border-radius:22px;
-  overflow:hidden;
-  border:1px solid rgba(255,255,255,.14);
-  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
-  padding:14px;
-}
-.confirmTitle{font-weight:950;font-size:18px;margin-bottom:6px}
-.confirmText{color:rgba(255,255,255,.85);font-weight:800;margin-bottom:10px}
-.confirmBtns{display:flex;gap:10px;justify-content:flex-end}
-
-/* ================= Image Manager ================= */
-
-.imgRow{
-  display:grid;
-  grid-template-columns:140px minmax(0,1fr);
-  gap:10px 12px;
-  align-items:center;
-  padding:12px;
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.18);
-  margin-bottom:10px;
-}
-.thumb{
-  width:140px;
-  aspect-ratio:2 / 1;
-  border-radius:14px;
-  overflow:hidden;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.06);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:rgba(255,255,255,.45);
-  font-weight:900;
-}
-.thumb img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:block;
-}
-.imgMid{
-  min-width:0;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.imgName{
-  min-width:0;
-  font-weight:950;
-  font-size:16px;
-  line-height:1.2;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.imgBtns{
-  display:flex;
-  gap:10px;
-  align-items:center;
-}
-
-/* ✅ 画像タブ：上部ボタン行 */
-.imgTopBar{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  justify-content:flex-end;
-  margin-bottom:12px;
-}
-/* ✅ 画像出力ボタンの幅 */
-#imgExport{ min-width:120px; }
-
-.pill{
-  height:40px;
-  padding:0 14px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.10);
-  color:#fff;
-  font-weight:950;
-  white-space:nowrap;
-}
-.pill.danger{
-  border-color:rgba(185,74,85,.35);
-  background:rgba(185,74,85,.22);
-}
-
-/* Image viewer */
-.imgViewer{
-  width:min(960px, 96vw);
-  max-height:min(86vh, 900px);
-  border-radius:22px;
-  overflow:hidden;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(0,0,0,.55);
-  display:flex;
-  flex-direction:column;
-}
-.imgClose{align-self:flex-end;margin:12px}
-#imgViewerImg{
-  width:100%;
-  height:auto;
-  display:block;
-  padding:12px;
-  border-radius:18px;
-}
-
-/* ✅ モーダル/オーバーレイ内でスクロールを閉じ込める（背面へ抜けない） */
-#modalOverlay, #roomOverlay, #editOverlay, #imgOverlay {
-  overscroll-behavior: contain;
-  touch-action: none; /* 背面へのスクロール伝播を抑える */
-}
-
-#modalBody, #roomBody, #editBody {
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
-}
-
-/* === patched: fixed select width === */
-.typeSel{
-  width:160px;
-  min-width:160px;
-}
-.dupPill{
-  width:90px;
-  min-width:90px;
-}
-.miniOut{font-size:12px; color:var(--mut); line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right; padding-top:2px;}
-.male{color:var(--male);} .female{color:var(--female);} 
-
-
-/* ===== build timestamp (manage only) ===== */
-.modalHead .modalTitleWrap{
-  display:flex;
-  flex-direction:column;
+  align-items:flex-end;
   gap:2px;
 }
-#buildStamp.buildStamp{
-  font-size:11px;
-  line-height:1.1;
-  opacity:.6;
+.unitRow .unit,
+.unitRow .miniOut{
+  font-size:12px;
+  font-weight:750;
+  line-height:1.2;
+  color:var(--mut);
+}
+.unitRow .miniOut{
+  min-height:1.2em; /* 未入力でも高さを確保 */
+}
+
+/* select（受精卵など）をpill風に */
+select.typeSel{
+  height:40px;
+  padding:0 14px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.10);
+  color:#fff;
+  font-weight:950;
   white-space:nowrap;
-  user-select:text;
+  appearance:none;
+}
+
+/* 複製（小）: 受精卵セレクトの左 */
+.dupMini{
+  height:34px;
+  padding:0 12px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+/* 価格表示内のオス/メス（淡い色） */
+.sexMale{ color: rgba(150, 210, 255, .95); font-weight:900; }
+.sexFemale{ color: rgba(255, 175, 215, .95); font-weight:900; }
+
+/* メモ表示（数値入力の下） */
+.memoLine{
+  display:none;
+  margin-top:8px;
+  padding:8px 10px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.06);
+  color:var(--mut);
+  font-size:12px;
+  line-height:1.35;
+  white-space:pre-wrap;
+}
+.editTextarea{
+  width:100%;
+  resize:vertical;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.18);
+  color:#fff;
+  padding:10px 12px;
+  font-size:14px;
 }
