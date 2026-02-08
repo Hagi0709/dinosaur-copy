@@ -10,21 +10,8 @@
   <link rel="apple-touch-icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
   <link rel="icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
 
-  <script>
-  // Cache-buster: always fetch latest assets (iOS / GitHub Pages cache対策)
-  (function(){
-    var v = Date.now().toString(36);
-    var link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'style.css?v=' + v;
-    document.head.appendChild(link);
-
-    var script = document.createElement('script');
-    script.src = 'app.js?v=' + v;
-    script.defer = true;
-    document.head.appendChild(script);
-  })();
-</script>
+  <link rel="stylesheet" href="style.css" />
+  <script defer src="app.js"></script>
 </head>
 
 <body>
@@ -63,7 +50,10 @@
   <div id="modalOverlay" class="modalOverlay isHidden" aria-hidden="true">
     <div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="管理">
       <div class="modalHead">
-        <div class="modalTitle">管理</div>
+        <div class="modalTitleWrap">
+          <div class="modalTitle">管理</div>
+          <div id="buildStamp" class="buildStamp">build: --</div>
+        </div>
         <button id="closeManage" class="iconBtn" type="button" aria-label="閉じる">×</button>
       </div>
 
@@ -125,7 +115,5 @@
       </div>
     </div>
   </div>
-
-  <div id="buildTime">build: --</div>
 </body>
 </html>
