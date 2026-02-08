@@ -38,6 +38,7 @@
 
   /* ========= localStorage keys ========= */
   const LS = {
+  MEMOS: 'memos_v1',
     DINO_CUSTOM: 'dino_custom_v1',
     ITEM_CUSTOM: 'item_custom_v1',
     DINO_HIDDEN: 'dino_hidden_v1',
@@ -369,6 +370,8 @@
     dino: new Set(loadJSON(LS.DINO_HIDDEN, [])),
     item: new Set(loadJSON(LS.ITEM_HIDDEN, [])),
   };
+
+  const memos = loadJSON(LS.MEMOS, { dino: {}, item: {} });
   const order = {
     dino: loadJSON(LS.DINO_ORDER, []),
     item: loadJSON(LS.ITEM_ORDER, []),
@@ -536,7 +539,18 @@ function sortByOrder(list, kind) {
   }
 
 
-  function dinoSuffixLine(d, s, sp) {
+  
+
+function formatMiniOutHtml(line) {
+  // 未入力時は空白1文字（見た目を保つ）
+  if (!line) return '&nbsp;';
+  const esc = escapeHtml(String(line));
+  return esc
+    .replace(/♂/g, '<span class="sexMale">オス</span>')
+    .replace(/♀/g, '<span class="sexFemale">メス</span>');
+}
+
+function dinoSuffixLine(d, s, sp) {
     if (!s) return '';
 
     // special mode output (ガチャ等)
@@ -858,10 +872,9 @@ ${lines.join('\n')}
             <div class="val js-f">0</div>
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
-
-          <button class="dupBtn" type="button" data-act="dup">複製</button>
-        </div>
-      ` : `<div class="controls controlsWrap" style="margin-top:10px;justify-content:flex-end;"><button class="dupBtn" type="button" data-act="dup">複製</button></div>`;
+</div>
+      ` : `<div class="controls controlsWrap" style="margin-top:10px;justify-content:flex-end;">
+</div>`;
 
       card.innerHTML = `
         <div class="cardInner">
@@ -874,17 +887,22 @@ ${lines.join('\n')}
             </div>
 
             <div class="right">
-              ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
+              <button class="dupMini" type="button" data-act="dup">複製</button>
+              ${allowSex ? `<select class="type typeSel" aria-label="種類"></select>` : ``}
               
             <div class="unitRow">
-              <div class="miniOut"></div>
-              <div class="unit"></div>
-            </div>
+            <div class="unit"></div>
+            <div class="miniOut">&nbsp;</div>
+          </div>
           </div>
             </div>
           </div>
 
           ${normalBlock}
+
+          <div class="memoLine"></div>
+
+          <div class="memoLine"></div>
 
           <div class="controls gachaWrap" style="display:block;margin-top:10px;">
             <div class="gWrap">
@@ -1101,8 +1119,8 @@ ${lines.join('\n')}
           <div class="right">
             <select class="type" aria-label="種類"></select>
             <div class="unitRow">
-            <div class="miniOut"></div>
             <div class="unit"></div>
+            <div class="miniOut">&nbsp;</div>
           </div>
         </div>
           </div>
@@ -1120,9 +1138,7 @@ ${lines.join('\n')}
             <div class="val js-f">0</div>
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
-
-          <button class="dupBtn" type="button" data-act="dup">複製</button>
-        </div>
+</div>
       </div>
     `;
 
@@ -1461,6 +1477,41 @@ ${lines.join('\n')}
         return;
       }
 
+if (act === 'kana') {
+  const ok = await confirmAsk('50音順に並び替えますか？');
+  if (!ok) return;
+
+  const kind = activeTab; // 'dino' | 'item'
+  const visibleList = kind === 'dino'
+    ? dinos.filter(d => !hidden.dino.has(d.id))
+    : items.filter(i => !hidden.item.has(i.id));
+
+  const keyOf = (name) => {
+    const s = String(name || '').trim();
+    return norm(s.replace(/^TEK\s*/i, '').trim());
+  };
+
+  const sorted = visibleList.slice().sort((a, b) => {
+    const ka = keyOf(a.name);
+    const kb = keyOf(b.name);
+    if (ka < kb) return -1;
+    if (ka > kb) return 1;
+    return String(a.name || '').localeCompare(String(b.name || ''), 'ja');
+  });
+
+  const ids = sorted.map(x => x.id);
+  if (kind === 'dino') {
+    order.dino = ids;
+    saveJSON(LS.DINO_ORDER, order.dino);
+  } else {
+    order.item = ids;
+    saveJSON(LS.ITEM_ORDER, order.item);
+  }
+
+  applyOrderAndRender();
+  return;
+}
+
       if (!act || !id) return;
 
       const kind = activeTab;
@@ -1549,6 +1600,15 @@ ${lines.join('\n')}
           <input id="spAll" class="editInput" type="number" inputmode="numeric" value="3000">
         </div>
 
+        <div class="editLabel">メモ</div>
+        <textarea id="memoText" class="editTextarea" rows="3" placeholder="任意"></textarea>
+
+        <div class="editLabel">メモ</div>
+        <textarea id="memoText" class="editTextarea" rows="3" placeholder="任意"></textarea>
+
+        <div class="editLabel">メモ</div>
+        <textarea id="memoText" class="editTextarea" rows="3" placeholder="任意"></textarea>
+
         <div class="editBtns">
           <button class="ghost" type="button" data-act="cancel">キャンセル</button>
           <button class="pill" type="button" data-act="save">保存</button>
@@ -1568,6 +1628,9 @@ ${lines.join('\n')}
     });
 
     openEditModal('追加 / 編集', box);
+
+    const memoBox = $('#memoText', box);
+    if (memoBox) memoBox.value = '';
 
     box.addEventListener('click', (e) => {
       const act = e.target?.dataset?.act;
@@ -1589,6 +1652,9 @@ ${lines.join('\n')}
         if (existIdx >= 0) custom.dino[existIdx] = rec;
         else custom.dino.push(rec);
         saveJSON(LS.DINO_CUSTOM, custom.dino);
+        const memo = ($('#memoText', box)?.value || '').trim();
+        if (memo) memos.dino[id] = memo; else delete memos.dino[id];
+        saveJSON(LS.MEMOS, memos);
 
         if (spEnable?.checked) {
           const max = Math.max(1, Math.min(60, Number($('#spMax', box)?.value || 16)));
@@ -1631,6 +1697,9 @@ ${lines.join('\n')}
 
     openEditModal('追加 / 編集', box);
 
+    const memoBox = $('#memoText', box);
+    if (memoBox) memoBox.value = '';
+
     box.addEventListener('click', (e) => {
       const act = e.target?.dataset?.act;
       if (!act) return;
@@ -1654,6 +1723,9 @@ ${lines.join('\n')}
         if (existIdx >= 0) custom.item[existIdx] = rec;
         else custom.item.push(rec);
         saveJSON(LS.ITEM_CUSTOM, custom.item);
+        const memo = ($('#memoText', box)?.value || '').trim();
+        if (memo) memos.item[id] = memo; else delete memos.item[id];
+        saveJSON(LS.MEMOS, memos);
 
         closeEditModal();
         items = items.concat([{ id, name, unit, price, kind: 'item' }]);
@@ -1715,6 +1787,9 @@ ${lines.join('\n')}
     const sel = $('#editType', box);
     if (sel) sel.value = d.defType || '受精卵';
 
+    const memoBox = $('#memoText', box);
+    if (memoBox) memoBox.value = (memos.dino && memos.dino[id]) ? String(memos.dino[id]) : '';
+
     const spEnable = $('#spEnable', box);
     const spBox = $('#spBox', box);
     const spAllowSex = $('#spAllowSex', box);
@@ -1752,6 +1827,11 @@ ${lines.join('\n')}
         } else {
           dinoOverride[id] = { name: newName, defType: newDef };
           saveJSON(LS.DINO_OVERRIDE, dinoOverride);
+
+
+        const memo = ($('#memoText', box)?.value || '').trim();
+        if (memo) memos.dino[id] = memo; else delete memos.dino[id];
+        saveJSON(LS.MEMOS, memos);
         }
 
         const di = dinos.findIndex(x => x.id === id);
