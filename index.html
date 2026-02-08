@@ -6,12 +6,16 @@
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>恐竜リスト</title>
 
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
   <!-- PWA / iOS icon -->
   <link rel="apple-touch-icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
   <link rel="icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
 
-  <link rel="stylesheet" href="style.css" />
-  <script defer src="app.js"></script>
+  <link rel="stylesheet" href="style.css?v=20260209-000528" />
+  <script defer src="app.js?v=20260209-000528"></script>
 </head>
 
 <body>
@@ -50,10 +54,7 @@
   <div id="modalOverlay" class="modalOverlay isHidden" aria-hidden="true">
     <div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="管理">
       <div class="modalHead">
-        <div class="modalTitleWrap">
-          <div class="modalTitle">管理</div>
-          <div id="buildStamp" class="buildStamp">build: --</div>
-        </div>
+        <div class="modalTitle">管理</div>
         <button id="closeManage" class="iconBtn" type="button" aria-label="閉じる">×</button>
       </div>
 
