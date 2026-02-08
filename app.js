@@ -858,9 +858,10 @@ ${lines.join('\n')}
             <div class="val js-f">0</div>
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
-</div>
-      ` : `<div class="controls controlsWrap" style="margin-top:10px;justify-content:flex-end;">
-</div>`;
+
+          <button class="dupBtn" type="button" data-act="dup">複製</button>
+        </div>
+      ` : `<div class="controls controlsWrap" style="margin-top:10px;justify-content:flex-end;"><button class="dupBtn" type="button" data-act="dup">複製</button></div>`;
 
       card.innerHTML = `
         <div class="cardInner">
@@ -873,10 +874,8 @@ ${lines.join('\n')}
             </div>
 
             <div class="right">
-              <div class="selRow">
-                <button class="dupMini" type="button" data-act="dup">複製</button>
-                ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
-              </div>
+              ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
+              
             <div class="unitRow">
               <div class="miniOut"></div>
               <div class="unit"></div>
@@ -1100,10 +1099,7 @@ ${lines.join('\n')}
           </div>
 
           <div class="right">
-            <div class="selRow">
-              <button class="dupMini" type="button" data-act="dup">複製</button>
-              <select class="type" aria-label="種類"></select>
-            </div>
+            <select class="type" aria-label="種類"></select>
             <div class="unitRow">
             <div class="miniOut"></div>
             <div class="unit"></div>
@@ -1124,7 +1120,9 @@ ${lines.join('\n')}
             <div class="val js-f">0</div>
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
-</div>
+
+          <button class="dupBtn" type="button" data-act="dup">複製</button>
+        </div>
       </div>
     `;
 
@@ -2268,8 +2266,8 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
   init();
 })();
 
-// ===== build timestamp =====
+// ===== build timestamp (manage only) =====
 document.addEventListener('DOMContentLoaded', () => {
-  const el = document.getElementById('buildTime');
-  if (el) el.textContent = 'build: 2026-02-08 06:46:51';
+  const el = document.getElementById('buildStamp');
+  if (el) el.textContent = 'build: 2026-02-08 06:56:43';
 });
