@@ -1,10 +1,6 @@
 (() => {
   'use strict';
 
-  // cards once-expanded (prevents auto-collapse when qty becomes empty)
-  const openedOnce = new Set();
-
-
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -390,6 +386,8 @@
   let activeTab = 'dino';
 
   const inputState = new Map();
+  const userOpened = new Set(); // prevent auto-collapse once user interacted
+
   const ephemeralKeys = new Set();
 
   /* ========= fetch & parse ========= */
@@ -466,6 +464,20 @@ function sortByOrder(list, kind) {
 
     return an.localeCompare(bn, 'ja');
   });
+}
+
+
+function applyOrderAndRender() {
+  // activeTabとは別に両方整列しておく（管理画面の表示も即時反映させる）
+  dinos = sortByOrder(dinos, 'dino');
+  items = sortByOrder(items, 'item');
+
+  renderList();
+
+  // 管理画面が開いていて「一覧」タブなら即時リストを再描画
+  if (!el.modalOverlay.classList.contains('isHidden') && el.mTabCatalog.classList.contains('isActive')) {
+    renderManageCatalog();
+  }
 }
 
   /* ========= behavior rules ========= */
@@ -630,7 +642,7 @@ function dinoSuffixLine(d, s, sp) {
     const sp = getSpecialCfgForDino(d);
     const s = inputState.get(key);
     const out = $('.miniOut', card);
-    if (out) out.textContent = dinoSuffixLine(d, s, sp);
+    if (out) out.innerHTML = formatMiniOutHtml(dinoSuffixLine(d, s, sp));
 
     const unit = $('.unit', card);
     if (unit) {
@@ -815,10 +827,14 @@ ${lines.join('\n')}
       const key = card.dataset.key;
       const kind = card.dataset.kind;
       const qty = getQtyForCard(key, kind);
-      const collapsed = q ? !show : ((qty === 0) && !openedOnce.has(key));
+
+      // 検索中は「表示対象以外は畳む」だけ。通常時は「0なら自動で畳む」だが、
+      // 一度でもユーザーが触ったカードは自動で畳まない（手動開閉に任せる）。
+      const collapsed = q ? !show : ((qty === 0) && !userOpened.has(key));
       card.classList.toggle('isCollapsed', collapsed);
     });
   }
+
 
   /* ========= Toggle hit area (左側ほぼ全部) ========= */
   function installLeftToggleHit(card) {
@@ -891,11 +907,9 @@ ${lines.join('\n')}
             </div>
 
             <div class="right">
-              <div class="typeRow">
-                <button class="dupMini" type="button" data-act="dup">複製</button>
-                ${allowSex ? `<select class="type typeSel" aria-label="種類"></select>` : ``}
-              </div>
-
+              <button class="dupMini" type="button" data-act="dup">複製</button>
+              ${allowSex ? `<select class="type typeSel" aria-label="種類"></select>` : ``}
+              
             <div class="unitRow">
             <div class="unit"></div>
             <div class="miniOut">&nbsp;</div>
@@ -994,21 +1008,19 @@ ${lines.join('\n')}
           const q = (Number(s.m || 0) + Number(s.f || 0)) > 0
             ? (Number(s.m || 0) + Number(s.f || 0))
             : (s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0));
-          if (q > 0) openedOnce.add(key);
-          card.classList.toggle('isCollapsed', (q === 0) && !openedOnce.has(key));
+          card.classList.toggle('isCollapsed', q === 0);
         }
       };
 
       syncSpecial();
-      if (getQtyForCard(key, 'dino') > 0) openedOnce.add(key);
-      card.classList.toggle('isCollapsed', (getQtyForCard(key, 'dino') === 0) && !openedOnce.has(key));
+      card.classList.toggle('isCollapsed', getQtyForCard(key, 'dino') === 0);
 
       $('.cardToggle', card).addEventListener('click', (ev) => {
         ev.preventDefault();
         if (el.q.value.trim()) return;
         card.classList.toggle('isCollapsed');
-        if (!card.classList.contains('isCollapsed')) openedOnce.add(key);
-      });
+      if (!card.classList.contains('isCollapsed')) userOpened.add(key);
+    });
 
       sel?.addEventListener('click', (ev) => ev.stopPropagation());
       sel?.addEventListener('change', (ev) => {
@@ -1016,7 +1028,6 @@ ${lines.join('\n')}
         s.type = sel.value;
         autoSpecify(s);
         syncSpecial();
-        openedOnce.add(key);
         rebuildOutput();
         applyCollapseAndSearch();
       });
@@ -1031,7 +1042,6 @@ ${lines.join('\n')}
           s.picks = [];
         }
         syncSpecial();
-        openedOnce.add(key);
         rebuildOutput();
         applyCollapseAndSearch();
       };
@@ -1192,6 +1202,7 @@ ${lines.join('\n')}
       if (sex === 'm') s.m = Math.max(0, Number(s.m || 0) + delta);
       if (sex === 'f') s.f = Math.max(0, Number(s.f || 0) + delta);
       autoSpecify(s);
+      userOpened.add(key);
       syncUI();
       rebuildOutput();
       applyCollapseAndSearch();
@@ -1204,6 +1215,7 @@ ${lines.join('\n')}
       ev.stopPropagation();
       s.type = sel.value;
       autoSpecify(s);
+      userOpened.add(key);
       syncUI();
       rebuildOutput();
       applyCollapseAndSearch();
@@ -1213,8 +1225,7 @@ ${lines.join('\n')}
       ev.preventDefault();
       if (el.q.value.trim()) return;
       card.classList.toggle('isCollapsed');
-        if (!card.classList.contains('isCollapsed')) openedOnce.add(key);
-      });
+    });
 
     $$('button[data-act]', card).forEach(btn => {
       btn.addEventListener('click', (ev) => {
@@ -1318,8 +1329,7 @@ ${lines.join('\n')}
       ev.preventDefault();
       if (el.q.value.trim()) return;
       card.classList.toggle('isCollapsed');
-        if (!card.classList.contains('isCollapsed')) openedOnce.add(key);
-      });
+    });
 
     $$('button[data-act]', card).forEach(btn => {
       btn.addEventListener('click', (ev) => {
@@ -1332,7 +1342,6 @@ ${lines.join('\n')}
 
         if (!el.q.value.trim()) card.classList.toggle('isCollapsed', Number(s.qty || 0) === 0);
 
-        openedOnce.add(key);
         rebuildOutput();
         applyCollapseAndSearch();
       });
@@ -1522,8 +1531,7 @@ if (act === 'kana') {
     saveJSON(LS.ITEM_ORDER, order.item);
   }
 
-  renderList();
-  setManageTab('catalog');
+  applyOrderAndRender();
   return;
 }
 
@@ -2360,12 +2368,6 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
 
   init();
 })();
-
-// ===== build timestamp (manage only) =====
-document.addEventListener('DOMContentLoaded', () => {
-  const el = document.getElementById('buildStamp');
-  if (el) el.textContent = 'build: 2026-02-08 06:56:43';
-});
 
 // ===== build timestamp (manage only) =====
 function formatJST(d){
