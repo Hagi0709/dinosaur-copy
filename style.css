@@ -7,8 +7,8 @@
         --ok:#78ffb3;
         --danger:#b94a55;
 
-        --male:#57c7ff;
-        --female:#ff5fcf;
+        --male:#9ad8ff;
+        --female:#ffb1dc;
 
         /* ✅ 固定ヘッダー高さ（JS不要。CSSで確実に下げる） */
         --topPad: 246px; /* 初期値（画面幅で後半で調整） */
@@ -802,9 +802,18 @@ select.typeSel{
 }
 
 /* 複製（小）: 受精卵セレクトの左 */
+.typeRow{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:8px;
+  margin-bottom:6px;
+}
+
 .dupMini{
-  height:34px;
-  padding:0 12px;
+  height:32px;
+  padding:0 10px;
+  font-size:12px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
@@ -814,8 +823,8 @@ select.typeSel{
 }
 
 /* 価格表示内のオス/メス（淡い色） */
-.sexMale{ color: rgba(150, 210, 255, .95); font-weight:900; }
-.sexFemale{ color: rgba(255, 175, 215, .95); font-weight:900; }
+.sexMale{ color: var(--male); opacity:.85; font-weight:900; }
+.sexFemale{ color: var(--female); opacity:.85; font-weight:900; }
 
 /* メモ表示（数値入力の下） */
 .memoLine{
