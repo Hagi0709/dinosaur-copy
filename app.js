@@ -503,7 +503,10 @@ function sortByOrder(list, kind) {
       if (specifiedMap[base]) s.type = specifiedMap[base];
       return;
     }
+    if (m === 0 && f === 0 && hasSpecified) {
+      s.type = base;
     }
+  }
 
   /* ========= image DOM sync ========= */
   function getImageUrlForDino(d) {
@@ -605,30 +608,11 @@ function sortByOrder(list, kind) {
     return `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
   }
 
-
-  function escapeHtml(s){
-    return String(s ?? '')
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;');
-  }
-
-  // price line in card (未入力は空白1文字、♂♀はオス/メスに置換＋色分け)
-  function priceLineToHtml(line){
-    if (!line || !String(line).trim()) return '&nbsp;';
-    let t = escapeHtml(String(line));
-    t = t.replace(/♂×(\d+)/g, '<span class="male">オス×$1</span>');
-    t = t.replace(/♀×(\d+)/g, '<span class="female">メス×$1</span>');
-    t = t.replace(/♂/g, '<span class="male">オス</span>');
-    t = t.replace(/♀/g, '<span class="female">メス</span>');
-    return t;
-  }
-
   function syncDinoMiniLine(card, d, key) {
     const sp = getSpecialCfgForDino(d);
     const s = inputState.get(key);
     const out = $('.miniOut', card);
-    if (out) out.innerHTML = priceLineToHtml(dinoSuffixLine(d, s, sp));
+    if (out) out.textContent = dinoSuffixLine(d, s, sp);
 
     const unit = $('.unit', card);
     if (unit) {
@@ -784,8 +768,6 @@ ${lines.join('\n')}
   }
 
   /* ========= collapse & search ========= */
-  const pinOpen = new Set();
-
   function getQtyForCard(key, kind) {
     if (kind === 'dino') {
       const s = inputState.get(key);
@@ -815,7 +797,7 @@ ${lines.join('\n')}
       const key = card.dataset.key;
       const kind = card.dataset.kind;
       const qty = getQtyForCard(key, kind);
-      const collapsed = q ? !show : (qty === 0 && !pinOpen.has(key));
+      const collapsed = q ? !show : (qty === 0);
       card.classList.toggle('isCollapsed', collapsed);
     });
   }
@@ -896,8 +878,8 @@ ${lines.join('\n')}
                 ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
               </div>
             <div class="unitRow">
-              <div class="unit"></div>
               <div class="miniOut"></div>
+              <div class="unit"></div>
             </div>
           </div>
             </div>
@@ -994,36 +976,27 @@ ${lines.join('\n')}
       };
 
       syncSpecial();
-      if (getQtyForCard(key, 'dino') > 0) pinOpen.add(key);
-      card.classList.toggle('isCollapsed', (getQtyForCard(key, 'dino') === 0) && !pinOpen.has(key));
+      card.classList.toggle('isCollapsed', getQtyForCard(key, 'dino') === 0);
 
       $('.cardToggle', card).addEventListener('click', (ev) => {
         ev.preventDefault();
         if (el.q.value.trim()) return;
-        const nowCollapsed = card.classList.toggle('isCollapsed');
-        if (nowCollapsed) pinOpen.delete(key);
-        else pinOpen.add(key);
+        card.classList.toggle('isCollapsed');
       });
 
       sel?.addEventListener('click', (ev) => ev.stopPropagation());
       sel?.addEventListener('change', (ev) => {
         ev.stopPropagation();
         s.type = sel.value;
-        // 指定は0でも選べるようにする（autoSpecifyは“指定→通常”へ戻さない）
         autoSpecify(s);
-        // セレクト変更は“操作中”とみなして開いた状態を保持
-        pinOpen.add(key);
-        card.classList.remove('isCollapsed');
         syncSpecial();
         rebuildOutput();
+        applyCollapseAndSearch();
       });
 
       const step = (sex, delta) => {
         if (sex === 'm') s.m = Math.max(0, Number(s.m || 0) + delta);
         if (sex === 'f') s.f = Math.max(0, Number(s.f || 0) + delta);
-        // 数値操作は“操作中”とみなして開いた状態を保持（0になっても自動で閉じない）
-        pinOpen.add(key);
-        card.classList.remove('isCollapsed');
         autoSpecify(s);
 
         if ((Number(s.m || 0) + Number(s.f || 0)) > 0) {
@@ -1032,7 +1005,7 @@ ${lines.join('\n')}
         }
         syncSpecial();
         rebuildOutput();
-        // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
+        applyCollapseAndSearch();
       };
 
       card.addEventListener('click', (ev) => {
@@ -1057,7 +1030,7 @@ ${lines.join('\n')}
           const dupCard = buildDinoCard(d, dupKey);
           card.after(dupCard);
           rebuildOutput();
-          // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
+          applyCollapseAndSearch();
           return;
         }
 
@@ -1083,7 +1056,7 @@ ${lines.join('\n')}
 
           syncSpecial();
           rebuildOutput();
-          // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
+          applyCollapseAndSearch();
           return;
         }
 
@@ -1097,7 +1070,7 @@ ${lines.join('\n')}
           }
           syncSpecial();
           rebuildOutput();
-          // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
+          applyCollapseAndSearch();
           return;
         }
 
@@ -1108,7 +1081,7 @@ ${lines.join('\n')}
           if (s.all) s.picks = [];
           syncSpecial();
           rebuildOutput();
-          // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
+          applyCollapseAndSearch();
           return;
         }
       });
@@ -1132,8 +1105,8 @@ ${lines.join('\n')}
               <select class="type" aria-label="種類"></select>
             </div>
             <div class="unitRow">
-            <div class="unit"></div>
             <div class="miniOut"></div>
+            <div class="unit"></div>
           </div>
         </div>
           </div>
@@ -1237,7 +1210,7 @@ ${lines.join('\n')}
           const dupCard = buildDinoCard(d, dupKey);
           card.after(dupCard);
           rebuildOutput();
-          // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
+          applyCollapseAndSearch();
           return;
         }
 
@@ -1254,7 +1227,7 @@ ${lines.join('\n')}
           const dupCard = buildDinoCard(d, dupKey);
           card.after(dupCard);
           rebuildOutput();
-          // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
+          applyCollapseAndSearch();
         }
       });
     });
@@ -1333,7 +1306,7 @@ ${lines.join('\n')}
         if (!el.q.value.trim()) card.classList.toggle('isCollapsed', Number(s.qty || 0) === 0);
 
         rebuildOutput();
-        // applyCollapseAndSearch(); // keep state; auto-collapse handled elsewhere
+        applyCollapseAndSearch();
       });
     });
 
