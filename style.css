@@ -7,8 +7,8 @@
         --ok:#78ffb3;
         --danger:#b94a55;
 
-        --male:#9fd8ff;
-        --female:#ffc1dc;
+        --male:#8FD8FF;
+        --female:#FF9BD6;
 
         /* ✅ 固定ヘッダー高さ（JS不要。CSSで確実に下げる） */
         --topPad: 246px; /* 初期値（画面幅で後半で調整） */
@@ -761,13 +761,7 @@
         flex-direction:column;
         gap:2px;
       }
-      #buildStamp.buildStamp{
-        font-size:11px;
-        line-height:1.1;
-        opacity:.6;
-        white-space:nowrap;
-        user-select:text;
-      }
+      #buildStamp.buildStamp{font-size:12px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:54vw;}
 
 
 /* ===== v2 tweaks: unit/price, dupMini, sex colors, memo ===== */
@@ -802,20 +796,22 @@ select.typeSel{
 }
 
 /* 複製（小）: 受精卵セレクトの左 */
-.dupMini{display:inline-flex;align-items:center;justify-content:center;
-  height:34px;
-  padding:0 12px;
+.dupMini{
+  height:32px;
+  padding:0 10px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
   color:#fff;
   font-weight:900;
+  font-size:12px;
   white-space:nowrap;
 }
 
+
 /* 価格表示内のオス/メス（淡い色） */
-.sexMale{ color: rgba(150, 210, 255, .95); font-weight:900; }
-.sexFemale{ color: rgba(255, 175, 215, .95); font-weight:900; }
+.sexMale{color:var(--male);font-weight:900;}
+.sexFemale{color:var(--female);font-weight:900;}
 
 /* メモ表示（数値入力の下） */
 .memoLine{
@@ -842,7 +838,10 @@ select.typeSel{
 }
 
 
-/* dup + select row */
-.typeRow{display:flex;align-items:center;gap:8px}
+/* 数値入力（オス/メス）文字色 */
+.stepper.male .val{color:var(--male);}
+.stepper.female .val{color:var(--female);}
 
-.typeSel{flex:0 0 auto}
+.sortKana{font-size:12px; padding:0 10px; height:30px;}
+
+.gachaWrap{padding-bottom:6px;}
