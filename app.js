@@ -27,6 +27,17 @@
       .replaceAll("'", '&#39;');
   }
 
+  function formatMiniOutHtml(raw) {
+    const s = String(raw || '');
+    const trimmed = s.trim();
+    if (!trimmed) return '&nbsp;'; // ✅ 未入力は空白1文字
+    // いったんエスケープしてから必要箇所だけ装飾
+    let html = escapeHtml(s);
+    html = html.replace(/♂×(\d+)/g, '<span class="maleText">オス×$1</span>');
+    html = html.replace(/♀×(\d+)/g, '<span class="femaleText">メス×$1</span>');
+    return html;
+  }
+
   /* ========= circled numbers ========= */
   const circled = (n) => {
     const x = Number(n);
@@ -1108,7 +1119,10 @@ ${lines.join('\n')}
           </div>
 
           <div class="right">
-            <div class="unit"></div>
+            <div class="unitRow">
+              <div class="unit"></div>
+              <div class="miniOut"></div>
+            </div>
           </div>
         </div>
 
@@ -1124,6 +1138,16 @@ ${lines.join('\n')}
 
     $('.name', card).textContent = it.name;
     $('.unit', card).textContent = `単価${it.price}円`;
+    const outEl = $('.miniOut', card);
+    const setItemMini = () => {
+      const qty = Number(s.qty || 0);
+      if (!outEl) return;
+      if (qty <= 0) { outEl.innerHTML = '&nbsp;'; return; }
+      const totalCount = qty * Number(it.unit || 1);
+      const price = qty * Number(it.price || 0);
+      outEl.innerHTML = formatMiniOutHtml(`×${totalCount} = ${price.toLocaleString('ja-JP')}円`);
+    };
+    setItemMini();
 
     const toggle = $('.cardToggle', card);
     if (toggle) {
@@ -1155,6 +1179,7 @@ ${lines.join('\n')}
         if (act === '+') s.qty = Math.max(0, Number(s.qty || 0) + 1);
 
         qEl.textContent = String(s.qty || 0);
+        setItemMini();
 
         if (!el.q.value.trim()) card.classList.toggle('isCollapsed', Number(s.qty || 0) === 0);
 
