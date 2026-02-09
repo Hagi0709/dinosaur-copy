@@ -2,7 +2,7 @@
 'use strict';
 
 
-  const BUILD_VERSION = '2026-02-10 07:01';
+const BUILD_VERSION = '2026-02-10 07:25';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -715,20 +715,27 @@ ${lines.join('\n')}
   }
 
   /* ========= Toggle hit area (左側ほぼ全部) ========= */
-  function installLeftToggleHit(card) {
-    const head = $('.cardHead', card);
-    const toggle = $('.cardToggle', card);
-    if (!head || !toggle) return;
+function installLeftToggleHit(card) {
+  const head = $('.cardHead', card);
+  const toggle = $('.cardToggle', card);
+  const wrap = $('.nameWrap', card);
+  if (!head || !toggle || !wrap) return;
 
-    toggle.style.inset = 'auto';
-    toggle.style.left = '-12px';
-    toggle.style.top = '-12px';
-    toggle.style.bottom = '-12px';
-    toggle.style.width = 'calc(100% - 170px)';
-    toggle.style.height = 'calc(100% + 24px)';
-    toggle.style.zIndex = '5';
-    toggle.style.pointerEvents = 'auto';
-  }
+  // 折りたたみの押し判定は「恐竜名＋画像」範囲だけに限定する
+  const pad = 12;
+
+  toggle.style.inset = 'auto';
+  toggle.style.right = 'auto';
+  toggle.style.bottom = 'auto';
+
+  toggle.style.left = `${wrap.offsetLeft - pad}px`;
+  toggle.style.top = `${wrap.offsetTop - pad}px`;
+  toggle.style.width = `${wrap.offsetWidth + pad * 2}px`;
+  toggle.style.height = `${wrap.offsetHeight + pad * 2}px`;
+
+  toggle.style.zIndex = '5';
+  toggle.style.pointerEvents = 'auto';
+}
 
   /* ========= cards ========= */
   function buildDinoCard(d, keyOverride = null) {
@@ -758,42 +765,65 @@ ${lines.join('\n')}
       }
 
 const normalBlock = allowSex ? `
-        <div class="controls controlsWrap" style="margin-top:10px;">
-          <div class="stepper male">
-            <button class="btn" type="button" data-act="m-">−</button>
-            <div class="val js-m">0</div>
-            <button class="btn" type="button" data-act="m+">＋</button>
-          </div>
+  <div class="controls controlsWrap" style="margin-top:10px;">
+    <div class="stepper male">
+      <button class="btn" type="button" data-act="m-">−</button>
+      <div class="val js-m">0</div>
+      <button class="btn" type="button" data-act="m+">＋</button>
+    </div>
 
-          <div class="stepper female">
-            <button class="btn" type="button" data-act="f-">−</button>
-            <div class="val js-f">0</div>
-            <button class="btn" type="button" data-act="f+">＋</button>
+    <div class="stepper female">
+      <button class="btn" type="button" data-act="f-">−</button>
+      <div class="val js-f">0</div>
+      <button class="btn" type="button" data-act="f+">＋</button>
+    </div>
+  </div>
+` : ``;
+
+card.innerHTML = `
+  <div class="cardInner">
+    <div class="cardHead">
+      <button class="cardToggle" type="button" aria-label="開閉" data-act="toggle"></button>
+
+      <div class="nameWrap">
+        <div class="name"></div>
+        ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
+      </div>
+
+      <div class="right">
+        <div class="typeRow">
+          <button class="dupMini" type="button" data-act="dup">複製</button>
+          ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
+        </div>
+        <div class="unit" style="font-weight:900;color:rgba(255,255,255,.65);">1体=${unitPrice}円</div>
+      </div>
+    </div>
+
+    ${normalBlock}
+
+    <div class="controls gachaWrap" style="display:block;margin-top:10px;">
+      <div class="gWrap">
+        <div class="gGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+          ${btns.join('')}
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap;">
+          <button class="dupBtn" type="button" data-act="undo" style="min-width:120px;background:rgba(185,74,85,.22);border-color:rgba(185,74,85,.35);">− 取消</button>
+          <button class="dupBtn" type="button" data-act="all" style="min-width:120px;">全種</button>
+
+          <div style="flex:1;min-width:220px;color:rgba(255,255,255,.7);font-weight:900;">
+            <div class="gLine">入力：<span class="gInput">(未入力)</span></div>
+            <div class="gLine">小計：<span class="gSum">0円</span></div>
           </div>
         </div>
-      ` : ``;
 
-      card.innerHTML = `
-        <div class="cardInner">
-          <div class="cardHead">
-            <button class="cardToggle" type="button" aria-label="開閉" data-act="toggle"></button>
-
-            <div class="nameWrap">
-              <div class="name"></div>
-              ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
-            </div>
-
-             <div class="right">
-              <div class="typeRow">
-                <button class="dupMini" type="button" data-act="dup">複製</button>
-                ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
-              </div>
-              <div class="unit" style="font-weight:900;color:rgba(255,255,255,.65);">1体=${unitPrice}円</div>
-            </div>
-
-          ${normalBlock}
-
-          <div class="controls gachaWrap" style="display:block;margin-top:10px;">
+        <div style="margin-top:6px;color:rgba(255,255,255,.55);font-weight:800;font-size:12px;">
+          全種=${allPrice.toLocaleString('ja-JP')}円
+        </div>
+      </div>
+    </div>
+  </div>
+`;
             <div class="gWrap">
               <div class="gGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
                 ${btns.join('')}
@@ -920,17 +950,26 @@ const normalBlock = allowSex ? `
 
         const act = btn.dataset.act;
 
-        if (act === 'dup') {
-          const dupKey = `${id}__dup_${uid()}`;
-          inputState.set(dupKey, { mode: 'special', picks: [], all: false, type: (s.type || d.defType || '受精卵'), m: 0, f: 0 });
-          ephemeralKeys.add(dupKey);
+if (act === 'dup') {
+  const dupKey = `${d.id}__dup_${uid()}`;
+  ephemeralKeys.add(dupKey);
 
-          const dupCard = buildDinoCard(dupKey, d, true);
-          card.insertAdjacentElement('afterend', dupCard);
-          rebuildOutput();
-          applyCollapseAndSearch();
-          return;
-        }
+  inputState.set(dupKey, {
+    mode: 'special',
+    picks: [],
+    all: false,
+    type: (s.type || d.defType || '受精卵'),
+    m: 0,
+    f: 0
+  });
+
+  const dupCard = buildDinoCard(d, dupKey);
+  card.after(dupCard);
+
+  rebuildOutput();
+  applyCollapseAndSearch();
+  return;
+}
 
         if (act === 'm-') return step('m', -1);
         if (act === 'm+') return step('m', +1);
