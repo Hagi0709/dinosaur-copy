@@ -795,39 +795,34 @@ card.innerHTML = `
           <button class="dupMini" type="button" data-act="dup">複製</button>
           ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
         </div>
-        <div class="unit" style="font-weight:900;color:rgba(255,255,255,.65);">1体=${unitPrice}円</div>
+        <div class="unit">1体=${unitPrice}円</div>
       </div>
     </div>
 
     ${normalBlock}
 
-    <div class="controls gachaWrap" style="display:block;margin-top:10px;">
+    <div class="controls gachaWrap">
       <div class="gWrap">
-        <div class="gGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+        <div class="gGrid">
           ${btns.join('')}
         </div>
 
-        <div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap;">
-          <button class="dupBtn" type="button" data-act="undo" style="min-width:120px;background:rgba(185,74,85,.22);border-color:rgba(185,74,85,.35);">− 取消</button>
-          <button class="dupBtn" type="button" data-act="all" style="min-width:120px;">全種</button>
-
-          <div style="flex:1;min-width:220px;color:rgba(255,255,255,.7);font-weight:900;">
-            <div class="gLine">入力：<span class="gInput">(未入力)</span></div>
-            <div class="gLine">小計：<span class="gSum">0円</span></div>
+        <div class="gLineWrap">
+          <button data-act="undo">− 取消</button>
+          <button data-act="all">全種</button>
+          <div>
+            <div>入力：<span class="gInput">(未入力)</span></div>
+            <div>小計：<span class="gSum">0円</span></div>
           </div>
         </div>
 
-        <div style="margin-top:6px;color:rgba(255,255,255,.55);font-weight:800;font-size:12px;">
+        <div class="gAll">
           全種=${allPrice.toLocaleString('ja-JP')}円
         </div>
       </div>
     </div>
   </div>
 `;
-            <div class="gWrap">
-              <div class="gGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
-                ${btns.join('')}
-              </div>
 
               <div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap;">
                 <button class="dupBtn" type="button" data-act="undo" style="min-width:120px;background:rgba(185,74,85,.22);border-color:rgba(185,74,85,.35);">− 取消</button>
