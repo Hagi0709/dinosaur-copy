@@ -1,6 +1,5 @@
 (() => {
   'use strict';
-
   
   const BUILD_TIME_JST = '2026-02-09 19:44:34';
 /* ========= utils ========= */
