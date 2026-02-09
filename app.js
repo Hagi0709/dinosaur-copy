@@ -855,7 +855,7 @@ card.innerHTML = `
       const sel = $('.type', card);
 
       if (allowSex && sel) {
-        sel.innerHTML = typeList.map(t => `<option value="${t}">${t}</option>`).join('');
+        sel.innerHTML = typeList.map(t => '<option value="' + t + '">' + t + '</option>').join('');
         if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
         sel.value = s.type;
       }
