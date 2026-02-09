@@ -979,30 +979,28 @@ ${lines.join('\n')}
             ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
           </div>
 
-          <div class="right">
-            <div class="typeRow">
-              <button class="dupMini" type="button">複製</button>
-              <select class="type" aria-label="種類"></select>
-            </div>
-            <div class="unit"></div>
-          </div>
-        </div>
+<div class="right">
+  <div class="typeRow">
+    <button class="dupMini" type="button" data-act="dup">複製</button>
+    <select class="type" aria-label="種類"></select>
+  </div>
+  <div class="unit"></div>
+</div>
+</div>
 
-        <div class="controls">
-          <div class="stepper male">
-            <button class="btn" type="button" data-act="m-">−</button>
-            <div class="val js-m">0</div>
-            <button class="btn" type="button" data-act="m+">＋</button>
-          </div>
+<div class="controls">
+  <div class="stepper male">
+    <button class="btn" type="button" data-act="m-">−</button>
+    <div class="val js-m">0</div>
+    <button class="btn" type="button" data-act="m+">＋</button>
+  </div>
 
-          <div class="stepper female">
-            <button class="btn" type="button" data-act="f-">−</button>
-            <div class="val js-f">0</div>
-            <button class="btn" type="button" data-act="f+">＋</button>
-          </div>
-
-          <button class="dupBtn" type="button" data-act="dup">複製</button>
-        </div>
+  <div class="stepper female">
+    <button class="btn" type="button" data-act="f-">−</button>
+    <div class="val js-f">0</div>
+    <button class="btn" type="button" data-act="f+">＋</button>
+  </div>
+</div>
       </div>
     `;
 
