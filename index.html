@@ -12,7 +12,49 @@
   <link rel="icon" href="56379E4F-8771-431A-B2A6-4B3EE3136504.png">
 
   <link rel="stylesheet" href="style.css" />
-  <script defer src="app.js"></script>
+
+  <script>
+    // app.js 側が「実行前に死ぬ」ケース（構文エラー/読込失敗）でも表示する
+    window.__bootError = function (msg) {
+      try {
+        const out = document.getElementById('out');
+        if (out) out.value = (msg || 'Unknown error');
+      } catch {}
+      try {
+        const box = document.createElement('div');
+        box.style.position = 'fixed';
+        box.style.left = '12px';
+        box.style.right = '12px';
+        box.style.bottom = '12px';
+        box.style.zIndex = '99999';
+        box.style.padding = '10px 12px';
+        box.style.borderRadius = '14px';
+        box.style.border = '1px solid rgba(255,255,255,.18)';
+        box.style.background = 'rgba(120,40,40,.35)';
+        box.style.backdropFilter = 'blur(10px)';
+        box.style.color = '#fff';
+        box.style.fontWeight = '900';
+        box.style.fontSize = '12px';
+        box.style.whiteSpace = 'pre-wrap';
+        box.textContent = msg || 'Unknown error';
+        document.body.appendChild(box);
+      } catch {}
+    };
+
+    window.addEventListener('error', (e) => {
+      const m = e && e.message ? e.message : 'Script error';
+      const src = e && e.filename ? e.filename : '';
+      const line = e && e.lineno ? e.lineno : '';
+      window.__bootError(`[BOOT ERROR]\n${m}\n${src}:${line}`);
+    });
+
+    window.addEventListener('unhandledrejection', (e) => {
+      const r = e && e.reason ? (e.reason.stack || e.reason.message || String(e.reason)) : 'Promise rejected';
+      window.__bootError(`[BOOT REJECTION]\n${r}`);
+    });
+  </script>
+
+  <script defer src="app.js" onerror="window.__bootError('[LOAD ERROR]\\napp.js の読み込みに失敗しました（ファイル名/配置/キャッシュ確認）');"></script>
 </head>
 
 <body>
