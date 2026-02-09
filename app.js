@@ -1,5 +1,7 @@
 (() => {
-  'use strict';
+'use strict';
+
+  const BUILD_VERSION = '2026-02-10 07:01';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -335,6 +337,7 @@
     mTabCatalog: $('#mTabCatalog'),
     mTabPrices: $('#mTabPrices'),
     mTabImages: $('#mTabImages'),
+    versionText: $('#versionText'),
 
     openRoom: $('#openRoom'),
     roomOverlay: $('#roomOverlay'),
@@ -349,6 +352,7 @@
     imgClose: $('#imgClose'),
     imgViewerImg: $('#imgViewerImg'),
   };
+  if (el.versionText) el.versionText.textContent = `Version: ${BUILD_VERSION}`;
 
   // ✅ オーバーレイのスクロールガード（前面だけ）
   installOverlayScrollGuard(el.modalOverlay, el.modalBody);
@@ -752,7 +756,7 @@ ${lines.join('\n')}
         btns.push(`<button class="gBtn" type="button" data-act="pick" data-n="${i}">${i}</button>`);
       }
 
-      const normalBlock = allowSex ? `
+const normalBlock = allowSex ? `
         <div class="controls controlsWrap" style="margin-top:10px;">
           <div class="stepper male">
             <button class="btn" type="button" data-act="m-">−</button>
@@ -765,8 +769,6 @@ ${lines.join('\n')}
             <div class="val js-f">0</div>
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
-
-          <select class="type" aria-label="種類"></select>
         </div>
       ` : ``;
 
@@ -780,10 +782,13 @@ ${lines.join('\n')}
               ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
             </div>
 
-            <div class="right">
+             <div class="right">
+              <div class="typeRow">
+                <button class="dupMini" type="button" data-act="dup">複製</button>
+                ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
+              </div>
               <div class="unit" style="font-weight:900;color:rgba(255,255,255,.65);">1体=${unitPrice}円</div>
             </div>
-          </div>
 
           ${normalBlock}
 
@@ -913,6 +918,18 @@ ${lines.join('\n')}
         ev.stopPropagation();
 
         const act = btn.dataset.act;
+
+        if (act === 'dup') {
+          const dupKey = `${id}__dup_${uid()}`;
+          inputState.set(dupKey, { mode: 'special', picks: [], all: false, type: (s.type || d.defType || '受精卵'), m: 0, f: 0 });
+          ephemeralKeys.add(dupKey);
+
+          const dupCard = buildDinoCard(dupKey, d, true);
+          card.insertAdjacentElement('afterend', dupCard);
+          rebuildOutput();
+          applyCollapseAndSearch();
+          return;
+        }
 
         if (act === 'm-') return step('m', -1);
         if (act === 'm+') return step('m', +1);
