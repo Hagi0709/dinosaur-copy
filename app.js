@@ -1,6 +1,7 @@
 (() => {
   'use strict';
 
+  const BUILD_JST = '2026-02-09 08:00:23';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -39,6 +40,7 @@
 
   /* ========= localStorage keys ========= */
   const LS = {
+  MEMOS: 'memos_v1',
     DINO_CUSTOM: 'dino_custom_v1',
     ITEM_CUSTOM: 'item_custom_v1',
     DINO_HIDDEN: 'dino_hidden_v1',
@@ -370,6 +372,8 @@
     dino: new Set(loadJSON(LS.DINO_HIDDEN, [])),
     item: new Set(loadJSON(LS.ITEM_HIDDEN, [])),
   };
+
+  const memos = loadJSON(LS.MEMOS, { dino: {}, item: {} });
   const order = {
     dino: loadJSON(LS.DINO_ORDER, []),
     item: loadJSON(LS.ITEM_ORDER, []),
@@ -462,6 +466,12 @@ function sortByOrder(list, kind) {
   });
 }
 
+  function formatPriceLineHTML(line){
+    const safe = escapeHtml(String(line));
+    return safe.replace(/♂/g,'<span class="sex male">オス</span>').replace(/♀/g,'<span class="sex female">メス</span>');
+  }
+
+
   /* ========= behavior rules ========= */
   function ensureDinoState(key, defType, spCfg = null) {
     if (!inputState.has(key)) {
@@ -535,6 +545,110 @@ function sortByOrder(list, kind) {
       if (!dataUrl) wrap.remove();
     });
   }
+
+
+  
+
+function formatMiniOutHtml(line) {
+  // 未入力時は空白1文字（見た目を保つ）
+  if (!line) return '&nbsp;';
+  const esc = escapeHtml(String(line));
+  return esc
+    .replace(/♂/g, '<span class="sexMale">オス</span>')
+    .replace(/♀/g, '<span class="sexFemale">メス</span>');
+}
+
+function dinoSuffixLine(d, s, sp) {
+    if (!s) return '';
+
+    // special mode output (ガチャ等)
+    if (sp?.enabled && s.mode === 'special') {
+      const allowSex = !!sp.allowSex;
+      const m = Number(s.m || 0);
+      const f = Number(s.f || 0);
+      const sexQty = m + f;
+
+      if (allowSex && sexQty > 0) {
+        const type = s.type || d.defType || '受精卵';
+        const unitPrice = prices[type] || 0;
+        const price = unitPrice * sexQty;
+
+        const tOut = String(type).replace('(指定)', '');
+        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+
+        if (isPair) {
+          if (m === f) {
+            return `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+          }
+          const p = [];
+          if (m > 0) p.push(`♂×${m}`);
+          if (f > 0) p.push(`♀×${f}`);
+          return `${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+        }
+
+        return `${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
+      }
+
+      const unitPrice = Number(sp.unit || 0);
+      const allPrice = Number(sp.all || 0);
+
+      if (s.all) {
+        return `全種 = ${allPrice.toLocaleString('ja-JP')}円`;
+      }
+
+      const picks = Array.isArray(s.picks) ? s.picks.slice() : [];
+      if (picks.length <= 0) return '';
+
+      const price = picks.length * unitPrice;
+      const seq = picks.map(n => circled(n)).join('');
+      return `${seq} = ${price.toLocaleString('ja-JP')}円`;
+    }
+
+    // normal mode output
+    const type = s.type || d.defType || '受精卵';
+    const m = Number(s.m || 0);
+    const f = Number(s.f || 0);
+    const qty = m + f;
+    if (qty <= 0) return '';
+
+    const unitPrice = prices[type] || 0;
+    const price = unitPrice * qty;
+
+    const tOut = String(type).replace('(指定)', '');
+    const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+
+    if (isPair) {
+      if (m === f) {
+        return `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+      }
+      const p = [];
+      if (m > 0) p.push(`♂×${m}`);
+      if (f > 0) p.push(`♀×${f}`);
+      return `${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+    }
+
+    return `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+  }
+
+  function syncDinoMiniLine(card, d, key) {
+    const sp = getSpecialCfgForDino(d);
+    const s = inputState.get(key);
+    const out = $('.miniOut', card);
+    if (out) out.textContent = dinoSuffixLine(d, s, sp);
+
+    const unit = $('.unit', card);
+    if (unit) {
+      // 特殊+オスメス（通常入力）は通常単価を表示
+      if (sp?.enabled && s?.mode === 'special' && sp.allowSex) {
+        unit.textContent = `単価${prices[s.type] || 0}円`;
+      } else if (sp?.enabled && s?.mode === 'special') {
+        unit.textContent = `1体=${Number(sp.unit || 0)}円`;
+      } else {
+        unit.textContent = `単価${prices[s?.type] || 0}円`;
+      }
+    }
+  }
+
 
   /* ========= output ========= */
   function rebuildOutput() {
@@ -766,10 +880,9 @@ ${lines.join('\n')}
             <div class="val js-f">0</div>
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
-
-          <select class="type" aria-label="種類"></select>
-        </div>
-      ` : ``;
+</div>
+      ` : `<div class="controls controlsWrap" style="margin-top:10px;justify-content:flex-end;">
+</div>`;
 
       card.innerHTML = `
         <div class="cardInner">
@@ -782,11 +895,22 @@ ${lines.join('\n')}
             </div>
 
             <div class="right">
-              <div class="unit" style="font-weight:900;color:rgba(255,255,255,.65);">1体=${unitPrice}円</div>
+              <button class="dupMini" type="button" data-act="dup">複製</button>
+              ${allowSex ? `<select class="type typeSel" aria-label="種類"></select>` : ``}
+              
+            <div class="unitRow">
+            <div class="unit"></div>
+            <div class="miniOut">&nbsp;</div>
+          </div>
+          </div>
             </div>
           </div>
 
           ${normalBlock}
+
+          <div class="memoLine"></div>
+
+          <div class="memoLine"></div>
 
           <div class="controls gachaWrap" style="display:block;margin-top:10px;">
             <div class="gWrap">
@@ -866,7 +990,9 @@ ${lines.join('\n')}
           }
         }
 
-        if (!el.q.value.trim()) {
+        syncDinoMiniLine(card, d, key);
+
+                if (!el.q.value.trim()) {
           const q = (Number(s.m || 0) + Number(s.f || 0)) > 0
             ? (Number(s.m || 0) + Number(s.f || 0))
             : (s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0));
@@ -880,8 +1006,7 @@ ${lines.join('\n')}
       $('.cardToggle', card).addEventListener('click', (ev) => {
         ev.preventDefault();
         if (el.q.value.trim()) return;
-        el._touched = true;
-    card.classList.toggle('isCollapsed');
+        card.classList.toggle('isCollapsed');
       });
 
       sel?.addEventListener('click', (ev) => ev.stopPropagation());
@@ -914,6 +1039,25 @@ ${lines.join('\n')}
         ev.stopPropagation();
 
         const act = btn.dataset.act;
+
+        if (act === 'dup') {
+          const dupKey = `${d.id}__dup_${uid()}`;
+          ephemeralKeys.add(dupKey);
+          inputState.set(dupKey, {
+            mode: s.mode,
+            type: s.type,
+            m: 0,
+            f: 0,
+            all: false,
+            picks: []
+          });
+
+          const dupCard = buildDinoCard(d, dupKey);
+          card.after(dupCard);
+          rebuildOutput();
+          applyCollapseAndSearch();
+          return;
+        }
 
         if (act === 'm-') return step('m', -1);
         if (act === 'm+') return step('m', +1);
@@ -981,11 +1125,12 @@ ${lines.join('\n')}
           </div>
 
           <div class="right">
-            <div class="typeRow">
-              <button class="dupMini" type="button">複製</button>
-              <select class="type" aria-label="種類"></select>
-            </div>
+            <select class="type" aria-label="種類"></select>
+            <div class="unitRow">
             <div class="unit"></div>
+            <div class="miniOut">&nbsp;</div>
+          </div>
+        </div>
           </div>
         </div>
 
@@ -1001,9 +1146,7 @@ ${lines.join('\n')}
             <div class="val js-f">0</div>
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
-
-          <button class="dupBtn" type="button" data-act="dup">複製</button>
-        </div>
+</div>
       </div>
     `;
 
@@ -1018,6 +1161,7 @@ ${lines.join('\n')}
 
     const unit = $('.unit', card);
     unit.textContent = `単価${prices[s.type] || 0}円`;
+    syncDinoMiniLine(card, d, key);
 
     const mEl = $('.js-m', card);
     const fEl = $('.js-f', card);
@@ -1033,6 +1177,7 @@ ${lines.join('\n')}
       unit.textContent = `単価${prices[s.type] || 0}円`;
       mEl.textContent = String(s.m || 0);
       fEl.textContent = String(s.f || 0);
+      syncDinoMiniLine(card, d, key);
 
       if (!el.q.value.trim()) {
         const q = (Number(s.m || 0) + Number(s.f || 0));
@@ -1071,6 +1216,25 @@ ${lines.join('\n')}
       btn.addEventListener('click', (ev) => {
         ev.stopPropagation();
         const act = btn.dataset.act;
+
+        if (act === 'dup') {
+          const dupKey = `${d.id}__dup_${uid()}`;
+          ephemeralKeys.add(dupKey);
+          inputState.set(dupKey, {
+            mode: s.mode,
+            type: s.type,
+            m: 0,
+            f: 0,
+            all: false,
+            picks: []
+          });
+
+          const dupCard = buildDinoCard(d, dupKey);
+          card.after(dupCard);
+          rebuildOutput();
+          applyCollapseAndSearch();
+          return;
+        }
 
         if (act === 'm-') step('m', -1);
         if (act === 'm+') step('m', +1);
@@ -1177,7 +1341,12 @@ ${lines.join('\n')}
 
     if (activeTab === 'dino') {
       const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
-      dList.forEach(d => el.list.appendChild(buildDinoCard(d)));
+      dList.forEach(d => {
+        el.list.appendChild(buildDinoCard(d));
+        // render duplicated cards (same dino, multiple lines)
+        const dups = Array.from(ephemeralKeys).filter(k => k.startsWith(d.id + '__dup_'));
+        dups.forEach(k => el.list.appendChild(buildDinoCard(d, k)));
+      });
     } else {
       const iList = sortByOrder(items.filter(i => !hidden.item.has(i.id)), 'item');
       iList.forEach(it => el.list.appendChild(buildItemCard(it)));
@@ -1316,6 +1485,41 @@ ${lines.join('\n')}
         return;
       }
 
+if (act === 'kana') {
+  const ok = await confirmAsk('50音順に並び替えますか？');
+  if (!ok) return;
+
+  const kind = activeTab; // 'dino' | 'item'
+  const visibleList = kind === 'dino'
+    ? dinos.filter(d => !hidden.dino.has(d.id))
+    : items.filter(i => !hidden.item.has(i.id));
+
+  const keyOf = (name) => {
+    const s = String(name || '').trim();
+    return norm(s.replace(/^TEK\s*/i, '').trim());
+  };
+
+  const sorted = visibleList.slice().sort((a, b) => {
+    const ka = keyOf(a.name);
+    const kb = keyOf(b.name);
+    if (ka < kb) return -1;
+    if (ka > kb) return 1;
+    return String(a.name || '').localeCompare(String(b.name || ''), 'ja');
+  });
+
+  const ids = sorted.map(x => x.id);
+  if (kind === 'dino') {
+    order.dino = ids;
+    saveJSON(LS.DINO_ORDER, order.dino);
+  } else {
+    order.item = ids;
+    saveJSON(LS.ITEM_ORDER, order.item);
+  }
+
+  applyOrderAndRender();
+  return;
+}
+
       if (!act || !id) return;
 
       const kind = activeTab;
@@ -1404,6 +1608,15 @@ ${lines.join('\n')}
           <input id="spAll" class="editInput" type="number" inputmode="numeric" value="3000">
         </div>
 
+        <div class="editLabel">メモ</div>
+        <textarea id="memoText" class="editTextarea" rows="3" placeholder="任意"></textarea>
+
+        <div class="editLabel">メモ</div>
+        <textarea id="memoText" class="editTextarea" rows="3" placeholder="任意"></textarea>
+
+        <div class="editLabel">メモ</div>
+        <textarea id="memoText" class="editTextarea" rows="3" placeholder="任意"></textarea>
+
         <div class="editBtns">
           <button class="ghost" type="button" data-act="cancel">キャンセル</button>
           <button class="pill" type="button" data-act="save">保存</button>
@@ -1423,6 +1636,9 @@ ${lines.join('\n')}
     });
 
     openEditModal('追加 / 編集', box);
+
+    const memoBox = $('#memoText', box);
+    if (memoBox) memoBox.value = '';
 
     box.addEventListener('click', (e) => {
       const act = e.target?.dataset?.act;
@@ -1444,6 +1660,9 @@ ${lines.join('\n')}
         if (existIdx >= 0) custom.dino[existIdx] = rec;
         else custom.dino.push(rec);
         saveJSON(LS.DINO_CUSTOM, custom.dino);
+        const memo = ($('#memoText', box)?.value || '').trim();
+        if (memo) memos.dino[id] = memo; else delete memos.dino[id];
+        saveJSON(LS.MEMOS, memos);
 
         if (spEnable?.checked) {
           const max = Math.max(1, Math.min(60, Number($('#spMax', box)?.value || 16)));
@@ -1486,6 +1705,9 @@ ${lines.join('\n')}
 
     openEditModal('追加 / 編集', box);
 
+    const memoBox = $('#memoText', box);
+    if (memoBox) memoBox.value = '';
+
     box.addEventListener('click', (e) => {
       const act = e.target?.dataset?.act;
       if (!act) return;
@@ -1509,6 +1731,9 @@ ${lines.join('\n')}
         if (existIdx >= 0) custom.item[existIdx] = rec;
         else custom.item.push(rec);
         saveJSON(LS.ITEM_CUSTOM, custom.item);
+        const memo = ($('#memoText', box)?.value || '').trim();
+        if (memo) memos.item[id] = memo; else delete memos.item[id];
+        saveJSON(LS.MEMOS, memos);
 
         closeEditModal();
         items = items.concat([{ id, name, unit, price, kind: 'item' }]);
@@ -1570,6 +1795,9 @@ ${lines.join('\n')}
     const sel = $('#editType', box);
     if (sel) sel.value = d.defType || '受精卵';
 
+    const memoBox = $('#memoText', box);
+    if (memoBox) memoBox.value = (memos.dino && memos.dino[id]) ? String(memos.dino[id]) : '';
+
     const spEnable = $('#spEnable', box);
     const spBox = $('#spBox', box);
     const spAllowSex = $('#spAllowSex', box);
@@ -1607,6 +1835,11 @@ ${lines.join('\n')}
         } else {
           dinoOverride[id] = { name: newName, defType: newDef };
           saveJSON(LS.DINO_OVERRIDE, dinoOverride);
+
+
+        const memo = ($('#memoText', box)?.value || '').trim();
+        if (memo) memos.dino[id] = memo; else delete memos.dino[id];
+        saveJSON(LS.MEMOS, memos);
         }
 
         const di = dinos.findIndex(x => x.id === id);
@@ -2120,3 +2353,36 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
 
   init();
 })();
+
+// ===== build timestamp (manage only) =====
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('buildStamp');
+  if (el) el.textContent = 'build: 2026-02-08 06:56:43';
+});
+
+// ===== build timestamp (manage only) =====
+function formatJST(d){
+  try{
+    const dtf = new Intl.DateTimeFormat('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+    const parts = dtf.formatToParts(d);
+    const get = (t) => (parts.find(p => p.type === t)?.value || '00');
+    return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`;
+  }catch(e){
+    // Fallback: assume local time is JST (not guaranteed)
+    const pad = (n) => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('buildStamp');
+  if (el) el.textContent = 'build: ' + formatJST(new Date());
+});
