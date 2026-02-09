@@ -7,8 +7,8 @@
   --ok:#78ffb3;
   --danger:#b94a55;
 
-  --male:#bfeaff;
-  --female:#ffd1e8;
+  --male:#57c7ff;
+  --female:#ff5fcf;
 
   /* ✅ 固定ヘッダー高さ（JS不要。CSSで確実に下げる） */
   --topPad: 246px; /* 初期値（画面幅で後半で調整） */
@@ -230,34 +230,6 @@ button{cursor:pointer}
 .right{
   position:relative;
   z-index:3;
-}
-
-.right .unitRow{
-  display:flex;
-  flex-direction:column;
-  align-items:flex-end;
-  gap:2px;
-}
-.unitRow .unit,
-.unitRow .miniOut{
-  font-size:12px;
-  line-height:1.35;
-  color:var(--mut);
-  text-align:right;
-  padding-bottom:2px; /* ♂♀などの下が欠けないように */
-  white-space:nowrap;
-}
-.unitRow .miniOut{ opacity:.95; }
-.maleText{ color:var(--male); }
-.femaleText{ color:var(--female); }
-
-.memoLine{
-  margin-top:10px;
-  font-size:12px;
-  line-height:1.35;
-  color:var(--mut);
-  padding-bottom:2px;
-  white-space:pre-wrap;
 }
 /* ✅ 右側(select/単価)は必ずトグルより前面にして操作を守る */
 .right{
@@ -769,3 +741,47 @@ button{cursor:pointer}
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
 }
+
+/* ===== v2 tweaks: dup + price lines + soft sex colors + special panel clipping fix ===== */
+:root{
+  --maleSoft: rgba(120, 200, 255, .85);
+  --femaleSoft: rgba(255, 150, 210, .85);
+}
+.stepper.male{border-color: var(--maleSoft); box-shadow: 0 0 0 2px rgba(120,200,255,.18);}
+.stepper.female{border-color: var(--femaleSoft); box-shadow: 0 0 0 2px rgba(255,150,210,.18);}
+.stepper.male .val{color: var(--maleSoft);}
+.stepper.female .val{color: var(--femaleSoft);}
+
+.right .typeRow{display:flex; gap:10px; align-items:stretch;}
+.dupMini{
+  height: 44px;
+  min-width: 72px;
+  padding: 0 12px;
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.82);
+  font-weight: 700;
+  font-size: 13px;
+}
+.right .type{flex: 1;}
+
+.unit{
+  white-space: normal;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.unitLine, .dispLine{
+  font-size: 14px;
+  line-height: 1.2;
+  color: rgba(255,255,255,.62);
+  font-weight: 700;
+}
+.sex{font-weight:800;}
+.sex-m{color: var(--maleSoft);}
+.sex-f{color: var(--femaleSoft);}
+
+/* special numeric panel: prevent bottom text clipping */
+.gachaWrap{padding-bottom: 12px;}
+.gInfo{padding-bottom: 14px;}
