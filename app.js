@@ -1,8 +1,7 @@
 (() => {
   'use strict';
-  
-  const BUILD_TIME_JST = '2026-02-09 19:44:34';
-/* ========= utils ========= */
+
+  /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const uid = () => Math.random().toString(36).slice(2, 10);
@@ -880,7 +879,8 @@ ${lines.join('\n')}
       $('.cardToggle', card).addEventListener('click', (ev) => {
         ev.preventDefault();
         if (el.q.value.trim()) return;
-        card.classList.toggle('isCollapsed');
+        el._touched = true;
+    card.classList.toggle('isCollapsed');
       });
 
       sel?.addEventListener('click', (ev) => ev.stopPropagation());
@@ -980,7 +980,10 @@ ${lines.join('\n')}
           </div>
 
           <div class="right">
-            <select class="type" aria-label="種類"></select>
+            <div class="typeRow">
+              <button class="dupMini" type="button">複製</button>
+              <select class="type" aria-label="種類"></select>
+            </div>
             <div class="unit"></div>
           </div>
         </div>
