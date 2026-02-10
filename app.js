@@ -578,8 +578,8 @@ function sortByOrder(list, kind) {
                 line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
               } else {
                 const p = [];
-                if (m > 0) p.push(`♂×${m}`);
-                if (f > 0) p.push(`♀×${f}`);
+                if (m > 0) p.push(`♂︎×${m}`);
+                if (f > 0) p.push(`♀︎×${f}`);
                 line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
               }
             } else {
@@ -635,8 +635,8 @@ function sortByOrder(list, kind) {
             line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
           } else {
             const p = [];
-            if (m > 0) p.push(`♂×${m}`);
-            if (f > 0) p.push(`♀×${f}`);
+            if (m > 0) p.push(`♂︎×${m}`);
+            if (f > 0) p.push(`♀︎×${f}`);
             line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
           }
         } else {
@@ -802,7 +802,10 @@ card.innerHTML = `
           <button class="dupMini" type="button" data-act="dup">複製</button>
           ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
         </div>
-        <div class="unit">1体=${unitPrice}円</div>
+        <div class="unit">
+              <div class="unitLine">1体=${unitPrice}円</div>
+              <div class="dispLine js-price"></div>
+            </div>
               <div class="sexHint js-sexHint"></div>
               <div class="cardPrice js-price">価格0円</div>
       </div>
@@ -1124,7 +1127,43 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     sel.value = s.type;
 
     const unit = $('.unit', card);
-    unit.textContent = `単価${prices[s.type] || 0}円`;
+    // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
+      unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
+      let priceEl = $('.js-price', unit);
+      if (!priceEl) {
+        priceEl = document.createElement('div');
+        priceEl.className = 'dispLine js-price';
+        unit.appendChild(priceEl);
+      }
+
+      const type = s.type || d.defType || '受精卵';
+      const m = Number(s.m || 0);
+      const f = Number(s.f || 0);
+      const qty = m + f;
+
+      if (qty <= 0) {
+        priceEl.textContent = '';
+      } else {
+        const unitPrice = prices[type] || 0;
+        const price = unitPrice * qty;
+
+        // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵 オス×1 ︎︎ メス×1= 100円）
+        const tOut = String(type).replace('(指定)', '');
+        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+
+        if (isPair) {
+          if (m === f) {
+            priceEl.textContent = `${tOut}ペア${m > 1 ? '×' + m : ''}= ${price.toLocaleString('ja-JP')}円`;
+          } else {
+            priceEl.innerHTML =
+              `${tOut} ` +
+              `<span class="maleTxt">オス</span>×${m} ` +
+              `<span class="femaleTxt">メス</span>×${f}= ${price.toLocaleString('ja-JP')}円`;
+          }
+        } else {
+          priceEl.textContent = `${tOut}×${qty}= ${price.toLocaleString('ja-JP')}円`;
+        }
+      }
 
     const mEl = $('.js-m', card);
     const fEl = $('.js-f', card);
@@ -1137,7 +1176,43 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     function syncUI() {
       if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
       sel.value = s.type;
-      unit.textContent = `単価${prices[s.type] || 0}円`;
+      // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
+      unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
+      let priceEl = $('.js-price', unit);
+      if (!priceEl) {
+        priceEl = document.createElement('div');
+        priceEl.className = 'dispLine js-price';
+        unit.appendChild(priceEl);
+      }
+
+      const type = s.type || d.defType || '受精卵';
+      const m = Number(s.m || 0);
+      const f = Number(s.f || 0);
+      const qty = m + f;
+
+      if (qty <= 0) {
+        priceEl.textContent = '';
+      } else {
+        const unitPrice = prices[type] || 0;
+        const price = unitPrice * qty;
+
+        // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵 オス×1 ︎︎ メス×1= 100円）
+        const tOut = String(type).replace('(指定)', '');
+        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+
+        if (isPair) {
+          if (m === f) {
+            priceEl.textContent = `${tOut}ペア${m > 1 ? '×' + m : ''}= ${price.toLocaleString('ja-JP')}円`;
+          } else {
+            priceEl.innerHTML =
+              `${tOut} ` +
+              `<span class="maleTxt">オス</span>×${m} ` +
+              `<span class="femaleTxt">メス</span>×${f}= ${price.toLocaleString('ja-JP')}円`;
+          }
+        } else {
+          priceEl.textContent = `${tOut}×${qty}= ${price.toLocaleString('ja-JP')}円`;
+        }
+      }
       mEl.textContent = String(s.m || 0);
       fEl.textContent = String(s.f || 0);
 
