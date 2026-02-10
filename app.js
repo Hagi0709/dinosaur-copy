@@ -842,10 +842,6 @@ card.innerHTML = `
         </div>
       `;
 
-      $('.name', card).textContent = d.name;
-
-      installLeftToggleHit(card);
-
       const inputEl = $('.gInput', card);
       const sumEl = $('.gSum', card);
       const allBtn = $('button[data-act="all"]', card);
