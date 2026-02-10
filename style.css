@@ -10,6 +10,10 @@
   --male:#57c7ff;
   --female:#ff5fcf;
 
+  /* ✅ 表示用（淡い色） */
+  --maleSoft: rgba(130, 200, 255, .95);
+  --femaleSoft: rgba(255, 150, 200, .95);
+
   /* ✅ 固定ヘッダー高さ（JS不要。CSSで確実に下げる） */
   --topPad: 246px; /* 初期値（画面幅で後半で調整） */
 }
@@ -336,8 +340,8 @@ button{cursor:pointer}
   white-space:nowrap;
   min-height:14px;
 }
-.sexMale{ color: rgba(130, 200, 255, .95); }
-.sexFemale{ color: rgba(255, 150, 200, .95); }
+.sexMale{ color: var(--maleSoft); }
+.sexFemale{ color: var(--femaleSoft); }
 
 .cardPrice{
   margin-top:2px;
@@ -865,7 +869,7 @@ button{cursor:pointer}
   gap:4px;
 }
 .unitLine, .dispLine{
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.2;
   color: rgba(255,255,255,.62);
   font-weight: 700;
