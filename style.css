@@ -205,9 +205,9 @@ button{cursor:pointer}
 .cardHead{
   position:relative;
   display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(0, 180px);
+  grid-template-columns:minmax(0,1fr) minmax(0, 170px);
   gap:10px;
-  align-items:start;
+  align-items:center;
 }
 
 /* ✅ ここが原因：toggleが前面すぎるとselectが押せない
@@ -352,7 +352,7 @@ button{cursor:pointer}
 .gWrap{ margin-top:6px; width:100%; } /* ✅ グリッドがカード幅いっぱいまで広がる */
 .gGrid{
   display:grid;
-  grid-template-columns:repeat(4, minmax(0, 1fr));
+  grid-template-columns:repeat(auto-fit, minmax(64px, 1fr));
   gap:10px;
 }
 .gBtn{
@@ -580,6 +580,10 @@ button{cursor:pointer}
   overflow:auto;
   -webkit-overflow-scrolling:touch;
 }
+
+/* Manage top bar */
+.mTopBar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.mTopBar .pill{min-width:0;}
 
 /* Manage rows */
 .mRow{
@@ -832,8 +836,8 @@ button{cursor:pointer}
 .right .typeRow{display:flex; gap:8px; align-items:stretch;}
 .dupMini{
   height:44px;
-  min-width:58px;
-  padding:0 10px;
+  min-width:54px;
+  padding:0 8px;
   border-radius:16px; /* ← .type に合わせる */
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
@@ -846,9 +850,12 @@ button{cursor:pointer}
   justify-content:center;
   white-space:nowrap;
 }
-.right .type{
+.type{
   flex: 1;
   min-width: 130px; /* 「受精卵(指定)」が見切れない現実的な下限 */
+  height:44px;
+  font-size:12px;
+  padding:0 10px;
 }
 
 .unit{
@@ -858,14 +865,15 @@ button{cursor:pointer}
   gap:4px;
 }
 .unitLine, .dispLine{
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.2;
   color: rgba(255,255,255,.62);
   font-weight: 700;
 }
-.sex{font-weight:800;}
 .sex-m{color: var(--maleSoft);}
 .sex-f{color: var(--femaleSoft);}
+.maleTxt{color: var(--maleSoft);}
+.femaleTxt{color: var(--femaleSoft);}
 
 /* special numeric panel: prevent bottom text clipping */
 .gachaWrap{padding-bottom: 12px;}
