@@ -578,8 +578,8 @@ function sortByOrder(list, kind) {
                 line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
               } else {
                 const p = [];
-                if (m > 0) p.push(`オス×${m}`);
-                if (f > 0) p.push(`メス×${f}`);
+                if (m > 0) p.push(`♂×${m}`);
+                if (f > 0) p.push(`♀×${f}`);
                 line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
               }
             } else {
@@ -631,13 +631,13 @@ function sortByOrder(list, kind) {
 
         let line = '';
         if (isPair) {
-              if (m === f) {
-                line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
-              } else {
-                const p = [];
-                if (m > 0) p.push(`オス×${m}`);
-                if (f > 0) p.push(`メス×${f}`);
-                line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+          if (m === f) {
+            line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+          } else {
+            const p = [];
+            if (m > 0) p.push(`♂×${m}`);
+            if (f > 0) p.push(`♀×${f}`);
+            line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
           }
         } else {
           line = `${d.name}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
@@ -803,11 +803,11 @@ card.innerHTML = `
           ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
         </div>
         <div class="unit">1体=${unitPrice}円</div>
-        <div class="sexHint js-sexHint"></div>
-        <div class="cardPrice js-price">価格0円</div>
+              <div class="sexHint js-sexHint"></div>
+              <div class="cardPrice js-price">価格0円</div>
       </div>
     </div>
-    
+
     ${normalBlock}
 
     <div class="controls gachaWrap">
@@ -876,11 +876,10 @@ requestAnimationFrame(() => installLeftToggleHit(card));
         const f = Number(s.f || 0);
         const sexQty = m + f;
 
-        // セレクト（番号）ボタンの見た目
+        // 番号ボタン：統一表示（押下状態＆無効制御）
         $$('.gBtn', card).forEach(btn => {
           const n = Number(btn.dataset.n || 0);
           btn.classList.toggle('isOn', picks.includes(n));
-          // 通常入力中 or 全種中は番号入力を触れないようにする
           btn.disabled = (allowSex && sexQty > 0) || !!s.all;
         });
 
@@ -889,14 +888,14 @@ requestAnimationFrame(() => installLeftToggleHit(card));
           if (fEl) fEl.textContent = String(f);
           if (sel) sel.value = s.type;
 
-          // 通常入力が入ったら特殊（番号/全種）は実質無効
-          const lockSpecial = sexQty > 0;
+          // 通常入力が入ったら特殊（番号/全種）は無効化
+          const lock = sexQty > 0;
           if (allBtn) {
             allBtn.textContent = s.all ? '全種✓' : '全種';
             allBtn.classList.toggle('isOn', !!s.all);
-            allBtn.disabled = lockSpecial;
+            allBtn.disabled = lock;
           }
-          if (undoBtn) undoBtn.disabled = lockSpecial || (!s.all && picks.length === 0);
+          if (undoBtn) undoBtn.disabled = lock || (!s.all && picks.length === 0);
         } else {
           if (allBtn) {
             allBtn.textContent = s.all ? '全種✓' : '全種';
@@ -906,7 +905,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
           if (undoBtn) undoBtn.disabled = (!s.all && picks.length === 0);
         }
 
-        // 価格表示（単価の下）
+        // 価格（単価の下）
         if (priceEl) {
           let price = 0;
           if (allowSex && sexQty > 0) {
@@ -920,7 +919,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
           priceEl.textContent = `価格${yen(price)}`;
         }
 
-        // オス/メス表示（色付き）
+        // オス/メス（色付き）
         if (sexHintEl) {
           if (allowSex && sexQty > 0) {
             const parts = [];
@@ -933,9 +932,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
         }
 
         if (!el.q.value.trim()) {
-          const q = (Number(s.m || 0) + Number(s.f || 0)) > 0
-            ? (Number(s.m || 0) + Number(s.f || 0))
-            : (s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0));
+          const q = (sexQty > 0) ? sexQty : (s.all ? 1 : picks.length);
           card.classList.toggle('isCollapsed', q === 0);
         }
       };
@@ -1067,16 +1064,14 @@ if (act === 'dup') {
             ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
           </div>
 
-          <div class="right">
-            <div class="typeRow">
-              <button class="dupMini" type="button">複製</button>
-              <select class="type" aria-label="種類"></select>
-            </div>
-            <div class="unit"></div>
-            <div class="sexHint js-sexHint"></div>
-            <div class="price js-price">価格0円</div>
-          </div>
-        </div>
+<div class="right">
+  <div class="typeRow">
+    <button class="dupMini" type="button" data-act="dup">複製</button>
+    <select class="type" aria-label="種類"></select>
+  </div>
+  <div class="unit"></div>
+</div>
+</div>
 
 <div class="controls">
   <div class="stepper male">
@@ -1129,12 +1124,11 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     sel.value = s.type;
 
     const unit = $('.unit', card);
-    const priceEl = $('.js-price', card);
-    const sexHintEl = $('.js-sexHint', card);
     unit.textContent = `単価${prices[s.type] || 0}円`;
 
     const mEl = $('.js-m', card);
     const fEl = $('.js-f', card);
+    mEl.textContent = String(s.m || 0);
     fEl.textContent = String(s.f || 0);
 
     const initialQty = Number(s.m || 0) + Number(s.f || 0);
@@ -1146,21 +1140,6 @@ requestAnimationFrame(() => installLeftToggleHit(card));
       unit.textContent = `単価${prices[s.type] || 0}円`;
       mEl.textContent = String(s.m || 0);
       fEl.textContent = String(s.f || 0);
-
-      // 価格表示（単価の下）
-      const m = Number(s.m || 0);
-      const f = Number(s.f || 0);
-      const qty = m + f;
-      const unitPrice = prices[s.type] || 0;
-      if (priceEl) priceEl.textContent = `価格${yen(unitPrice * qty)}`;
-
-      // オス/メス表示（色付き）
-      if (sexHintEl) {
-        const parts = [];
-        if (m > 0) parts.push(`<span class="sexMale">オス</span>×${m}`);
-        if (f > 0) parts.push(`<span class="sexFemale">メス</span>×${f}`);
-        sexHintEl.innerHTML = parts.join(' ');
-      }
 
       if (!el.q.value.trim()) {
         const q = (Number(s.m || 0) + Number(s.f || 0));
