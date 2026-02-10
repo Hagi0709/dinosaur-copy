@@ -803,6 +803,8 @@ card.innerHTML = `
           ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
         </div>
         <div class="unit">1体=${unitPrice}円</div>
+              <div class="sexHint js-sexHint"></div>
+              <div class="cardPrice js-price">価格0円</div>
       </div>
     </div>
 
@@ -815,16 +817,8 @@ card.innerHTML = `
         </div>
 
         <div class="gLineWrap">
-          <button data-act="undo">− 取消</button>
-          <button data-act="all">全種</button>
-          <div>
-            <div>入力：<span class="gInput">(未入力)</span></div>
-            <div>小計：<span class="gSum">0円</span></div>
-          </div>
-        </div>
-
-        <div class="gAll">
-          全種=${allPrice.toLocaleString('ja-JP')}円
+          <button class="gAct gUndo" type="button" data-act="undo">− 取消</button>
+          <button class="gAct" type="button" data-act="all">全種</button>
         </div>
       </div>
     </div>
@@ -861,9 +855,10 @@ if (nameEl) nameEl.textContent = d.name;
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
 requestAnimationFrame(() => installLeftToggleHit(card));
 
-      const inputEl = $('.gInput', card);
-      const sumEl = $('.gSum', card);
       const allBtn = $('button[data-act="all"]', card);
+      const undoBtn = $('button[data-act="undo"]', card);
+      const priceEl = $('.js-price', card);
+      const sexHintEl = $('.js-sexHint', card);
 
       const mEl = $('.js-m', card);
       const fEl = $('.js-f', card);
@@ -877,44 +872,67 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
       const syncSpecial = () => {
         const picks = Array.isArray(s.picks) ? s.picks : [];
-        const sexQty = Number(s.m || 0) + Number(s.f || 0);
+        const m = Number(s.m || 0);
+        const f = Number(s.f || 0);
+        const sexQty = m + f;
+
+        // 番号ボタン：統一表示（押下状態＆無効制御）
+        $$('.gBtn', card).forEach(btn => {
+          const n = Number(btn.dataset.n || 0);
+          btn.classList.toggle('isOn', picks.includes(n));
+          btn.disabled = (allowSex && sexQty > 0) || !!s.all;
+        });
 
         if (allowSex) {
-          if (mEl) mEl.textContent = String(s.m || 0);
-          if (fEl) fEl.textContent = String(s.f || 0);
+          if (mEl) mEl.textContent = String(m);
+          if (fEl) fEl.textContent = String(f);
           if (sel) sel.value = s.type;
 
-          if (sexQty > 0) {
-            if (inputEl) inputEl.textContent = '(通常入力中)';
-            if (sumEl) sumEl.textContent = '(特殊無効)';
-            if (allBtn) allBtn.textContent = '全種';
-          } else {
-            if (s.all) {
-              if (inputEl) inputEl.textContent = '全種';
-              if (sumEl) sumEl.textContent = yen(allPrice);
-              if (allBtn) allBtn.textContent = '全種✓';
-            } else {
-              if (inputEl) inputEl.textContent = picks.length ? picks.map(n => circled(n)).join('') : '(未入力)';
-              if (sumEl) sumEl.textContent = yen(picks.length * unitPrice);
-              if (allBtn) allBtn.textContent = '全種';
-            }
+          // 通常入力が入ったら特殊（番号/全種）は無効化
+          const lock = sexQty > 0;
+          if (allBtn) {
+            allBtn.textContent = s.all ? '全種✓' : '全種';
+            allBtn.classList.toggle('isOn', !!s.all);
+            allBtn.disabled = lock;
           }
+          if (undoBtn) undoBtn.disabled = lock || (!s.all && picks.length === 0);
         } else {
-          if (s.all) {
-            if (inputEl) inputEl.textContent = '全種';
-            if (sumEl) sumEl.textContent = yen(allPrice);
-            if (allBtn) allBtn.textContent = '全種✓';
+          if (allBtn) {
+            allBtn.textContent = s.all ? '全種✓' : '全種';
+            allBtn.classList.toggle('isOn', !!s.all);
+            allBtn.disabled = false;
+          }
+          if (undoBtn) undoBtn.disabled = (!s.all && picks.length === 0);
+        }
+
+        // 価格（単価の下）
+        if (priceEl) {
+          let price = 0;
+          if (allowSex && sexQty > 0) {
+            const type = s.type || d.defType || '受精卵';
+            price = (prices[type] || 0) * sexQty;
+          } else if (s.all) {
+            price = allPrice;
           } else {
-            if (inputEl) inputEl.textContent = picks.length ? picks.map(n => circled(n)).join('') : '(未入力)';
-            if (sumEl) sumEl.textContent = yen(picks.length * unitPrice);
-            if (allBtn) allBtn.textContent = '全種';
+            price = picks.length * unitPrice;
+          }
+          priceEl.textContent = `価格${yen(price)}`;
+        }
+
+        // オス/メス（色付き）
+        if (sexHintEl) {
+          if (allowSex && sexQty > 0) {
+            const parts = [];
+            if (m > 0) parts.push(`<span class="sexMale">オス</span>×${m}`);
+            if (f > 0) parts.push(`<span class="sexFemale">メス</span>×${f}`);
+            sexHintEl.innerHTML = parts.join(' ');
+          } else {
+            sexHintEl.innerHTML = '';
           }
         }
 
         if (!el.q.value.trim()) {
-          const q = (Number(s.m || 0) + Number(s.f || 0)) > 0
-            ? (Number(s.m || 0) + Number(s.f || 0))
-            : (s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0));
+          const q = (sexQty > 0) ? sexQty : (s.all ? 1 : picks.length);
           card.classList.toggle('isCollapsed', q === 0);
         }
       };
