@@ -806,7 +806,6 @@ card.innerHTML = `
               <div class="unitLine">1体=${unitPrice}円</div>
               <div class="dispLine js-price"></div>
             </div>
-              <div class="sexHint js-sexHint"></div>
             
       </div>
     </div>
@@ -861,12 +860,11 @@ requestAnimationFrame(() => installLeftToggleHit(card));
       const allBtn = $('button[data-act="all"]', card);
       const undoBtn = $('button[data-act="undo"]', card);
       const priceEl = $('.js-price', card);
-      const sexHintEl = $('.js-sexHint', card);
 
       const mEl = $('.js-m', card);
       const fEl = $('.js-f', card);
       const sel = $('.type', card);
-
+      
       if (allowSex && sel) {
         sel.innerHTML = typeList.map(t => `<option value="${t}">${t}</option>`).join('');
         if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
@@ -939,17 +937,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
           }
         }
 
-        // オス/メス（色付き）
-        if (sexHintEl) {
-          if (allowSex && sexQty > 0) {
-            const parts = [];
-            if (m > 0) parts.push(`<span class="sexMale">オス</span>×${m}`);
-            if (f > 0) parts.push(`<span class="sexFemale">メス</span>×${f}`);
-            sexHintEl.innerHTML = parts.join(' ');
-          } else {
-            sexHintEl.innerHTML = '';
-          }
-        }
+  
 
         if (!el.q.value.trim()) {
           const q = (sexQty > 0) ? sexQty : (s.all ? 1 : picks.length);
