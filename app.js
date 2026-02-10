@@ -941,7 +941,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
             } else {
               price = picks.length * unitPrice;
               const nums = picks.map(n => circled(n)).join('');
-              priceEl.textContent = `${nums} = ${yen(price)}`;
+              priceEl.textContent = nums ? `${nums} = ${yen(price)}` : ' ';
             }
           }
         }
@@ -2208,31 +2208,45 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
       openToast('入口パスワードを保存しました');
     };
 
-    Object.keys(roomPw).forEach(room => {
+Object.keys(roomPw).forEach(room => {
       const row = document.createElement('div');
       row.className = 'mRow';
+      const u = (roomUser?.[room] ?? '');
       row.innerHTML = `
-        <div class="mName">${room}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="mName">${room}</div>
+          <input class="roomUserInput" data-room="${room}" value="${escapeHtml(u)}" placeholder="使用者名"
+            style="width:100%;height:36px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);color:#fff;padding:0 10px;font-weight:900;margin-top:6px;">
+        </div>
+
         <div style="display:flex;gap:10px;align-items:center;flex:0 0 auto;">
           <button class="pill" style="width:110px;height:40px;" data-act="copy" data-room="${room}" type="button">コピー</button>
           <button class="pill" style="width:110px;height:40px;" data-act="pw" data-room="${room}" type="button">PW変更</button>
+          <button class="pill" style="width:120px;height:40px;" data-act="done" data-room="${room}" type="button">受け取り完了</button>
         </div>
       `;
       wrap.appendChild(row);
     });
 
+    wrap.addEventListener('input', (e) => {
+      const inp = e.target?.closest('input.roomUserInput');
+      if (!inp) return;
+      const room = inp.dataset.room;
+      if (!room) return;
+      roomUser[room] = (inp.value || '').trim();
+      saveJSON(LS.ROOM_USER, roomUser);
+    });
+
     wrap.addEventListener('click', async (e) => {
-      const btn = e.target?.closest('button');
-      const act = btn?.dataset?.act;
-      const room = btn?.dataset?.room;
-      if (!act || !room) return;
+      const btn = e.target?.closest('button[data-act]');
+      if (!btn) return;
+      const act = btn.dataset.act;
+      const room = btn.dataset.room;
+      if (!room) return;
 
       if (act === 'copy') {
-        await copyText(buildCopyText(room));
-        const prev = btn.textContent;
-        btn.textContent = 'コピー済';
-        btn.disabled = true;
-        setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 900);
+        await copyText(roomPw[room] || '');
+        openToast(`${room} のPWをコピーしました`);
       }
 
       if (act === 'pw') {
@@ -2241,6 +2255,14 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
         roomPw[room] = npw;
         saveJSON(LS.ROOM_PW, roomPw);
         openToast(`${room} のPWを保存しました`);
+      }
+
+      if (act === 'done') {
+        roomUser[room] = '';
+        saveJSON(LS.ROOM_USER, roomUser);
+        const inp = wrap.querySelector(`input.roomUserInput[data-room="${room}"]`);
+        if (inp) inp.value = '';
+        openToast(`${room} をリセットしました`);
       }
     });
 
