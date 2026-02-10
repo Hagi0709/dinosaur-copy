@@ -12,6 +12,14 @@ const BUILD_VERSION = '2026-02-10 07:25';
   const toHira = (s) => (s || '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
   const norm = (s) => toHira(String(s || '').toLowerCase()).replace(/\s+/g, '');
 
+  // ✅ 五十音順ソート用：TEKは接頭辞を無視（TEK以降で比較）
+  function sortName(name) {
+    const raw = String(name || '').trim();
+    const base = raw.startsWith('TEK') ? raw.slice(3).trim() : raw;
+    // カタカナ→ひらがな、空白除去して比較キー化
+    return toHira(base).replace(/\s+/g, '');
+  }
+
   function stableHash(str) {
     let h = 5381;
     for (let i = 0; i < str.length; i++) h = ((h << 5) + h) + str.charCodeAt(i);
@@ -1532,7 +1540,7 @@ if (act === 'gojuon') {
       if (!act || !id) return;
 
       const kind = activeTab;
-      const ord = (order[kind] || [
+      const ord = (order[kind] || []).slice();
       const i = ord.indexOf(id);
 
       if (act === 'up' && i > 0) {
