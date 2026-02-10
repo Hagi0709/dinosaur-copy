@@ -2140,7 +2140,6 @@ let roomPw = loadJSON(LS.ROOM_PW, {
     ROOM8: '0000',
     ROOM9: '0000',
   });
-  let roomUser = loadJSON(LS.ROOM_USER, {});
   let roomUser = loadJSON(LS.ROOM_USER, {
     ROOM1: '',
     ROOM2: '',
