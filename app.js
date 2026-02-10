@@ -578,8 +578,8 @@ function sortByOrder(list, kind) {
                 line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
               } else {
                 const p = [];
-                if (m > 0) p.push(`♂×${m}`);
-                if (f > 0) p.push(`♀×${f}`);
+                if (m > 0) p.push(`オス×${m}`);
+                if (f > 0) p.push(`メス×${f}`);
                 line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
               }
             } else {
@@ -631,13 +631,13 @@ function sortByOrder(list, kind) {
 
         let line = '';
         if (isPair) {
-          if (m === f) {
-            line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
-          } else {
-            const p = [];
-            if (m > 0) p.push(`♂×${m}`);
-            if (f > 0) p.push(`♀×${f}`);
-            line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+              if (m === f) {
+                line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+              } else {
+                const p = [];
+                if (m > 0) p.push(`オス×${m}`);
+                if (f > 0) p.push(`メス×${f}`);
+                line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
           }
         } else {
           line = `${d.name}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
@@ -803,9 +803,11 @@ card.innerHTML = `
           ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
         </div>
         <div class="unit">1体=${unitPrice}円</div>
+        <div class="sexHint js-sexHint"></div>
+        <div class="cardPrice js-price">価格0円</div>
       </div>
     </div>
-
+    
     ${normalBlock}
 
     <div class="controls gachaWrap">
@@ -815,16 +817,8 @@ card.innerHTML = `
         </div>
 
         <div class="gLineWrap">
-          <button data-act="undo">− 取消</button>
-          <button data-act="all">全種</button>
-          <div>
-            <div>入力：<span class="gInput">(未入力)</span></div>
-            <div>小計：<span class="gSum">0円</span></div>
-          </div>
-        </div>
-
-        <div class="gAll">
-          全種=${allPrice.toLocaleString('ja-JP')}円
+          <button class="gAct gUndo" type="button" data-act="undo">− 取消</button>
+          <button class="gAct" type="button" data-act="all">全種</button>
         </div>
       </div>
     </div>
@@ -861,9 +855,10 @@ if (nameEl) nameEl.textContent = d.name;
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
 requestAnimationFrame(() => installLeftToggleHit(card));
 
-      const inputEl = $('.gInput', card);
-      const sumEl = $('.gSum', card);
       const allBtn = $('button[data-act="all"]', card);
+      const undoBtn = $('button[data-act="undo"]', card);
+      const priceEl = $('.js-price', card);
+      const sexHintEl = $('.js-sexHint', card);
 
       const mEl = $('.js-m', card);
       const fEl = $('.js-f', card);
@@ -877,37 +872,63 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
       const syncSpecial = () => {
         const picks = Array.isArray(s.picks) ? s.picks : [];
-        const sexQty = Number(s.m || 0) + Number(s.f || 0);
+        const m = Number(s.m || 0);
+        const f = Number(s.f || 0);
+        const sexQty = m + f;
+
+        // セレクト（番号）ボタンの見た目
+        $$('.gBtn', card).forEach(btn => {
+          const n = Number(btn.dataset.n || 0);
+          btn.classList.toggle('isOn', picks.includes(n));
+          // 通常入力中 or 全種中は番号入力を触れないようにする
+          btn.disabled = (allowSex && sexQty > 0) || !!s.all;
+        });
 
         if (allowSex) {
-          if (mEl) mEl.textContent = String(s.m || 0);
-          if (fEl) fEl.textContent = String(s.f || 0);
+          if (mEl) mEl.textContent = String(m);
+          if (fEl) fEl.textContent = String(f);
           if (sel) sel.value = s.type;
 
-          if (sexQty > 0) {
-            inputEl.textContent = '(通常入力中)';
-            sumEl.textContent = '(特殊無効)';
-            allBtn.textContent = '全種';
-          } else {
-            if (s.all) {
-              inputEl.textContent = '全種';
-              sumEl.textContent = yen(allPrice);
-              allBtn.textContent = '全種✓';
-            } else {
-              inputEl.textContent = picks.length ? picks.map(n => circled(n)).join('') : '(未入力)';
-              sumEl.textContent = yen(picks.length * unitPrice);
-              allBtn.textContent = '全種';
-            }
+          // 通常入力が入ったら特殊（番号/全種）は実質無効
+          const lockSpecial = sexQty > 0;
+          if (allBtn) {
+            allBtn.textContent = s.all ? '全種✓' : '全種';
+            allBtn.classList.toggle('isOn', !!s.all);
+            allBtn.disabled = lockSpecial;
           }
+          if (undoBtn) undoBtn.disabled = lockSpecial || (!s.all && picks.length === 0);
         } else {
-          if (s.all) {
-            inputEl.textContent = '全種';
-            sumEl.textContent = yen(allPrice);
-            allBtn.textContent = '全種✓';
+          if (allBtn) {
+            allBtn.textContent = s.all ? '全種✓' : '全種';
+            allBtn.classList.toggle('isOn', !!s.all);
+            allBtn.disabled = false;
+          }
+          if (undoBtn) undoBtn.disabled = (!s.all && picks.length === 0);
+        }
+
+        // 価格表示（単価の下）
+        if (priceEl) {
+          let price = 0;
+          if (allowSex && sexQty > 0) {
+            const type = s.type || d.defType || '受精卵';
+            price = (prices[type] || 0) * sexQty;
+          } else if (s.all) {
+            price = allPrice;
           } else {
-            inputEl.textContent = picks.length ? picks.map(n => circled(n)).join('') : '(未入力)';
-            sumEl.textContent = yen(picks.length * unitPrice);
-            allBtn.textContent = '全種';
+            price = picks.length * unitPrice;
+          }
+          priceEl.textContent = `価格${yen(price)}`;
+        }
+
+        // オス/メス表示（色付き）
+        if (sexHintEl) {
+          if (allowSex && sexQty > 0) {
+            const parts = [];
+            if (m > 0) parts.push(`<span class="sexMale">オス</span>×${m}`);
+            if (f > 0) parts.push(`<span class="sexFemale">メス</span>×${f}`);
+            sexHintEl.innerHTML = parts.join(' ');
+          } else {
+            sexHintEl.innerHTML = '';
           }
         }
 
@@ -1046,14 +1067,16 @@ if (act === 'dup') {
             ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
           </div>
 
-<div class="right">
-  <div class="typeRow">
-    <button class="dupMini" type="button" data-act="dup">複製</button>
-    <select class="type" aria-label="種類"></select>
-  </div>
-  <div class="unit"></div>
-</div>
-</div>
+          <div class="right">
+            <div class="typeRow">
+              <button class="dupMini" type="button">複製</button>
+              <select class="type" aria-label="種類"></select>
+            </div>
+            <div class="unit"></div>
+            <div class="sexHint js-sexHint"></div>
+            <div class="price js-price">価格0円</div>
+          </div>
+        </div>
 
 <div class="controls">
   <div class="stepper male">
@@ -1106,11 +1129,12 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     sel.value = s.type;
 
     const unit = $('.unit', card);
+    const priceEl = $('.js-price', card);
+    const sexHintEl = $('.js-sexHint', card);
     unit.textContent = `単価${prices[s.type] || 0}円`;
 
     const mEl = $('.js-m', card);
     const fEl = $('.js-f', card);
-    mEl.textContent = String(s.m || 0);
     fEl.textContent = String(s.f || 0);
 
     const initialQty = Number(s.m || 0) + Number(s.f || 0);
@@ -1122,6 +1146,21 @@ requestAnimationFrame(() => installLeftToggleHit(card));
       unit.textContent = `単価${prices[s.type] || 0}円`;
       mEl.textContent = String(s.m || 0);
       fEl.textContent = String(s.f || 0);
+
+      // 価格表示（単価の下）
+      const m = Number(s.m || 0);
+      const f = Number(s.f || 0);
+      const qty = m + f;
+      const unitPrice = prices[s.type] || 0;
+      if (priceEl) priceEl.textContent = `価格${yen(unitPrice * qty)}`;
+
+      // オス/メス表示（色付き）
+      if (sexHintEl) {
+        const parts = [];
+        if (m > 0) parts.push(`<span class="sexMale">オス</span>×${m}`);
+        if (f > 0) parts.push(`<span class="sexFemale">メス</span>×${f}`);
+        sexHintEl.innerHTML = parts.join(' ');
+      }
 
       if (!el.q.value.trim()) {
         const q = (Number(s.m || 0) + Number(s.f || 0));
