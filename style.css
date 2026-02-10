@@ -94,7 +94,7 @@ button{cursor:pointer}
   outline:none;
   background:transparent;
   color:var(--txt);
-  font-size:14px;
+  font-size:13px;
   min-width:0;
 }
 .qClear{
@@ -239,6 +239,7 @@ button{cursor:pointer}
 .type{
   position:relative;
   z-index:31;
+  font-size:13px;
 }
 
 /* ✅ 右側(select等)はトグルより前面に固定 */
@@ -432,7 +433,8 @@ button{cursor:pointer}
    今のJSでは gWrap/gGrid を使っているので gachaWrap では閉じない。
    ただし controls 自体を block にしてる special では折りたたみ時に隠す必要がある。
 */
-.card.isCollapsed .gWrap{display:none}
+.card.isCollapsed .gWrap{display:none  width:100%;
+}
 
 /* ================= Modal ================= */
 
@@ -778,6 +780,7 @@ button{cursor:pointer}
   gap:4px;
 }
 .unitLine, .dispLine{
+  min-height: 1.2em;
   font-size: 14px;
   line-height: 1.2;
   color: rgba(255,255,255,.62);
