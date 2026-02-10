@@ -824,7 +824,10 @@ card.innerHTML = `
   </div>
 `;
 
-      // ✅ FIX: ここに紛れ込んでいたHTML断片（<div ...>〜 `;）を削除（Unexpected token '<' の原因）
+
+      $('.name', card).textContent = d.name;
+
+      installLeftToggleHit(card);
 
       const inputEl = $('.gInput', card);
       const sumEl = $('.gSum', card);
@@ -835,7 +838,7 @@ card.innerHTML = `
       const sel = $('.type', card);
 
       if (allowSex && sel) {
-        sel.innerHTML = typeList.map(t => '<option value="' + t + '">' + t + '</option>').join('');
+        sel.innerHTML = typeList.map(t => `<option value="${t}">${t}</option>`).join('');
         if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
         sel.value = s.type;
       }
