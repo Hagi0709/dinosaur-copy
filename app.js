@@ -807,7 +807,7 @@ card.innerHTML = `
               <div class="dispLine js-price"></div>
             </div>
               <div class="sexHint js-sexHint"></div>
-              <div class="cardPrice js-price">価格0円</div>
+            
       </div>
     </div>
 
@@ -908,18 +908,35 @@ requestAnimationFrame(() => installLeftToggleHit(card));
           if (undoBtn) undoBtn.disabled = (!s.all && picks.length === 0);
         }
 
-        // 価格（単価の下）
+// 価格（単価の下）
         if (priceEl) {
-          let price = 0;
-          if (allowSex && sexQty > 0) {
-            const type = s.type || d.defType || '受精卵';
-            price = (prices[type] || 0) * sexQty;
-          } else if (s.all) {
-            price = allPrice;
+          const hasInput = (allowSex && sexQty > 0) || !!s.all || picks.length > 0;
+
+          if (!hasInput) {
+            // ✅ 未入力時は「空白1文字」
+            priceEl.textContent = ' ';
           } else {
-            price = picks.length * unitPrice;
+            let price = 0;
+
+            if (allowSex && sexQty > 0) {
+              const type = s.type || d.defType || '受精卵';
+              price = (prices[type] || 0) * sexQty;
+
+              const tOut = String(type).replace('(指定)', '');
+              priceEl.innerHTML =
+                `${tOut} ` +
+                `<span class="maleTxt">オス</span>×${m} ` +
+                `<span class="femaleTxt">メス</span>×${f}= ${yen(price)}`;
+
+            } else if (s.all) {
+              price = allPrice;
+              priceEl.textContent = `全種= ${yen(price)}`;
+            } else {
+              price = picks.length * unitPrice;
+              const nums = picks.map(n => circled(n)).join('');
+              priceEl.textContent = `${nums} = ${yen(price)}`;
+            }
           }
-          priceEl.textContent = `価格${yen(price)}`;
         }
 
         // オス/メス（色付き）
