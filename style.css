@@ -847,9 +847,9 @@ button{cursor:pointer}
 }
 .right .type{
   flex: 1;
-  min-width: 140px; /* 「受精卵(指定)」が見切れにくい最低幅 */
+  min-width: 150px; /* 「受精卵(指定)」が収まる想定で少し拡張 */
+  font-size: 13px;  /* 複製ボタンと同じ文字サイズ */
 }
-
 .unit{
   white-space: normal;
   display:flex;
