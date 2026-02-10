@@ -929,11 +929,11 @@ requestAnimationFrame(() => installLeftToggleHit(card));
               const type = s.type || d.defType || '受精卵';
               price = (prices[type] || 0) * sexQty;
 
-              const tOut = String(type).replace('(指定)', '');
-              priceEl.innerHTML =
-                `${tOut} ` +
-                `<span class="maleTxt">オス</span>×${m} ` +
-                `<span class="femaleTxt">メス</span>×${f}= ${yen(price)}`;
+         const tOut = String(type).replace('(指定)', '');
+              const parts = [];
+              if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
+              if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
+              priceEl.innerHTML = `${tOut} ${parts.join(' ')} = ${yen(price)}`;
 
             } else if (s.all) {
               price = allPrice;
@@ -1163,20 +1163,18 @@ requestAnimationFrame(() => installLeftToggleHit(card));
         const price = unitPrice * qty;
 
         // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵 オス×1 ︎︎ メス×1= 100円）
-        const tOut = String(type).replace('(指定)', '');
+const tOut = String(type).replace('(指定)', '');
         const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+        const parts = [];
+        if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
+        if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
 
-        if (isPair) {
-          if (m === f) {
-            priceEl.textContent = `${tOut}ペア${m > 1 ? '×' + m : ''}= ${price.toLocaleString('ja-JP')}円`;
-          } else {
-            priceEl.innerHTML =
-              `${tOut} ` +
-              `<span class="maleTxt">オス</span>×${m} ` +
-              `<span class="femaleTxt">メス</span>×${f}= ${price.toLocaleString('ja-JP')}円`;
-          }
+        if (isPair && m === f && m > 0) {
+          priceEl.textContent = `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+        } else if (parts.length) {
+          priceEl.innerHTML = `${tOut} ${parts.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
         } else {
-          priceEl.textContent = `${tOut}×${qty}= ${price.toLocaleString('ja-JP')}円`;
+          priceEl.textContent = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
         }
       }
 
@@ -1213,20 +1211,18 @@ requestAnimationFrame(() => installLeftToggleHit(card));
         const price = unitPrice * qty;
 
         // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵 オス×1 ︎︎ メス×1= 100円）
-        const tOut = String(type).replace('(指定)', '');
+const tOut = String(type).replace('(指定)', '');
         const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+        const parts = [];
+        if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
+        if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
 
-        if (isPair) {
-          if (m === f) {
-            priceEl.textContent = `${tOut}ペア${m > 1 ? '×' + m : ''}= ${price.toLocaleString('ja-JP')}円`;
-          } else {
-            priceEl.innerHTML =
-              `${tOut} ` +
-              `<span class="maleTxt">オス</span>×${m} ` +
-              `<span class="femaleTxt">メス</span>×${f}= ${price.toLocaleString('ja-JP')}円`;
-          }
+        if (isPair && m === f && m > 0) {
+          priceEl.textContent = `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+        } else if (parts.length) {
+          priceEl.innerHTML = `${tOut} ${parts.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
         } else {
-          priceEl.textContent = `${tOut}×${qty}= ${price.toLocaleString('ja-JP')}円`;
+          priceEl.textContent = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
         }
       }
       mEl.textContent = String(s.m || 0);
@@ -2133,7 +2129,7 @@ if (act === 'gojuon') {
   }
 
 let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
-  let roomPw = loadJSON(LS.ROOM_PW, {
+let roomPw = loadJSON(LS.ROOM_PW, {
     ROOM1: '5412',
     ROOM2: '0000',
     ROOM3: '0000',
@@ -2144,6 +2140,7 @@ let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
     ROOM8: '0000',
     ROOM9: '0000',
   });
+  let roomUser = loadJSON(LS.ROOM_USER, {});
   let roomUser = loadJSON(LS.ROOM_USER, {
     ROOM1: '',
     ROOM2: '',
@@ -2230,10 +2227,10 @@ Object.keys(roomPw).forEach(room => {
             style="width:100%;height:36px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);color:#fff;padding:0 10px;font-weight:900;margin-top:6px;">
         </div>
 
-        <div style="display:flex;gap:10px;align-items:center;flex:0 0 auto;">
-          <button class="pill" style="width:110px;height:40px;" data-act="copy" data-room="${room}" type="button">コピー</button>
-          <button class="pill" style="width:110px;height:40px;" data-act="pw" data-room="${room}" type="button">PW変更</button>
-          <button class="pill" style="width:120px;height:40px;" data-act="done" data-room="${room}" type="button">受け取り完了</button>
+        <div class="roomActions">
+          <button class="pill roomAct" data-act="copy" data-room="${room}" type="button">コピー</button>
+          <button class="pill roomAct" data-act="pw" data-room="${room}" type="button">PW変更</button>
+          <button class="pill roomAct roomActDone" data-act="done" data-room="${room}" type="button">受け取り完了</button>
         </div>
       `;
       wrap.appendChild(row);
@@ -2248,16 +2245,28 @@ Object.keys(roomPw).forEach(room => {
       saveJSON(LS.ROOM_USER, roomUser);
     });
 
+wrap.addEventListener('input', (e) => {
+      const inp = e.target?.closest('input.roomUserInput');
+      if (!inp) return;
+      const room = inp.dataset.room;
+      if (!room) return;
+      roomUser[room] = (inp.value || '').trim();
+      saveJSON(LS.ROOM_USER, roomUser);
+    });
+
     wrap.addEventListener('click', async (e) => {
       const btn = e.target?.closest('button[data-act]');
       if (!btn) return;
       const act = btn.dataset.act;
       const room = btn.dataset.room;
-      if (!room) return;
+      if (!act || !room) return;
 
       if (act === 'copy') {
-        await copyText(roomPw[room] || '');
-        openToast(`${room} のPWをコピーしました`);
+        await copyText(buildCopyText(room));
+        const prev = btn.textContent;
+        btn.textContent = 'コピー済';
+        btn.disabled = true;
+        setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 900);
       }
 
       if (act === 'pw') {
