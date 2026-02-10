@@ -1142,7 +1142,8 @@ requestAnimationFrame(() => installLeftToggleHit(card));
       const qty = m + f;
 
       if (qty <= 0) {
-        priceEl.textContent = '';
+        // ✅ 未入力時は「空白1文字」
+        priceEl.textContent = ' ';
       } else {
         const unitPrice = prices[type] || 0;
         const price = unitPrice * qty;
@@ -1191,7 +1192,8 @@ requestAnimationFrame(() => installLeftToggleHit(card));
       const qty = m + f;
 
       if (qty <= 0) {
-        priceEl.textContent = '';
+        // ✅ 未入力時は「空白1文字」
+        priceEl.textContent = ' ';
       } else {
         const unitPrice = prices[type] || 0;
         const price = unitPrice * qty;
