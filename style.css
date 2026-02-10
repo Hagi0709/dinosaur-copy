@@ -205,7 +205,7 @@ button{cursor:pointer}
 .cardHead{
   position:relative;
   display:grid;
-  grid-template-columns:minmax(0,1fr) 200px;
+  grid-template-columns:minmax(0,1fr) minmax(0, 180px);
   gap:10px;
   align-items:start;
 }
@@ -348,10 +348,11 @@ button{cursor:pointer}
 }
 
 /* ====== special number buttons ====== */
-.gWrap{ margin-top:6px; }
+.controls.gachaWrap{ display:block; } /* ✅ 右に余白が出ないよう、行全体を専有 */
+.gWrap{ margin-top:6px; width:100%; } /* ✅ グリッドがカード幅いっぱいまで広がる */
 .gGrid{
   display:grid;
-  grid-template-columns:repeat(4, 1fr);
+  grid-template-columns:repeat(4, minmax(0, 1fr));
   gap:10px;
 }
 .gBtn{
@@ -828,16 +829,16 @@ button{cursor:pointer}
 .stepper.male .val{color: var(--maleSoft);}
 .stepper.female .val{color: var(--femaleSoft);}
 
-.right .typeRow{display:flex; gap:10px; align-items:stretch;}
+.right .typeRow{display:flex; gap:8px; align-items:stretch;}
 .dupMini{
   height:44px;
-  min-width:72px;
-  padding:0 12px;
+  min-width:58px;
+  padding:0 10px;
   border-radius:16px; /* ← .type に合わせる */
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
   color:#fff;
-  font-size:13px; /* 受精卵(指定)に合わせて少し縮小 */
+  font-size:12px;
   font-weight:900;
   line-height:1;
   display:inline-flex;
@@ -847,7 +848,7 @@ button{cursor:pointer}
 }
 .right .type{
   flex: 1;
-  min-width: 140px; /* 「受精卵(指定)」が見切れにくい最低幅 */
+  min-width: 130px; /* 「受精卵(指定)」が見切れない現実的な下限 */
 }
 
 .unit{
