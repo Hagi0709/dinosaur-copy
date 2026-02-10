@@ -716,12 +716,19 @@ ${lines.join('\n')}
 
   /* ========= Toggle hit area (左側ほぼ全部) ========= */
 function installLeftToggleHit(card) {
-  const head = $('.cardHead', card);
   const toggle = $('.cardToggle', card);
   const wrap = $('.nameWrap', card);
-  if (!head || !toggle || !wrap) return;
+  if (!toggle || !wrap) return;
 
-  // 折りたたみの押し判定は「恐竜名＋画像」範囲だけに限定する
+  // ✅ 重要：DOMに未挿入だと offsetWidth/Height が 0 になり、
+  // 折りたたみボタンが「押せないサイズ」になることがある（特にiOS/Safari）
+  // → 次フレームで再計算して復旧
+  if (wrap.offsetWidth === 0 || wrap.offsetHeight === 0) {
+    requestAnimationFrame(() => installLeftToggleHit(card));
+    return;
+  }
+
+  // 折りたたみの押し判定は「恐竜名＋画像」範囲だけに限定
   const pad = 12;
 
   toggle.style.inset = 'auto';
@@ -825,9 +832,34 @@ card.innerHTML = `
 `;
 
 
-      $('.name', card).textContent = d.name;
+// ✅ 念のため：何かの置換で nameWrap が消えても復旧できるようにする
+let nameWrap = $('.nameWrap', card);
+if (!nameWrap) {
+  const head = $('.cardHead', card);
+  const toggle = $('.cardToggle', card);
 
-      installLeftToggleHit(card);
+  if (head) {
+    nameWrap = document.createElement('div');
+    nameWrap.className = 'nameWrap';
+    nameWrap.innerHTML = `
+      <div class="name"></div>
+      ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
+    `;
+
+    // toggle の直後に挿入（toggleが無ければ先頭）
+    if (toggle && toggle.parentNode === head) {
+      head.insertBefore(nameWrap, toggle.nextSibling);
+    } else {
+      head.insertBefore(nameWrap, head.firstChild);
+    }
+  }
+}
+
+const nameEl = $('.name', card);
+if (nameEl) nameEl.textContent = d.name;
+
+// ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
+requestAnimationFrame(() => installLeftToggleHit(card));
 
       const inputEl = $('.gInput', card);
       const sumEl = $('.gSum', card);
@@ -1039,9 +1071,34 @@ if (act === 'dup') {
       </div>
     `;
 
-    $('.name', card).textContent = d.name;
+// ✅ 念のため：何かの置換で nameWrap が消えても復旧できるようにする
+let nameWrap = $('.nameWrap', card);
+if (!nameWrap) {
+  const head = $('.cardHead', card);
+  const toggle = $('.cardToggle', card);
 
-    installLeftToggleHit(card);
+  if (head) {
+    nameWrap = document.createElement('div');
+    nameWrap.className = 'nameWrap';
+    nameWrap.innerHTML = `
+      <div class="name"></div>
+      ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
+    `;
+
+    // toggle の直後に挿入（toggleが無ければ先頭）
+    if (toggle && toggle.parentNode === head) {
+      head.insertBefore(nameWrap, toggle.nextSibling);
+    } else {
+      head.insertBefore(nameWrap, head.firstChild);
+    }
+  }
+}
+
+const nameEl = $('.name', card);
+if (nameEl) nameEl.textContent = d.name;
+
+// ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
+requestAnimationFrame(() => installLeftToggleHit(card));
 
     const sel = $('.type', card);
     sel.innerHTML = typeList.map(t => `<option value="${t}">${t}</option>`).join('');
