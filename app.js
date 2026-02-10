@@ -1,8 +1,5 @@
 (() => {
-'use strict';
-
-
-const BUILD_VERSION = '2026-02-10 07:25';
+  'use strict';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -338,7 +335,6 @@ const BUILD_VERSION = '2026-02-10 07:25';
     mTabCatalog: $('#mTabCatalog'),
     mTabPrices: $('#mTabPrices'),
     mTabImages: $('#mTabImages'),
-    versionText: $('#versionText'),
 
     openRoom: $('#openRoom'),
     roomOverlay: $('#roomOverlay'),
@@ -353,7 +349,6 @@ const BUILD_VERSION = '2026-02-10 07:25';
     imgClose: $('#imgClose'),
     imgViewerImg: $('#imgViewerImg'),
   };
-  if (el.versionText) el.versionText.textContent = `Version: ${BUILD_VERSION}`;
 
   // ✅ オーバーレイのスクロールガード（前面だけ）
   installOverlayScrollGuard(el.modalOverlay, el.modalBody);
@@ -578,8 +573,8 @@ function sortByOrder(list, kind) {
                 line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
               } else {
                 const p = [];
-                if (m > 0) p.push(`♂︎×${m}`);
-                if (f > 0) p.push(`♀︎×${f}`);
+                if (m > 0) p.push(`♂×${m}`);
+                if (f > 0) p.push(`♀×${f}`);
                 line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
               }
             } else {
@@ -635,8 +630,8 @@ function sortByOrder(list, kind) {
             line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
           } else {
             const p = [];
-            if (m > 0) p.push(`♂︎×${m}`);
-            if (f > 0) p.push(`♀︎×${f}`);
+            if (m > 0) p.push(`♂×${m}`);
+            if (f > 0) p.push(`♀×${f}`);
             line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
           }
         } else {
@@ -715,34 +710,20 @@ ${lines.join('\n')}
   }
 
   /* ========= Toggle hit area (左側ほぼ全部) ========= */
-function installLeftToggleHit(card) {
-  const toggle = $('.cardToggle', card);
-  const wrap = $('.nameWrap', card);
-  if (!toggle || !wrap) return;
+  function installLeftToggleHit(card) {
+    const head = $('.cardHead', card);
+    const toggle = $('.cardToggle', card);
+    if (!head || !toggle) return;
 
-  // ✅ 重要：DOMに未挿入だと offsetWidth/Height が 0 になり、
-  // 折りたたみボタンが「押せないサイズ」になることがある（特にiOS/Safari）
-  // → 次フレームで再計算して復旧
-  if (wrap.offsetWidth === 0 || wrap.offsetHeight === 0) {
-    requestAnimationFrame(() => installLeftToggleHit(card));
-    return;
+    toggle.style.inset = 'auto';
+    toggle.style.left = '-12px';
+    toggle.style.top = '-12px';
+    toggle.style.bottom = '-12px';
+    toggle.style.width = 'calc(100% - 170px)';
+    toggle.style.height = 'calc(100% + 24px)';
+    toggle.style.zIndex = '5';
+    toggle.style.pointerEvents = 'auto';
   }
-
-  // 折りたたみの押し判定は「恐竜名＋画像」範囲だけに限定
-  const pad = 12;
-
-  toggle.style.inset = 'auto';
-  toggle.style.right = 'auto';
-  toggle.style.bottom = 'auto';
-
-  toggle.style.left = `${wrap.offsetLeft - pad}px`;
-  toggle.style.top = `${wrap.offsetTop - pad}px`;
-  toggle.style.width = `${wrap.offsetWidth + pad * 2}px`;
-  toggle.style.height = `${wrap.offsetHeight + pad * 2}px`;
-
-  toggle.style.zIndex = '5';
-  toggle.style.pointerEvents = 'auto';
-}
 
   /* ========= cards ========= */
   function buildDinoCard(d, keyOverride = null) {
@@ -771,97 +752,72 @@ function installLeftToggleHit(card) {
         btns.push(`<button class="gBtn" type="button" data-act="pick" data-n="${i}">${i}</button>`);
       }
 
-const normalBlock = allowSex ? `
-  <div class="controls controlsWrap" style="margin-top:10px;">
-    <div class="stepper male">
-      <button class="btn" type="button" data-act="m-">−</button>
-      <div class="val js-m">0</div>
-      <button class="btn" type="button" data-act="m+">＋</button>
-    </div>
+      const normalBlock = allowSex ? `
+        <div class="controls controlsWrap" style="margin-top:10px;">
+          <div class="stepper male">
+            <button class="btn" type="button" data-act="m-">−</button>
+            <div class="val js-m">0</div>
+            <button class="btn" type="button" data-act="m+">＋</button>
+          </div>
 
-    <div class="stepper female">
-      <button class="btn" type="button" data-act="f-">−</button>
-      <div class="val js-f">0</div>
-      <button class="btn" type="button" data-act="f+">＋</button>
-    </div>
-  </div>
-` : ``;
+          <div class="stepper female">
+            <button class="btn" type="button" data-act="f-">−</button>
+            <div class="val js-f">0</div>
+            <button class="btn" type="button" data-act="f+">＋</button>
+          </div>
 
-card.innerHTML = `
-  <div class="cardInner">
-    <div class="cardHead">
-      <button class="cardToggle" type="button" aria-label="開閉" data-act="toggle"></button>
-
-      <div class="nameWrap">
-        <div class="name"></div>
-        ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
-      </div>
-
-      <div class="right">
-        <div class="typeRow">
-          <button class="dupMini" type="button" data-act="dup">複製</button>
-          ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
+          <select class="type" aria-label="種類"></select>
         </div>
-        <div class="unit">
-              <div class="unitLine">1体=${unitPrice}円</div>
-              <div class="dispLine js-price"></div>
+      ` : ``;
+
+      card.innerHTML = `
+        <div class="cardInner">
+          <div class="cardHead">
+            <button class="cardToggle" type="button" aria-label="開閉" data-act="toggle"></button>
+
+            <div class="nameWrap">
+              <div class="name"></div>
+              ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
             </div>
-              <div class="sexHint js-sexHint"></div>
-              <div class="cardPrice js-price">価格0円</div>
-      </div>
-    </div>
 
-    ${normalBlock}
+            <div class="right">
+              <div class="unit" style="font-weight:900;color:rgba(255,255,255,.65);">1体=${unitPrice}円</div>
+            </div>
+          </div>
 
-    <div class="controls gachaWrap">
-      <div class="gWrap">
-        <div class="gGrid">
-          ${btns.join('')}
+          ${normalBlock}
+
+          <div class="controls gachaWrap" style="display:block;margin-top:10px;">
+            <div class="gWrap">
+              <div class="gGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+                ${btns.join('')}
+              </div>
+
+              <div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap;">
+                <button class="dupBtn" type="button" data-act="undo" style="min-width:120px;background:rgba(185,74,85,.22);border-color:rgba(185,74,85,.35);">− 取消</button>
+                <button class="dupBtn" type="button" data-act="all" style="min-width:120px;">全種</button>
+
+                <div style="flex:1;min-width:220px;color:rgba(255,255,255,.7);font-weight:900;">
+                  <div class="gLine">入力：<span class="gInput">(未入力)</span></div>
+                  <div class="gLine">小計：<span class="gSum">0円</span></div>
+                </div>
+              </div>
+
+              <div style="margin-top:6px;color:rgba(255,255,255,.55);font-weight:800;font-size:12px;">
+                全種=${allPrice.toLocaleString('ja-JP')}円
+              </div>
+            </div>
+          </div>
         </div>
+      `;
 
-        <div class="gLineWrap">
-          <button class="gAct gUndo" type="button" data-act="undo">− 取消</button>
-          <button class="gAct" type="button" data-act="all">全種</button>
-        </div>
-      </div>
-    </div>
-  </div>
-`;
+      $('.name', card).textContent = d.name;
 
+      installLeftToggleHit(card);
 
-// ✅ 念のため：何かの置換で nameWrap が消えても復旧できるようにする
-let nameWrap = $('.nameWrap', card);
-if (!nameWrap) {
-  const head = $('.cardHead', card);
-  const toggle = $('.cardToggle', card);
-
-  if (head) {
-    nameWrap = document.createElement('div');
-    nameWrap.className = 'nameWrap';
-    nameWrap.innerHTML = `
-      <div class="name"></div>
-      ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
-    `;
-
-    // toggle の直後に挿入（toggleが無ければ先頭）
-    if (toggle && toggle.parentNode === head) {
-      head.insertBefore(nameWrap, toggle.nextSibling);
-    } else {
-      head.insertBefore(nameWrap, head.firstChild);
-    }
-  }
-}
-
-const nameEl = $('.name', card);
-if (nameEl) nameEl.textContent = d.name;
-
-// ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
-requestAnimationFrame(() => installLeftToggleHit(card));
-
+      const inputEl = $('.gInput', card);
+      const sumEl = $('.gSum', card);
       const allBtn = $('button[data-act="all"]', card);
-      const undoBtn = $('button[data-act="undo"]', card);
-      const priceEl = $('.js-price', card);
-      const sexHintEl = $('.js-sexHint', card);
 
       const mEl = $('.js-m', card);
       const fEl = $('.js-f', card);
@@ -875,67 +831,44 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
       const syncSpecial = () => {
         const picks = Array.isArray(s.picks) ? s.picks : [];
-        const m = Number(s.m || 0);
-        const f = Number(s.f || 0);
-        const sexQty = m + f;
-
-        // 番号ボタン：統一表示（押下状態＆無効制御）
-        $$('.gBtn', card).forEach(btn => {
-          const n = Number(btn.dataset.n || 0);
-          btn.classList.toggle('isOn', picks.includes(n));
-          btn.disabled = (allowSex && sexQty > 0) || !!s.all;
-        });
+        const sexQty = Number(s.m || 0) + Number(s.f || 0);
 
         if (allowSex) {
-          if (mEl) mEl.textContent = String(m);
-          if (fEl) fEl.textContent = String(f);
+          if (mEl) mEl.textContent = String(s.m || 0);
+          if (fEl) fEl.textContent = String(s.f || 0);
           if (sel) sel.value = s.type;
 
-          // 通常入力が入ったら特殊（番号/全種）は無効化
-          const lock = sexQty > 0;
-          if (allBtn) {
-            allBtn.textContent = s.all ? '全種✓' : '全種';
-            allBtn.classList.toggle('isOn', !!s.all);
-            allBtn.disabled = lock;
+          if (sexQty > 0) {
+            inputEl.textContent = '(通常入力中)';
+            sumEl.textContent = '(特殊無効)';
+            allBtn.textContent = '全種';
+          } else {
+            if (s.all) {
+              inputEl.textContent = '全種';
+              sumEl.textContent = yen(allPrice);
+              allBtn.textContent = '全種✓';
+            } else {
+              inputEl.textContent = picks.length ? picks.map(n => circled(n)).join('') : '(未入力)';
+              sumEl.textContent = yen(picks.length * unitPrice);
+              allBtn.textContent = '全種';
+            }
           }
-          if (undoBtn) undoBtn.disabled = lock || (!s.all && picks.length === 0);
         } else {
-          if (allBtn) {
-            allBtn.textContent = s.all ? '全種✓' : '全種';
-            allBtn.classList.toggle('isOn', !!s.all);
-            allBtn.disabled = false;
-          }
-          if (undoBtn) undoBtn.disabled = (!s.all && picks.length === 0);
-        }
-
-        // 価格（単価の下）
-        if (priceEl) {
-          let price = 0;
-          if (allowSex && sexQty > 0) {
-            const type = s.type || d.defType || '受精卵';
-            price = (prices[type] || 0) * sexQty;
-          } else if (s.all) {
-            price = allPrice;
+          if (s.all) {
+            inputEl.textContent = '全種';
+            sumEl.textContent = yen(allPrice);
+            allBtn.textContent = '全種✓';
           } else {
-            price = picks.length * unitPrice;
-          }
-          priceEl.textContent = `価格${yen(price)}`;
-        }
-
-        // オス/メス（色付き）
-        if (sexHintEl) {
-          if (allowSex && sexQty > 0) {
-            const parts = [];
-            if (m > 0) parts.push(`<span class="sexMale">オス</span>×${m}`);
-            if (f > 0) parts.push(`<span class="sexFemale">メス</span>×${f}`);
-            sexHintEl.innerHTML = parts.join(' ');
-          } else {
-            sexHintEl.innerHTML = '';
+            inputEl.textContent = picks.length ? picks.map(n => circled(n)).join('') : '(未入力)';
+            sumEl.textContent = yen(picks.length * unitPrice);
+            allBtn.textContent = '全種';
           }
         }
 
         if (!el.q.value.trim()) {
-          const q = (sexQty > 0) ? sexQty : (s.all ? 1 : picks.length);
+          const q = (Number(s.m || 0) + Number(s.f || 0)) > 0
+            ? (Number(s.m || 0) + Number(s.f || 0))
+            : (s.all ? 1 : (Array.isArray(s.picks) ? s.picks.length : 0));
           card.classList.toggle('isCollapsed', q === 0);
         }
       };
@@ -980,27 +913,6 @@ requestAnimationFrame(() => installLeftToggleHit(card));
         ev.stopPropagation();
 
         const act = btn.dataset.act;
-
-if (act === 'dup') {
-  const dupKey = `${d.id}__dup_${uid()}`;
-  ephemeralKeys.add(dupKey);
-
-  inputState.set(dupKey, {
-    mode: 'special',
-    picks: [],
-    all: false,
-    type: (s.type || d.defType || '受精卵'),
-    m: 0,
-    f: 0
-  });
-
-  const dupCard = buildDinoCard(d, dupKey);
-  card.after(dupCard);
-
-  rebuildOutput();
-  applyCollapseAndSearch();
-  return;
-}
 
         if (act === 'm-') return step('m', -1);
         if (act === 'm+') return step('m', +1);
@@ -1067,59 +979,36 @@ if (act === 'dup') {
             ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
           </div>
 
-<div class="right">
-  <div class="typeRow">
-    <button class="dupMini" type="button" data-act="dup">複製</button>
-    <select class="type" aria-label="種類"></select>
-  </div>
-  <div class="unit"></div>
-</div>
-</div>
+          <div class="right">
+            <div class="typeRow">
+              <button class="dupMini" type="button">複製</button>
+              <select class="type" aria-label="種類"></select>
+            </div>
+            <div class="unit"></div>
+          </div>
+        </div>
 
-<div class="controls">
-  <div class="stepper male">
-    <button class="btn" type="button" data-act="m-">−</button>
-    <div class="val js-m">0</div>
-    <button class="btn" type="button" data-act="m+">＋</button>
-  </div>
+        <div class="controls">
+          <div class="stepper male">
+            <button class="btn" type="button" data-act="m-">−</button>
+            <div class="val js-m">0</div>
+            <button class="btn" type="button" data-act="m+">＋</button>
+          </div>
 
-  <div class="stepper female">
-    <button class="btn" type="button" data-act="f-">−</button>
-    <div class="val js-f">0</div>
-    <button class="btn" type="button" data-act="f+">＋</button>
-  </div>
-</div>
+          <div class="stepper female">
+            <button class="btn" type="button" data-act="f-">−</button>
+            <div class="val js-f">0</div>
+            <button class="btn" type="button" data-act="f+">＋</button>
+          </div>
+
+          <button class="dupBtn" type="button" data-act="dup">複製</button>
+        </div>
       </div>
     `;
 
-// ✅ 念のため：何かの置換で nameWrap が消えても復旧できるようにする
-let nameWrap = $('.nameWrap', card);
-if (!nameWrap) {
-  const head = $('.cardHead', card);
-  const toggle = $('.cardToggle', card);
+    $('.name', card).textContent = d.name;
 
-  if (head) {
-    nameWrap = document.createElement('div');
-    nameWrap.className = 'nameWrap';
-    nameWrap.innerHTML = `
-      <div class="name"></div>
-      ${imgUrl ? `<div class="miniThumb"><img src="${imgUrl}" alt=""></div>` : ``}
-    `;
-
-    // toggle の直後に挿入（toggleが無ければ先頭）
-    if (toggle && toggle.parentNode === head) {
-      head.insertBefore(nameWrap, toggle.nextSibling);
-    } else {
-      head.insertBefore(nameWrap, head.firstChild);
-    }
-  }
-}
-
-const nameEl = $('.name', card);
-if (nameEl) nameEl.textContent = d.name;
-
-// ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
-requestAnimationFrame(() => installLeftToggleHit(card));
+    installLeftToggleHit(card);
 
     const sel = $('.type', card);
     sel.innerHTML = typeList.map(t => `<option value="${t}">${t}</option>`).join('');
@@ -1127,43 +1016,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     sel.value = s.type;
 
     const unit = $('.unit', card);
-    // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
-      unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
-      let priceEl = $('.js-price', unit);
-      if (!priceEl) {
-        priceEl = document.createElement('div');
-        priceEl.className = 'dispLine js-price';
-        unit.appendChild(priceEl);
-      }
-
-      const type = s.type || d.defType || '受精卵';
-      const m = Number(s.m || 0);
-      const f = Number(s.f || 0);
-      const qty = m + f;
-
-      if (qty <= 0) {
-        priceEl.textContent = '';
-      } else {
-        const unitPrice = prices[type] || 0;
-        const price = unitPrice * qty;
-
-        // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵 オス×1 ︎︎ メス×1= 100円）
-        const tOut = String(type).replace('(指定)', '');
-        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
-
-        if (isPair) {
-          if (m === f) {
-            priceEl.textContent = `${tOut}ペア${m > 1 ? '×' + m : ''}= ${price.toLocaleString('ja-JP')}円`;
-          } else {
-            priceEl.innerHTML =
-              `${tOut} ` +
-              `<span class="maleTxt">オス</span>×${m} ` +
-              `<span class="femaleTxt">メス</span>×${f}= ${price.toLocaleString('ja-JP')}円`;
-          }
-        } else {
-          priceEl.textContent = `${tOut}×${qty}= ${price.toLocaleString('ja-JP')}円`;
-        }
-      }
+    unit.textContent = `単価${prices[s.type] || 0}円`;
 
     const mEl = $('.js-m', card);
     const fEl = $('.js-f', card);
@@ -1176,43 +1029,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     function syncUI() {
       if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
       sel.value = s.type;
-      // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
-      unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
-      let priceEl = $('.js-price', unit);
-      if (!priceEl) {
-        priceEl = document.createElement('div');
-        priceEl.className = 'dispLine js-price';
-        unit.appendChild(priceEl);
-      }
-
-      const type = s.type || d.defType || '受精卵';
-      const m = Number(s.m || 0);
-      const f = Number(s.f || 0);
-      const qty = m + f;
-
-      if (qty <= 0) {
-        priceEl.textContent = '';
-      } else {
-        const unitPrice = prices[type] || 0;
-        const price = unitPrice * qty;
-
-        // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵 オス×1 ︎︎ メス×1= 100円）
-        const tOut = String(type).replace('(指定)', '');
-        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
-
-        if (isPair) {
-          if (m === f) {
-            priceEl.textContent = `${tOut}ペア${m > 1 ? '×' + m : ''}= ${price.toLocaleString('ja-JP')}円`;
-          } else {
-            priceEl.innerHTML =
-              `${tOut} ` +
-              `<span class="maleTxt">オス</span>×${m} ` +
-              `<span class="femaleTxt">メス</span>×${f}= ${price.toLocaleString('ja-JP')}円`;
-          }
-        } else {
-          priceEl.textContent = `${tOut}×${qty}= ${price.toLocaleString('ja-JP')}円`;
-        }
-      }
+      unit.textContent = `単価${prices[s.type] || 0}円`;
       mEl.textContent = String(s.m || 0);
       fEl.textContent = String(s.f || 0);
 
@@ -2300,11 +2117,5 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
     setTab('dino');
   }
 
-  init().catch((err) => {
-    console.error(err);
-    openToast('初期化エラーで停止しました（管理＞Version/Console確認）');
-
-    // ここで落ちても「何も表示されない」を回避する
-    try { setTab('dino'); } catch {}
-  });
+  init();
 })();
