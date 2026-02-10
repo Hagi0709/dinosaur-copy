@@ -2144,6 +2144,17 @@ let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
     ROOM8: '0000',
     ROOM9: '0000',
   });
+  let roomUser = loadJSON(LS.ROOM_USER, {
+    ROOM1: '',
+    ROOM2: '',
+    ROOM3: '',
+    ROOM4: '',
+    ROOM5: '',
+    ROOM6: '',
+    ROOM7: '',
+    ROOM8: '',
+    ROOM9: '',
+  });
 
   async function copyText(text) {
     try {
