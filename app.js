@@ -8,6 +8,44 @@
   const yen = (n) => (Number(n) || 0).toLocaleString('ja-JP') + '円';
   const toHira = (s) => (s || '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
   const norm = (s) => toHira(String(s || '').toLowerCase()).replace(/\s+/g, '');
+  const cardSuffixHtml = (type, m, f, price) => {
+    const tOut = String(type || '').replace('(指定)', '');
+    const isPair = /(指定)\)$/.test(String(type || '')) || ['幼体','成体','クローン','クローン(指定)'].includes(type);
+    const mm = Number(m || 0), ff = Number(f || 0);
+    const qty = mm + ff;
+
+    // 未入力は空白1文字（高さキープ）
+    if (qty <= 0) return ' ';
+
+    const p = Number(price || 0);
+    if (!(p > 0)) return ' ';
+
+    if (isPair) {
+      if (mm === ff) {
+        const mult = mm > 1 ? `×${mm}` : '';
+        return `${tOut}ペア${mult}= ${p.toLocaleString('ja-JP')}円`;
+      }
+      const parts = [];
+      if (mm > 0) parts.push(`<span class="sex sex-m">オス</span>×${mm}`);
+      if (ff > 0) parts.push(`<span class="sex sex-f">メス</span>×${ff}`);
+      return `${tOut} ${parts.join(' ')}= ${p.toLocaleString('ja-JP')}円`;
+    }
+
+    const parts = [];
+    if (mm > 0) parts.push(`<span class="sex sex-m">オス</span>×${mm}`);
+    if (ff > 0) parts.push(`<span class="sex sex-f">メス</span>×${ff}`);
+    return `${tOut} ${parts.join(' ')}= ${p.toLocaleString('ja-JP')}円`;
+  };
+
+  const specialSuffixText = (picks, all, allPrice, unitPrice) => {
+    if (all) return `全種 = ${yen(allPrice)}`;
+    const arr = Array.isArray(picks) ? picks : [];
+    if (arr.length <= 0) return ' ';
+    const seq = arr.map(n => circled(n)).join('');
+    const price = arr.length * Number(unitPrice || 0);
+    return `${seq} = ${yen(price)}`;
+  };
+
 
   function stableHash(str) {
     let h = 5381;
@@ -765,8 +803,6 @@ ${lines.join('\n')}
             <div class="val js-f">0</div>
             <button class="btn" type="button" data-act="f+">＋</button>
           </div>
-
-          <select class="type" aria-label="種類"></select>
         </div>
       ` : ``;
 
@@ -781,7 +817,11 @@ ${lines.join('\n')}
             </div>
 
             <div class="right">
-              <div class="unit" style="font-weight:900;color:rgba(255,255,255,.65);">1体=${unitPrice}円</div>
+              <div class="typeRow">
+                <button class="dupMini" type="button" data-act="dup">複製</button>
+                ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
+              </div>
+              <div class="unit"><div class="unitLine">1体=${unitPrice}円</div><div class="dispLine js-price"> </div></div>
             </div>
           </div>
 
@@ -865,6 +905,20 @@ ${lines.join('\n')}
           }
         }
 
+
+        // カード内価格（恐竜名より後の文言）
+        if (priceEl) {
+          const picksNow = Array.isArray(s.picks) ? s.picks : [];
+          const sexQtyNow = Number(s.m || 0) + Number(s.f || 0);
+          if (allowSex && sexQtyNow > 0) {
+            const type = s.type || d.defType || '受精卵';
+            const price = (prices[type] || 0) * sexQtyNow;
+            priceEl.innerHTML = cardSuffixHtml(type, Number(s.m || 0), Number(s.f || 0), price);
+          } else {
+            priceEl.textContent = specialSuffixText(picksNow, !!s.all, allPrice, unitPrice);
+          }
+        }
+
         if (!el.q.value.trim()) {
           const q = (Number(s.m || 0) + Number(s.f || 0)) > 0
             ? (Number(s.m || 0) + Number(s.f || 0))
@@ -913,6 +967,18 @@ ${lines.join('\n')}
         ev.stopPropagation();
 
         const act = btn.dataset.act;
+
+        if (act === 'dup') {
+          const dupKey = `${d.id}__dup_${uid()}`;
+          ephemeralKeys.add(dupKey);
+          inputState.set(dupKey, { mode: 'special', picks: [], all: false, unit: s.unit, allPrice: s.allPrice, type: s.type, m: 0, f: 0 });
+          const dupCard = buildDinoCard(d, dupKey);
+          card.after(dupCard);
+          rebuildOutput();
+          applyCollapseAndSearch();
+          return;
+        }
+
 
         if (act === 'm-') return step('m', -1);
         if (act === 'm+') return step('m', +1);
@@ -984,7 +1050,7 @@ ${lines.join('\n')}
               <button class="dupMini" type="button">複製</button>
               <select class="type" aria-label="種類"></select>
             </div>
-            <div class="unit"></div>
+            <div class="unit"><div class="unitLine js-unit"></div><div class="dispLine js-price"> </div></div>
           </div>
         </div>
 
@@ -1016,9 +1082,27 @@ ${lines.join('\n')}
     sel.value = s.type;
 
     const unit = $('.unit', card);
-    unit.textContent = `単価${prices[s.type] || 0}円`;
+    const unitLine = $('.js-unit', card);
+    const priceLine = $('.js-price', card);
 
-    const mEl = $('.js-m', card);
+    if (unitLine) unitLine.textContent = `単価${prices[s.type] || 0}円`;
+
+    // カード内価格（恐竜名より後の文言）
+    if (priceLine) {
+      const mQty = Number(s.m || 0);
+      const fQty = Number(s.f || 0);
+      const qty = mQty + fQty;
+      if (qty <= 0) {
+        priceLine.textContent = ' ';
+      } else {
+        const type = s.type || d.defType || '受精卵';
+        const unitPrice = prices[type] || 0;
+        const price = unitPrice * qty;
+        priceLine.innerHTML = cardSuffixHtml(type, mQty, fQty, price);
+      }
+    }
+
+const mEl = $('.js-m', card);
     const fEl = $('.js-f', card);
     mEl.textContent = String(s.m || 0);
     fEl.textContent = String(s.f || 0);
