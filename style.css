@@ -600,12 +600,35 @@ button{cursor:pointer}
   background:rgba(0,0,0,.18);
   margin-bottom:10px;
 }
+
+.roomActions{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex:0 0 auto;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  max-width:52%;
+}
+.roomAct{
+  height:40px;
+  padding:0 10px;
+  border-radius:16px;
+  font-size:14px;
+  font-weight:900;
+  white-space:nowrap;
+}
+.roomActDone{
+  padding:0 12px;
+}
 .mName{
   flex:1;
   font-weight:900;
   font-size:16px;
   line-height:1.2;
-  word-break:break-word;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 .sBtn{
   width:44px;height:38px;
@@ -856,7 +879,7 @@ button{cursor:pointer}
 }
 .type{
   flex: 1;
-  min-width: 124px; /* 「受精卵(指定)」が見切れない現実的な下限（少しだけ縮小） */
+  min-width: 110px; /* 「受精卵(指定)」が見切れない現実的な下限（少しだけ縮小） */
   height:40px;
   font-size:11px;
   padding:0 9px;
@@ -876,6 +899,8 @@ unitLine, .dispLine{
 }
 .sex-m{color: var(--maleSoft);}
 .sex-f{color: var(--femaleSoft);}
+.maleTxt{color: var(--maleSoft); font-weight:800;}
+.femaleTxt{color: var(--femaleSoft); font-weight:800;}
 .maleTxt{color: var(--maleSoft);}
 .femaleTxt{color: var(--femaleSoft);}
 
