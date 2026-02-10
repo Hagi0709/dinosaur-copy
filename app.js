@@ -60,7 +60,8 @@ const BUILD_VERSION = '2026-02-10 07:25';
     DINO_IMAGES_OLD: 'dino_images_v1',
     DINO_OVERRIDE: 'dino_override_v1',
     ROOM_ENTRY_PW: 'room_entry_pw_v1',
-    ROOM_PW: 'room_pw_v1',
+ROOM_PW: 'room_pw_v1',
+    ROOM_USER: 'room_user_v1',
     SPECIAL_CFG: 'special_cfg_v1',
   };
 
@@ -2131,7 +2132,7 @@ if (act === 'gojuon') {
     return false;
   }
 
-  let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
+let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
   let roomPw = loadJSON(LS.ROOM_PW, {
     ROOM1: '5412',
     ROOM2: '0000',
