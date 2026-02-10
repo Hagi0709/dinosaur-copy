@@ -309,9 +309,9 @@ button{cursor:pointer}
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
   color:#fff;
-  font-size:14px;
+  font-size:13px; /* 複製ボタンと同サイズ */
   font-weight:900;
-  padding:0 34px 0 12px;
+  padding:0 34px 0 10px; /* 左を少し詰めて表示領域確保 */
   background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
                    linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
   background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
@@ -837,7 +837,7 @@ button{cursor:pointer}
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
   color:#fff;
-  font-size:14px;
+  font-size:13px; /* 受精卵(指定)に合わせて少し縮小 */
   font-weight:900;
   line-height:1;
   display:inline-flex;
@@ -845,7 +845,10 @@ button{cursor:pointer}
   justify-content:center;
   white-space:nowrap;
 }
-.right .type{flex: 1;}
+.right .type{
+  flex: 1;
+  min-width: 140px; /* 「受精卵(指定)」が見切れにくい最低幅 */
+}
 
 .unit{
   white-space: normal;
