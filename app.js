@@ -1470,11 +1470,12 @@ requestAnimationFrame(() => installLeftToggleHit(card));
   function renderManageCatalog() {
     const wrap = document.createElement('div');
 
-    const top = document.createElement('div');
-    top.style.display = 'flex';
-    top.style.justifyContent = 'flex-end';
-    top.style.marginBottom = '10px';
-    top.innerHTML = `<button class="pill" type="button" data-act="add">＋追加</button>`;
+const top = document.createElement('div');
+    top.className = 'mTopBar';
+    top.innerHTML = `
+      <button class="pill" type="button" data-act="gojuon">五十音順</button>
+      <button class="pill" type="button" data-act="add">＋追加</button>
+    `;
     wrap.appendChild(top);
 
     const list = (activeTab === 'dino')
@@ -1499,6 +1500,29 @@ requestAnimationFrame(() => installLeftToggleHit(card));
       const act = btn?.dataset?.act;
       const id = btn?.dataset?.id;
 
+if (act === 'gojuon') {
+        const kind = activeTab;
+        const visible = (kind === 'dino')
+          ? dinos.filter(x => !hidden.dino.has(x.id))
+          : items.filter(x => !hidden.item.has(x.id));
+
+        const sortedIds = visible
+          .slice()
+          .sort((a, b) => sortName(a.name).localeCompare(sortName(b.name), 'ja') || String(a.id).localeCompare(String(b.id)))
+          .map(x => x.id);
+
+        const current = (order[kind] || []).slice();
+        const rest = current.filter(x => !sortedIds.includes(x));
+        const next = [...sortedIds, ...rest];
+
+        order[kind] = next;
+        saveJSON(kind === 'dino' ? LS.DINO_ORDER : LS.ITEM_ORDER, next);
+
+        renderList();
+        setManageTab('catalog');
+        return;
+      }
+
       if (act === 'add') {
         if (activeTab === 'dino') openAddDino();
         else openAddItem();
@@ -1508,7 +1532,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
       if (!act || !id) return;
 
       const kind = activeTab;
-      const ord = (order[kind] || []).slice();
+      const ord = (order[kind] || [
       const i = ord.indexOf(id);
 
       if (act === 'up' && i > 0) {
