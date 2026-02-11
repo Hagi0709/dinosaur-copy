@@ -2442,7 +2442,9 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
     if (roomCopyCfg?.deliveryAppendEnabled && ps.sum >= Number(roomCopyCfg.deliveryMin || 0)) {
       text += `
 
-配送希望の場合は以下の情報をコメントしてください🙇🏻‍♂️
+
+🚚配送希望の場合は
+以下の情報をコメントしてください🙇🏻‍♂️
 
 ①サーバー番号
 ②配送先座標
