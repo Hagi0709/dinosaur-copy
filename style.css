@@ -922,7 +922,7 @@ button{cursor:pointer}
   flex-direction:column;
   gap:4px;
 }
-unitLine, .dispLine{
+.unitLine, .dispLine{
   font-size: 10px;
   line-height: 1.2;
   color: rgba(255,255,255,.62);
