@@ -9,6 +9,30 @@ const BUILD_VERSION = '2026-02-11 19:45';
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const uid = () => Math.random().toString(36).slice(2, 10);
   const yen = (n) => (Number(n) || 0).toLocaleString('ja-JP') + '円';
+
+  // ✅ 合計金額：桁数が増えても下に落ちないように、幅に収まるまでフォントを自動調整
+  function fitTotalText() {
+    const elTotal = document.getElementById('total');
+    if (!elTotal) return;
+
+    // 一旦リセット（CSSの基準値へ）
+    elTotal.style.fontSize = '';
+
+    // 表示幅（CSSのmax-widthと実寸の小さい方）
+    const maxW = Math.min(120, elTotal.getBoundingClientRect().width || 120);
+
+    // まずは短い金額は少し大きく
+    const txtLen = (elTotal.textContent || '').length;
+    let size = (txtLen <= 5) ? 16 : 14;
+
+    // 収まるまで段階的に縮小
+    for (let i = 0; i < 8; i++) {
+      elTotal.style.fontSize = size + 'px';
+      if ((elTotal.scrollWidth || 0) <= maxW) break;
+      size -= 1;
+      if (size <= 10) break;
+    }
+  }
   const toHira = (s) => (s || '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
   const norm = (s) => toHira(String(s || '').toLowerCase()).replace(/\s+/g, '');
 
@@ -769,6 +793,7 @@ function sortByOrder(list, kind) {
     }
 
     el.total.textContent = yen(sum);
+    fitTotalText();
 
     el.out.value =
 `この度はご検討いただきありがとうございます！
@@ -2280,8 +2305,8 @@ if (act === 'gojuon') {
     return false;
   }
 
-let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
-  let roomPw = loadJSON(LS.ROOM_PW, {
+  // ===== ROOM state =====
+  const DEFAULT_ROOM_PW = {
     ROOM1: '5412',
     ROOM2: '0000',
     ROOM3: '0000',
@@ -2291,8 +2316,8 @@ let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
     ROOM7: '0000',
     ROOM8: '0000',
     ROOM9: '0000',
-  });
-let roomUser = loadJSON(LS.ROOM_USER, {
+  };
+  const DEFAULT_ROOM_USER = {
     ROOM1: '',
     ROOM2: '',
     ROOM3: '',
@@ -2302,12 +2327,21 @@ let roomUser = loadJSON(LS.ROOM_USER, {
     ROOM7: '',
     ROOM8: '',
     ROOM9: '',
-  });
+  };
 
+  let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
+  let roomPw = loadJSON(LS.ROOM_PW, DEFAULT_ROOM_PW);
+  let roomUser = loadJSON(LS.ROOM_USER, DEFAULT_ROOM_USER);
   let roomCopyCfg = loadJSON(LS.ROOM_COPY_CFG, {
     deliveryAppendEnabled: true,
     deliveryMin: 2000,
   });
+
+  // ✅ localStorageが壊れて null / 文字列 になっても「コピー」で落ちないように正規化
+  entryPw = (entryPw == null) ? '2580' : String(entryPw);
+  if (!roomPw || typeof roomPw !== 'object') roomPw = { ...DEFAULT_ROOM_PW };
+  if (!roomUser || typeof roomUser !== 'object') roomUser = { ...DEFAULT_ROOM_USER };
+  if (!roomCopyCfg || typeof roomCopyCfg !== 'object') roomCopyCfg = { deliveryAppendEnabled: true, deliveryMin: 2000 };
 
   async function copyText(text) {
     try {
@@ -2345,7 +2379,7 @@ function buildCopyText(room) {
 サーバー番号 : 5041 (アイランド)
 座標 : 87 / 16 (西部2、赤オベ付近)
 入口パスワード【${entryPw}】
-${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き、${place}より受け取りお願いします。${warn}`;
+${roomText}の方にパスワード【${pw}】で入室をして頂き、${place}より受け取りお願いします。${warn}`;
 
     if (roomCopyCfg?.deliveryAppendEnabled && ps.sum >= Number(roomCopyCfg.deliveryMin || 0)) {
       text += `
