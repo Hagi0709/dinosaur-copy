@@ -679,12 +679,14 @@ button{cursor:pointer}
 }
 .mName{
   flex:1;
+  min-width:0;
   font-weight:900;
   font-size:16px;
   line-height:1.2;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  word-break:break-word;
 }
 .sBtn{
   width:44px;height:38px;
@@ -768,12 +770,35 @@ button{cursor:pointer}
   font-weight:900;
 }
 .editSelect{
-  padding-right:34px;
-  background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
-                   linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
-  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
-  background-size: 6px 6px, 6px 6px;
-  background-repeat:no-repeat;
+  padding-right
+}
+
+.editTextarea{
+  // width/見た目は editInput と揃えつつ、複数行用に高さを確保
+  width:100%;
+  min-height:92px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.18);
+  color:#fff;
+  outline:none;
+  padding:10px 12px;
+  font-weight:900;
+  resize:vertical;
+}
+
+.memo{
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(0,0,0,.14);
+  color:rgba(255,255,255,.86);
+  font-weight:900;
+  font-size:12px;
+  line-height:1.35;
+  white-space:pre-wrap;
+  word-break:break-word;
 }
 .editBtns{
   display:flex;
@@ -916,7 +941,7 @@ button{cursor:pointer}
 .stepper.male .val{color: var(--maleSoft);}
 .stepper.female .val{color: var(--femaleSoft);}
 
-.right .typeRow{display:flex; gap:8px; align-items:stretch; margin-top:-4px;}
+.right .typeRow{display:flex; gap:8px; align-items:stretch; justify-content:flex-end; width:100%; margin-top:-4px;}
 .dupMini{
   height:40px;
   min-width:54px;
