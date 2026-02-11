@@ -652,6 +652,22 @@ button{cursor:pointer}
 }
 .roomBtns .pill[data-act="done"]{ grid-column:1 / -1; }
 
+
+/* ✅ テンプレ用：ボタンを横一列 */
+.templateBtns{
+  display:flex;
+  gap:6px;
+  align-items:center;
+  flex:0 0 auto;
+}
+.templateBtns .pill{
+  height:34px;
+  min-width:0;
+  padding:0 10px;
+  font-size:11px;
+  white-space:nowrap;
+}
+
 /* ✅ ルーム画面のボタンを小さくして見切れ防止 */
 .roomBtns .pill{
   height:34px;
@@ -705,7 +721,7 @@ button{cursor:pointer}
   font-size:12px !important;
   border-radius:14px !important;
 }
-/* ✅ 後勝ちで上書きしていた大きいボタン定義を、最終的に“小さめ”へ統一 */
+/* ✅ 後勝ちで上書きしていた大きいボタン定義を、最終的に"小さめ"へ統一 */
 .roomBtns .pill{
   height:34px;
   min-width:0;
