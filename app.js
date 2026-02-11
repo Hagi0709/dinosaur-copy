@@ -181,7 +181,7 @@ const BUILD_VERSION = '2026-02-11 19:45';
       head.style.padding = '12px 12px 8px 14px';
 
       const title = document.createElement('div');
-      title.textContent = '内容確認';
+      title.textContent = 'コピー完了✨️';
       title.style.fontWeight = '900';
       title.style.fontSize = '14px';
       title.style.color = '#fff';
