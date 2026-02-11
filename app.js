@@ -163,7 +163,6 @@ const BUILD_VERSION = '2026-02-10 07:25';
       head.style.padding = '12px 12px 8px 14px';
 
       const title = document.createElement('div');
-      title.textContent = 'コピー内容（5秒表示）';
       title.style.fontWeight = '900';
       title.style.fontSize = '14px';
       title.style.color = '#fff';
@@ -2300,6 +2299,79 @@ if (act === 'gojuon') {
     return false;
   }
 
+
+  function getCurrentPurchaseSummary() {
+    let sum = 0;
+    let hasDino = false;
+    let hasItem = false;
+
+    const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
+    for (const d of dList) {
+      const baseKey = d.id;
+      const keys = [baseKey, ...Array.from(ephemeralKeys).filter(k => k.startsWith(baseKey + '__dup'))];
+      const sp = getSpecialCfgForDino(d);
+
+      for (const k of keys) {
+        const s = inputState.get(k);
+        if (!s) continue;
+
+        if (sp?.enabled && s.mode === 'special') {
+          const allowSex = !!sp.allowSex;
+          const m = Number(s.m || 0);
+          const f = Number(s.f || 0);
+          const sexQty = m + f;
+
+          if (allowSex && sexQty > 0) {
+            hasDino = true;
+            const type = s.type || d.defType || '受精卵';
+            const unitPrice = prices[type] || 0;
+            sum += unitPrice * sexQty;
+            continue;
+          }
+
+          if (s.all) {
+            const allPrice = Number(sp.all || 0);
+            if (allPrice > 0) {
+              hasDino = true;
+              sum += allPrice;
+            }
+            continue;
+          }
+
+          const picks = Array.isArray(s.picks) ? s.picks : [];
+          if (picks.length > 0) {
+            hasDino = true;
+            const unitPrice = Number(sp.unit || 0);
+            sum += picks.length * unitPrice;
+          }
+          continue;
+        }
+
+        const m = Number(s.m || 0);
+        const f = Number(s.f || 0);
+        const qty = m + f;
+        if (qty <= 0) continue;
+
+        hasDino = true;
+        const type = s.type || d.defType || '受精卵';
+        const unitPrice = prices[type] || 0;
+        sum += unitPrice * qty;
+      }
+    }
+
+    const iList = sortByOrder(items.filter(it => !hidden.item.has(it.id)), 'item');
+    for (const it of iList) {
+      const s = inputState.get(it.id);
+      if (!s) continue;
+      const qty = Number(s.qty || 0);
+      if (qty <= 0) continue;
+      hasItem = true;
+      sum += qty * Number(it.price || 0);
+    }
+
+    return { sum, hasDino, hasItem };
+  }
+
 let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
   let roomPw = loadJSON(LS.ROOM_PW, {
     ROOM1: '5412',
@@ -2324,6 +2396,11 @@ let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
     ROOM9: '',
   });
 
+  let roomCopyCfg = loadJSON(LS.ROOM_COPY_CFG, {
+    deliveryAppendEnabled: true,
+    deliveryMin: 2000,
+  });
+
   async function copyText(text) {
     try {
       await navigator.clipboard.writeText(text);
@@ -2343,63 +2420,6 @@ let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
     return room;
   }
 
-  function getRoomCopyPurchaseFlags() {
-    // NOTE: 画面に表示されているタブに依存せず、入力状態から「恐竜/アイテム購入有無」を判定する
-    let hasDinoBuy = false;
-    let hasItemBuy = false;
-
-    const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
-    for (const d of dList) {
-      const baseKey = d.id;
-      const keys = [baseKey, ...Array.from(ephemeralKeys).filter(k => k.startsWith(baseKey + '__dup'))];
-      const sp = getSpecialCfgForDino(d);
-
-      for (const k of keys) {
-        const s = inputState.get(k);
-        if (!s) continue;
-
-        if (sp?.enabled && s.mode === 'special') {
-          const allowSex = !!sp.allowSex;
-
-          const m = Number(s.m || 0);
-          const f = Number(s.f || 0);
-          const sexQty = m + f;
-
-          if (allowSex && sexQty > 0) { hasDinoBuy = true; break; }
-
-          if (s.all) {
-            const price = Number(sp.all || 0);
-            if (price > 0) { hasDinoBuy = true; break; }
-            continue;
-          }
-
-          const picks = Array.isArray(s.picks) ? s.picks : [];
-          if (picks.length > 0) { hasDinoBuy = true; break; }
-
-          continue;
-        }
-
-        const m = Number(s.m || 0);
-        const f = Number(s.f || 0);
-        if ((m + f) > 0) { hasDinoBuy = true; break; }
-      }
-
-      if (hasDinoBuy) break;
-    }
-
-    const iList = sortByOrder(items.filter(it => !hidden.item.has(it.id)), 'item');
-    for (const it of iList) {
-      const s = inputState.get(it.id);
-      if (!s) continue;
-      const qty = Number(s.qty || 0);
-      if (qty > 0) { hasItemBuy = true; break; }
-    }
-
-    return { hasDinoBuy, hasItemBuy };
-  }
-
-
-
   function buildCopyText(room) {
     const warn = hasEggOrEmbryoSelected()
       ? `
@@ -2409,19 +2429,30 @@ let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
 
     const roomText = roomLabelForSentence(room);
 
-    // ✅ ルームコピー文言：購入内容に応じて「冷蔵庫 / 金庫」を切り替え
-    const { hasDinoBuy, hasItemBuy } = getRoomCopyPurchaseFlags();
-    const place = hasDinoBuy && hasItemBuy ? '冷蔵庫、金庫' : (hasItemBuy ? '金庫' : '冷蔵庫');
+    const ps = getCurrentPurchaseSummary();
+    const place = ps.hasDino && ps.hasItem ? '冷蔵庫、金庫' : (ps.hasItem ? '金庫' : '冷蔵庫');
 
-    return `納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
+    let text = `納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
 
 サーバー番号 : 5041 (アイランド)
 座標 : 87 / 16 (西部2、赤オベ付近)
 入口パスワード【${entryPw}】
 ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き、${place}より受け取りお願いします。${warn}`;
+
+    if (roomCopyCfg?.deliveryAppendEnabled && ps.sum >= Number(roomCopyCfg.deliveryMin || 0)) {
+      text += `
+
+配送希望の場合は以下の情報をコメントしてください🙇🏻‍♂️
+
+①サーバー番号
+②配送先座標
+③冷蔵庫、金庫等のパスワード`;
+    }
+
+    return text;
   }
 
-  function renderRooms() {
+function renderRooms() {
     if (!el.roomBody) return;
     el.roomBody.innerHTML = '';
 
@@ -2435,7 +2466,7 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
     entry.className = 'mRow';
     entry.innerHTML = `
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:950;margin-bottom:6px;">入口パスワード（全ルーム共通）</div>
+        <div style="font-weight:950;margin-bottom:6px;">入口パスワード設定（全ルーム共通）</div>
         <input id="entryPw" value="${escapeHtml(entryPw)}"
           style="width:100%;height:44px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);color:#fff;padding:0 12px;font-weight:900;">
       </div>
@@ -2448,6 +2479,40 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
       saveJSON(LS.ROOM_ENTRY_PW, entryPw);
       openToast('入口パスワードを保存しました');
     };
+
+
+    // 配送設定（ルーム共通・コピー）
+    const del = document.createElement('div');
+    del.className = 'mRow';
+    del.innerHTML = `
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:950;margin-bottom:6px;">配送設定（全ルーム共通）</div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:10px;font-weight:900;">
+            <input id="deliveryAppendEnabled" type="checkbox" ${roomCopyCfg?.deliveryAppendEnabled ? 'checked' : ''} style="transform:scale(1.1);">
+            配送希望の追記
+          </label>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="font-weight:900;opacity:.9;">何円以上</div>
+            <input id="deliveryMin" inputmode="numeric" value="${escapeHtml(String(roomCopyCfg?.deliveryMin ?? 2000))}"
+              style="width:110px;height:44px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);color:#fff;padding:0 12px;font-weight:900;">
+          </div>
+        </div>
+      </div>
+    `;
+    wrap.appendChild(del);
+
+    const syncRoomCopyCfg = () => {
+      roomCopyCfg = {
+        deliveryAppendEnabled: !!del.querySelector('#deliveryAppendEnabled')?.checked,
+        deliveryMin: Number((del.querySelector('#deliveryMin')?.value || '').toString().replace(/[^0-9]/g, '')) || 0,
+      };
+      saveJSON(LS.ROOM_COPY_CFG, roomCopyCfg);
+    };
+    del.addEventListener('change', syncRoomCopyCfg);
+    del.addEventListener('input', (e) => {
+      if (e.target?.id === 'deliveryMin') syncRoomCopyCfg();
+    });
 
     // ルーム一覧
     Object.keys(roomPw).forEach(room => {
