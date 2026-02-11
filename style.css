@@ -515,6 +515,10 @@ button{cursor:pointer}
 
 .card.isCollapsed .controls{display:none}
 
+/* ✅ 折りたたみ時：メモ欄は非表示 */
+.card.isCollapsed .memo,
+.card.isCollapsed .js-memo{display:none !important}
+
 /* ✅ special UI を閉じる（JS側class名に合わせるならここも調整可）
    今のJSでは gWrap/gGrid を使っているので gachaWrap では閉じない。
    ただし controls 自体を block にしてる special では折りたたみ時に隠す必要がある。
@@ -619,7 +623,7 @@ button{cursor:pointer}
   grid-template-columns: 1fr 1fr;
   gap:6px;
   align-items:center;
-  flex:0 0 130px; /* ✅ 左側（ROOM名/入力欄）を見切れさせない */
+  flex:0 0 140px; /* ✅ 左側（ROOM名/入力欄）を見切れさせない */
 }
 .roomBtns .pill[data-act="done"]{ grid-column:1 / -1; }
 
@@ -690,16 +694,14 @@ button{cursor:pointer}
 /* ✅ 名前入力欄の高さを「受け取り完了」ボタンと同じに */
 .roomUserInput{
   width:100%;
-  flex:1;
-  min-width:0;
-  height:34px;
-  border-radius:14px;
+  height:34px !important;
+  line-height:34px;
+  border-radius:14px !important;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(0,0,0,.18);
   color:#fff;
-  padding:0 10px;
+  padding:0 12px;
   font-weight:900;
-  font-size:11px;
 }
 .roomActions{
   display:flex;
