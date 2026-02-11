@@ -1011,11 +1011,30 @@ requestAnimationFrame(() => installLeftToggleHit(card));
       sel?.addEventListener('click', (ev) => ev.stopPropagation());
       sel?.addEventListener('change', (ev) => {
         ev.stopPropagation();
+
+        // ✅ 受精卵セレクト変更で、カードの折りたたみ状態が勝手に変わらないように保護
+        const qNow = norm(el.q.value);
+        const collapsedMap = !qNow
+          ? new Map($$('[data-card="1"]', el.list).map(c => [`${c.dataset.key}|${c.dataset.kind}`, c.classList.contains('isCollapsed')]))
+          : null;
+
         s.type = sel.value;
         autoSpecify(s);
         syncSpecial();
         rebuildOutput();
         applyCollapseAndSearch();
+
+        // 検索中は従来通り（検索一致以外は畳む）
+        if (collapsedMap) {
+          $$('[data-card="1"]', el.list).forEach(c => {
+            const id = `${c.dataset.key}|${c.dataset.kind}`;
+            if (collapsedMap.has(id)) c.classList.toggle('isCollapsed', collapsedMap.get(id));
+
+            // 未入力(0)は常に自動で畳む（従来仕様）
+            const qty = getQtyForCard(c.dataset.key, c.dataset.kind);
+            if (qty === 0) c.classList.add('isCollapsed');
+          });
+        }
       });
 
       const step = (sex, delta) => {
@@ -2239,12 +2258,17 @@ let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
 
     const roomText = roomLabelForSentence(room);
 
+    // ✅ ルームコピー文言：購入内容に応じて「冷蔵庫 / 金庫」を切り替え
+    const hasDinoBuy = $$('[data-card="1"][data-kind="dino"]', el.list).some(c => getQtyForCard(c.dataset.key, c.dataset.kind) > 0);
+    const hasItemBuy = $$('[data-card="1"][data-kind="item"]', el.list).some(c => getQtyForCard(c.dataset.key, c.dataset.kind) > 0);
+    const place = hasDinoBuy && hasItemBuy ? '冷蔵庫、金庫' : (hasItemBuy ? '金庫' : '冷蔵庫');
+
     return `納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
 
 サーバー番号 : 5041 (アイランド)
 座標 : 87 / 16 (西部2、赤オベ付近)
 入口パスワード【${entryPw}】
-${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き、冷蔵庫より受け取りお願いします。${warn}`;
+${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き、${place}より受け取りお願いします。${warn}`;
   }
 
   function renderRooms() {
