@@ -117,6 +117,102 @@ const BUILD_VERSION = '2026-02-11 19:45';
     toastTimer = setTimeout(() => { t.style.display = 'none'; }, 1700);
   }
 
+  }
+
+  // ルーム：コピー内容を5秒間プレビュー表示（×で閉じる）
+  let roomCopyPreviewTimer = null;
+  function showRoomCopyPreview(copyText) {
+    const id = 'roomCopyPreviewOverlay';
+    let ov = document.getElementById(id);
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = id;
+      ov.style.position = 'fixed';
+      ov.style.inset = '0';
+      ov.style.zIndex = '9998';
+      ov.style.display = 'none';
+      ov.style.alignItems = 'center';
+      ov.style.justifyContent = 'center';
+      ov.style.padding = '16px';
+      ov.style.background = 'rgba(0,0,0,.35)';
+      ov.style.backdropFilter = 'blur(6px)';
+
+      const panel = document.createElement('div');
+      panel.style.width = 'min(560px, 92vw)';
+      panel.style.maxHeight = '72vh';
+      panel.style.overflow = 'hidden';
+      panel.style.borderRadius = '18px';
+      panel.style.border = '1px solid rgba(255,255,255,.14)';
+      panel.style.background = 'rgba(20,20,20,.78)';
+      panel.style.backdropFilter = 'blur(12px)';
+      panel.style.boxShadow = '0 20px 60px rgba(0,0,0,.45)';
+      panel.style.display = 'flex';
+      panel.style.flexDirection = 'column';
+
+      const head = document.createElement('div');
+      head.style.display = 'flex';
+      head.style.alignItems = 'center';
+      head.style.justifyContent = 'space-between';
+      head.style.gap = '10px';
+      head.style.padding = '12px 12px 8px 14px';
+
+      const title = document.createElement('div');
+      title.textContent = 'コピー内容（5秒表示）';
+      title.style.fontWeight = '900';
+      title.style.fontSize = '14px';
+      title.style.color = '#fff';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.textContent = '×';
+      closeBtn.setAttribute('aria-label', '閉じる');
+      closeBtn.style.width = '38px';
+      closeBtn.style.height = '32px';
+      closeBtn.style.borderRadius = '12px';
+      closeBtn.style.border = '1px solid rgba(255,255,255,.14)';
+      closeBtn.style.background = 'rgba(255,255,255,.08)';
+      closeBtn.style.color = '#fff';
+      closeBtn.style.fontWeight = '900';
+      closeBtn.style.cursor = 'pointer';
+
+      const body = document.createElement('div');
+      body.style.padding = '10px 14px 14px';
+      body.style.overflow = 'auto';
+
+      const pre = document.createElement('pre');
+      pre.id = 'roomCopyPreviewText';
+      pre.style.margin = '0';
+      pre.style.whiteSpace = 'pre-wrap';
+      pre.style.wordBreak = 'break-word';
+      pre.style.fontSize = '12px';
+      pre.style.lineHeight = '1.35';
+      pre.style.color = 'rgba(255,255,255,.92)';
+
+      body.appendChild(pre);
+      head.appendChild(title);
+      head.appendChild(closeBtn);
+      panel.appendChild(head);
+      panel.appendChild(body);
+      ov.appendChild(panel);
+      document.body.appendChild(ov);
+
+      const hide = () => {
+        ov.style.display = 'none';
+        clearTimeout(roomCopyPreviewTimer);
+        roomCopyPreviewTimer = null;
+      };
+      closeBtn.addEventListener('click', hide);
+      ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
+    }
+
+    const pre = document.getElementById('roomCopyPreviewText');
+    if (pre) pre.textContent = String(copyText ?? '');
+    ov.style.display = 'flex';
+
+    clearTimeout(roomCopyPreviewTimer);
+    roomCopyPreviewTimer = setTimeout(() => { ov.style.display = 'none'; }, 5000);
+  }
+
   /* ========= confirm modal ========= */
   let confirmResolve = null;
   function confirmAsk(text) {
@@ -2366,8 +2462,10 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
       const room = btn.dataset.room;
       if (!act || !room) return;
 
-      if (act === 'copy') {
-        await copyText(buildCopyText(room));
+if (act === 'copy') {
+        const copyTxt = buildCopyText(room);
+        await copyText(copyTxt);
+        showRoomCopyPreview(copyTxt);
         const prev = btn.textContent;
         btn.textContent = 'コピー済';
         btn.disabled = true;
