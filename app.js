@@ -2201,16 +2201,14 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
 
     const entry = document.createElement('div');
     entry.className = 'mRow';
-    entry.innerHTML = `
-      entry.innerHTML = `
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:950;margin-bottom:6px;">入口パスワード（全ルーム共通）</div>
-        <input id="entryPw" value="${escapeHtml(entryPw)}"
-          style="width:100%;height:44px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);color:#fff;padding:0 12px;font-weight:900;">
-      </div>
-      <button id="saveEntry" class="pill" type="button" style="height:44px;align-self:center;">保存</button>
-      `;
-    `;
+entry.innerHTML = `
+  <div style="flex:1;min-width:0;">
+    <div style="font-weight:950;margin-bottom:6px;">入口パスワード（全ルーム共通）</div>
+    <input id="entryPw" value="${escapeHtml(entryPw)}"
+      style="width:100%;height:44px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);color:#fff;padding:0 12px;font-weight:900;">
+  </div>
+  <button id="saveEntry" class="pill" type="button" style="height:44px;align-self:center;">保存</button>
+`;
     wrap.appendChild(entry);
 
     entry.querySelector('#saveEntry').onclick = () => {
