@@ -250,7 +250,6 @@ const BUILD_VERSION = '2026-02-12 10:05';
   // ✅ 画像出力：一覧で全画像を表示（画像長押し→写真に追加 で保存）
   let imageExportCloseFn = null;
     // ✅ 画像出力：配置画像をまとめて生成（長押し→写真に追加 で保存）
-  let imageExportCloseFn = null;
   function openImageExportGallery(dList) {
     const id = 'imageExportOverlay';
     let ov = document.getElementById(id);
