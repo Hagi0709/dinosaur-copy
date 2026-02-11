@@ -244,10 +244,8 @@ const BUILD_VERSION = '2026-02-11 23:30';
   // ✅ テンプレの確認用（タイトルは「内容確認」）
   function showTemplatePreview(text) {
     // ✅ テンプレ確認は「内容確認」
-    showRoomCopyPreview(text, '内容確認');
-  }
-
-  // ✅ 画像出力：一覧で全画像を表示（画像長押し→写真に追加 で保存）
+    showRoomCopyPreview(text, '確認画面');
+  }  // ✅ 画像出力：配置画像を1枚生成（長押しでカメラロールに保存）
   let imageExportCloseFn = null;
   function openImageExportGallery(dList) {
     const id = 'imageExportOverlay';
@@ -300,23 +298,118 @@ const BUILD_VERSION = '2026-02-11 23:30';
       closeBtn.addEventListener('click', hide);
       ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
 
-      // スクロールガード
       installOverlayScrollGuard(ov, body);
     }
 
     const body = ov.querySelector('.exportGalleryBody');
     if (body) {
       body.innerHTML = '';
+
       const hint = document.createElement('div');
       hint.className = 'exportGalleryHint';
-      hint.textContent = '画像を長押し →「写真に追加」でカメラロールへ保存できます。';
+      hint.textContent = '生成された画像を長押し →「写真に追加」でカメラロールへ保存できます。';
       body.appendChild(hint);
 
+      const ctrl = document.createElement('div');
+      ctrl.className = 'exportGridCtrl';
+      ctrl.innerHTML = `
+        <div class="exportGridInputs">
+          <div class="exportGridLabel">縦</div>
+          <input class="exportGridInput" id="exportRows" type="number" inputmode="numeric" min="1" value="4">
+          <div class="exportGridLabel">横</div>
+          <input class="exportGridInput" id="exportCols" type="number" inputmode="numeric" min="1" value="2">
+        </div>
+        <button class="pill exportGridBtn" type="button" id="exportMake">配置画像を生成</button>
+        <div class="exportGridExample">例：横2×縦4 → 1 2 / 3 4 / 5 6 / 7 8</div>
+      `;
+      body.appendChild(ctrl);
+
+      const outWrap = document.createElement('div');
+      outWrap.className = 'exportGridOutWrap';
+      outWrap.innerHTML = `<img id="exportGridImg" class="exportGridImg" alt="">`;
+      body.appendChild(outWrap);
+
+      const btn = ctrl.querySelector('#exportMake');
+      btn?.addEventListener('click', async () => {
+        const rowsEl = ctrl.querySelector('#exportRows');
+        const colsEl = ctrl.querySelector('#exportCols');
+        let rows = Math.max(1, Math.min(50, Number(rowsEl?.value || 1)));
+        let cols = Math.max(1, Math.min(20, Number(colsEl?.value || 1)));
+
+        // 画像URLをリスト順に集める
+        const urls = [];
+        for (const d of (dList || [])) {
+          const k = imageKeyFromBaseName(d._baseName || d.name);
+          const url = imageCache[k];
+          if (url) urls.push(url);
+        }
+        if (!urls.length) { openToast('画像がありません'); return; }
+
+        // 枠が足りない場合は縦を自動で増やす（ユーザー入力は尊重しつつ、壊れない方を優先）
+        const needRows = Math.ceil(urls.length / cols);
+        if (rows * cols < urls.length) {
+          rows = needRows;
+          if (rowsEl) rowsEl.value = String(rows);
+        }
+
+        const loadImg = (src) => new Promise((res, rej) => {
+          const im = new Image();
+          im.crossOrigin = 'anonymous';
+          im.onload = () => res(im);
+          im.onerror = () => rej(new Error('img load failed'));
+          im.src = src;
+        });
+
+        let imgs = [];
+        try {
+          imgs = await Promise.all(urls.map(u => loadImg(u)));
+        } catch (e) {
+          openToast('画像の読み込みに失敗しました');
+          console.error(e);
+          return;
+        }
+
+        // セルサイズは最大値に合わせる（カード画像が混在しても欠けない）
+        const cellW = Math.max(...imgs.map(im => im.naturalWidth || im.width || 0), 1);
+        const cellH = Math.max(...imgs.map(im => im.naturalHeight || im.height || 0), 1);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = cellW * cols;
+        canvas.height = cellH * rows;
+
+        const ctx = canvas.getContext('2d');
+        // 背景を白に（写真保存時に黒透過にならない）
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const drawContain = (im, x, y, w, h) => {
+          const iw = im.naturalWidth || im.width;
+          const ih = im.naturalHeight || im.height;
+          const s = Math.min(w / iw, h / ih);
+          const dw = iw * s;
+          const dh = ih * s;
+          const dx = x + (w - dw) / 2;
+          const dy = y + (h - dh) / 2;
+          ctx.drawImage(im, dx, dy, dw, dh);
+        };
+
+        for (let i = 0; i < imgs.length; i++) {
+          const r = Math.floor(i / cols);
+          const c = i % cols;
+          if (r >= rows) break;
+          drawContain(imgs[i], c * cellW, r * cellH, cellW, cellH);
+        }
+
+        const dataUrl = canvas.toDataURL('image/png', 1.0);
+        const outImg = body.querySelector('#exportGridImg');
+        if (outImg) outImg.src = dataUrl;
+      });
     }
 
     try { ScrollLock.lock(); } catch {}
     ov.style.display = 'flex';
   }
+
 
 /* ========= template editor ========= */
   let templateEditorResolve = null;
@@ -937,7 +1030,16 @@ function sortByOrder(list, kind) {
     });
   }
 
-  /* ========= output ========= */
+  
+  // ✅ 管理用の並び替え接頭辞（"A:名前"）を表示では除外
+  function displayName(raw) {
+    const s = String(raw ?? '');
+    const i = s.indexOf(':');
+    if (i >= 0) return s.slice(i + 1).trim();
+    return s;
+  }
+
+/* ========= output ========= */
   function rebuildOutput() {
     const lines = [];
     let sum = 0;
@@ -1918,7 +2020,7 @@ const top = document.createElement('div');
     const dinoCount = dinos.filter(x => !hidden.dino.has(x.id)).length;
 
     top.innerHTML = `
-      <div class="mCountPill">${dinoCount}種</div>
+      <div class="mCountText">${dinoCount}種</div>
       <button class="pill" type="button" data-act="gojuon">五十音順</button>
       <button class="pill" type="button" data-act="add">＋追加</button>
     `;
@@ -1952,8 +2054,8 @@ const top = document.createElement('div');
           if (t) {
             const text = String(t.text ?? '').trim();
             if (!text) { openToast('テンプレ本文が空です'); return; }
-            showRoomCopyPreview(text);
-          }
+            showTemplatePreview(text);
+}
         }
         return;
       }
@@ -2492,7 +2594,7 @@ if (act === 'gojuon') {
 
       const name = document.createElement('div');
       name.className = 'imgName';
-      name.textContent = d.name;
+      name.textContent = displayName(d.name);
 
       const btns = document.createElement('div');
       btns.className = 'imgBtns';
@@ -2904,8 +3006,8 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
            if (t) {
              const text = String(t.text ?? '').trim();
              if (!text) { openToast('テンプレ本文が空です'); return; }
-             showRoomCopyPreview(text);
-           }
+             showTemplatePreview(text);
+}
          }
          return;
        }
@@ -2967,8 +3069,8 @@ if (act === 'copy') {
           const text = String(t.text ?? '').trim();
           if (!text) { openToast('テンプレ本文が空です'); return; }
           await copyText(text);
-          showRoomCopyPreview(text);
-          const prev = btn.textContent;
+          showTemplatePreview(text);
+const prev = btn.textContent;
           btn.textContent = 'コピー済';
           btn.disabled = true;
           setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 900);
@@ -3070,6 +3172,19 @@ if (act === 'copy') {
       document.execCommand('copy');
     }
   });
+
+  // ✅ 隠しボタン：右上の合計金額タップで全入力を一括リセット（枠なし）
+  el.total?.addEventListener('click', () => {
+    const ok = confirm('入力した数値をすべてリセットします。よろしいですか？');
+    if (!ok) return;
+    inputState.clear();
+    ephemeralKeys.clear();
+    renderList();
+    applyCollapseAndSearch();
+    rebuildOutput();
+    openToast('リセットしました');
+  });
+
 
   el.openManage?.addEventListener('click', openModal);
   el.closeManage?.addEventListener('click', closeModal);
