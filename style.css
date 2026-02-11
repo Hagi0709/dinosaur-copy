@@ -619,7 +619,7 @@ button{cursor:pointer}
   grid-template-columns: 1fr 1fr;
   gap:6px;
   align-items:center;
-  flex:0 0 168px; /* ✅ 左側（ROOM名/入力欄）を見切れさせない */
+  flex:0 0 130px; /* ✅ 左側（ROOM名/入力欄）を見切れさせない */
 }
 .roomBtns .pill[data-act="done"]{ grid-column:1 / -1; }
 
@@ -627,10 +627,13 @@ button{cursor:pointer}
 .roomBtns .pill{
   height:34px;
   min-width:0;
-  padding:0 10px;
-  font-size:12px;
+  padding:0 8px;
+  font-size:11px;
   border-radius:14px;
+  font-weight:900;
+  white-space:nowrap;
 }
+
 
 /* ✅ ルーム共通設定（コピー） */
 .roomCfgRow{
