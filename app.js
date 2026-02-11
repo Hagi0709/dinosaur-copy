@@ -709,7 +709,7 @@ ${lines.join('\n')}
     }
   }
 
-  function applyCollapseAndSearch() {
+function applyCollapseAndSearch() {
     const q = norm(el.q.value);
 
     $$('[data-card="1"]', el.list).forEach(card => {
@@ -720,11 +720,20 @@ ${lines.join('\n')}
       const key = card.dataset.key;
       const kind = card.dataset.kind;
       const qty = getQtyForCard(key, kind);
-      const collapsed = q ? !show : (qty === 0);
-      card.classList.toggle('isCollapsed', collapsed);
+
+      // ✅ 検索中：一致しないカードは畳む（従来通り）
+      if (q) {
+        card.classList.toggle('isCollapsed', !show);
+        return;
+      }
+
+      // ✅ 通常時：未入力(0)だけ自動で畳む。
+      // それ以外は「いまの折りたたみ状態」を維持して、他カードが勝手に開くのを防ぐ。
+      if (qty === 0) {
+        card.classList.add('isCollapsed');
+      }
     });
   }
-
   /* ========= Toggle hit area (左側ほぼ全部) ========= */
 function installLeftToggleHit(card) {
   const toggle = $('.cardToggle', card);
