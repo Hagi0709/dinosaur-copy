@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-02-11 23:30';
+const BUILD_VERSION = '2026-02-12 00:20';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -244,7 +244,7 @@ const BUILD_VERSION = '2026-02-11 23:30';
   // ✅ テンプレの確認用（タイトルは「内容確認」）
   function showTemplatePreview(text) {
     // ✅ テンプレ確認は「内容確認」
-    showRoomCopyPreview(text, '内容確認');
+    showRoomCopyPreview(text, '確認画面');
   }
 
   // ✅ 画像出力：一覧で全画像を表示（画像長押し→写真に追加 で保存）
@@ -312,6 +312,25 @@ const BUILD_VERSION = '2026-02-11 23:30';
       hint.textContent = '画像を長押し →「写真に追加」でカメラロールへ保存できます。';
       body.appendChild(hint);
 
+      // ✅ 出力配置（縦×横）を指定して、リスト順にコラージュ生成
+      const ctrl = document.createElement('div');
+      ctrl.className = 'exportGalleryControls';
+      ctrl.innerHTML = `
+        <div class="exportGalleryCtrlRow">
+          <label class="exportGalleryLbl">縦</label>
+          <input id="expRows" class="exportGalleryNum" type="number" inputmode="numeric" min="1" max="20" value="4">
+          <label class="exportGalleryLbl">横</label>
+          <input id="expCols" class="exportGalleryNum" type="number" inputmode="numeric" min="1" max="20" value="2">
+          <button id="expMake" class="pill" type="button">配置画像を生成</button>
+        </div>
+        <div class="exportGallerySubHint">例：横2×縦4 → 1 2 / 3 4 / 5 6 / 7 8</div>
+      `;
+      body.appendChild(ctrl);
+
+      const collageWrap = document.createElement('div');
+      collageWrap.className = 'exportGalleryCollages';
+      body.appendChild(collageWrap);
+
       const listWrap = document.createElement('div');
       listWrap.className = 'exportGalleryList';
       body.appendChild(listWrap);
@@ -322,6 +341,133 @@ const BUILD_VERSION = '2026-02-11 23:30';
         const k = imageKeyFromBaseName(base);
         const u = imageCache[k];
         if (u) srcItems.push({ name: String(d.name || base || ''), src: u });
+      });
+
+
+      // ✅ 配置画像生成ボタン
+      const btnMake = body.querySelector('#expMake');
+      const inpR = body.querySelector('#expRows');
+      const inpC = body.querySelector('#expCols');
+
+      const loadImg = (src) => new Promise((resolve) => {
+        const im = new Image();
+        im.onload = () => resolve(im);
+        im.onerror = () => resolve(null);
+        im.src = src;
+      });
+
+      async function buildCollagePages(rows, cols) {
+        rows = Math.max(1, Math.min(20, Number(rows || 1)));
+        cols = Math.max(1, Math.min(20, Number(cols || 1)));
+        const perPage = rows * cols;
+        const pages = [];
+        if (!srcItems.length) return pages;
+
+        // 見た目は添付例に寄せる：2:1サムネをカードっぽく並べる
+        const cellW = 640;
+        const cellH = 320;
+        const gap = 10;
+        const pad = 12;
+
+        // 画像を全部読み込み（順番維持）
+        const loaded = [];
+        for (const it of srcItems) {
+          const im = await loadImg(it.src);
+          if (im) loaded.push(im);
+          else loaded.push(null);
+        }
+
+        const total = loaded.length;
+        const pageCount = Math.ceil(total / perPage);
+
+        for (let p = 0; p < pageCount; p++) {
+          const start = p * perPage;
+          const slice = loaded.slice(start, start + perPage).filter(Boolean);
+          if (!slice.length) continue;
+
+          const outW = cols * cellW + (cols - 1) * gap + pad * 2;
+          const outH = rows * cellH + (rows - 1) * gap + pad * 2;
+
+          const canvas = document.createElement('canvas');
+          canvas.width = outW;
+          canvas.height = outH;
+          const ctx = canvas.getContext('2d');
+
+          // 背景
+          ctx.fillStyle = '#000';
+          ctx.fillRect(0, 0, outW, outH);
+
+          let idx2 = 0;
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const im = loaded[start + idx2];
+              idx2++;
+              if (!im) continue;
+
+              const x = pad + c * (cellW + gap);
+              const y = pad + r * (cellH + gap);
+
+              const iw = im.naturalWidth || im.width;
+              const ih = im.naturalHeight || im.height;
+              const targetRatio = cellW / cellH;
+              const imgRatio = iw / ih;
+
+              let sx = 0, sy = 0, sw = iw, sh = ih;
+              if (imgRatio > targetRatio) {
+                sw = ih * targetRatio;
+                sx = (iw - sw) / 2;
+              } else {
+                sh = iw / targetRatio;
+                sy = (ih - sh) / 2;
+              }
+
+              ctx.drawImage(im, sx, sy, sw, sh, x, y, cellW, cellH);
+            }
+          }
+
+          pages.push(canvas.toDataURL('image/png', 1.0));
+        }
+
+        return pages;
+      }
+
+      btnMake?.addEventListener('click', async () => {
+        const rows = inpR?.value || 1;
+        const cols = inpC?.value || 1;
+        const wrap = body.querySelector('.exportGalleryCollages');
+        if (wrap) wrap.innerHTML = '';
+
+        if (!srcItems.length) { openToast('画像が1枚も設定されていません。'); return; }
+
+        openToast('生成中…');
+        const urls = await buildCollagePages(rows, cols);
+        const wrap2 = body.querySelector('.exportGalleryCollages');
+        if (!wrap2) return;
+
+        if (!urls.length) {
+          wrap2.innerHTML = '<div class="exportGalleryEmpty">生成できる画像がありませんでした。</div>';
+          return;
+        }
+
+        urls.forEach((u, i) => {
+          const box = document.createElement('div');
+          box.className = 'exportGalleryCollageItem';
+
+          const cap = document.createElement('div');
+          cap.className = 'exportGalleryCap';
+          cap.textContent = urls.length >= 2 ? `配置画像 ${i + 1}/${urls.length}` : '配置画像';
+
+          const img = document.createElement('img');
+          img.className = 'exportGalleryImg';
+          img.alt = cap.textContent;
+          img.src = u;
+
+          box.appendChild(cap);
+          box.appendChild(img);
+          wrap2.appendChild(box);
+        });
+
+        openToast('生成しました（長押しで保存）');
       });
 
       if (!srcItems.length) {
@@ -1114,7 +1260,26 @@ ${lines.join('\n')}
 また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
   }
 
-  /* ========= collapse & search ========= */
+  
+  /* ========= reset all inputs ========= */
+  async function resetAllInputs() {
+    const ok = await confirmAsk('入力をすべてリセットしますか？');
+    if (!ok) return false;
+
+    // 数値入力・選択・複製を全クリア
+    inputState.clear();
+    ephemeralKeys.clear();
+
+    // 画面を再描画
+    renderList();
+    rebuildOutput();
+    applyCollapseAndSearch();
+    try { fitTopRow(); } catch {}
+    openToast('リセットしました');
+    return true;
+  }
+
+/* ========= collapse & search ========= */
   function getQtyForCard(key, kind) {
     if (kind === 'dino') {
       const s = inputState.get(key);
@@ -1989,8 +2154,8 @@ const top = document.createElement('div');
           if (t) {
             const text = String(t.text ?? '').trim();
             if (!text) { openToast('テンプレ本文が空です'); return; }
-            showRoomCopyPreview(text);
-          }
+            showTemplatePreview(text);
+            }
         }
         return;
       }
@@ -2941,8 +3106,8 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
            if (t) {
              const text = String(t.text ?? '').trim();
              if (!text) { openToast('テンプレ本文が空です'); return; }
-             showRoomCopyPreview(text);
-           }
+            showTemplatePreview(text);
+            }
          }
          return;
        }
@@ -3107,6 +3272,13 @@ if (act === 'copy') {
       document.execCommand('copy');
     }
   });
+
+  // ✅ 合計金額（右上）を「隠しリセットボタン」にする（枠は出さない）
+  el.total?.addEventListener('click', () => {
+    resetAllInputs();
+  });
+
+
 
   el.openManage?.addEventListener('click', openModal);
   el.closeManage?.addEventListener('click', closeModal);
