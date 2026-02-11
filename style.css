@@ -215,7 +215,13 @@ button{cursor:pointer}
   display:grid;
   grid-template-columns:minmax(0,1fr) minmax(0, 160px);
   gap:10px;
-  align-items:center;
+  align-items:flex-start; /* ✅ 入力で右側ブロックの高さが変わっても、上基準で固定 */
+}
+
+/* ✅ カード右上（複製/セレクト）を最初から少し上に固定して、入力時の微ズレも抑止 */
+.cardHead .right{
+  align-self:flex-start;
+  margin-top:-4px;
 }
 
 /* ✅ ここが原因：toggleが前面すぎるとselectが押せない
@@ -606,13 +612,29 @@ button{cursor:pointer}
 }
 
 .roomBtns{
-  display:flex;
-  gap:10px;
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:6px;
   align-items:center;
-  flex:0 0 auto;
-  flex-wrap:wrap;
-  justify-content:flex-end;
-  max-width:260px;
+  flex:0 0 168px; /* ✅ 左側（ROOM名/入力欄）を見切れさせない */
+}
+.roomBtns .pill[data-act="done"]{ grid-column:1 / -1; }
+
+/* ✅ ルーム画面のボタンを小さくして見切れ防止 */
+.roomBtns .pill{
+  height:34px;
+  min-width:0;
+  padding:0 10px;
+  font-size:12px;
+  border-radius:14px;
+}
+
+/* ✅ 「入口パスワード」の保存ボタンも小さく（app.js側のinlineを上書き） */
+#roomBody #saveEntry{
+  height:38px !important;
+  padding:0 10px !important;
+  font-size:12px !important;
+  border-radius:14px !important;
 }
 .roomBtns .pill{
   height:40px;
