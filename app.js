@@ -2199,16 +2199,17 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
     wrap.style.flexDirection = 'column';
     wrap.style.gap = '12px';
 
+    // 共通入口PW
     const entry = document.createElement('div');
     entry.className = 'mRow';
-entry.innerHTML = `
-  <div style="flex:1;min-width:0;">
-    <div style="font-weight:950;margin-bottom:6px;">入口パスワード（全ルーム共通）</div>
-    <input id="entryPw" value="${escapeHtml(entryPw)}"
-      style="width:100%;height:44px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);color:#fff;padding:0 12px;font-weight:900;">
-  </div>
-  <button id="saveEntry" class="pill" type="button" style="height:44px;align-self:center;">保存</button>
-`;
+    entry.innerHTML = `
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:950;margin-bottom:6px;">入口パスワード（全ルーム共通）</div>
+        <input id="entryPw" value="${escapeHtml(entryPw)}"
+          style="width:100%;height:44px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);color:#fff;padding:0 12px;font-weight:900;">
+      </div>
+      <button id="saveEntry" class="pill" type="button" style="height:44px;align-self:center;">保存</button>
+    `;
     wrap.appendChild(entry);
 
     entry.querySelector('#saveEntry').onclick = () => {
@@ -2217,14 +2218,15 @@ entry.innerHTML = `
       openToast('入口パスワードを保存しました');
     };
 
-Object.keys(roomPw).forEach(room => {
+    // ルーム一覧
+    Object.keys(roomPw).forEach(room => {
       const row = document.createElement('div');
       row.className = 'mRow';
-      const u = (roomUser?.[room] ?? '');
+
       row.innerHTML = `
         <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
           <div class="mName">${room}</div>
-          <input class="roomUserInput" data-room="${room}" value="${escapeHtml(roomUser[room] || '')}">
+          <input class="roomUserInput" data-room="${room}" value="${escapeHtml(roomUser?.[room] || '')}" placeholder="">
         </div>
         <div class="roomBtns">
           <button class="pill" data-act="copy" data-room="${room}" type="button">コピー</button>
@@ -2235,6 +2237,7 @@ Object.keys(roomPw).forEach(room => {
       wrap.appendChild(row);
     });
 
+    // 使用者名の保存（重複してたので1本化）
     wrap.addEventListener('input', (e) => {
       const inp = e.target?.closest('input.roomUserInput');
       if (!inp) return;
@@ -2244,20 +2247,11 @@ Object.keys(roomPw).forEach(room => {
       saveJSON(LS.ROOM_USER, roomUser);
     });
 
-wrap.addEventListener('input', (e) => {
-      const inp = e.target?.closest('input.roomUserInput');
-      if (!inp) return;
-      const room = inp.dataset.room;
-      if (!room) return;
-      roomUser[room] = (inp.value || '').trim();
-      saveJSON(LS.ROOM_USER, roomUser);
-    });
-
-// （重複していたroomUserInputのinput監視を削除）
-
+    // ボタン処理
     wrap.addEventListener('click', async (e) => {
       const btn = e.target?.closest('button');
       if (!btn) return;
+
       const act = btn.dataset.act;
       const room = btn.dataset.room;
       if (!act || !room) return;
@@ -2268,6 +2262,7 @@ wrap.addEventListener('input', (e) => {
         btn.textContent = 'コピー済';
         btn.disabled = true;
         setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 900);
+        return;
       }
 
       if (act === 'pw') {
@@ -2275,15 +2270,19 @@ wrap.addEventListener('input', (e) => {
         if (!npw) return;
         roomPw[room] = npw;
         saveJSON(LS.ROOM_PW, roomPw);
-        openToast(`${room} のPWを保存しました`);
+        openToast(`${room} のPWを更新しました`);
+        return;
       }
 
       if (act === 'done') {
         roomUser[room] = '';
         saveJSON(LS.ROOM_USER, roomUser);
-        const inp = wrap.querySelector(`input.roomUserInput[data-room="${room}"]`);
+
+        const inp = wrap.querySelector(`input.roomUserInput[data-room="${CSS.escape(room)}"]`);
         if (inp) inp.value = '';
+
         openToast(`${room} をリセットしました`);
+        return;
       }
     });
 
