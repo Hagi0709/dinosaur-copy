@@ -1299,8 +1299,7 @@ const tOut = String(type).replace('(指定)', '');
   }
 
   function buildItemCard(it) {
-    // DOM挿入後にtoggle範囲を確実にセット
-    requestAnimationFrame(() => installLeftToggleHit(card));
+
     const s = ensureItemState(it.id);
 
     const card = document.createElement('div');
@@ -1374,8 +1373,10 @@ const tOut = String(type).replace('(指定)', '');
         applyCollapseAndSearch();
       });
     });
-
+    // DOM挿入後にtoggle範囲を確実にセット
+    requestAnimationFrame(() => installLeftToggleHit(card));
     return card;
+
   }
 
   /* ========= render ========= */
