@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-02-11 19:45';
+const BUILD_VERSION = '2026-02-11 23:30';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -246,6 +246,115 @@ const BUILD_VERSION = '2026-02-11 19:45';
     // ✅ テンプレ確認は「内容確認」
     showRoomCopyPreview(text, '内容確認');
   }
+
+  // ✅ 画像出力：一覧で全画像を表示（画像長押し→写真に追加 で保存）
+  let imageExportCloseFn = null;
+  function openImageExportGallery(dList) {
+    const id = 'imageExportOverlay';
+    let ov = document.getElementById(id);
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = id;
+      ov.style.position = 'fixed';
+      ov.style.inset = '0';
+      ov.style.zIndex = '9999';
+      ov.style.display = 'none';
+      ov.style.alignItems = 'center';
+      ov.style.justifyContent = 'center';
+      ov.style.padding = '16px';
+      ov.style.background = 'rgba(0,0,0,.35)';
+      ov.style.backdropFilter = 'blur(6px)';
+
+      const panel = document.createElement('div');
+      panel.className = 'exportGalleryPanel';
+
+      const head = document.createElement('div');
+      head.className = 'exportGalleryHead';
+
+      const title = document.createElement('div');
+      title.textContent = '画像出力';
+      title.className = 'exportGalleryTitle';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.textContent = '×';
+      closeBtn.setAttribute('aria-label', '閉じる');
+      closeBtn.className = 'iconBtn';
+
+      const body = document.createElement('div');
+      body.className = 'exportGalleryBody';
+
+      head.appendChild(title);
+      head.appendChild(closeBtn);
+      panel.appendChild(head);
+      panel.appendChild(body);
+      ov.appendChild(panel);
+      document.body.appendChild(ov);
+
+      const hide = () => {
+        ov.style.display = 'none';
+        try { ScrollLock.unlock(); } catch {}
+      };
+      imageExportCloseFn = hide;
+
+      closeBtn.addEventListener('click', hide);
+      ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
+
+      // スクロールガード
+      installOverlayScrollGuard(ov, body);
+    }
+
+    const body = ov.querySelector('.exportGalleryBody');
+    if (body) {
+      body.innerHTML = '';
+      const hint = document.createElement('div');
+      hint.className = 'exportGalleryHint';
+      hint.textContent = '画像を長押し →「写真に追加」でカメラロールへ保存できます。';
+      body.appendChild(hint);
+
+      const listWrap = document.createElement('div');
+      listWrap.className = 'exportGalleryList';
+      body.appendChild(listWrap);
+
+      const srcItems = [];
+      (dList || []).forEach(d => {
+        const base = String(d?._baseName || d?.name || '').trim();
+        const k = imageKeyFromBaseName(base);
+        const u = imageCache[k];
+        if (u) srcItems.push({ name: String(d.name || base || ''), src: u });
+      });
+
+      if (!srcItems.length) {
+        const empty = document.createElement('div');
+        empty.className = 'exportGalleryEmpty';
+        empty.textContent = '画像が1枚も設定されていません。';
+        listWrap.appendChild(empty);
+      } else {
+        srcItems.forEach(it => {
+          const row = document.createElement('div');
+          row.className = 'exportGalleryItem';
+
+          const cap = document.createElement('div');
+          cap.className = 'exportGalleryCap';
+          cap.textContent = it.name;
+
+          const img = document.createElement('img');
+          img.className = 'exportGalleryImg';
+          img.alt = it.name;
+          img.src = it.src;
+          img.loading = 'lazy';
+
+          row.appendChild(cap);
+          row.appendChild(img);
+          listWrap.appendChild(row);
+        });
+      }
+    }
+
+    try { ScrollLock.lock(); } catch {}
+    ov.style.display = 'flex';
+  }
+
 /* ========= template editor ========= */
   let templateEditorResolve = null;
   function openTemplateEditor(tpl) {
@@ -1880,7 +1989,7 @@ const top = document.createElement('div');
           if (t) {
             const text = String(t.text ?? '').trim();
             if (!text) { openToast('テンプレ本文が空です'); return; }
-            showTemplatePreview(text, true);
+            showRoomCopyPreview(text);
           }
         }
         return;
@@ -2398,15 +2507,8 @@ if (act === 'gojuon') {
       openImgViewer(dataUrl);
     }
 
-    topBar.querySelector('#imgExport')?.addEventListener('click', async () => {
-      const rows = parseInt(prompt('縦は何枚？（例：5）', '5') || '', 10);
-      const cols = parseInt(prompt('横は何枚？（例：2）', '2') || '', 10);
-
-      if (!Number.isFinite(rows) || !Number.isFinite(cols) || rows <= 0 || cols <= 0) {
-        alert('縦・横は1以上の数字で入力してください。');
-        return;
-      }
-      await exportGrid(rows, cols);
+    topBar.querySelector('#imgExport')?.addEventListener('click', () => {
+      openImageExportGallery(list);
     });
 
     list.forEach(d => {
@@ -2839,7 +2941,7 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
            if (t) {
              const text = String(t.text ?? '').trim();
              if (!text) { openToast('テンプレ本文が空です'); return; }
-             showTemplatePreview(text, true);
+             showRoomCopyPreview(text);
            }
          }
          return;
@@ -2902,7 +3004,7 @@ if (act === 'copy') {
           const text = String(t.text ?? '').trim();
           if (!text) { openToast('テンプレ本文が空です'); return; }
           await copyText(text);
-          showTemplatePreview(text, true);
+          showRoomCopyPreview(text);
           const prev = btn.textContent;
           btn.textContent = 'コピー済';
           btn.disabled = true;
