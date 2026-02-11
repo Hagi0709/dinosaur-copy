@@ -81,7 +81,8 @@ button{cursor:pointer}
   display:flex;
   gap:8px;
   align-items:center;
-  flex-wrap:wrap;
+  flex-wrap:nowrap; /* ✅ 合計金額が桁数で改行して下に落ちないように */
+  min-width:0;
 }
 
 .search{
@@ -144,10 +145,17 @@ button{cursor:pointer}
 }
 .total{
   margin-left:auto;
-  font-size:14px;
+  height:36px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-end;
+  font-size:14px; /* JSで必要に応じて縮小 */
   color:var(--ok);
   font-weight:900;
   white-space:nowrap;
+  line-height:1;
+  max-width:120px;   /* ✅ ここを超えないようにJSでフィット */
+  min-width:0;
 }
 
 .out{
