@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-02-12 00:45';
+const BUILD_VERSION = '2026-02-11 23:30';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -36,26 +36,13 @@ const BUILD_VERSION = '2026-02-12 00:45';
   const toHira = (s) => (s || '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
   const norm = (s) => toHira(String(s || '').toLowerCase()).replace(/\s+/g, '');
 
-
-  // ✅ ソート用：
-  // - 「A:TEKギガノト」形式は、A側を並び替えキーとして優先
-  // - 表示名（:以降）は同キー内の並びに使用
-  // - TEK接頭辞は比較から除外
+  // ✅ 五十音順ソート用：TEKは接頭辞を無視（TEK以降で比較）
   function sortName(name) {
     const raw = String(name || '').trim();
-    const prefix = getSortPrefix(raw);
-    const disp = getDisplayName(raw);
-
-    const p = prefix.startsWith('TEK') ? prefix.slice(3).trim() : prefix;
-    const d = disp.startsWith('TEK') ? disp.slice(3).trim() : disp;
-
-    const primary = prefix ? p : d;
-    const secondary = prefix ? d : '';
-
-    // カタカナ→ひらがな、空白除去して比較キー化（primary→secondary）
-    return (toHira(primary).replace(/\s+/g, '') + '\u0000' + toHira(secondary).replace(/\s+/g, ''));
+    const base = raw.startsWith('TEK') ? raw.slice(3).trim() : raw;
+    // カタカナ→ひらがな、空白除去して比較キー化
+    return toHira(base).replace(/\s+/g, '');
   }
-
 
   function stableHash(str) {
     let h = 5381;
@@ -74,19 +61,6 @@ const BUILD_VERSION = '2026-02-12 00:45';
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#39;');
   }
-
-  // ✅ 「A:TEKギガノト」形式：表示名は「:」以降、並び替えキーは「:」以前
-  function getDisplayName(raw) {
-    const s = String(raw || '');
-    const i = s.indexOf(':');
-    return (i >= 0) ? s.slice(i + 1).trim() : s.trim();
-  }
-  function getSortPrefix(raw) {
-    const s = String(raw || '').trim();
-    const i = s.indexOf(':');
-    return (i >= 0) ? s.slice(0, i).trim() : '';
-  }
-
 
   /* ========= circled numbers ========= */
   const circled = (n) => {
@@ -270,7 +244,7 @@ const BUILD_VERSION = '2026-02-12 00:45';
   // ✅ テンプレの確認用（タイトルは「内容確認」）
   function showTemplatePreview(text) {
     // ✅ テンプレ確認は「内容確認」
-    showRoomCopyPreview(text, '確認画面');
+    showRoomCopyPreview(text, '内容確認');
   }
 
   // ✅ 画像出力：一覧で全画像を表示（画像長押し→写真に追加 で保存）
@@ -338,189 +312,6 @@ const BUILD_VERSION = '2026-02-12 00:45';
       hint.textContent = '画像を長押し →「写真に追加」でカメラロールへ保存できます。';
       body.appendChild(hint);
 
-      // ✅ 出力配置（縦×横）を指定して、リスト順にコラージュ生成
-      const ctrl = document.createElement('div');
-      ctrl.className = 'exportGalleryControls';
-      ctrl.innerHTML = `
-        <div class="exportGalleryCtrlRow">
-          <label class="exportGalleryLbl">縦</label>
-          <input id="expRows" class="exportGalleryNum" type="number" inputmode="numeric" min="1" max="20" value="4">
-          <label class="exportGalleryLbl">横</label>
-          <input id="expCols" class="exportGalleryNum" type="number" inputmode="numeric" min="1" max="20" value="2">
-          <button id="expMake" class="pill" type="button">配置画像を生成</button>
-        </div>
-        <div class="exportGallerySubHint">例：横2×縦4 → 1 2 / 3 4 / 5 6 / 7 8</div>
-      `;
-      body.appendChild(ctrl);
-
-      const collageWrap = document.createElement('div');
-      collageWrap.className = 'exportGalleryCollages';
-      body.appendChild(collageWrap);
-
-      const listWrap = document.createElement('div');
-      listWrap.className = 'exportGalleryList';
-      body.appendChild(listWrap);
-
-      const srcItems = [];
-      (dList || []).forEach(d => {
-        const base = String(d?._baseName || d?.name || '').trim();
-        const k = imageKeyFromBaseName(base);
-        const u = imageCache[k];
-        if (u) srcItems.push({ name: getDisplayName(String(d.name || base || '')), src: u });
-      });
-
-
-      // ✅ 配置画像生成ボタン
-      const btnMake = body.querySelector('#expMake');
-      const inpR = body.querySelector('#expRows');
-      const inpC = body.querySelector('#expCols');
-
-      const loadImg = (src) => new Promise((resolve) => {
-        const im = new Image();
-        im.onload = () => resolve(im);
-        im.onerror = () => resolve(null);
-        im.src = src;
-      });
-
-      async function buildCollagePages(rows, cols) {
-        rows = Math.max(1, Math.min(20, Number(rows || 1)));
-        cols = Math.max(1, Math.min(20, Number(cols || 1)));
-        const perPage = rows * cols;
-        const pages = [];
-        if (!srcItems.length) return pages;
-
-        // 見た目は添付例に寄せる：2:1サムネをカードっぽく並べる
-        const cellW = 640;
-        const cellH = 320;
-        const gap = 10;
-        const pad = 12;
-
-        // 画像を全部読み込み（順番維持）
-        const loaded = [];
-        for (const it of srcItems) {
-          const im = await loadImg(it.src);
-          if (im) loaded.push(im);
-          else loaded.push(null);
-        }
-
-        const total = loaded.length;
-        const pageCount = Math.ceil(total / perPage);
-
-        for (let p = 0; p < pageCount; p++) {
-          const start = p * perPage;
-          const slice = loaded.slice(start, start + perPage).filter(Boolean);
-          if (!slice.length) continue;
-
-          const outW = cols * cellW + (cols - 1) * gap + pad * 2;
-          const outH = rows * cellH + (rows - 1) * gap + pad * 2;
-
-          const canvas = document.createElement('canvas');
-          canvas.width = outW;
-          canvas.height = outH;
-          const ctx = canvas.getContext('2d');
-
-          // 背景
-          ctx.fillStyle = '#000';
-          ctx.fillRect(0, 0, outW, outH);
-
-          let idx2 = 0;
-          for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-              const im = loaded[start + idx2];
-              idx2++;
-              if (!im) continue;
-
-              const x = pad + c * (cellW + gap);
-              const y = pad + r * (cellH + gap);
-
-              const iw = im.naturalWidth || im.width;
-              const ih = im.naturalHeight || im.height;
-              const targetRatio = cellW / cellH;
-              const imgRatio = iw / ih;
-
-              let sx = 0, sy = 0, sw = iw, sh = ih;
-              if (imgRatio > targetRatio) {
-                sw = ih * targetRatio;
-                sx = (iw - sw) / 2;
-              } else {
-                sh = iw / targetRatio;
-                sy = (ih - sh) / 2;
-              }
-
-              ctx.drawImage(im, sx, sy, sw, sh, x, y, cellW, cellH);
-            }
-          }
-
-          pages.push(canvas.toDataURL('image/png', 1.0));
-        }
-
-        return pages;
-      }
-
-      btnMake?.addEventListener('click', async () => {
-        const rows = inpR?.value || 1;
-        const cols = inpC?.value || 1;
-        const wrap = body.querySelector('.exportGalleryCollages');
-        if (wrap) wrap.innerHTML = '';
-
-        if (!srcItems.length) { openToast('画像が1枚も設定されていません。'); return; }
-
-        openToast('生成中…');
-        const urls = await buildCollagePages(rows, cols);
-        const wrap2 = body.querySelector('.exportGalleryCollages');
-        if (!wrap2) return;
-
-        if (!urls.length) {
-          wrap2.innerHTML = '<div class="exportGalleryEmpty">生成できる画像がありませんでした。</div>';
-          return;
-        }
-
-        urls.forEach((u, i) => {
-          const box = document.createElement('div');
-          box.className = 'exportGalleryCollageItem';
-
-          const cap = document.createElement('div');
-          cap.className = 'exportGalleryCap';
-          cap.textContent = urls.length >= 2 ? `配置画像 ${i + 1}/${urls.length}` : '配置画像';
-
-          const img = document.createElement('img');
-          img.className = 'exportGalleryImg';
-          img.alt = cap.textContent;
-          img.src = u;
-
-          box.appendChild(cap);
-          box.appendChild(img);
-          wrap2.appendChild(box);
-        });
-
-        openToast('生成しました（長押しで保存）');
-      });
-
-      if (!srcItems.length) {
-        const empty = document.createElement('div');
-        empty.className = 'exportGalleryEmpty';
-        empty.textContent = '画像が1枚も設定されていません。';
-        listWrap.appendChild(empty);
-      } else {
-        srcItems.forEach(it => {
-          const row = document.createElement('div');
-          row.className = 'exportGalleryItem';
-
-          const cap = document.createElement('div');
-          cap.className = 'exportGalleryCap';
-          cap.textContent = getDisplayName(it.name);
-
-          const img = document.createElement('img');
-          img.className = 'exportGalleryImg';
-          img.alt = it.name;
-          img.src = it.src;
-          img.loading = 'lazy';
-
-          row.appendChild(cap);
-          row.appendChild(img);
-          listWrap.appendChild(row);
-        });
-      }
     }
 
     try { ScrollLock.lock(); } catch {}
@@ -1052,6 +843,14 @@ function sortByOrder(list, kind) {
   const ord = order[kind] || [];
   const idx = new Map(ord.map((id, i) => [id, i]));
 
+  // ✅ ソート用名称を生成（TEKは除外）
+  const sortName = (name) => {
+    if (!name) return '';
+    return name.startsWith('TEK')
+      ? name.slice(3).trim()
+      : name;
+  };
+
   return list.slice().sort((a, b) => {
     const ai = idx.has(a.id) ? idx.get(a.id) : 1e9;
     const bi = idx.has(b.id) ? idx.get(b.id) : 1e9;
@@ -1173,15 +972,15 @@ function sortByOrder(list, kind) {
             let line = '';
             if (isPair) {
               if (m === f) {
-                line = `${getDisplayName(d.name)}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+                line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
               } else {
                 const p = [];
                 if (m > 0) p.push(`♂︎×${m}`);
                 if (f > 0) p.push(`♀︎×${f}`);
-                line = `${getDisplayName(d.name)}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+                line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
               }
             } else {
-              line = `${getDisplayName(d.name)}${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
+              line = `${d.name}${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
             }
 
             lines.push(`${idx}. ${line}`);
@@ -1196,7 +995,7 @@ function sortByOrder(list, kind) {
             const price = allPrice;
             if (price > 0) {
               sum += price;
-              lines.push(`${idx}. ${getDisplayName(d.name)}全種 = ${price.toLocaleString('ja-JP')}円`);
+              lines.push(`${idx}. ${d.name}全種 = ${price.toLocaleString('ja-JP')}円`);
               idx++;
             }
             continue;
@@ -1209,7 +1008,7 @@ function sortByOrder(list, kind) {
           sum += price;
 
           const seq = picks.map(n => circled(n)).join('');
-          lines.push(`${idx}. ${getDisplayName(d.name)}${seq} = ${price.toLocaleString('ja-JP')}円`);
+          lines.push(`${idx}. ${d.name}${seq} = ${price.toLocaleString('ja-JP')}円`);
           idx++;
           continue;
         }
@@ -1230,15 +1029,15 @@ function sortByOrder(list, kind) {
         let line = '';
         if (isPair) {
           if (m === f) {
-            line = `${getDisplayName(d.name)}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+            line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
           } else {
             const p = [];
             if (m > 0) p.push(`♂︎×${m}`);
             if (f > 0) p.push(`♀︎×${f}`);
-            line = `${getDisplayName(d.name)}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+            line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
           }
         } else {
-          line = `${getDisplayName(d.name)}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+          line = `${d.name}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
         }
 
         lines.push(`${idx}. ${line}`);
@@ -1278,26 +1077,7 @@ ${lines.join('\n')}
 また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
   }
 
-  
-  /* ========= reset all inputs ========= */
-  async function resetAllInputs() {
-    const ok = await confirmAsk('入力をすべてリセットしますか？');
-    if (!ok) return false;
-
-    // 数値入力・選択・複製を全クリア
-    inputState.clear();
-    ephemeralKeys.clear();
-
-    // 画面を再描画
-    renderList();
-    rebuildOutput();
-    applyCollapseAndSearch();
-    try { fitTopRow(); } catch {}
-    openToast('リセットしました');
-    return true;
-  }
-
-/* ========= collapse & search ========= */
+  /* ========= collapse & search ========= */
   function getQtyForCard(key, kind) {
     if (kind === 'dino') {
       const s = inputState.get(key);
@@ -1499,7 +1279,7 @@ if (!nameWrap) {
 }
 
 const nameEl = $('.name', card);
-if (nameEl) nameEl.textContent = getDisplayName(d.name);
+if (nameEl) nameEl.textContent = d.name;
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -1770,7 +1550,7 @@ if (!nameWrap) {
 }
 
 const nameEl = $('.name', card);
-if (nameEl) nameEl.textContent = getDisplayName(d.name);
+if (nameEl) nameEl.textContent = d.name;
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -2172,8 +1952,8 @@ const top = document.createElement('div');
           if (t) {
             const text = String(t.text ?? '').trim();
             if (!text) { openToast('テンプレ本文が空です'); return; }
-            showTemplatePreview(text);
-            }
+            showRoomCopyPreview(text);
+          }
         }
         return;
       }
@@ -2712,7 +2492,7 @@ if (act === 'gojuon') {
 
       const name = document.createElement('div');
       name.className = 'imgName';
-      name.textContent = getDisplayName(d.name);
+      name.textContent = d.name;
 
       const btns = document.createElement('div');
       btns.className = 'imgBtns';
@@ -2926,7 +2706,7 @@ function buildCopyText(room) {
       console.error(e);
     }
 
-    const place = ps.hasDino && ps.hasItem ? '冷蔵庫、金庫' : (ps.hasItem ? '金庫' : '冷蔵庫');
+    const place = (ps.hasDino && ps.hasItem) ? '冷蔵庫、金庫' : (ps.hasItem ? '金庫' : '冷蔵庫');
 
 // ✅ ROOMコピーには購入内容を入れない
 let text =
@@ -2935,7 +2715,7 @@ let text =
 サーバー番号 : 5041 (アイランド)
 座標 : 87 / 16 (西部2、赤オベ付近)
 入口パスワード【${entry}】
-${roomText}の方にパスワード【${pw}】で入室をして頂き、${place}より受け取りお願いします。${warn}`;
+${roomText}の方にパスワード【${pw}】で入室をして頂き、${place}より受け取りください。${warn}`;
 
     // ✅ 配送追記（設定ON & 合計が閾値以上）
     if (roomCopyCfg?.deliveryAppendEnabled && ps.sum >= Number(roomCopyCfg.deliveryMin || 0)) {
@@ -3124,8 +2904,8 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
            if (t) {
              const text = String(t.text ?? '').trim();
              if (!text) { openToast('テンプレ本文が空です'); return; }
-            showTemplatePreview(text);
-            }
+             showRoomCopyPreview(text);
+           }
          }
          return;
        }
@@ -3290,13 +3070,6 @@ if (act === 'copy') {
       document.execCommand('copy');
     }
   });
-
-  // ✅ 合計金額（右上）を「隠しリセットボタン」にする（枠は出さない）
-  el.total?.addEventListener('click', () => {
-    resetAllInputs();
-  });
-
-
 
   el.openManage?.addEventListener('click', openModal);
   el.closeManage?.addEventListener('click', closeModal);
