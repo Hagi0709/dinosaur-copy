@@ -145,7 +145,7 @@ const BUILD_VERSION = '2026-02-11 19:45';
 
   // ルーム：コピー内容を5秒間プレビュー表示（×で閉じる）
   let roomCopyPreviewTimer = null;
-  function showRoomCopyPreview(copyText) {
+  function showRoomCopyPreview(copyText, titleText = 'コピー完了✨️') {
     const id = 'roomCopyPreviewOverlay';
     let ov = document.getElementById(id);
     if (!ov) {
@@ -181,7 +181,8 @@ const BUILD_VERSION = '2026-02-11 19:45';
       head.style.padding = '12px 12px 8px 14px';
 
       const title = document.createElement('div');
-      title.textContent = 'コピー完了✨️';
+      title.id = 'roomCopyPreviewTitle';
+      title.textContent = titleText;
       title.style.fontWeight = '900';
       title.style.fontSize = '14px';
       title.style.color = '#fff';
@@ -228,6 +229,17 @@ const BUILD_VERSION = '2026-02-11 19:45';
       closeBtn.addEventListener('click', hide);
       ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
     }
+
+    const titleEl = document.getElementById('roomCopyPreviewTitle');
+    if (titleEl) titleEl.textContent = String(titleText ?? '');
+
+    const pre = document.getElementById('roomCopyPreviewText');
+    if (pre) pre.textContent = String(copyText ?? '');
+    ov.style.display = 'flex';
+
+    clearTimeout(roomCopyPreviewTimer);
+    roomCopyPreviewTimer = setTimeout(() => { ov.style.display = 'none'; }, 5000);
+  }
 
     const pre = document.getElementById('roomCopyPreviewText');
     if (pre) pre.textContent = String(copyText ?? '');
@@ -1834,7 +1846,12 @@ const tOut = String(type).replace('(指定)', '');
 
 const top = document.createElement('div');
     top.className = 'mTopBar';
+
+    // ✅ 管理画面：登録されている恐竜数を表示（「XX種」のみ）
+    const dinoCount = dinos.filter(x => !hidden.dino.has(x.id)).length;
+
     top.innerHTML = `
+      <div class="mCountPill">${dinoCount}種</div>
       <button class="pill" type="button" data-act="gojuon">五十音順</button>
       <button class="pill" type="button" data-act="add">＋追加</button>
     `;
