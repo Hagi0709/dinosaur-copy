@@ -12,6 +12,14 @@ const BUILD_VERSION = '2026-02-10 07:25';
   const toHira = (s) => (s || '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
   const norm = (s) => toHira(String(s || '').toLowerCase()).replace(/\s+/g, '');
 
+  // ✅ 表示用の恐竜名：name に「:」が含まれる場合は「:」以降を返す（「:」以前は並び替え用）
+  const getDisplayDinoName = (name) => {
+    const s = String(name || '');
+    const i = s.indexOf(':');
+    return (i >= 0 ? s.slice(i + 1) : s).trim();
+  };
+
+
   // ✅ 五十音順ソート用：TEKは接頭辞を無視（TEK以降で比較）
   function sortName(name) {
     const raw = String(name || '').trim();
@@ -586,15 +594,15 @@ function sortByOrder(list, kind) {
             let line = '';
             if (isPair) {
               if (m === f) {
-                line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+                line = `${getDisplayDinoName(d.name)}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
               } else {
                 const p = [];
                 if (m > 0) p.push(`♂︎×${m}`);
                 if (f > 0) p.push(`♀︎×${f}`);
-                line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+                line = `${getDisplayDinoName(d.name)}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
               }
             } else {
-              line = `${d.name}${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
+              line = `${getDisplayDinoName(d.name)}${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
             }
 
             lines.push(`${idx}. ${line}`);
@@ -609,7 +617,7 @@ function sortByOrder(list, kind) {
             const price = allPrice;
             if (price > 0) {
               sum += price;
-              lines.push(`${idx}. ${d.name}全種 = ${price.toLocaleString('ja-JP')}円`);
+              lines.push(`${idx}. ${getDisplayDinoName(d.name)}全種 = ${price.toLocaleString('ja-JP')}円`);
               idx++;
             }
             continue;
@@ -622,7 +630,7 @@ function sortByOrder(list, kind) {
           sum += price;
 
           const seq = picks.map(n => circled(n)).join('');
-          lines.push(`${idx}. ${d.name}${seq} = ${price.toLocaleString('ja-JP')}円`);
+          lines.push(`${idx}. ${getDisplayDinoName(d.name)}${seq} = ${price.toLocaleString('ja-JP')}円`);
           idx++;
           continue;
         }
@@ -643,15 +651,15 @@ function sortByOrder(list, kind) {
         let line = '';
         if (isPair) {
           if (m === f) {
-            line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+            line = `${getDisplayDinoName(d.name)}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
           } else {
             const p = [];
             if (m > 0) p.push(`♂︎×${m}`);
             if (f > 0) p.push(`♀︎×${f}`);
-            line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+            line = `${getDisplayDinoName(d.name)}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
           }
         } else {
-          line = `${d.name}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+          line = `${getDisplayDinoName(d.name)}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
         }
 
         lines.push(`${idx}. ${line}`);
@@ -796,7 +804,7 @@ function installLeftToggleHit(card) {
     card.className = 'card isCollapsed';
     card.dataset.card = '1';
     card.dataset.key = key;
-    card.dataset.name = d.name;
+    card.dataset.name = getDisplayDinoName(d.name);
     card.dataset.kind = 'dino';
     card.dataset.did = d.id;
 
@@ -895,7 +903,7 @@ if (!nameWrap) {
 }
 
 const nameEl = $('.name', card);
-if (nameEl) nameEl.textContent = d.name;
+if (nameEl) nameEl.textContent = getDisplayDinoName(d.name);
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -1167,7 +1175,7 @@ if (!nameWrap) {
 }
 
 const nameEl = $('.name', card);
-if (nameEl) nameEl.textContent = d.name;
+if (nameEl) nameEl.textContent = getDisplayDinoName(d.name);
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
