@@ -1081,100 +1081,85 @@ button{cursor:pointer}
 .gachaWrap{padding-bottom: 12px;}
 .gInfo{padding-bottom: 14px;}
 
-/* ===== 管理：XX種（枠なし文字だけ） ===== */
-.mCountText{
-  font-weight:900;
-  font-size:14px;
-  line-height:1;
-  padding:0 2px;
-  opacity:.92;
-}
-
-/* ===== 画像出力（配置画像1枚） ===== */
+/* ===== 画像出力（配置画像） ===== */
 .exportGalleryPanel{
-  width:min(92vw, 720px);
-  max-height:82vh;
-  background:rgba(16,16,18,.92);
-  border:1px solid rgba(255,255,255,.10);
-  border-radius:18px;
-  overflow:hidden;
-  box-shadow:0 10px 40px rgba(0,0,0,.45);
+  -webkit-user-select:none;
+  user-select:none;
 }
-
-.exportGalleryHead{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:12px 12px 8px;
+.exportGalleryPanel input,
+.exportGalleryPanel textarea{
+  -webkit-user-select:text;
+  user-select:text;
 }
-
-.exportGalleryTitle{
-  font-weight:900;
-  font-size:16px;
+.exportGalleryBody{ -webkit-user-select:none; user-select:none; }
+.exportGalleryHint,
+.exportGallerySubHint,
+.exportGalleryCap{
+  -webkit-user-select:none;
+  user-select:none;
 }
-
-.exportGalleryBody{
-  padding:10px 12px 14px;
-  overflow:auto;
-  max-height:72vh;
-}
-
-.exportGalleryHint{
-  font-size:12px;
-  opacity:.85;
-  margin:0 0 10px;
-}
-
-.exportGridCtrl{
+.exportGalleryControls{
   display:flex;
   flex-direction:column;
-  gap:10px;
+  gap:8px;
+  padding:12px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.05);
   margin-bottom:12px;
 }
-
-.exportGridInputs{
+.exportGalleryCtrlRow{
   display:flex;
   align-items:center;
   gap:10px;
+  flex-wrap:wrap;
 }
-
-.exportGridLabel{
+.exportGalleryLbl{
   font-weight:900;
-  font-size:14px;
-  opacity:.92;
+  color:rgba(255,255,255,.75);
 }
-
-.exportGridInput{
+.exportGalleryNum{
   width:70px;
   height:40px;
   border-radius:14px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.18);
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
   color:#fff;
   text-align:center;
-  font-weight:900;
+  font-weight:950;
 }
-
-.exportGridBtn{
-  width:100%;
-  height:44px;
-  border-radius:16px;
-}
-
-.exportGridExample{
+.exportGallerySubHint{
   font-size:12px;
-  opacity:.65;
+  color:rgba(255,255,255,.60);
 }
 
-.exportGridOutWrap{
+.exportGalleryCollages{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+.exportGalleryCollageItem{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:10px;
   border-radius:16px;
-  overflow:hidden;
   border:1px solid rgba(255,255,255,.10);
-  background:#fff;
+  background:#000; /* ✅ 背景黒 */
 }
-
-.exportGridImg{
-  display:block;
+.exportGalleryCap{
+  font-size:16px;
+  font-weight:950;
+  color:rgba(255,255,255,.86);
+}
+.exportGalleryImg{
   width:100%;
   height:auto;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.12);
+  background:#000;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-touch-callout: default;
 }
+
