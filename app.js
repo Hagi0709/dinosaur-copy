@@ -2742,7 +2742,7 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
     tHead.innerHTML = `
       <div style="flex:1;min-width:0;">
         <div style="font-weight:950;">テンプレ</div>
-        <div style="opacity:.75;font-size:12px;margin-top:4px;">ROOMコピーとは別の定型文を保存できます</div>
+        <div style="opacity:.75;font-size:12px;margin-top:4px;">定型文を保存できます</div>
       </div>
       <button id="addTemplate" class="pill" type="button" style="height:44px;align-self:center;">テンプレ追加</button>
     `;
