@@ -1080,3 +1080,19 @@ button{cursor:pointer}
 /* special numeric panel: prevent bottom text clipping */
 .gachaWrap{padding-bottom: 12px;}
 .gInfo{padding-bottom: 14px;}
+
+/* ✅ 管理画面：恐竜数バッジ（「XX種」） */
+.mCountPill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:36px;
+  padding:0 14px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  color:#fff;
+  font-weight:900;
+  font-size:13px;
+  white-space:nowrap;
+}
