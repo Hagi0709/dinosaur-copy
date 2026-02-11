@@ -1299,7 +1299,6 @@ const tOut = String(type).replace('(指定)', '');
   }
 
   function buildItemCard(it) {
-
     const s = ensureItemState(it.id);
 
     const card = document.createElement('div');
@@ -1362,6 +1361,10 @@ const tOut = String(type).replace('(指定)', '');
       btn.addEventListener('click', (ev) => {
         ev.stopPropagation();
         const act = btn.dataset.act;
+
+        // ✅ itemカードのトグル(開閉)は「数量更新ロジック」に巻き込まない
+        if (act === 'toggle') return;
+
         if (act === '-') s.qty = Math.max(0, Number(s.qty || 0) - 1);
         if (act === '+') s.qty = Math.max(0, Number(s.qty || 0) + 1);
 
@@ -1373,10 +1376,8 @@ const tOut = String(type).replace('(指定)', '');
         applyCollapseAndSearch();
       });
     });
-    // DOM挿入後にtoggle範囲を確実にセット
-    requestAnimationFrame(() => installLeftToggleHit(card));
-    return card;
 
+    return card;
   }
 
   /* ========= render ========= */
