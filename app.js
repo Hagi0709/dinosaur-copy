@@ -2631,18 +2631,14 @@ function buildCopyText(room) {
 
     const place = ps.hasDino && ps.hasItem ? '冷蔵庫、金庫' : (ps.hasItem ? '金庫' : '冷蔵庫');
 
-    // ✅ ROOMコピーには「購入内容」を入れない（エラー原因にもなるため削除）
-    let text =
+// ✅ ROOMコピーには購入内容を入れない
+let text =
 `納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
 
 サーバー番号 : 5041 (アイランド)
 座標 : 87 / 16 (西部2、赤オベ付近)
 入口パスワード【${entry}】
 ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place}より受け取りお願いします。${warn}`;
-サーバー番号 : 5041 (アイランド)
-座標 : 87 / 16 (西部2、赤オベ付近)
-入口パスワード【${entry}】
-${roomText}の方にパスワード【${pw}】で入室をして頂き、${place}より受け取りお願いします。${warn}${orderBlock}`;
 
     // ✅ 配送追記（設定ON & 合計が閾値以上）
     if (roomCopyCfg?.deliveryAppendEnabled && ps.sum >= Number(roomCopyCfg.deliveryMin || 0)) {
