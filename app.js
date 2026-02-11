@@ -1314,7 +1314,7 @@ const tOut = String(type).replace('(指定)', '');
         </div>
 
         <div class="controls">
-          <div class="stepper" style="flex:1;">
+          <div class="stepper" data-flex="1">
             <button class="btn" type="button" data-act="-">−</button>
             <div class="val js-q">0</div>
             <button class="btn" type="button" data-act="+">＋</button>
