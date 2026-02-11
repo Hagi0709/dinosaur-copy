@@ -306,8 +306,9 @@ const BUILD_VERSION = '2026-02-10 07:25';
     'クローン': 500, 'クローン(指定)': 300,
   };
   const prices = Object.assign({}, defaultPrices, loadJSON(LS.PRICES, {}));
-  const typeList = Object.keys(defaultPrices);
-  const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
+  // ✅ 受精卵セレクトのデフォルト種類から「クローン(指定)」を除外
+  const typeList = Object.keys(defaultPrices).filter(t => t !== 'クローン(指定)');
+  const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)' };
 
   /* ========= special cfg (ガチャ等) ========= */
   const specialCfg = Object.assign({}, loadJSON(LS.SPECIAL_CFG, {}));
@@ -2225,6 +2226,19 @@ let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
 ⚠️受精卵はサバイバーのインベントリに入れての転送をしないと消えてしまうバグがあるためご注意してください！`
       : '';
 
+    // ✅ 購入金額が2000円以上なら、配送希望時のテンプレを追記
+    const totalYen = Number(String(el.total?.textContent || '').replace(/[^0-9]/g, '')) || 0;
+    const deliveryNote = (totalYen >= 2000)
+      ? `
+
+配送希望の場合は以下の情報をコメントしてください🙇🏻‍♂️
+
+①サーバー番号
+②配送先座標
+③冷蔵庫、金庫等のパスワード
+`
+      : '';
+
     const roomText = roomLabelForSentence(room);
 
     return `納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
@@ -2232,9 +2246,8 @@ let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
 サーバー番号 : 5041 (アイランド)
 座標 : 87 / 16 (西部2、赤オベ付近)
 入口パスワード【${entryPw}】
-${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き、冷蔵庫より受け取りお願いします。${warn}`;
+${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き、冷蔵庫より受け取りお願いします。${warn}${deliveryNote}`;
   }
-
   function renderRooms() {
     if (!el.roomBody) return;
     el.roomBody.innerHTML = '';
