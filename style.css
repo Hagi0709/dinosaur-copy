@@ -906,7 +906,7 @@ button{cursor:pointer}
 }
 .type{
   flex: 1;
-  min-width: 110px; /* 「受精卵(指定)」が見切れない現実的な下限（少しだけ縮小） */
+  min-width: 100px; /* 「受精卵(指定)」が見切れない現実的な下限（少しだけ縮小） */
   height:40px;
   font-size:11px;
   padding:0 9px;
