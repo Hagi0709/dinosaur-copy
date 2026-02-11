@@ -326,7 +326,7 @@ const BUILD_VERSION = '2026-02-11 23:30';
 
       const outWrap = document.createElement('div');
       outWrap.className = 'exportGridOutWrap';
-      outWrap.innerHTML = `<img id="exportGridImg" class="exportGridImg" alt="">`;
+      outWrap.innerHTML = `<div id="exportGridImgs" class="exportGridImgs"></div>`;
       body.appendChild(outWrap);
 
       const btn = ctrl.querySelector('#exportMake');
@@ -345,13 +345,6 @@ const BUILD_VERSION = '2026-02-11 23:30';
         }
         if (!urls.length) { openToast('画像がありません'); return; }
 
-        // 枠が足りない場合は縦を自動で増やす（ユーザー入力は尊重しつつ、壊れない方を優先）
-        const needRows = Math.ceil(urls.length / cols);
-        if (rows * cols < urls.length) {
-          rows = needRows;
-          if (rowsEl) rowsEl.value = String(rows);
-        }
-
         const loadImg = (src) => new Promise((res, rej) => {
           const im = new Image();
           im.crossOrigin = 'anonymous';
@@ -368,41 +361,70 @@ const BUILD_VERSION = '2026-02-11 23:30';
           console.error(e);
           return;
         }
+// セルサイズは最大値に合わせる（カード画像が混在しても欠けない）
+const cellW = Math.max(...imgs.map(im => im.naturalWidth || im.width || 0), 1);
+const cellH = Math.max(...imgs.map(im => im.naturalHeight || im.height || 0), 1);
 
-        // セルサイズは最大値に合わせる（カード画像が混在しても欠けない）
-        const cellW = Math.max(...imgs.map(im => im.naturalWidth || im.width || 0), 1);
-        const cellH = Math.max(...imgs.map(im => im.naturalHeight || im.height || 0), 1);
+// ✅ 画像間の隙間（px）
+const gap = 12;
 
-        const canvas = document.createElement('canvas');
-        canvas.width = cellW * cols;
-        canvas.height = cellH * rows;
+const cap = rows * cols;
+const pages = Math.max(1, Math.ceil(imgs.length / cap));
 
-        const ctx = canvas.getContext('2d');
-        // 背景を白に（写真保存時に黒透過にならない）
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+const imgsBox = body.querySelector('#exportGridImgs');
+if (imgsBox) imgsBox.innerHTML = ''; 
 
-        const drawContain = (im, x, y, w, h) => {
-          const iw = im.naturalWidth || im.width;
-          const ih = im.naturalHeight || im.height;
-          const s = Math.min(w / iw, h / ih);
-          const dw = iw * s;
-          const dh = ih * s;
-          const dx = x + (w - dw) / 2;
-          const dy = y + (h - dh) / 2;
-          ctx.drawImage(im, dx, dy, dw, dh);
-        };
+for (let p = 0; p < pages; p++) {
+  const slice = imgs.slice(p * cap, (p + 1) * cap);
 
-        for (let i = 0; i < imgs.length; i++) {
-          const r = Math.floor(i / cols);
-          const c = i % cols;
-          if (r >= rows) break;
-          drawContain(imgs[i], c * cellW, r * cellH, cellW, cellH);
-        }
+  const canvas = document.createElement('canvas');
+  canvas.width = cellW * cols + gap * (cols - 1);
+  canvas.height = cellH * rows + gap * (rows - 1);
 
-        const dataUrl = canvas.toDataURL('image/png', 1.0);
-        const outImg = body.querySelector('#exportGridImg');
-        if (outImg) outImg.src = dataUrl;
+  const ctx = canvas.getContext('2d');
+  // 背景を白に（写真保存時に黒透過にならない）
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let i = 0; i < slice.length; i++) {
+    const r = Math.floor(i / cols);
+    const c = i % cols;
+    if (r >= rows) break;
+    const x = c * (cellW + gap);
+    const y = r * (cellH + gap);
+
+    // セルに収まるようにcontain描画
+    const im = slice[i];
+    const iw = im.naturalWidth || im.width;
+    const ih = im.naturalHeight || im.height;
+    const s = Math.min(cellW / iw, cellH / ih);
+    const dw = iw * s;
+    const dh = ih * s;
+    const dx = x + (cellW - dw) / 2;
+    const dy = y + (cellH - dh) / 2;
+    ctx.drawImage(im, dx, dy, dw, dh);
+  }
+
+  const dataUrl = canvas.toDataURL('image/png', 1.0);
+
+  if (imgsBox) {
+    const wrap = document.createElement('div');
+    wrap.className = 'exportGridImgWrap';
+
+    const capEl = document.createElement('div');
+    capEl.className = 'exportGridImgCap';
+    capEl.textContent = `配置画像 ${p + 1}/${pages}`;
+
+    const out = document.createElement('img');
+    out.className = 'exportGridImg';
+    out.alt = `配置画像 ${p + 1}/${pages}`;
+    out.src = dataUrl;
+
+    wrap.appendChild(capEl);
+    wrap.appendChild(out);
+    imgsBox.appendChild(wrap);
+  }
+}
       });
     }
 
@@ -1381,7 +1403,7 @@ if (!nameWrap) {
 }
 
 const nameEl = $('.name', card);
-if (nameEl) nameEl.textContent = d.name;
+if (nameEl) nameEl.textContent = displayName(d.name);
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -1652,7 +1674,7 @@ if (!nameWrap) {
 }
 
 const nameEl = $('.name', card);
-if (nameEl) nameEl.textContent = d.name;
+if (nameEl) nameEl.textContent = displayName(d.name);
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -1844,7 +1866,7 @@ const tOut = String(type).replace('(指定)', '');
       </div>
     `;
 
-    $('.name', card).textContent = it.name;
+    $('.name', card).textContent = displayName(it.name);
     $('.unit', card).textContent = `${it.unit}個/単価${it.price}円`;
 
     const toggle = $('.cardToggle', card);
@@ -3069,7 +3091,7 @@ if (act === 'copy') {
           const text = String(t.text ?? '').trim();
           if (!text) { openToast('テンプレ本文が空です'); return; }
           await copyText(text);
-          showTemplatePreview(text);
+          showRoomCopyPreview(text, 'コピー完了✨️');
 const prev = btn.textContent;
           btn.textContent = 'コピー済';
           btn.disabled = true;
