@@ -60,7 +60,8 @@ const BUILD_VERSION = '2026-02-10 07:25';
     DINO_IMAGES_OLD: 'dino_images_v1',
     DINO_OVERRIDE: 'dino_override_v1',
     ROOM_ENTRY_PW: 'room_entry_pw_v1',
-ROOM_PW: 'room_pw_v1',
+    ROOM_ENTRY_PW: 'room_entry_pw_v1',
+    ROOM_PW: 'room_pw_v1',
     ROOM_USER: 'room_user_v1',
     SPECIAL_CFG: 'special_cfg_v1',
   };
@@ -2129,7 +2130,7 @@ if (act === 'gojuon') {
   }
 
 let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
-let roomPw = loadJSON(LS.ROOM_PW, {
+  let roomPw = loadJSON(LS.ROOM_PW, {
     ROOM1: '5412',
     ROOM2: '0000',
     ROOM3: '0000',
@@ -2140,7 +2141,9 @@ let roomPw = loadJSON(LS.ROOM_PW, {
     ROOM8: '0000',
     ROOM9: '0000',
   });
-  let roomUser = loadJSON(LS.ROOM_USER, {
+  let roomUser = loadJSON(LS.ROOM_USER, {});
+
+ {
     ROOM1: '',
     ROOM2: '',
     ROOM3: '',
@@ -2220,16 +2223,15 @@ Object.keys(roomPw).forEach(room => {
       row.className = 'mRow';
       const u = (roomUser?.[room] ?? '');
       row.innerHTML = `
-        <div style="flex:1;min-width:0;">
+`
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
           <div class="mName">${room}</div>
-          <input class="roomUserInput" data-room="${room}" value="${escapeHtml(u)}" placeholder="使用者名"
-            style="width:100%;height:36px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);color:#fff;padding:0 10px;font-weight:900;margin-top:6px;">
+          <input class="roomUserInput" data-room="${room}" value="${escapeHtml(roomUser[room] || '')}">
         </div>
-
-        <div class="roomActions">
-          <button class="pill roomAct" data-act="copy" data-room="${room}" type="button">コピー</button>
-          <button class="pill roomAct" data-act="pw" data-room="${room}" type="button">PW変更</button>
-          <button class="pill roomAct roomActDone" data-act="done" data-room="${room}" type="button">受け取り完了</button>
+        <div class="roomBtns">
+          <button class="pill" data-act="copy" data-room="${room}" type="button">コピー</button>
+          <button class="pill" data-act="pw" data-room="${room}" type="button">PW変更</button>
+          <button class="pill" data-act="done" data-room="${room}" type="button">受け取り完了</button>
         </div>
       `;
       wrap.appendChild(row);
@@ -2253,8 +2255,16 @@ wrap.addEventListener('input', (e) => {
       saveJSON(LS.ROOM_USER, roomUser);
     });
 
+wrap.addEventListener('input', (e) => {
+      const inp = e.target?.closest('.roomUserInput');
+      if (!inp) return;
+      const room = inp.dataset.room;
+      roomUser[room] = inp.value || '';
+      saveJSON(LS.ROOM_USER, roomUser);
+    });
+
     wrap.addEventListener('click', async (e) => {
-      const btn = e.target?.closest('button[data-act]');
+      const btn = e.target?.closest('button');
       if (!btn) return;
       const act = btn.dataset.act;
       const room = btn.dataset.room;
