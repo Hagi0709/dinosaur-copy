@@ -61,6 +61,7 @@ const BUILD_VERSION = '2026-02-10 07:25';
     DINO_OVERRIDE: 'dino_override_v1',
     ROOM_ENTRY_PW: 'room_entry_pw_v1',
     ROOM_ENTRY_PW: 'room_entry_pw_v1',
+    ROOM_ENTRY_PW: 'room_entry_pw_v1',
     ROOM_PW: 'room_pw_v1',
     ROOM_USER: 'room_user_v1',
     SPECIAL_CFG: 'special_cfg_v1',
@@ -2201,12 +2202,14 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
     const entry = document.createElement('div');
     entry.className = 'mRow';
     entry.innerHTML = `
+      entry.innerHTML = `
       <div style="flex:1;min-width:0;">
         <div style="font-weight:950;margin-bottom:6px;">入口パスワード（全ルーム共通）</div>
         <input id="entryPw" value="${escapeHtml(entryPw)}"
           style="width:100%;height:44px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);color:#fff;padding:0 12px;font-weight:900;">
       </div>
       <button id="saveEntry" class="pill" type="button" style="height:44px;align-self:center;">保存</button>
+      `;
     `;
     wrap.appendChild(entry);
 
