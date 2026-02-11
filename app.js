@@ -484,6 +484,26 @@ const BUILD_VERSION = '2026-02-11 19:45';
   };
   if (el.versionText) el.versionText.textContent = `Version: ${BUILD_VERSION}`;
 
+/* ========= top bar auto-fit ========= */
+const topEl = document.querySelector('header.top');
+const topRow = document.querySelector('header.top .row');
+function fitTopRow() {
+  if (!topEl || !topRow) return;
+
+  // まずは等倍で戻す（縮小済みのまま戻らない問題を防ぐ）
+  topEl.style.setProperty('--topScale', '1');
+
+  // 1行に収まるまで段階的に縮小
+  let scale = 1;
+  for (let i = 0; i < 12; i++) {
+    if (topRow.scrollWidth <= topRow.clientWidth + 1) break;
+    scale = Math.max(0.72, scale - 0.05);
+    topEl.style.setProperty('--topScale', String(scale.toFixed(2)));
+    if (scale <= 0.72) break;
+  }
+}
+window.addEventListener('resize', () => requestAnimationFrame(fitTopRow));
+
   // ✅ オーバーレイのスクロールガード（前面だけ）
   installOverlayScrollGuard(el.modalOverlay, el.modalBody);
   installOverlayScrollGuard(el.roomOverlay, el.roomBody);
@@ -2356,11 +2376,37 @@ if (act === 'gojuon') {
     }
   }
 
-  function roomLabelForSentence(room) {
-    const n = Number(String(room).replace('ROOM', '')) || 0;
-    if (n >= 5) return `2階${room}`;
-    return room;
+function roomLabelForSentence(room) {
+  const n = Number(String(room).replace('ROOM', '')) || 0;
+  if (n >= 5) return `2階${room}`;
+  return room;
+}
+
+// ✅ ルームコピー文で「冷蔵庫/金庫」判定・合計金額判定に使う
+function getCurrentPurchaseSummary() {
+  const sum = Number(String(el.total?.textContent || '').replace(/[^0-9]/g, '')) || 0;
+
+  let hasDino = false;
+  let hasItem = false;
+
+  // dinos
+  for (const d of dinos) {
+    if (getQtyForCard(d.id, 'dino') > 0) { hasDino = true; break; }
+    const dups = getDupKeys(d.id);
+    for (const k of dups) {
+      if (getQtyForCard(k, 'dino') > 0) { hasDino = true; break; }
+    }
+    if (hasDino) break;
   }
+
+  // items
+  for (const it of items) {
+    const s = inputState.get(it.id);
+    if (s && Number(s.qty || 0) > 0) { hasItem = true; break; }
+  }
+
+  return { sum, hasDino, hasItem };
+}
 
 function buildCopyText(room) {
     const warn = hasEggOrEmbryoSelected()
@@ -2495,15 +2541,20 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
       if (!act || !room) return;
 
 if (act === 'copy') {
-        const copyTxt = buildCopyText(room);
-        await copyText(copyTxt);
-        showRoomCopyPreview(copyTxt);
-        const prev = btn.textContent;
-        btn.textContent = 'コピー済';
-        btn.disabled = true;
-        setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 900);
-        return;
-      }
+  try {
+    const copyTxt = buildCopyText(room);
+    await copyText(copyTxt);
+    showRoomCopyPreview(copyTxt);
+    const prev = btn.textContent;
+    btn.textContent = 'コピー済';
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 900);
+  } catch (err) {
+    openToast('コピーに失敗しました（もう一度お試しください）');
+    console.error(err);
+  }
+  return;
+}
 
       if (act === 'pw') {
         const npw = prompt(`${room} のパスワードを入力`, roomPw[room]);
