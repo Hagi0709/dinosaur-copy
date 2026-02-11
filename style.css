@@ -183,20 +183,25 @@ button{cursor:pointer}
 .tabs{
   flex:1;
   display:flex;
-  gap:10px;
+  gap:0;
+  padding:4px;
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.05);
 }
 .tab{
   flex:1;
-  height:44px;
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.06);
-  color:#fff;
+  height:40px;
+  border-radius:16px;
+  border:0;
+  background:transparent;
+  color:rgba(255,255,255,.75);
   font-weight:900;
 }
 .tab.isActive{
-  background:rgba(255,255,255,.10);
-  border-color:rgba(255,255,255,.18);
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  box-shadow:0 6px 14px rgba(0,0,0,.22);
 }
 
 /* ================= Cards ================= */
