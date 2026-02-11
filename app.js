@@ -125,8 +125,6 @@ const BUILD_VERSION = '2026-02-10 07:25';
     toastTimer = setTimeout(() => { t.style.display = 'none'; }, 1700);
   }
 
-  }
-
   // ルーム：コピー内容を5秒間プレビュー表示（×で閉じる）
   let roomCopyPreviewTimer = null;
   function showRoomCopyPreview(copyText) {
