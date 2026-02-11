@@ -125,6 +125,8 @@ const BUILD_VERSION = '2026-02-10 07:25';
     toastTimer = setTimeout(() => { t.style.display = 'none'; }, 1700);
   }
 
+  }
+
   // ルーム：コピー内容を5秒間プレビュー表示（×で閉じる）
   let roomCopyPreviewTimer = null;
   function showRoomCopyPreview(copyText) {
@@ -2343,6 +2345,63 @@ let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
     return room;
   }
 
+  function getRoomCopyPurchaseFlags() {
+    // NOTE: 画面に表示されているタブに依存せず、入力状態から「恐竜/アイテム購入有無」を判定する
+    let hasDinoBuy = false;
+    let hasItemBuy = false;
+
+    const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
+    for (const d of dList) {
+      const baseKey = d.id;
+      const keys = [baseKey, ...Array.from(ephemeralKeys).filter(k => k.startsWith(baseKey + '__dup'))];
+      const sp = getSpecialCfgForDino(d);
+
+      for (const k of keys) {
+        const s = inputState.get(k);
+        if (!s) continue;
+
+        if (sp?.enabled && s.mode === 'special') {
+          const allowSex = !!sp.allowSex;
+
+          const m = Number(s.m || 0);
+          const f = Number(s.f || 0);
+          const sexQty = m + f;
+
+          if (allowSex && sexQty > 0) { hasDinoBuy = true; break; }
+
+          if (s.all) {
+            const price = Number(sp.all || 0);
+            if (price > 0) { hasDinoBuy = true; break; }
+            continue;
+          }
+
+          const picks = Array.isArray(s.picks) ? s.picks : [];
+          if (picks.length > 0) { hasDinoBuy = true; break; }
+
+          continue;
+        }
+
+        const m = Number(s.m || 0);
+        const f = Number(s.f || 0);
+        if ((m + f) > 0) { hasDinoBuy = true; break; }
+      }
+
+      if (hasDinoBuy) break;
+    }
+
+    const iList = sortByOrder(items.filter(it => !hidden.item.has(it.id)), 'item');
+    for (const it of iList) {
+      const s = inputState.get(it.id);
+      if (!s) continue;
+      const qty = Number(s.qty || 0);
+      if (qty > 0) { hasItemBuy = true; break; }
+    }
+
+    return { hasDinoBuy, hasItemBuy };
+  }
+
+
+
   function buildCopyText(room) {
     const warn = hasEggOrEmbryoSelected()
       ? `
@@ -2353,8 +2412,7 @@ let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
     const roomText = roomLabelForSentence(room);
 
     // ✅ ルームコピー文言：購入内容に応じて「冷蔵庫 / 金庫」を切り替え
-    const hasDinoBuy = $$('[data-card="1"][data-kind="dino"]', el.list).some(c => getQtyForCard(c.dataset.key, c.dataset.kind) > 0);
-    const hasItemBuy = $$('[data-card="1"][data-kind="item"]', el.list).some(c => getQtyForCard(c.dataset.key, c.dataset.kind) > 0);
+    const { hasDinoBuy, hasItemBuy } = getRoomCopyPurchaseFlags();
     const place = hasDinoBuy && hasItemBuy ? '冷蔵庫、金庫' : (hasItemBuy ? '金庫' : '冷蔵庫');
 
     return `納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
