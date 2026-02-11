@@ -1868,7 +1868,7 @@ const top = document.createElement('div');
           if (t) {
             const text = String(t.text ?? '').trim();
             if (!text) { openToast('テンプレ本文が空です'); return; }
-            showRoomCopyPreview(text);
+            showRoomCopyPreview(text, true);
           }
         }
         return;
@@ -2827,7 +2827,7 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
            if (t) {
              const text = String(t.text ?? '').trim();
              if (!text) { openToast('テンプレ本文が空です'); return; }
-             showRoomCopyPreview(text);
+             showRoomCopyPreview(text, true);
            }
          }
          return;
@@ -2890,7 +2890,7 @@ if (act === 'copy') {
           const text = String(t.text ?? '').trim();
           if (!text) { openToast('テンプレ本文が空です'); return; }
           await copyText(text);
-          showRoomCopyPreview(text);
+          showRoomCopyPreview(text, true);
           const prev = btn.textContent;
           btn.textContent = 'コピー済';
           btn.disabled = true;
