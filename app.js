@@ -305,8 +305,16 @@ const BUILD_VERSION = '2026-02-10 07:25';
     'クローン': 500, 'クローン(指定)': 300,
   };
   const prices = Object.assign({}, defaultPrices, loadJSON(LS.PRICES, {}));
-  const typeList = Object.keys(defaultPrices);
-  const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
+  // ✅ 表示上のセレクトはデフォルト価格キーから生成（UIの種類を固定）
+  // 「クローン(指定)」はデフォルトから除外
+  const typeList = Object.keys(defaultPrices).filter(t => t !== 'クローン(指定)');
+
+  // ✅ (指定)系
+  // 「クローン(指定)」は自動変換対象から除外
+  const specifiedMap = {
+    '受精卵(指定)': '受精卵',
+    '胚(指定)': '胚',
+  };
 
   /* ========= special cfg (ガチャ等) ========= */
   const specialCfg = Object.assign({}, loadJSON(LS.SPECIAL_CFG, {}));
