@@ -2,37 +2,13 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-02-11 19:45';
+const BUILD_VERSION = '2026-02-11 22:30';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const uid = () => Math.random().toString(36).slice(2, 10);
   const yen = (n) => (Number(n) || 0).toLocaleString('ja-JP') + '円';
-
-  // ✅ 合計金額：桁数が増えても下に落ちないように、幅に収まるまでフォントを自動調整
-  function fitTotalText() {
-    const elTotal = document.getElementById('total');
-    if (!elTotal) return;
-
-    // 一旦リセット（CSSの基準値へ）
-    elTotal.style.fontSize = '';
-
-    // 表示幅（CSSのmax-widthと実寸の小さい方）
-    const maxW = Math.min(120, elTotal.getBoundingClientRect().width || 120);
-
-    // まずは短い金額は少し大きく
-    const txtLen = (elTotal.textContent || '').length;
-    let size = (txtLen <= 5) ? 16 : 14;
-
-    // 収まるまで段階的に縮小
-    for (let i = 0; i < 8; i++) {
-      elTotal.style.fontSize = size + 'px';
-      if ((elTotal.scrollWidth || 0) <= maxW) break;
-      size -= 1;
-      if (size <= 10) break;
-    }
-  }
   const toHira = (s) => (s || '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
   const norm = (s) => toHira(String(s || '').toLowerCase()).replace(/\s+/g, '');
 
@@ -83,13 +59,11 @@ const BUILD_VERSION = '2026-02-11 19:45';
     DELIVERY: 'delivery_v1',
     DINO_IMAGES_OLD: 'dino_images_v1',
     DINO_OVERRIDE: 'dino_override_v1',
-
+    ROOM_ENTRY_PW: 'room_entry_pw_v1',
+    ROOM_ENTRY_PW: 'room_entry_pw_v1',
     ROOM_ENTRY_PW: 'room_entry_pw_v1',
     ROOM_PW: 'room_pw_v1',
     ROOM_USER: 'room_user_v1',
-    ROOM_COPY_CFG: 'room_copy_cfg_v1',
-    ROOM_TEMPLATES: 'room_templates_v1',
-
     SPECIAL_CFG: 'special_cfg_v1',
   };
 
@@ -145,7 +119,7 @@ const BUILD_VERSION = '2026-02-11 19:45';
 
   // ルーム：コピー内容を5秒間プレビュー表示（×で閉じる）
   let roomCopyPreviewTimer = null;
-  function showRoomCopyPreview(copyText) {
+  function showRoomCopyPreview(copyText, titleText = 'コピー完了✨️') {
     const id = 'roomCopyPreviewOverlay';
     let ov = document.getElementById(id);
     if (!ov) {
@@ -181,7 +155,8 @@ const BUILD_VERSION = '2026-02-11 19:45';
       head.style.padding = '12px 12px 8px 14px';
 
       const title = document.createElement('div');
-      title.textContent = 'コピー完了✨️';
+      title.id = 'roomCopyPreviewTitle';
+      title.textContent = String(titleText ?? '');
       title.style.fontWeight = '900';
       title.style.fontSize = '14px';
       title.style.color = '#fff';
@@ -231,179 +206,14 @@ const BUILD_VERSION = '2026-02-11 19:45';
 
     const pre = document.getElementById('roomCopyPreviewText');
     if (pre) pre.textContent = String(copyText ?? '');
+    const ttitle = document.getElementById('roomCopyPreviewTitle');
+    if (ttitle) ttitle.textContent = String(titleText ?? '');
     ov.style.display = 'flex';
 
     clearTimeout(roomCopyPreviewTimer);
     roomCopyPreviewTimer = setTimeout(() => { ov.style.display = 'none'; }, 5000);
   }
 
-
-
-  /* ========= template editor ========= */
-  let templateEditorResolve = null;
-  function openTemplateEditor(tpl) {
-    return new Promise((resolve) => {
-      templateEditorResolve = resolve;
-
-      const id = 'templateEditorOverlay';
-      let ov = document.getElementById(id);
-      if (!ov) {
-        ov = document.createElement('div');
-        ov.id = id;
-        ov.style.position = 'fixed';
-        ov.style.inset = '0';
-        ov.style.zIndex = '9999';
-        ov.style.display = 'none';
-        ov.style.alignItems = 'center';
-        ov.style.justifyContent = 'center';
-        ov.style.padding = '16px';
-        ov.style.background = 'rgba(0,0,0,.35)';
-        ov.style.backdropFilter = 'blur(6px)';
-
-        const panel = document.createElement('div');
-        panel.style.width = 'min(560px, 92vw)';
-        panel.style.maxHeight = '78vh';
-        panel.style.overflow = 'hidden';
-        panel.style.borderRadius = '18px';
-        panel.style.border = '1px solid rgba(255,255,255,.14)';
-        panel.style.background = 'rgba(20,20,20,.78)';
-        panel.style.backdropFilter = 'blur(12px)';
-        panel.style.boxShadow = '0 20px 60px rgba(0,0,0,.45)';
-        panel.style.display = 'flex';
-        panel.style.flexDirection = 'column';
-
-        const head = document.createElement('div');
-        head.style.display = 'flex';
-        head.style.alignItems = 'center';
-        head.style.justifyContent = 'space-between';
-        head.style.gap = '10px';
-        head.style.padding = '12px 12px 8px 14px';
-
-        const title = document.createElement('div');
-        title.textContent = 'テンプレ編集';
-        title.style.fontWeight = '900';
-        title.style.fontSize = '14px';
-        title.style.color = '#fff';
-
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.textContent = '×';
-        closeBtn.setAttribute('aria-label', '閉じる');
-        closeBtn.style.width = '38px';
-        closeBtn.style.height = '32px';
-        closeBtn.style.borderRadius = '12px';
-        closeBtn.style.border = '1px solid rgba(255,255,255,.14)';
-        closeBtn.style.background = 'rgba(255,255,255,.08)';
-        closeBtn.style.color = '#fff';
-        closeBtn.style.fontWeight = '900';
-        closeBtn.style.cursor = 'pointer';
-
-        const body = document.createElement('div');
-        body.style.padding = '10px 14px 14px';
-        body.style.overflow = 'auto';
-        body.style.display = 'flex';
-        body.style.flexDirection = 'column';
-        body.style.gap = '10px';
-
-        const titleLabel = document.createElement('div');
-        titleLabel.textContent = 'タイトル';
-        titleLabel.style.fontSize = '12px';
-        titleLabel.style.fontWeight = '900';
-        titleLabel.style.opacity = '.9';
-
-        const titleInput = document.createElement('input');
-        titleInput.id = 'tplTitleInput';
-        titleInput.style.width = '100%';
-        titleInput.style.height = '44px';
-        titleInput.style.borderRadius = '16px';
-        titleInput.style.border = '1px solid rgba(255,255,255,.14)';
-        titleInput.style.background = 'rgba(0,0,0,.18)';
-        titleInput.style.color = '#fff';
-        titleInput.style.padding = '0 12px';
-        titleInput.style.fontWeight = '900';
-
-        const textLabel = document.createElement('div');
-        textLabel.textContent = '本文';
-        textLabel.style.fontSize = '12px';
-        textLabel.style.fontWeight = '900';
-        textLabel.style.opacity = '.9';
-
-        const ta = document.createElement('textarea');
-        ta.id = 'tplTextInput';
-        ta.style.width = '100%';
-        ta.style.minHeight = '220px';
-        ta.style.resize = 'vertical';
-        ta.style.borderRadius = '16px';
-        ta.style.border = '1px solid rgba(255,255,255,.14)';
-        ta.style.background = 'rgba(0,0,0,.18)';
-        ta.style.color = 'rgba(255,255,255,.92)';
-        ta.style.padding = '12px';
-        ta.style.fontSize = '12px';
-        ta.style.lineHeight = '1.35';
-        ta.style.fontWeight = '700';
-        ta.style.whiteSpace = 'pre-wrap';
-
-        const btns = document.createElement('div');
-        btns.style.display = 'flex';
-        btns.style.gap = '10px';
-        btns.style.justifyContent = 'flex-end';
-        btns.style.paddingTop = '4px';
-
-        const cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'pill';
-        cancelBtn.textContent = 'キャンセル';
-
-        const saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'pill';
-        saveBtn.textContent = '保存';
-
-        btns.appendChild(cancelBtn);
-        btns.appendChild(saveBtn);
-
-        body.appendChild(titleLabel);
-        body.appendChild(titleInput);
-        body.appendChild(textLabel);
-        body.appendChild(ta);
-        body.appendChild(btns);
-
-        head.appendChild(title);
-        head.appendChild(closeBtn);
-
-        panel.appendChild(head);
-        panel.appendChild(body);
-        ov.appendChild(panel);
-        document.body.appendChild(ov);
-
-        const hide = (result) => {
-          ov.style.display = 'none';
-          const r = templateEditorResolve;
-          templateEditorResolve = null;
-          if (r) r(result);
-        };
-
-        closeBtn.addEventListener('click', () => hide(null));
-        cancelBtn.addEventListener('click', () => hide(null));
-        ov.addEventListener('click', (e) => { if (e.target === ov) hide(null); });
-
-        saveBtn.addEventListener('click', () => {
-          const t = document.getElementById('tplTitleInput')?.value ?? '';
-          const x = document.getElementById('tplTextInput')?.value ?? '';
-          hide({ title: String(t), text: String(x) });
-        });
-      }
-
-      // set values
-      const titleInput = document.getElementById('tplTitleInput');
-      const ta = document.getElementById('tplTextInput');
-      if (titleInput) titleInput.value = String(tpl?.title ?? '');
-      if (ta) ta.value = String(tpl?.text ?? '');
-
-      ov.style.display = 'flex';
-      requestAnimationFrame(() => { try { titleInput?.focus(); } catch {} });
-    });
-  }
   /* ========= confirm modal ========= */
   let confirmResolve = null;
   function confirmAsk(text) {
@@ -652,26 +462,6 @@ const BUILD_VERSION = '2026-02-11 19:45';
     imgViewerImg: $('#imgViewerImg'),
   };
   if (el.versionText) el.versionText.textContent = `Version: ${BUILD_VERSION}`;
-
-/* ========= top bar auto-fit ========= */
-const topEl = document.querySelector('header.top');
-const topRow = document.querySelector('header.top .row');
-function fitTopRow() {
-  if (!topEl || !topRow) return;
-
-  // まずは等倍で戻す（縮小済みのまま戻らない問題を防ぐ）
-  topEl.style.setProperty('--topScale', '1');
-
-  // 1行に収まるまで段階的に縮小
-  let scale = 1;
-  for (let i = 0; i < 12; i++) {
-    if (topRow.scrollWidth <= topRow.clientWidth + 1) break;
-    scale = Math.max(0.72, scale - 0.05);
-    topEl.style.setProperty('--topScale', String(scale.toFixed(2)));
-    if (scale <= 0.72) break;
-  }
-}
-window.addEventListener('resize', () => requestAnimationFrame(fitTopRow));
 
   // ✅ オーバーレイのスクロールガード（前面だけ）
   installOverlayScrollGuard(el.modalOverlay, el.modalBody);
@@ -982,7 +772,6 @@ function sortByOrder(list, kind) {
     }
 
     el.total.textContent = yen(sum);
-    fitTotalText();
 
     el.out.value =
 `この度はご検討いただきありがとうございます！
@@ -1859,20 +1648,6 @@ const top = document.createElement('div');
 
     wrap.addEventListener('click', async (e) => {
       const btn = e.target?.closest('button');
-      if (!btn) {
-        // ✅ テンプレカード本体タップで内容確認
-        const tRow = e.target?.closest('#templateWrap .mRow');
-        const tid2 = tRow?.dataset?.tid;
-        if (tid2) {
-          const t = roomTemplates.find(x => x.id === tid2);
-          if (t) {
-            const text = String(t.text ?? '').trim();
-            if (!text) { openToast('テンプレ本文が空です'); return; }
-            showRoomCopyPreview(text, true);
-          }
-        }
-        return;
-      }
       const act = btn?.dataset?.act;
       const id = btn?.dataset?.id;
 
@@ -2508,8 +2283,8 @@ if (act === 'gojuon') {
     return false;
   }
 
-  // ===== ROOM state =====
-  const DEFAULT_ROOM_PW = {
+let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
+  let roomPw = loadJSON(LS.ROOM_PW, {
     ROOM1: '5412',
     ROOM2: '0000',
     ROOM3: '0000',
@@ -2519,8 +2294,8 @@ if (act === 'gojuon') {
     ROOM7: '0000',
     ROOM8: '0000',
     ROOM9: '0000',
-  };
-  const DEFAULT_ROOM_USER = {
+  });
+let roomUser = loadJSON(LS.ROOM_USER, {
     ROOM1: '',
     ROOM2: '',
     ROOM3: '',
@@ -2530,34 +2305,12 @@ if (act === 'gojuon') {
     ROOM7: '',
     ROOM8: '',
     ROOM9: '',
-  };
+  });
 
-  let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
-  let roomPw = loadJSON(LS.ROOM_PW, DEFAULT_ROOM_PW);
-  let roomUser = loadJSON(LS.ROOM_USER, DEFAULT_ROOM_USER);
   let roomCopyCfg = loadJSON(LS.ROOM_COPY_CFG, {
     deliveryAppendEnabled: true,
     deliveryMin: 2000,
   });
-  let roomTemplates = loadJSON(LS.ROOM_TEMPLATES, []);
-
-  // ✅ テンプレが壊れてても落ちないように正規化
-  if (!Array.isArray(roomTemplates)) roomTemplates = [];
-  roomTemplates = roomTemplates
-    .filter(t => t && typeof t === 'object')
-    .map(t => ({
-      id: String(t.id ?? ('t_' + Date.now() + '_' + Math.random().toString(16).slice(2))),
-      title: String(t.title ?? '').trim() || 'テンプレ',
-      text: String(t.text ?? ''),
-    }));
-  saveJSON(LS.ROOM_TEMPLATES, roomTemplates);
-
-
-  // ✅ localStorageが壊れて null / 文字列 になっても「コピー」で落ちないように正規化
-  entryPw = (entryPw == null) ? '2580' : String(entryPw);
-  if (!roomPw || typeof roomPw !== 'object') roomPw = { ...DEFAULT_ROOM_PW };
-  if (!roomUser || typeof roomUser !== 'object') roomUser = { ...DEFAULT_ROOM_USER };
-  if (!roomCopyCfg || typeof roomCopyCfg !== 'object') roomCopyCfg = { deliveryAppendEnabled: true, deliveryMin: 2000 };
 
   async function copyText(text) {
     try {
@@ -2572,75 +2325,31 @@ if (act === 'gojuon') {
     }
   }
 
-function roomLabelForSentence(room) {
-  const n = Number(String(room).replace('ROOM', '')) || 0;
-  if (n >= 5) return `2階${room}`;
-  return room;
-}
-
-// ✅ ルームコピー文で「冷蔵庫/金庫」判定・合計金額判定に使う
-function getCurrentPurchaseSummary() {
-  const sum = Number(String(el.total?.textContent || '').replace(/[^0-9]/g, '')) || 0;
-
-  let hasDino = false;
-  let hasItem = false;
-
-  // dinos
-  for (const d of dinos) {
-    if (getQtyForCard(d.id, 'dino') > 0) { hasDino = true; break; }
-    const dups = getDupKeys(d.id);
-    for (const k of dups) {
-      if (getQtyForCard(k, 'dino') > 0) { hasDino = true; break; }
-    }
-    if (hasDino) break;
+  function roomLabelForSentence(room) {
+    const n = Number(String(room).replace('ROOM', '')) || 0;
+    if (n >= 5) return `2階${room}`;
+    return room;
   }
-
-  // items
-  for (const it of items) {
-    const s = inputState.get(it.id);
-    if (s && Number(s.qty || 0) > 0) { hasItem = true; break; }
-  }
-
-  return { sum, hasDino, hasItem };
-}
 
 function buildCopyText(room) {
-    // ✅ 受精卵/胚の注意
     const warn = hasEggOrEmbryoSelected()
       ? `
 
 ⚠️受精卵はサバイバーのインベントリに入れての転送をしないと消えてしまうバグがあるためご注意してください！`
       : '';
 
-    // ✅ ルーム表示とPWは「壊れてても落ちない」ように安全化
     const roomText = roomLabelForSentence(room);
-    const entry = (entryPw == null) ? '' : String(entryPw);
-    const pw = (roomPw && typeof roomPw === 'object') ? (String(roomPw[room] ?? '')) : '';
 
-    // ✅ 購入サマリー：ここで落ちてもコピー文は生成する
-    let ps = { sum: 0, hasDino: false, hasItem: false };
-    try {
-      ps = getCurrentPurchaseSummary();
-    } catch (e) {
-      // フォールバック：表示中の合計金額から拾う（最低限コピーは動かす）
-      ps.sum = Number(String(el.total?.textContent || '').replace(/[^0-9]/g, '')) || 0;
-      ps.hasDino = true;
-      ps.hasItem = true;
-      console.error(e);
-    }
-
+    const ps = getCurrentPurchaseSummary();
     const place = ps.hasDino && ps.hasItem ? '冷蔵庫、金庫' : (ps.hasItem ? '金庫' : '冷蔵庫');
 
-// ✅ ROOMコピーには購入内容を入れない
-let text =
-`納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
+    let text = `納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
 
 サーバー番号 : 5041 (アイランド)
 座標 : 87 / 16 (西部2、赤オベ付近)
-入口パスワード【${entry}】
-${roomText}の方にパスワード【${pw}】で入室をして頂き、${place}より受け取りお願いします。${warn}`;
+入口パスワード【${entryPw}】
+${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き、${place}より受け取りお願いします。${warn}`;
 
-    // ✅ 配送追記（設定ON & 合計が閾値以上）
     if (roomCopyCfg?.deliveryAppendEnabled && ps.sum >= Number(roomCopyCfg.deliveryMin || 0)) {
       text += `
 
@@ -2735,76 +2444,6 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
       wrap.appendChild(row);
     });
 
-
-    /* ===== テンプレ一覧 ===== */
-    const tHead = document.createElement('div');
-    tHead.className = 'mRow';
-    tHead.innerHTML = `
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:950;">テンプレ</div>
-        <div style="opacity:.75;font-size:12px;margin-top:4px;">定型文を保存できます</div>
-      </div>
-      <button id="addTemplate" class="pill" type="button" style="height:44px;align-self:center;">テンプレ追加</button>
-    `;
-    wrap.appendChild(tHead);
-
-    const tWrap = document.createElement('div');
-    tWrap.id = 'templateWrap';
-    tWrap.style.display = 'flex';
-    tWrap.style.flexDirection = 'column';
-    tWrap.style.gap = '10px';
-    wrap.appendChild(tWrap);
-
-    const renderTemplates = () => {
-      tWrap.innerHTML = '';
-      if (!roomTemplates.length) {
-        const empty = document.createElement('div');
-        empty.style.opacity = '.7';
-        empty.style.fontSize = '12px';
-        empty.style.padding = '4px 2px 10px';
-        empty.textContent = 'テンプレはまだありません';
-        tWrap.appendChild(empty);
-        return;
-      }
-
-      roomTemplates.forEach(t => {
-        const row = document.createElement('div');
-        row.className = 'mRow';
-        row.dataset.tid = t.id;
-
-        row.innerHTML = `
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
-            <div class="mName">${escapeHtml(t.title)}</div>
-          </div>
-          <div class="templateBtns">
-             <button class="pill" data-act="tcopy" data-tid="${escapeHtml(t.id)}" type="button">コピー</button>
-             <button class="pill" data-act="tedit" data-tid="${escapeHtml(t.id)}" type="button">編集</button>
-             <button class="pill danger" data-act="tdel"  data-tid="${escapeHtml(t.id)}" type="button">削除</button>
-           </div>
-        `;
-        tWrap.appendChild(row);
-      });
-    };
-
-    const persistTemplates = () => saveJSON(LS.ROOM_TEMPLATES, roomTemplates);
-
-    tHead.querySelector('#addTemplate').onclick = async () => {
-      const created = await openTemplateEditor({ id: '', title: '', text: '' });
-      if (!created) return;
-
-      roomTemplates.unshift({
-        id: 't_' + Date.now() + '_' + Math.random().toString(16).slice(2),
-        title: created.title.trim() || 'テンプレ',
-        text: created.text ?? '',
-      });
-      persistTemplates();
-      renderTemplates();
-      openToast('テンプレを追加しました');
-    };
-
-    renderTemplates();
-
-
     // 使用者名の保存（重複してたので1本化）
     wrap.addEventListener('input', (e) => {
       const inp = e.target?.closest('input.roomUserInput');
@@ -2817,50 +2456,23 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
 
     // ボタン処理
     wrap.addEventListener('click', async (e) => {
-       const btn = e.target?.closest('button');
-       if (!btn) {
-         // ✅ テンプレカード本体タップで内容確認
-         const tRow = e.target?.closest('#templateWrap .mRow');
-         const tid2 = tRow?.dataset?.tid;
-         if (tid2) {
-           const t = roomTemplates.find(x => x.id === tid2);
-           if (t) {
-             const text = String(t.text ?? '').trim();
-             if (!text) { openToast('テンプレ本文が空です'); return; }
-             showRoomCopyPreview(text, true);
-           }
-         }
-         return;
-       }
+      const btn = e.target?.closest('button');
+      if (!btn) return;
 
       const act = btn.dataset.act;
       const room = btn.dataset.room;
-      const tid  = btn.dataset.tid;
-
-      if (!act) return;
-      if (act === 'copy' || act === 'pw' || act === 'done') {
-        if (!room) return;
-      } else if (act === 'tcopy' || act === 'tedit' || act === 'tdel') {
-        if (!tid) return;
-      } else {
-        return;
-      }
+      if (!act || !room) return;
 
 if (act === 'copy') {
-  try {
-    const copyTxt = buildCopyText(room);
-    await copyText(copyTxt);
-    showRoomCopyPreview(copyTxt);
-    const prev = btn.textContent;
-    btn.textContent = 'コピー済';
-    btn.disabled = true;
-    setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 900);
-  } catch (err) {
-    openToast('コピーに失敗しました（もう一度お試しください）');
-    console.error(err);
-  }
-  return;
-}
+        const copyTxt = buildCopyText(room);
+        await copyText(copyTxt);
+        showRoomCopyPreview(copyTxt);
+        const prev = btn.textContent;
+        btn.textContent = 'コピー済';
+        btn.disabled = true;
+        setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 900);
+        return;
+      }
 
       if (act === 'pw') {
         const npw = prompt(`${room} のパスワードを入力`, roomPw[room]);
@@ -2879,55 +2491,6 @@ if (act === 'copy') {
         if (inp) inp.value = '';
 
         openToast(`${room} をリセットしました`);
-        return;
-      }
-
-      /* ===== templates actions ===== */
-      if (act === 'tcopy') {
-        const t = roomTemplates.find(x => x.id === tid);
-        if (!t) return;
-        try {
-          const text = String(t.text ?? '').trim();
-          if (!text) { openToast('テンプレ本文が空です'); return; }
-          await copyText(text);
-          showRoomCopyPreview(text, true);
-          const prev = btn.textContent;
-          btn.textContent = 'コピー済';
-          btn.disabled = true;
-          setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 900);
-        } catch (err) {
-          openToast('コピーに失敗しました（もう一度お試しください）');
-          console.error(err);
-        }
-        return;
-      }
-
-      if (act === 'tedit') {
-        const t = roomTemplates.find(x => x.id === tid);
-        if (!t) return;
-
-        const edited = await openTemplateEditor({ id: t.id, title: t.title, text: t.text });
-        if (!edited) return;
-
-        t.title = edited.title.trim() || 'テンプレ';
-        t.text = edited.text ?? '';
-        saveJSON(LS.ROOM_TEMPLATES, roomTemplates);
-        renderRooms(); // まとめて再描画（シンプル優先）
-        openToast('テンプレを更新しました');
-        return;
-      }
-
-      if (act === 'tdel') {
-        const t = roomTemplates.find(x => x.id === tid);
-        if (!t) return;
-
-        const ok = await confirmAsk(`「${t.title}」を削除しますか？`);
-        if (!ok) return;
-
-        roomTemplates = roomTemplates.filter(x => x.id !== tid);
-        saveJSON(LS.ROOM_TEMPLATES, roomTemplates);
-        renderRooms();
-        openToast('テンプレを削除しました');
         return;
       }
     });
