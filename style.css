@@ -514,7 +514,6 @@ button{cursor:pointer}
 }
 
 .card.isCollapsed .controls{display:none}
-.card.isCollapsed .memo{display:none !important}
 
 /* ✅ special UI を閉じる（JS側class名に合わせるならここも調整可）
    今のJSでは gWrap/gGrid を使っているので gachaWrap では閉じない。
@@ -620,7 +619,7 @@ button{cursor:pointer}
   grid-template-columns: 1fr 1fr;
   gap:6px;
   align-items:center;
-  flex:0 0 150px; /* ✅ ボタン幅を少し狭くして入力欄を広げる */
+  flex:0 0 168px; /* ✅ 左側（ROOM名/入力欄）を見切れさせない */
 }
 .roomBtns .pill[data-act="done"]{ grid-column:1 / -1; }
 
@@ -628,12 +627,44 @@ button{cursor:pointer}
 .roomBtns .pill{
   height:34px;
   min-width:0;
-  padding:0 8px;
-  font-size:11px;
+  padding:0 10px;
+  font-size:12px;
   border-radius:14px;
-  font-weight:900;
-  white-space:nowrap;
 }
+
+/* ✅ ルーム共通設定（コピー） */
+.roomCfgRow{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+}
+.roomCfgToggle{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  font-weight:900;
+  font-size:12px;
+  opacity:.92;
+}
+.roomCfgToggle input{ transform:scale(1.05); }
+.roomCfgMin{
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+.roomCfgMin input{
+  width:110px;
+  height:34px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.18);
+  color:#fff;
+  padding:0 10px;
+  font-weight:950;
+  font-size:12px;
+}
+
 
 /* ✅ 「入口パスワード」の保存ボタンも小さく（app.js側のinlineを上書き） */
 #roomBody #saveEntry{
@@ -642,17 +673,23 @@ button{cursor:pointer}
   font-size:12px !important;
   border-radius:14px !important;
 }
+.roomBtns .pill{
+  height:40px;
+  min-width:92px;
+  padding:0 12px;
+  font-weight:900;
+  white-space:nowrap;
+}
 .roomUserInput{
   width:100%;
-  flex:1;
-  min-width:0;
-  height:40px;
-  border-radius:16px;
+  height:34px;               /* ✅ 受け取り完了ボタンと同じ高さ */
+  border-radius:14px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(0,0,0,.18);
   color:#fff;
-  padding:0 12px;
+  padding:0 10px;
   font-weight:900;
+  font-size:11px;
 }
 
 .roomActions{
@@ -768,11 +805,15 @@ button{cursor:pointer}
   font-weight:900;
 }
 .editSelect{
-  padding-right
+  padding-right:34px;
+  background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
+                   linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat:no-repeat;
 }
 
 .editTextarea{
-  // width/見た目は editInput と揃えつつ、複数行用に高さを確保
   width:100%;
   min-height:92px;
   border-radius:16px;
@@ -798,6 +839,7 @@ button{cursor:pointer}
   white-space:pre-wrap;
   word-break:break-word;
 }
+
 .editBtns{
   display:flex;
   gap:10px;
