@@ -81,8 +81,20 @@ button{cursor:pointer}
   display:flex;
   gap:8px;
   align-items:center;
-  flex-wrap:nowrap; /* ✅ 合計金額が桁数で改行して下に落ちないように */
+  flex-wrap:nowrap;
+}
+
+/* ✅ 上部バー：合計金額が長くなっても全体が下にズレないように
+   - JSで --topScale を調整（rowが1行に収まるまで縮小）
+*/
+.row > .ghost,
+.row > .delivery,
+.row > .copy{
+  flex:0 1 auto;
   min-width:0;
+  white-space:nowrap;
+  line-height:1.05;
+  font-size: calc(13px * var(--topScale, 1));
 }
 
 .search{
