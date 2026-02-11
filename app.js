@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-02-12 00:20';
+const BUILD_VERSION = '2026-02-12 00:45';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -36,13 +36,26 @@ const BUILD_VERSION = '2026-02-12 00:20';
   const toHira = (s) => (s || '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
   const norm = (s) => toHira(String(s || '').toLowerCase()).replace(/\s+/g, '');
 
-  // ✅ 五十音順ソート用：TEKは接頭辞を無視（TEK以降で比較）
+
+  // ✅ ソート用：
+  // - 「A:TEKギガノト」形式は、A側を並び替えキーとして優先
+  // - 表示名（:以降）は同キー内の並びに使用
+  // - TEK接頭辞は比較から除外
   function sortName(name) {
     const raw = String(name || '').trim();
-    const base = raw.startsWith('TEK') ? raw.slice(3).trim() : raw;
-    // カタカナ→ひらがな、空白除去して比較キー化
-    return toHira(base).replace(/\s+/g, '');
+    const prefix = getSortPrefix(raw);
+    const disp = getDisplayName(raw);
+
+    const p = prefix.startsWith('TEK') ? prefix.slice(3).trim() : prefix;
+    const d = disp.startsWith('TEK') ? disp.slice(3).trim() : disp;
+
+    const primary = prefix ? p : d;
+    const secondary = prefix ? d : '';
+
+    // カタカナ→ひらがな、空白除去して比較キー化（primary→secondary）
+    return (toHira(primary).replace(/\s+/g, '') + '\u0000' + toHira(secondary).replace(/\s+/g, ''));
   }
+
 
   function stableHash(str) {
     let h = 5381;
@@ -61,6 +74,19 @@ const BUILD_VERSION = '2026-02-12 00:20';
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#39;');
   }
+
+  // ✅ 「A:TEKギガノト」形式：表示名は「:」以降、並び替えキーは「:」以前
+  function getDisplayName(raw) {
+    const s = String(raw || '');
+    const i = s.indexOf(':');
+    return (i >= 0) ? s.slice(i + 1).trim() : s.trim();
+  }
+  function getSortPrefix(raw) {
+    const s = String(raw || '').trim();
+    const i = s.indexOf(':');
+    return (i >= 0) ? s.slice(0, i).trim() : '';
+  }
+
 
   /* ========= circled numbers ========= */
   const circled = (n) => {
@@ -340,7 +366,7 @@ const BUILD_VERSION = '2026-02-12 00:20';
         const base = String(d?._baseName || d?.name || '').trim();
         const k = imageKeyFromBaseName(base);
         const u = imageCache[k];
-        if (u) srcItems.push({ name: String(d.name || base || ''), src: u });
+        if (u) srcItems.push({ name: getDisplayName(String(d.name || base || '')), src: u });
       });
 
 
@@ -482,7 +508,7 @@ const BUILD_VERSION = '2026-02-12 00:20';
 
           const cap = document.createElement('div');
           cap.className = 'exportGalleryCap';
-          cap.textContent = it.name;
+          cap.textContent = getDisplayName(it.name);
 
           const img = document.createElement('img');
           img.className = 'exportGalleryImg';
@@ -1026,14 +1052,6 @@ function sortByOrder(list, kind) {
   const ord = order[kind] || [];
   const idx = new Map(ord.map((id, i) => [id, i]));
 
-  // ✅ ソート用名称を生成（TEKは除外）
-  const sortName = (name) => {
-    if (!name) return '';
-    return name.startsWith('TEK')
-      ? name.slice(3).trim()
-      : name;
-  };
-
   return list.slice().sort((a, b) => {
     const ai = idx.has(a.id) ? idx.get(a.id) : 1e9;
     const bi = idx.has(b.id) ? idx.get(b.id) : 1e9;
@@ -1155,15 +1173,15 @@ function sortByOrder(list, kind) {
             let line = '';
             if (isPair) {
               if (m === f) {
-                line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+                line = `${getDisplayName(d.name)}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
               } else {
                 const p = [];
                 if (m > 0) p.push(`♂︎×${m}`);
                 if (f > 0) p.push(`♀︎×${f}`);
-                line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+                line = `${getDisplayName(d.name)}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
               }
             } else {
-              line = `${d.name}${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
+              line = `${getDisplayName(d.name)}${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
             }
 
             lines.push(`${idx}. ${line}`);
@@ -1178,7 +1196,7 @@ function sortByOrder(list, kind) {
             const price = allPrice;
             if (price > 0) {
               sum += price;
-              lines.push(`${idx}. ${d.name}全種 = ${price.toLocaleString('ja-JP')}円`);
+              lines.push(`${idx}. ${getDisplayName(d.name)}全種 = ${price.toLocaleString('ja-JP')}円`);
               idx++;
             }
             continue;
@@ -1191,7 +1209,7 @@ function sortByOrder(list, kind) {
           sum += price;
 
           const seq = picks.map(n => circled(n)).join('');
-          lines.push(`${idx}. ${d.name}${seq} = ${price.toLocaleString('ja-JP')}円`);
+          lines.push(`${idx}. ${getDisplayName(d.name)}${seq} = ${price.toLocaleString('ja-JP')}円`);
           idx++;
           continue;
         }
@@ -1212,15 +1230,15 @@ function sortByOrder(list, kind) {
         let line = '';
         if (isPair) {
           if (m === f) {
-            line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+            line = `${getDisplayName(d.name)}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
           } else {
             const p = [];
             if (m > 0) p.push(`♂︎×${m}`);
             if (f > 0) p.push(`♀︎×${f}`);
-            line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+            line = `${getDisplayName(d.name)}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
           }
         } else {
-          line = `${d.name}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+          line = `${getDisplayName(d.name)}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
         }
 
         lines.push(`${idx}. ${line}`);
@@ -1481,7 +1499,7 @@ if (!nameWrap) {
 }
 
 const nameEl = $('.name', card);
-if (nameEl) nameEl.textContent = d.name;
+if (nameEl) nameEl.textContent = getDisplayName(d.name);
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -1752,7 +1770,7 @@ if (!nameWrap) {
 }
 
 const nameEl = $('.name', card);
-if (nameEl) nameEl.textContent = d.name;
+if (nameEl) nameEl.textContent = getDisplayName(d.name);
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -2694,7 +2712,7 @@ if (act === 'gojuon') {
 
       const name = document.createElement('div');
       name.className = 'imgName';
-      name.textContent = d.name;
+      name.textContent = getDisplayName(d.name);
 
       const btns = document.createElement('div');
       btns.className = 'imgBtns';
