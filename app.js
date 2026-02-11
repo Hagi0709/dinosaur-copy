@@ -682,7 +682,7 @@ function sortByOrder(list, kind) {
             sum += price;
 
             const tOut = String(type).replace('(指定)', '');
-            const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+            const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン'].includes(type);
 
             let line = '';
             if (isPair) {
@@ -739,7 +739,7 @@ function sortByOrder(list, kind) {
         sum += price;
 
         const tOut = String(type).replace('(指定)', '');
-        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン'].includes(type);
 
         let line = '';
         if (isPair) {
@@ -1322,7 +1322,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
         // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵 オス×1 ︎︎ メス×1= 100円）
 const tOut = String(type).replace('(指定)', '');
-        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン'].includes(type);
         const parts = [];
         if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
         if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
@@ -1370,7 +1370,7 @@ const tOut = String(type).replace('(指定)', '');
 
         // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵 オス×1 ︎︎ メス×1= 100円）
 const tOut = String(type).replace('(指定)', '');
-        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン'].includes(type);
         const parts = [];
         if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
         if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
@@ -2589,12 +2589,13 @@ if (act === 'copy') {
     el.roomBody.appendChild(wrap);
   }
 
-  function openRoom() {
-    if (!el.roomOverlay) return;
-    ScrollLock.lock(); // ✅
-    el.roomOverlay.classList.remove('isHidden');
-    renderRooms();
-  }
+function openRoom() {
+  if (!el.roomOverlay) return;
+  ScrollLock.lock(); // ✅
+  el.roomOverlay.classList.remove('isHidden');
+  renderRooms();
+  if (el.roomBody) el.roomBody.scrollTop = 0;
+}
   function closeRoom() {
     if (!el.roomOverlay) return;
     el.roomOverlay.classList.add('isHidden');
