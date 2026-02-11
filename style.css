@@ -514,6 +514,7 @@ button{cursor:pointer}
 }
 
 .card.isCollapsed .controls{display:none}
+.card.isCollapsed .memo{display:none !important}
 
 /* ✅ special UI を閉じる（JS側class名に合わせるならここも調整可）
    今のJSでは gWrap/gGrid を使っているので gachaWrap では閉じない。
@@ -619,7 +620,7 @@ button{cursor:pointer}
   grid-template-columns: 1fr 1fr;
   gap:6px;
   align-items:center;
-  flex:0 0 168px; /* ✅ 左側（ROOM名/入力欄）を見切れさせない */
+  flex:0 0 150px; /* ✅ ボタン幅を少し狭くして入力欄を広げる */
 }
 .roomBtns .pill[data-act="done"]{ grid-column:1 / -1; }
 
@@ -627,9 +628,11 @@ button{cursor:pointer}
 .roomBtns .pill{
   height:34px;
   min-width:0;
-  padding:0 10px;
-  font-size:12px;
+  padding:0 8px;
+  font-size:11px;
   border-radius:14px;
+  font-weight:900;
+  white-space:nowrap;
 }
 
 /* ✅ 「入口パスワード」の保存ボタンも小さく（app.js側のinlineを上書き） */
@@ -639,15 +642,10 @@ button{cursor:pointer}
   font-size:12px !important;
   border-radius:14px !important;
 }
-.roomBtns .pill{
-  height:40px;
-  min-width:92px;
-  padding:0 12px;
-  font-weight:900;
-  white-space:nowrap;
-}
 .roomUserInput{
   width:100%;
+  flex:1;
+  min-width:0;
   height:40px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.14);
