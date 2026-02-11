@@ -243,7 +243,8 @@ const BUILD_VERSION = '2026-02-11 19:45';
 
   // ✅ テンプレの確認用（タイトルは「内容確認」）
   function showTemplatePreview(text) {
-    showTemplatePreview(text, '内容確認');
+    // ✅ テンプレ確認は「内容確認」
+    showRoomCopyPreview(text, '内容確認');
   }
 /* ========= template editor ========= */
   let templateEditorResolve = null;
