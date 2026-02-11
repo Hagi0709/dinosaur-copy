@@ -59,10 +59,8 @@
 <body>
   <header class="top">
     <div class="row">
-      <div class="search">
-        <input id="q" type="text" placeholder="検索" autocomplete="off" />
-        <button id="qClear" class="qClear" type="button" aria-label="検索をクリア">×</button>
-      </div>
+      <button id="openManage" class="ghost" type="button">管理</button>
+      <button id="openRoom" class="ghost" type="button">ルーム</button>
 
       <select id="delivery" class="delivery">
         <option value="即納品可能">即納品可能</option>
@@ -76,8 +74,10 @@
     <textarea id="out" class="out" readonly></textarea>
 
     <div class="subrow">
-      <button id="openManage" class="ghost" type="button">管理</button>
-      <button id="openRoom" class="ghost" type="button">ルーム</button>
+      <div class="search">
+        <input id="q" type="text" placeholder="検索" autocomplete="off" />
+        <button id="qClear" class="qClear" type="button" aria-label="検索をクリア">×</button>
+      </div>
 
       <div class="tabs" role="tablist" aria-label="表示切替">
         <button id="tabDinos" class="tab isActive" type="button" role="tab" aria-selected="true">恐竜</button>
