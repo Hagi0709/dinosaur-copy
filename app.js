@@ -1859,6 +1859,20 @@ const top = document.createElement('div');
 
     wrap.addEventListener('click', async (e) => {
       const btn = e.target?.closest('button');
+      if (!btn) {
+        // ✅ テンプレカード本体タップで内容確認
+        const tRow = e.target?.closest('#templateWrap .mRow');
+        const tid2 = tRow?.dataset?.tid;
+        if (tid2) {
+          const t = roomTemplates.find(x => x.id === tid2);
+          if (t) {
+            const text = String(t.text ?? '').trim();
+            if (!text) { openToast('テンプレ本文が空です'); return; }
+            showRoomCopyPreview(text);
+          }
+        }
+        return;
+      }
       const act = btn?.dataset?.act;
       const id = btn?.dataset?.id;
 
@@ -2766,11 +2780,11 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
           <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
             <div class="mName">${escapeHtml(t.title)}</div>
           </div>
-          <div class="roomBtns">
-            <button class="pill" data-act="tcopy" data-tid="${escapeHtml(t.id)}" type="button">コピー</button>
-            <button class="pill" data-act="tedit" data-tid="${escapeHtml(t.id)}" type="button">編集</button>
-            <button class="pill" data-act="tdel"  data-tid="${escapeHtml(t.id)}" type="button">削除</button>
-          </div>
+          <div class="templateBtns">
+             <button class="pill" data-act="tcopy" data-tid="${escapeHtml(t.id)}" type="button">コピー</button>
+             <button class="pill" data-act="tedit" data-tid="${escapeHtml(t.id)}" type="button">編集</button>
+             <button class="pill danger" data-act="tdel"  data-tid="${escapeHtml(t.id)}" type="button">削除</button>
+           </div>
         `;
         tWrap.appendChild(row);
       });
@@ -2807,8 +2821,21 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
 
     // ボタン処理
     wrap.addEventListener('click', async (e) => {
-      const btn = e.target?.closest('button');
-      if (!btn) return;
+       const btn = e.target?.closest('button');
+       if (!btn) {
+         // ✅ テンプレカード本体タップで内容確認
+         const tRow = e.target?.closest('#templateWrap .mRow');
+         const tid2 = tRow?.dataset?.tid;
+         if (tid2) {
+           const t = roomTemplates.find(x => x.id === tid2);
+           if (t) {
+             const text = String(t.text ?? '').trim();
+             if (!text) { openToast('テンプレ本文が空です'); return; }
+             showRoomCopyPreview(text);
+           }
+         }
+         return;
+       }
 
       const act = btn.dataset.act;
       const room = btn.dataset.room;
