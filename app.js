@@ -1356,12 +1356,23 @@ const tOut = String(type).replace('(指定)', '');
     `;
 
     $('.name', card).textContent = it.name;
-    $('.unit', card).textContent = `単価${it.price}円`;
+    $('.unit', card).textContent = `${it.unit}個/単価${it.price}円`;
 
     const toggle = $('.cardToggle', card);
 
-    // ✅ ボタンを押せなくなる原因（トグルの巨大当たり判定）を排除し、左側のみを開閉にする
-    requestAnimationFrame(() => installLeftToggleHit(card));
+    // ✅ アイテムカードは「右いっぱい」まで開閉の当たり判定を広げる（ヘッダー全体）
+    requestAnimationFrame(() => {
+      const tg = $('.cardToggle', card);
+      if (!tg) return;
+
+      tg.style.inset = 'auto';
+      tg.style.left = '-12px';
+      tg.style.right = '-12px';
+      tg.style.top = '-12px';
+      tg.style.bottom = 'auto';
+      tg.style.width = 'auto';
+      tg.style.height = 'calc(100% + 24px)'; // cardHead基準
+    });
 
     const controls = $('.controls', card);
     if (controls) {
