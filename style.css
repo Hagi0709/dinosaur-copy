@@ -1081,118 +1081,100 @@ button{cursor:pointer}
 .gachaWrap{padding-bottom: 12px;}
 .gInfo{padding-bottom: 14px;}
 
-/* ===== 管理: XX種（枠なし文字だけ） ===== */
-.mCountPill{
-  border:none !important;
-  background:transparent !important;
-  padding:0 !important;
-  margin:0 10px 0 0;
-  font-weight:950;
-  color:rgba(255,255,255,.92);
+/* ===== 管理：XX種（枠なし文字だけ） ===== */
+.mCountText{
+  font-weight:900;
+  font-size:14px;
+  line-height:1;
+  padding:0 2px;
+  opacity:.92;
 }
 
-/* ===== 画像出力ギャラリー ===== */
+/* ===== 画像出力（配置画像1枚） ===== */
 .exportGalleryPanel{
-  width:min(720px, 96vw);
-  max-height:86vh;
-  border-radius:22px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(20,20,20,.82);
-  backdrop-filter:blur(12px);
+  width:min(92vw, 720px);
+  max-height:82vh;
+  background:rgba(16,16,18,.92);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:18px;
   overflow:hidden;
-  display:flex;
-  flex-direction:column;
+  box-shadow:0 10px 40px rgba(0,0,0,.45);
 }
+
 .exportGalleryHead{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:14px 14px 10px;
+  padding:12px 12px 8px;
 }
+
 .exportGalleryTitle{
-  font-weight:950;
+  font-weight:900;
   font-size:16px;
 }
+
 .exportGalleryBody{
-  padding:10px 14px 14px;
+  padding:10px 12px 14px;
   overflow:auto;
+  max-height:72vh;
 }
+
 .exportGalleryHint{
   font-size:12px;
-  font-weight:900;
-  color:rgba(255,255,255,.72);
-  margin-bottom:10px;
+  opacity:.85;
+  margin:0 0 10px;
 }
-.exportGalleryControls{
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(255,255,255,.04);
-  border-radius:18px;
-  padding:10px;
+
+.exportGridCtrl{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
   margin-bottom:12px;
 }
-.exportGalleryCtrlRow{
+
+.exportGridInputs{
   display:flex;
   align-items:center;
-  gap:8px;
-  flex-wrap:wrap;
+  gap:10px;
 }
-.exportGalleryLbl{
-  font-size:12px;
+
+.exportGridLabel{
   font-weight:900;
-  opacity:.85;
+  font-size:14px;
+  opacity:.92;
 }
-.exportGalleryNum{
-  width:74px;
-  height:38px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(0,0,0,.18);
-  color:#fff;
-  padding:0 10px;
-  font-weight:900;
-}
-.exportGallerySubHint{
-  margin-top:8px;
-  font-size:11px;
-  font-weight:800;
-  color:rgba(255,255,255,.60);
-}
-.exportGalleryCollages{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  margin-bottom:14px;
-}
-.exportGalleryItem,
-.exportGalleryCollageItem{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  padding:10px;
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(255,255,255,.04);
-}
-.exportGalleryCap{
-  font-size:12px;
-  font-weight:950;
-  color:rgba(255,255,255,.82);
-  word-break:break-word;
-}
-.exportGalleryImg{
-  width:100%;
+
+.exportGridInput{
+  width:70px;
+  height:40px;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.12);
-  background:#000;
-  display:block;
-}
-.exportGalleryEmpty{
-  padding:14px 10px;
-  color:rgba(255,255,255,.70);
-  font-weight:900;
+  background:rgba(0,0,0,.18);
+  color:#fff;
   text-align:center;
+  font-weight:900;
 }
 
-/* ===== 合計金額を隠しボタン化 ===== */
-#total{ cursor:pointer; user-select:none; -webkit-user-select:none; }
+.exportGridBtn{
+  width:100%;
+  height:44px;
+  border-radius:16px;
+}
 
+.exportGridExample{
+  font-size:12px;
+  opacity:.65;
+}
+
+.exportGridOutWrap{
+  border-radius:16px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.10);
+  background:#fff;
+}
+
+.exportGridImg{
+  display:block;
+  width:100%;
+  height:auto;
+}
