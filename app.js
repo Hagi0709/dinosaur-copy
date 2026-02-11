@@ -1336,15 +1336,10 @@ const tOut = String(type).replace('(指定)', '');
     $('.unit', card).textContent = `単価${it.price}円`;
 
     const toggle = $('.cardToggle', card);
-    if (toggle) {
-      toggle.style.inset = 'auto';
-      toggle.style.left = '-12px';
-      toggle.style.top = '-12px';
-      toggle.style.bottom = '-12px';
-      toggle.style.width = 'calc(100% - 10px)';
-      toggle.style.height = 'calc(100% + 24px)';
-      toggle.style.zIndex = '5';
-    }
+
+    // ✅ アイテムカードも「左側（名前エリア）」だけを折りたたみ判定にする
+    // （全体を覆うと、展開後に +/- ボタンが押せなくなる）
+    installLeftToggleHit(card);
 
     const qEl = $('.js-q', card);
     qEl.textContent = String(s.qty || 0);
