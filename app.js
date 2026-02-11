@@ -2409,24 +2409,56 @@ function getCurrentPurchaseSummary() {
 }
 
 function buildCopyText(room) {
+    // ✅ 受精卵/胚の注意
     const warn = hasEggOrEmbryoSelected()
       ? `
 
 ⚠️受精卵はサバイバーのインベントリに入れての転送をしないと消えてしまうバグがあるためご注意してください！`
       : '';
 
+    // ✅ ルーム表示とPWは「壊れてても落ちない」ように安全化
     const roomText = roomLabelForSentence(room);
+    const entry = (entryPw == null) ? '' : String(entryPw);
+    const pw = (roomPw && typeof roomPw === 'object') ? (String(roomPw[room] ?? '')) : '';
 
-    const ps = getCurrentPurchaseSummary();
+    // ✅ 購入サマリー：ここで落ちてもコピー文は生成する
+    let ps = { sum: 0, hasDino: false, hasItem: false };
+    try {
+      ps = getCurrentPurchaseSummary();
+    } catch (e) {
+      // フォールバック：表示中の合計金額から拾う（最低限コピーは動かす）
+      ps.sum = Number(String(el.total?.textContent || '').replace(/[^0-9]/g, '')) || 0;
+      ps.hasDino = true;
+      ps.hasItem = true;
+      console.error(e);
+    }
+
     const place = ps.hasDino && ps.hasItem ? '冷蔵庫、金庫' : (ps.hasItem ? '金庫' : '冷蔵庫');
 
-    let text = `納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
+    // ✅ 画面の「購入内容（el.out）」から明細を抽出してコピー文に入れる
+    let orderBlock = '';
+    try {
+      const out = String(el.out?.value || '');
+      // 「1. ...」の並び～区切り線までを抜く
+      const m = out.match(/\n\n((?:\d+\.\s.*\n)+)ーーーー+/);
+      const lines = m ? m[1].trim() : '';
+      if (lines) {
+        orderBlock =
+`\n\n【購入内容】\n${lines}\nーーーーーーーーーーーーーーー\n計：${ps.sum.toLocaleString('ja-JP')}円`;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    let text =
+`納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
 
 サーバー番号 : 5041 (アイランド)
 座標 : 87 / 16 (西部2、赤オベ付近)
-入口パスワード【${entryPw}】
-${roomText}の方にパスワード【${pw}】で入室をして頂き、${place}より受け取りお願いします。${warn}`;
+入口パスワード【${entry}】
+${roomText}の方にパスワード【${pw}】で入室をして頂き、${place}より受け取りお願いします。${warn}${orderBlock}`;
 
+    // ✅ 配送追記（設定ON & 合計が閾値以上）
     if (roomCopyCfg?.deliveryAppendEnabled && ps.sum >= Number(roomCopyCfg.deliveryMin || 0)) {
       text += `
 
