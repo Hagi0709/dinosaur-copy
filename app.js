@@ -2255,13 +2255,7 @@ wrap.addEventListener('input', (e) => {
       saveJSON(LS.ROOM_USER, roomUser);
     });
 
-wrap.addEventListener('input', (e) => {
-      const inp = e.target?.closest('.roomUserInput');
-      if (!inp) return;
-      const room = inp.dataset.room;
-      roomUser[room] = inp.value || '';
-      saveJSON(LS.ROOM_USER, roomUser);
-    });
+// （重複していたroomUserInputのinput監視を削除）
 
     wrap.addEventListener('click', async (e) => {
       const btn = e.target?.closest('button');
