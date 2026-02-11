@@ -182,7 +182,7 @@ const BUILD_VERSION = '2026-02-11 19:45';
 
       const title = document.createElement('div');
       title.id = 'roomCopyPreviewTitle';
-      title.textContent = titleText;
+      title.textContent = String(titleText ?? '');
       title.style.fontWeight = '900';
       title.style.fontSize = '14px';
       title.style.color = '#fff';
@@ -241,17 +241,11 @@ const BUILD_VERSION = '2026-02-11 19:45';
     roomCopyPreviewTimer = setTimeout(() => { ov.style.display = 'none'; }, 5000);
   }
 
-    const pre = document.getElementById('roomCopyPreviewText');
-    if (pre) pre.textContent = String(copyText ?? '');
-    ov.style.display = 'flex';
-
-    clearTimeout(roomCopyPreviewTimer);
-    roomCopyPreviewTimer = setTimeout(() => { ov.style.display = 'none'; }, 5000);
+  // ✅ テンプレの確認用（タイトルは「内容確認」）
+  function showTemplatePreview(text) {
+    showTemplatePreview(text, '内容確認');
   }
-
-
-
-  /* ========= template editor ========= */
+/* ========= template editor ========= */
   let templateEditorResolve = null;
   function openTemplateEditor(tpl) {
     return new Promise((resolve) => {
@@ -1885,7 +1879,7 @@ const top = document.createElement('div');
           if (t) {
             const text = String(t.text ?? '').trim();
             if (!text) { openToast('テンプレ本文が空です'); return; }
-            showRoomCopyPreview(text, true);
+            showTemplatePreview(text, true);
           }
         }
         return;
@@ -2844,7 +2838,7 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
            if (t) {
              const text = String(t.text ?? '').trim();
              if (!text) { openToast('テンプレ本文が空です'); return; }
-             showRoomCopyPreview(text, true);
+             showTemplatePreview(text, true);
            }
          }
          return;
@@ -2907,7 +2901,7 @@ if (act === 'copy') {
           const text = String(t.text ?? '').trim();
           if (!text) { openToast('テンプレ本文が空です'); return; }
           await copyText(text);
-          showRoomCopyPreview(text, true);
+          showTemplatePreview(text, true);
           const prev = btn.textContent;
           btn.textContent = 'コピー済';
           btn.disabled = true;
