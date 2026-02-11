@@ -60,9 +60,10 @@ const BUILD_VERSION = '2026-02-10 07:25';
     DINO_IMAGES_OLD: 'dino_images_v1',
     DINO_OVERRIDE: 'dino_override_v1',
     ROOM_ENTRY_PW: 'room_entry_pw_v1',
+    ROOM_ENTRY_PW: 'room_entry_pw_v1',
+    ROOM_ENTRY_PW: 'room_entry_pw_v1',
     ROOM_PW: 'room_pw_v1',
     ROOM_USER: 'room_user_v1',
-    ROOM_COPY_CFG: 'room_copy_cfg_v1',
     SPECIAL_CFG: 'special_cfg_v1',
   };
 
@@ -305,16 +306,8 @@ const BUILD_VERSION = '2026-02-10 07:25';
     'クローン': 500, 'クローン(指定)': 300,
   };
   const prices = Object.assign({}, defaultPrices, loadJSON(LS.PRICES, {}));
-  // ✅ 表示上のセレクトはデフォルト価格キーから生成（UIの種類を固定）
-  // 「クローン(指定)」はデフォルトから除外
-  const typeList = Object.keys(defaultPrices).filter(t => t !== 'クローン(指定)');
-
-  // ✅ (指定)系
-  // 「クローン(指定)」は自動変換対象から除外
-  const specifiedMap = {
-    '受精卵(指定)': '受精卵',
-    '胚(指定)': '胚',
-  };
+  const typeList = Object.keys(defaultPrices);
+  const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)', 'クローン': 'クローン(指定)' };
 
   /* ========= special cfg (ガチャ等) ========= */
   const specialCfg = Object.assign({}, loadJSON(LS.SPECIAL_CFG, {}));
@@ -788,7 +781,10 @@ function installLeftToggleHit(card) {
     const memoEl = $('.js-memo', card);
     if (!memoEl) return;
     memoEl.textContent = memo;
-    memoEl.style.display = memo ? 'block' : 'none';
+
+    // ✅ 折りたたみ中はメモ欄を必ず隠す（CSSだけに依存しない）
+    const collapsed = card.classList.contains('isCollapsed');
+    memoEl.style.display = memo && !collapsed ? 'block' : 'none';
   }
 
   function buildDinoCard(d, keyOverride = null) {
@@ -1001,6 +997,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
         if (el.q.value.trim()) return;
         el._touched = true;
     card.classList.toggle('isCollapsed');
+        applyMemoToCard(card, d.id);
       });
 
       sel?.addEventListener('click', (ev) => ev.stopPropagation());
@@ -2206,8 +2203,6 @@ let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
     ROOM9: '',
   });
 
-  let roomCopyCfg = loadJSON(LS.ROOM_COPY_CFG, { enableDeliveryNote: true, minYen: 2000 });
-
   async function copyText(text) {
     try {
       await navigator.clipboard.writeText(text);
@@ -2234,21 +2229,6 @@ let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
 ⚠️受精卵はサバイバーのインベントリに入れての転送をしないと消えてしまうバグがあるためご注意してください！`
       : '';
 
-    // ✅ ルーム共通設定：配送希望テンプレの追記（ON/OFF & 何円以上）
-    const cfg = roomCopyCfg || { enableDeliveryNote: true, minYen: 2000 };
-    const totalYen = Number(String(el.total?.textContent || '').replace(/[^0-9]/g, '')) || 0;
-
-    const deliveryNote = (cfg.enableDeliveryNote && totalYen >= Number(cfg.minYen || 0))
-      ? `
-
-配送希望の場合は以下の情報をコメントしてください🙇🏻‍♂️
-
-①サーバー番号
-②配送先座標
-③冷蔵庫、金庫等のパスワード
-`
-      : '';
-
     const roomText = roomLabelForSentence(room);
 
     return `納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
@@ -2256,7 +2236,7 @@ let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
 サーバー番号 : 5041 (アイランド)
 座標 : 87 / 16 (西部2、赤オベ付近)
 入口パスワード【${entryPw}】
-${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き、冷蔵庫より受け取りお願いします。${warn}${deliveryNote}`;
+${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き、冷蔵庫より受け取りお願いします。${warn}`;
   }
 
   function renderRooms() {
@@ -2286,41 +2266,6 @@ ${roomText}の方にパスワード【${roomPw[room]}】で入室をして頂き
       saveJSON(LS.ROOM_ENTRY_PW, entryPw);
       openToast('入口パスワードを保存しました');
     };
-
-    // ルーム共通設定（コピー文：配送希望テンプレ追記）
-    const cfgRow = document.createElement('div');
-    cfgRow.className = 'mRow';
-    cfgRow.innerHTML = `
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:950;margin-bottom:6px;">ルーム共通設定（コピー）</div>
-        <div class="roomCfgRow">
-          <label class="roomCfgToggle">
-            <input id="roomDeliveryNoteEnabled" type="checkbox" ${roomCopyCfg?.enableDeliveryNote ? 'checked' : ''}>
-            <span>配送希望の追記</span>
-          </label>
-
-          <div class="roomCfgMin">
-            <span style="opacity:.75;font-weight:900;">何円以上</span>
-            <input id="roomDeliveryNoteMin" type="number" inputmode="numeric" min="0" step="100" value="${Number(roomCopyCfg?.minYen ?? 2000)}">
-          </div>
-        </div>
-      </div>
-    `;
-    wrap.appendChild(cfgRow);
-
-    const enabledEl = cfgRow.querySelector('#roomDeliveryNoteEnabled');
-    const minEl = cfgRow.querySelector('#roomDeliveryNoteMin');
-
-    const saveRoomCopyCfg = () => {
-      roomCopyCfg = {
-        enableDeliveryNote: !!enabledEl?.checked,
-        minYen: Math.max(0, Number(minEl?.value || 0) || 0),
-      };
-      saveJSON(LS.ROOM_COPY_CFG, roomCopyCfg);
-    };
-
-    enabledEl?.addEventListener('change', saveRoomCopyCfg);
-    minEl?.addEventListener('input', saveRoomCopyCfg);
 
     // ルーム一覧
     Object.keys(roomPw).forEach(room => {
