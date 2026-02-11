@@ -26,6 +26,10 @@ html{color-scheme:dark}
 button,select,input,textarea{touch-action:manipulation; font:inherit}
 select{appearance:none; -webkit-appearance:none}
 
+.stepper[data-flex="1"] {
+  flex: 1;
+}
+
 body{
   margin:0;
   font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
