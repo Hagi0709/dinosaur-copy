@@ -2224,7 +2224,6 @@ Object.keys(roomPw).forEach(room => {
       row.className = 'mRow';
       const u = (roomUser?.[room] ?? '');
       row.innerHTML = `
-`
         <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
           <div class="mName">${room}</div>
           <input class="roomUserInput" data-room="${room}" value="${escapeHtml(roomUser[room] || '')}">
