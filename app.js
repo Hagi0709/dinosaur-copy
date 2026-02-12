@@ -314,7 +314,7 @@ const BUILD_VERSION = '2026-02-11 23:30';
       ctrl.innerHTML = `
         <div class="exportGridInputs">
           <div class="exportGridLabel">縦</div>
-          <input class="exportGridInput" id="exportRows" type="number" inputmode="numeric" min="1" value="4">
+          <input class="exportGridInput" id="exportRows" type="number" inputmode="numeric" min="1" value="6">
           <div class="exportGridLabel">横</div>
           <input class="exportGridInput" id="exportCols" type="number" inputmode="numeric" min="1" value="2">
         </div>
