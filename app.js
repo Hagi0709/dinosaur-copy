@@ -307,7 +307,6 @@ const BUILD_VERSION = '2026-02-11 23:30';
 
       const hint = document.createElement('div');
       hint.className = 'exportGalleryHint';
-      hint.textContent = '生成された画像を長押し →「写真に追加」でカメラロールへ保存できます。';
       body.appendChild(hint);
 
       const ctrl = document.createElement('div');
@@ -319,8 +318,8 @@ const BUILD_VERSION = '2026-02-11 23:30';
           <div class="exportGridLabel">横</div>
           <input class="exportGridInput" id="exportCols" type="number" inputmode="numeric" min="1" value="2">
         </div>
-        <button class="pill exportGridBtn" type="button" id="exportMake">配置画像を生成</button>
-        <div class="exportGridExample">例：横2×縦4 → 1 2 / 3 4 / 5 6 / 7 8</div>
+        <button class="pill exportGridBtn" type="button" id="exportMake">生成</button>
+        <div class="exportGridExample"></div>
       `;
       body.appendChild(ctrl);
 
