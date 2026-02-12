@@ -1089,13 +1089,7 @@ button{cursor:pointer}
 .exportGalleryHint{ font-size:12px; color:rgba(255,255,255,.70); margin-bottom:10px; }
 
 .exportGridCtrl{ display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.05); margin-bottom:12px; }
-/* ===== 画像出力：縦横入力を中央寄せ ===== */
-.exportGridInputs{
-  display:flex;
-  align-items:center;
-  justify-content:center; /* ← 横中央 */
-  gap:10px;
-}
+.exportGridInputs{ display:flex; align-items:center; gap:10px; }
 .exportGridLabel{ font-weight:900; color:rgba(255,255,255,.75); }
 .exportGridInput{ width:70px; height:40px; border-radius:14px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.08); color:#fff; text-align:center; font-weight:950; }
 .exportGridExample{ font-size:12px; color:rgba(255,255,255,.60); }
@@ -1154,18 +1148,12 @@ button{cursor:pointer}
 }
 
 
-/* ===== 画像出力：配置画像を生成ボタンを中央寄せ ===== */
+/* 画像出力：縦横入力の右に生成ボタン */
 .exportGridCtrl{
   display:flex;
-  flex-direction:column;
+  align-items:center;
   gap:10px;
-  padding:12px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(255,255,255,.05);
-  margin-bottom:12px;
 }
 .exportGridCtrl .exportGridBtn{
-  align-self:center;
-  margin-left:0;
-}}
+  margin-left:auto;
+}
