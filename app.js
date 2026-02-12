@@ -2799,9 +2799,10 @@ function getCurrentPurchaseSummary() {
   }
 
   // items
+  // items（id未設定の要素は除外して誤判定を防ぐ）
   for (const it of items) {
-    const s = inputState.get(it.id);
-    if (s && Number(s.qty || 0) > 0) { hasItem = true; break; }
+    if (!it || !it.id) continue;
+    if (getQtyForCard(it.id, 'item') > 0) { hasItem = true; break; }
   }
 
   return { sum, hasDino, hasItem };
@@ -2821,14 +2822,17 @@ function buildCopyText(room) {
     const pw = (roomPw && typeof roomPw === 'object') ? (String(roomPw[room] ?? '')) : '';
 
     // ✅ 購入サマリー：ここで落ちてもコピー文は生成する
-    let ps = { sum: 0, hasDino: false, hasItem: false };
+let ps = { sum: 0, hasDino: false, hasItem: false };
     try {
       ps = getCurrentPurchaseSummary();
     } catch (e) {
       // フォールバック：表示中の合計金額から拾う（最低限コピーは動かす）
       ps.sum = Number(String(el.total?.textContent || '').replace(/[^0-9]/g, '')) || 0;
-      ps.hasDino = true;
-      ps.hasItem = true;
+
+      // 受け取り場所判定は安全に再計算（エラー時に両方trueにしない）
+      ps.hasDino = dinos.some(d => d && d.id && getQtyForCard(d.id, 'dino') > 0);
+      ps.hasItem = items.some(it => it && it.id && getQtyForCard(it.id, 'item') > 0);
+
       console.error(e);
     }
 
