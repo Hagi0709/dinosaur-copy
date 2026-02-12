@@ -1082,7 +1082,10 @@ button{cursor:pointer}
 .gInfo{padding-bottom: 14px;}
 
 /* ===== Image Export (grid collage) ===== */
-.exportGalleryPanel{ width:min(720px, 100%); max-height:min(86vh, 900px); overflow:hidden; border-radius:18px; border:1px solid rgba(255,255,255,.14); background:rgba(20,20,20,.78); backdrop-filter: blur(14px); }
+.exportGalleryPanel{ width:min(720px, 100%); max-height:min(86vh, 900px); overflow:hidden; border-radius:18px; border:1px solid rgba(255,255,255,.14); background:rgba(20,20,20,.78); backdrop-filter: blur(14px); 
+  user-select: none;
+  -webkit-user-select: none;
+}
 .exportGalleryHead{ display:flex; align-items:center; justify-content:space-between; padding:14px 14px 10px; }
 .exportGalleryTitle{ font-weight:950; font-size:18px; }
 .exportGalleryBody{ padding:12px 14px 14px; overflow:auto; max-height:calc(86vh - 70px); }
@@ -1111,16 +1114,23 @@ button{cursor:pointer}
   overflow-y:hidden;
   padding:10px 4px 14px;
   scroll-snap-type: x mandatory;
+  scroll-padding: 0 4px;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .exportPage{
-  flex:0 0 92%;
-  scroll-snap-align: start;
+  flex:0 0 calc(100% - 8px);
+  max-width: calc(100% - 8px);
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
   background: rgba(0,0,0,.55);
   border: 1px solid rgba(255,255,255,.12);
   border-radius: 16px;
   padding: 10px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .exportPageNo{
   font-weight: 950;
@@ -1129,12 +1139,13 @@ button{cursor:pointer}
   -webkit-user-select:none;
 }
 .exportPageImg{
-  width:100%;
-  height:auto;
-  display:block;
+  width: 100%;
+  height: auto;
+  display: block;
   border-radius: 12px;
-  user-select:none;
-  -webkit-user-select:none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
 }
 
 /* 画像出力モーダル内は文字選択を抑える（入力欄は除外） */
