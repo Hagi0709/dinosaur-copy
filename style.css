@@ -1148,12 +1148,21 @@ button{cursor:pointer}
 }
 
 
-/* 画像出力：縦横入力の右に生成ボタン */
+/* ===== 画像出力：縦横＋生成を1行中央配置 ===== */
 .exportGridCtrl{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  flex-wrap:nowrap;
+}
+
+.exportGridInputs{
   display:flex;
   align-items:center;
   gap:10px;
 }
-.exportGridCtrl .exportGridBtn{
-  margin-left:auto;
+
+.exportGridBtn{
+  margin-left:0;
 }
