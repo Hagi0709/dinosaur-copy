@@ -244,8 +244,10 @@ const BUILD_VERSION = '2026-02-11 23:30';
   // ✅ テンプレの確認用（タイトルは「内容確認」）
   function showTemplatePreview(text) {
     // ✅ テンプレ確認は「内容確認」
-    showRoomCopyPreview(text, '確認画面');
-  }  // ✅ 画像出力：配置画像を1枚生成（長押しでカメラロールに保存）
+    showRoomCopyPreview(text, '内容確認');
+  }
+
+  // ✅ 画像出力：一覧で全画像を表示（画像長押し→写真に追加 で保存）
   let imageExportCloseFn = null;
   function openImageExportGallery(dList) {
     const id = 'imageExportOverlay';
@@ -298,142 +300,60 @@ const BUILD_VERSION = '2026-02-11 23:30';
       closeBtn.addEventListener('click', hide);
       ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
 
+      // スクロールガード
       installOverlayScrollGuard(ov, body);
     }
 
     const body = ov.querySelector('.exportGalleryBody');
     if (body) {
       body.innerHTML = '';
-
       const hint = document.createElement('div');
       hint.className = 'exportGalleryHint';
-      hint.textContent = '生成された画像を長押し →「写真に追加」でカメラロールへ保存できます。';
+      hint.textContent = '画像を長押し →「写真に追加」でカメラロールへ保存できます。';
       body.appendChild(hint);
 
-      const ctrl = document.createElement('div');
-      ctrl.className = 'exportGridCtrl';
-      ctrl.innerHTML = `
-        <div class="exportGridInputs">
-          <div class="exportGridLabel">縦</div>
-          <input class="exportGridInput" id="exportRows" type="number" inputmode="numeric" min="1" value="4">
-          <div class="exportGridLabel">横</div>
-          <input class="exportGridInput" id="exportCols" type="number" inputmode="numeric" min="1" value="2">
-        </div>
-        <button class="pill exportGridBtn" type="button" id="exportMake">配置画像を生成</button>
-        <div class="exportGridExample">例：横2×縦4 → 1 2 / 3 4 / 5 6 / 7 8</div>
-      `;
-      body.appendChild(ctrl);
+      const listWrap = document.createElement('div');
+      listWrap.className = 'exportGalleryList';
+      body.appendChild(listWrap);
 
-      const outWrap = document.createElement('div');
-      outWrap.className = 'exportGridOutWrap';
-      outWrap.innerHTML = `<div id="exportGridImgs" class="exportPages"></div>`;
-      body.appendChild(outWrap);
-
-      const btn = ctrl.querySelector('#exportMake');
-      btn?.addEventListener('click', async () => {
-        try { document.activeElement && document.activeElement.blur && document.activeElement.blur(); } catch {}
-
-        const rowsEl = ctrl.querySelector('#exportRows');
-        const colsEl = ctrl.querySelector('#exportCols');
-        let rows = Math.max(1, Math.min(50, Number(rowsEl?.value || 1)));
-        let cols = Math.max(1, Math.min(20, Number(colsEl?.value || 1)));
-
-        // 画像URLをリスト順に集める
-        const urls = [];
-        for (const d of (dList || [])) {
-          const k = imageKeyFromBaseName(d._baseName || d.name);
-          const url = imageCache[k];
-          if (url) urls.push(url);
-        }
-        if (!urls.length) { openToast('画像がありません'); return; }
-
-        const loadImg = (src) => new Promise((res, rej) => {
-          const im = new Image();
-          im.crossOrigin = 'anonymous';
-          im.onload = () => res(im);
-          im.onerror = () => rej(new Error('img load failed'));
-          im.src = src;
-        });
-
-        let imgs = [];
-        try {
-          imgs = await Promise.all(urls.map(u => loadImg(u)));
-        } catch (e) {
-          openToast('画像の読み込みに失敗しました');
-          console.error(e);
-          return;
-        }
-// セルサイズは最大値に合わせる（カード画像が混在しても欠けない）
-const cellW = Math.max(...imgs.map(im => im.naturalWidth || im.width || 0), 1);
-const cellH = Math.max(...imgs.map(im => im.naturalHeight || im.height || 0), 1);
-
-// ✅ 画像間の隙間（px）
-const gap = 12;
-
-const cap = rows * cols;
-const pages = Math.max(1, Math.ceil(imgs.length / cap));
-
-const imgsBox = body.querySelector('#exportGridImgs');
-if (imgsBox) imgsBox.innerHTML = ''; 
-
-for (let p = 0; p < pages; p++) {
-  const slice = imgs.slice(p * cap, (p + 1) * cap);
-
-  const canvas = document.createElement('canvas');
-  canvas.width = cellW * cols + gap * (cols - 1);
-  canvas.height = cellH * rows + gap * (rows - 1);
-
-  const ctx = canvas.getContext('2d');
-  // 背景を黒に
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  for (let i = 0; i < slice.length; i++) {
-    const r = Math.floor(i / cols);
-    const c = i % cols;
-    if (r >= rows) break;
-    const x = c * (cellW + gap);
-    const y = r * (cellH + gap);
-
-    // セルに収まるようにcontain描画
-    const im = slice[i];
-    const iw = im.naturalWidth || im.width;
-    const ih = im.naturalHeight || im.height;
-    const s = Math.min(cellW / iw, cellH / ih);
-    const dw = iw * s;
-    const dh = ih * s;
-    const dx = x + (cellW - dw) / 2;
-    const dy = y + (cellH - dh) / 2;
-    ctx.drawImage(im, dx, dy, dw, dh);
-  }
-
-  const dataUrl = canvas.toDataURL('image/png', 1.0);
-
-  if (imgsBox) {
-    const wrap = document.createElement('div');
-    wrap.className = 'exportPage';
-
-    const capEl = document.createElement('div');
-    capEl.className = 'exportPageNo';
-    capEl.textContent = circled(p + 1);
-
-    const out = document.createElement('img');
-    out.className = 'exportPageImg';
-    out.alt = `配置画像 ${p + 1}/${pages}`;
-    out.src = dataUrl;
-
-    wrap.appendChild(capEl);
-    wrap.appendChild(out);
-    imgsBox.appendChild(wrap);
-  }
-}
+      const srcItems = [];
+      (dList || []).forEach(d => {
+        const base = String(d?._baseName || d?.name || '').trim();
+        const k = imageKeyFromBaseName(base);
+        const u = imageCache[k];
+        if (u) srcItems.push({ name: String(d.name || base || ''), src: u });
       });
+
+      if (!srcItems.length) {
+        const empty = document.createElement('div');
+        empty.className = 'exportGalleryEmpty';
+        empty.textContent = '画像が1枚も設定されていません。';
+        listWrap.appendChild(empty);
+      } else {
+        srcItems.forEach(it => {
+          const row = document.createElement('div');
+          row.className = 'exportGalleryItem';
+
+          const cap = document.createElement('div');
+          cap.className = 'exportGalleryCap';
+          cap.textContent = it.name;
+
+          const img = document.createElement('img');
+          img.className = 'exportGalleryImg';
+          img.alt = it.name;
+          img.src = it.src;
+          img.loading = 'lazy';
+
+          row.appendChild(cap);
+          row.appendChild(img);
+          listWrap.appendChild(row);
+        });
+      }
     }
 
     try { ScrollLock.lock(); } catch {}
     ov.style.display = 'flex';
   }
-
 
 /* ========= template editor ========= */
   let templateEditorResolve = null;
@@ -1054,16 +974,7 @@ function sortByOrder(list, kind) {
     });
   }
 
-  
-  // ✅ 管理用の並び替え接頭辞（"A:名前"）を表示では除外
-  function displayName(raw) {
-    const s = String(raw ?? '');
-    const i = s.indexOf(':');
-    if (i >= 0) return s.slice(i + 1).trim();
-    return s;
-  }
-
-/* ========= output ========= */
+  /* ========= output ========= */
   function rebuildOutput() {
     const lines = [];
     let sum = 0;
@@ -1405,7 +1316,7 @@ if (!nameWrap) {
 }
 
 const nameEl = $('.name', card);
-if (nameEl) nameEl.textContent = displayName(d.name);
+if (nameEl) nameEl.textContent = d.name;
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -1676,7 +1587,7 @@ if (!nameWrap) {
 }
 
 const nameEl = $('.name', card);
-if (nameEl) nameEl.textContent = displayName(d.name);
+if (nameEl) nameEl.textContent = d.name;
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -1868,7 +1779,7 @@ const tOut = String(type).replace('(指定)', '');
       </div>
     `;
 
-    $('.name', card).textContent = displayName(it.name);
+    $('.name', card).textContent = it.name;
     $('.unit', card).textContent = `${it.unit}個/単価${it.price}円`;
 
     const toggle = $('.cardToggle', card);
@@ -2044,7 +1955,7 @@ const top = document.createElement('div');
     const dinoCount = dinos.filter(x => !hidden.dino.has(x.id)).length;
 
     top.innerHTML = `
-      <div class="mCountText">${dinoCount}種</div>
+      <div class="mCountPill">${dinoCount}種</div>
       <button class="pill" type="button" data-act="gojuon">五十音順</button>
       <button class="pill" type="button" data-act="add">＋追加</button>
     `;
@@ -2078,8 +1989,8 @@ const top = document.createElement('div');
           if (t) {
             const text = String(t.text ?? '').trim();
             if (!text) { openToast('テンプレ本文が空です'); return; }
-            showTemplatePreview(text);
-}
+            showRoomCopyPreview(text);
+          }
         }
         return;
       }
@@ -2484,15 +2395,134 @@ if (act === 'gojuon') {
     return canvas.toDataURL('image/jpeg', quality);
   }
 
-  function openImgViewer(url) {
+  let imgViewerUrls = null;
+  let imgViewerIdx = 0;
+
+  function ensureImgViewerNav() {
+    const viewer = el.imgOverlay?.querySelector('.imgViewer');
+    if (!viewer) return;
+
+    if (!viewer.querySelector('.imgNav')) {
+      const nav = document.createElement('div');
+      nav.className = 'imgNav';
+      nav.style.display = 'flex';
+      nav.style.alignItems = 'center';
+      nav.style.justifyContent = 'space-between';
+      nav.style.gap = '10px';
+      nav.style.marginTop = '10px';
+      nav.style.userSelect = 'none';
+
+      const prev = document.createElement('button');
+      prev.type = 'button';
+      prev.className = 'btn imgPrev';
+      prev.textContent = '◀';
+      prev.style.minWidth = '44px';
+
+      const cap = document.createElement('div');
+      cap.className = 'imgNavCap';
+      cap.style.flex = '1';
+      cap.style.textAlign = 'center';
+      cap.style.fontWeight = '700';
+      cap.style.opacity = '0.95';
+
+      const next = document.createElement('button');
+      next.type = 'button';
+      next.className = 'btn imgNext';
+      next.textContent = '▶';
+      next.style.minWidth = '44px';
+
+      nav.appendChild(prev);
+      nav.appendChild(cap);
+      nav.appendChild(next);
+      viewer.appendChild(nav);
+
+      const go = (delta) => {
+        if (!Array.isArray(imgViewerUrls) || imgViewerUrls.length <= 1) return;
+        imgViewerIdx = (imgViewerIdx + delta + imgViewerUrls.length) % imgViewerUrls.length;
+        renderImgViewer();
+      };
+
+      prev.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); go(-1); });
+      next.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); go(+1); });
+
+      // swipe（画像上）
+      let sx = null;
+      el.imgViewerImg?.addEventListener('touchstart', (e) => {
+        if (!e.touches?.length) return;
+        sx = e.touches[0].clientX;
+      }, { passive: true });
+      el.imgViewerImg?.addEventListener('touchend', (e) => {
+        if (sx == null) return;
+        const ex = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : sx;
+        const dx = ex - sx;
+        sx = null;
+        if (Math.abs(dx) < 40) return;
+        go(dx > 0 ? -1 : +1);
+      }, { passive: true });
+    }
+  }
+
+  function renderImgViewer() {
+    if (!el.imgViewerImg) return;
+
+    el.imgOverlay.style.userSelect = 'none';
+    el.imgViewerImg.style.userSelect = 'none';
+    el.imgViewerImg.draggable = false;
+
+    const urls = Array.isArray(imgViewerUrls) ? imgViewerUrls : null;
+    const count = urls ? urls.length : 0;
+
+    if (count) {
+      imgViewerIdx = Math.max(0, Math.min(imgViewerIdx, count - 1));
+      el.imgViewerImg.src = urls[imgViewerIdx];
+    }
+
+    const cap = el.imgOverlay?.querySelector('.imgNavCap');
+    const prev = el.imgOverlay?.querySelector('.imgPrev');
+    const next = el.imgOverlay?.querySelector('.imgNext');
+    if (cap && prev && next) {
+      if (count > 1) {
+        cap.textContent = `${circled(imgViewerIdx + 1)}  (${imgViewerIdx + 1}/${count})`;
+        prev.disabled = false;
+        next.disabled = false;
+        prev.style.opacity = '';
+        next.style.opacity = '';
+      } else if (count === 1) {
+        cap.textContent = `${circled(1)}  (1/1)`;
+        prev.disabled = true;
+        next.disabled = true;
+        prev.style.opacity = '0.35';
+        next.style.opacity = '0.35';
+      } else {
+        cap.textContent = '';
+        prev.disabled = true;
+        next.disabled = true;
+        prev.style.opacity = '0.35';
+        next.style.opacity = '0.35';
+      }
+    }
+  }
+
+  function openImgViewer(urlOrUrls) {
     if (!el.imgOverlay || !el.imgViewerImg) return;
+    ensureImgViewerNav();
     ScrollLock.lock(); // ✅
-    el.imgViewerImg.src = url;
+
+    if (Array.isArray(urlOrUrls)) {
+      imgViewerUrls = urlOrUrls.filter(Boolean);
+    } else {
+      imgViewerUrls = [String(urlOrUrls || '')].filter(Boolean);
+    }
+    imgViewerIdx = 0;
+
+    renderImgViewer();
     el.imgOverlay.classList.remove('isHidden');
   }
   function closeImgViewer() {
     if (!el.imgOverlay) return;
     el.imgOverlay.classList.add('isHidden');
+    imgViewerUrls = null;
+    imgViewerIdx = 0;
     if (el.imgViewerImg) el.imgViewerImg.src = '';
     ScrollLock.unlock(); // ✅
   }
@@ -2525,12 +2555,12 @@ if (act === 'gojuon') {
     async function exportGrid(rows, cols) {
       const maxCells = rows * cols;
 
+      // 画像URLを（リスト順で）全部集める
       const srcs = [];
       for (const d of list) {
         const k = imageKeyFromBaseName(d._baseName || d.name);
         const u = imageCache[k];
         if (u) srcs.push(u);
-        if (srcs.length >= maxCells) break;
       }
 
       if (!srcs.length) {
@@ -2538,13 +2568,13 @@ if (act === 'gojuon') {
         return;
       }
 
-      const ims = [];
+      // 全部ロード（順序維持）
+      const imsAll = [];
       for (const s of srcs) {
         const im = await loadImg(s);
-        if (im) ims.push(im);
-        if (ims.length >= maxCells) break;
+        if (im) imsAll.push(im);
       }
-      if (!ims.length) {
+      if (!imsAll.length) {
         alert('読み込める画像がありませんでした。');
         return;
       }
@@ -2557,44 +2587,59 @@ if (act === 'gojuon') {
       const outW = cols * cellW + (cols - 1) * gap + pad * 2;
       const outH = rows * cellH + (rows - 1) * gap + pad * 2;
 
-      const canvas = document.createElement('canvas');
-      canvas.width = outW;
-      canvas.height = outH;
-      const ctx = canvas.getContext('2d');
+      const snaps = [];
+      for (let start = 0; start < imsAll.length; start += maxCells) {
+        const ims = imsAll.slice(start, start + maxCells);
+        if (!ims.length) break;
 
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, outW, outH);
+        const canvas = document.createElement('canvas');
+        canvas.width = outW;
+        canvas.height = outH;
+        const ctx = canvas.getContext('2d');
 
-      let idx = 0;
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          if (idx >= ims.length) break;
-          const im = ims[idx++];
+        // 背景は黒
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, outW, outH);
 
-          const x = pad + c * (cellW + gap);
-          const y = pad + r * (cellH + gap);
+        let idx = 0;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if (idx >= ims.length) break;
+            const im = ims[idx++];
 
-          const iw = im.naturalWidth || im.width;
-          const ih = im.naturalHeight || im.height;
-          const targetRatio = cellW / cellH;
-          const imgRatio = iw / ih;
+            const x = pad + c * (cellW + gap);
+            const y = pad + r * (cellH + gap);
 
-          let sx = 0, sy = 0, sw = iw, sh = ih;
-          if (imgRatio > targetRatio) {
-            sw = ih * targetRatio;
-            sx = (iw - sw) / 2;
-          } else {
-            sh = iw / targetRatio;
-            sy = (ih - sh) / 2;
+            const iw = im.naturalWidth || im.width;
+            const ih = im.naturalHeight || im.height;
+            const targetRatio = cellW / cellH;
+            const imgRatio = iw / ih;
+
+            let sx = 0, sy = 0, sw = iw, sh = ih;
+            if (imgRatio > targetRatio) {
+              sw = ih * targetRatio;
+              sx = (iw - sw) / 2;
+            } else {
+              sh = iw / targetRatio;
+              sy = (ih - sh) / 2;
+            }
+
+            ctx.drawImage(im, sx, sy, sw, sh, x, y, cellW, cellH);
           }
-
-          ctx.drawImage(im, sx, sy, sw, sh, x, y, cellW, cellH);
         }
+
+        snaps.push(canvas.toDataURL('image/png', 1.0));
       }
 
-      const dataUrl = canvas.toDataURL('image/png', 1.0);
-      openImgViewer(dataUrl);
+      if (!snaps.length) {
+        alert('画像を生成できませんでした。');
+        return;
+      }
+
+      // スナップ1枚表示モード（左右で切替）
+      openImgViewer(snaps);
     }
+
 
     topBar.querySelector('#imgExport')?.addEventListener('click', () => {
       openImageExportGallery(list);
@@ -2618,7 +2663,7 @@ if (act === 'gojuon') {
 
       const name = document.createElement('div');
       name.className = 'imgName';
-      name.textContent = displayName(d.name);
+      name.textContent = d.name;
 
       const btns = document.createElement('div');
       btns.className = 'imgBtns';
@@ -2788,8 +2833,8 @@ function getCurrentPurchaseSummary() {
   let hasDino = false;
   let hasItem = false;
 
-  // dinos
-  for (const d of dinos) {
+  // dinos（数量ベース）
+  for (const d of (dinos || [])) {
     if (getQtyForCard(d.id, 'dino') > 0) { hasDino = true; break; }
     const dups = getDupKeys(d.id);
     for (const k of dups) {
@@ -2798,10 +2843,12 @@ function getCurrentPurchaseSummary() {
     if (hasDino) break;
   }
 
-  // items
-  for (const it of items) {
+  // items（数量>0 かつ 価格>0 のものだけ）
+  for (const it of (items || [])) {
     const s = inputState.get(it.id);
-    if (s && Number(s.qty || 0) > 0) { hasItem = true; break; }
+    const qty = s ? Number(s.qty || 0) : 0;
+    const price = Number(it.price || 0);
+    if (qty > 0 && price > 0) { hasItem = true; break; }
   }
 
   return { sum, hasDino, hasItem };
@@ -2832,7 +2879,7 @@ function buildCopyText(room) {
       console.error(e);
     }
 
-    const place = (ps.hasDino && ps.hasItem) ? '冷蔵庫、金庫' : (ps.hasItem ? '金庫' : '冷蔵庫');
+    const place = ps.hasDino && ps.hasItem ? '冷蔵庫、金庫' : (ps.hasItem ? '金庫' : '冷蔵庫');
 
 // ✅ ROOMコピーには購入内容を入れない
 let text =
@@ -2841,7 +2888,7 @@ let text =
 サーバー番号 : 5041 (アイランド)
 座標 : 87 / 16 (西部2、赤オベ付近)
 入口パスワード【${entry}】
-${roomText}の方にパスワード【${pw}】で入室をして頂き、${place}より受け取りください。${warn}`;
+${roomText}の方にパスワード【${pw}】で入室をして頂き、${place}より受け取りお願いします。${warn}`;
 
     // ✅ 配送追記（設定ON & 合計が閾値以上）
     if (roomCopyCfg?.deliveryAppendEnabled && ps.sum >= Number(roomCopyCfg.deliveryMin || 0)) {
@@ -2974,7 +3021,6 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
         const row = document.createElement('div');
         row.className = 'mRow';
         row.dataset.tid = t.id;
-        row.classList.add('templateRow');
 
         row.innerHTML = `
           <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
@@ -2986,15 +3032,7 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
              <button class="pill danger" data-act="tdel"  data-tid="${escapeHtml(t.id)}" type="button">削除</button>
            </div>
         `;
-        
-// ✅ テンプレ本体タップ = 確認画面（コピーはしない）
-row.addEventListener('click', (ev) => {
-  if (ev.target && ev.target.closest('button')) return; // ボタンは別処理
-  const t2 = roomTemplates.find(x => x.id === t.id);
-  if (!t2) return;
-  showTemplatePreview(String(t2.text ?? ''));
-});
-tWrap.appendChild(row);
+        tWrap.appendChild(row);
       });
     };
 
@@ -3039,8 +3077,8 @@ tWrap.appendChild(row);
            if (t) {
              const text = String(t.text ?? '').trim();
              if (!text) { openToast('テンプレ本文が空です'); return; }
-             showTemplatePreview(text);
-}
+             showRoomCopyPreview(text);
+           }
          }
          return;
        }
@@ -3102,8 +3140,8 @@ if (act === 'copy') {
           const text = String(t.text ?? '').trim();
           if (!text) { openToast('テンプレ本文が空です'); return; }
           await copyText(text);
-          showRoomCopyPreview(text, 'コピー完了✨️');
-const prev = btn.textContent;
+          showRoomCopyPreview(text);
+          const prev = btn.textContent;
           btn.textContent = 'コピー済';
           btn.disabled = true;
           setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 900);
@@ -3206,19 +3244,6 @@ const prev = btn.textContent;
     }
   });
 
-  // ✅ 隠しボタン：右上の合計金額タップで全入力を一括リセット（枠なし）
-  el.total?.addEventListener('click', () => {
-    const ok = confirm('入力した数値をすべてリセットします。よろしいですか？');
-    if (!ok) return;
-    inputState.clear();
-    ephemeralKeys.clear();
-    renderList();
-    applyCollapseAndSearch();
-    rebuildOutput();
-    openToast('リセットしました');
-  });
-
-
   el.openManage?.addEventListener('click', openModal);
   el.closeManage?.addEventListener('click', closeModal);
   el.modalOverlay?.addEventListener('click', (e) => {
@@ -3270,7 +3295,7 @@ const prev = btn.textContent;
 
   init().catch((err) => {
     console.error(err);
-    openToast('初期化エラー: ' + (err?.message || err) + '（管理＞Version/Console確認）');
+    openToast('初期化エラーで停止しました（管理＞Version/Console確認）');
 
     // ここで落ちても「何も表示されない」を回避する
     try { setTab('dino'); } catch {}
