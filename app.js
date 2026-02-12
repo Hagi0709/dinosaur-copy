@@ -1,7 +1,6 @@
 (() => {
 'use strict';
 
-
 const BUILD_VERSION = '2026-02-11 23:30';
 
   /* ========= utils ========= */
