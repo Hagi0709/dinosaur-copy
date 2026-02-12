@@ -60,15 +60,7 @@ const BUILD_VERSION = '2026-02-11 23:30';
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#39;');
-  
-  // ✅ 管理名が「A:名前」形式の場合、表示は「:」以降だけ
-  function getDisplayName(raw) {
-    const s = String(raw || '');
-    const i = s.indexOf(':');
-    return (i >= 0) ? s.slice(i + 1).trim() : s;
   }
-
-}
 
   /* ========= circled numbers ========= */
   const circled = (n) => {
@@ -253,9 +245,7 @@ const BUILD_VERSION = '2026-02-11 23:30';
   function showTemplatePreview(text) {
     // ✅ テンプレ確認は「内容確認」
     showRoomCopyPreview(text, '確認画面');
-  }
-
-  // ✅ 画像出力：一覧で全画像を表示（画像長押し→写真に追加 で保存）
+  }  // ✅ 画像出力：配置画像を1枚生成（長押しでカメラロールに保存）
   let imageExportCloseFn = null;
   function openImageExportGallery(dList) {
     const id = 'imageExportOverlay';
@@ -270,9 +260,8 @@ const BUILD_VERSION = '2026-02-11 23:30';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
       ov.style.padding = '16px';
-      // 背景を濃くして見やすく
-      ov.style.background = 'rgba(0,0,0,.72)';
-      ov.style.backdropFilter = 'blur(8px)';
+      ov.style.background = 'rgba(0,0,0,.35)';
+      ov.style.backdropFilter = 'blur(6px)';
 
       const panel = document.createElement('div');
       panel.className = 'exportGalleryPanel';
@@ -309,7 +298,6 @@ const BUILD_VERSION = '2026-02-11 23:30';
       closeBtn.addEventListener('click', hide);
       ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
 
-      // スクロールガード（背景にスクロールが抜けないように）
       installOverlayScrollGuard(ov, body);
     }
 
@@ -319,183 +307,135 @@ const BUILD_VERSION = '2026-02-11 23:30';
 
       const hint = document.createElement('div');
       hint.className = 'exportGalleryHint';
-      hint.textContent = '画像を長押し →「写真に追加」でカメラロールへ保存できます。';
+      hint.textContent = '生成された画像を長押し →「写真に追加」でカメラロールへ保存できます。';
       body.appendChild(hint);
 
-      // controls row
-      const controls = document.createElement('div');
-      controls.className = 'imageExportControls';
+      const ctrl = document.createElement('div');
+      ctrl.className = 'exportGridCtrl';
+      ctrl.innerHTML = `
+        <div class="exportGridInputs">
+          <div class="exportGridLabel">縦</div>
+          <input class="exportGridInput" id="exportRows" type="number" inputmode="numeric" min="1" value="4">
+          <div class="exportGridLabel">横</div>
+          <input class="exportGridInput" id="exportCols" type="number" inputmode="numeric" min="1" value="2">
+        </div>
+        <button class="pill exportGridBtn" type="button" id="exportMake">配置画像を生成</button>
+        <div class="exportGridExample">例：横2×縦4 → 1 2 / 3 4 / 5 6 / 7 8</div>
+      `;
+      body.appendChild(ctrl);
 
-      const inputsWrap = document.createElement('div');
-      inputsWrap.className = 'exportInputs';
+      const outWrap = document.createElement('div');
+      outWrap.className = 'exportGridOutWrap';
+      outWrap.innerHTML = `<div id="exportGridImgs" class="exportPages"></div>`;
+      body.appendChild(outWrap);
 
-      const mkNum = (label, defv) => {
-        const w = document.createElement('div');
-        w.className = 'exportNumWrap';
-        const l = document.createElement('div');
-        l.className = 'exportNumLabel';
-        l.textContent = label;
-        const inp = document.createElement('input');
-        inp.type = 'number';
-        inp.min = '1';
-        inp.step = '1';
-        inp.value = String(defv);
-        inp.className = 'exportNum';
-        w.appendChild(l);
-        w.appendChild(inp);
-        return { w, inp };
-      };
+      const btn = ctrl.querySelector('#exportMake');
+      btn?.addEventListener('click', async () => {
+        try { document.activeElement && document.activeElement.blur && document.activeElement.blur(); } catch {}
 
-      const v = mkNum('縦', 4);
-      const h = mkNum('横', 2);
-      inputsWrap.appendChild(v.w);
-      inputsWrap.appendChild(h.w);
+        const rowsEl = ctrl.querySelector('#exportRows');
+        const colsEl = ctrl.querySelector('#exportCols');
+        let rows = Math.max(1, Math.min(50, Number(rowsEl?.value || 1)));
+        let cols = Math.max(1, Math.min(20, Number(colsEl?.value || 1)));
 
-      const genBtn = document.createElement('button');
-      genBtn.type = 'button';
-      genBtn.className = 'btnGenerate';
-      genBtn.textContent = '配置画像を生成';
+        // 画像URLをリスト順に集める
+        const urls = [];
+        for (const d of (dList || [])) {
+          const k = imageKeyFromBaseName(d._baseName || d.name);
+          const url = imageCache[k];
+          if (url) urls.push(url);
+        }
+        if (!urls.length) { openToast('画像がありません'); return; }
 
-      controls.appendChild(inputsWrap);
-      controls.appendChild(genBtn);
-      body.appendChild(controls);
+        const loadImg = (src) => new Promise((res, rej) => {
+          const im = new Image();
+          im.crossOrigin = 'anonymous';
+          im.onload = () => res(im);
+          im.onerror = () => rej(new Error('img load failed'));
+          im.src = src;
+        });
 
-      const example = document.createElement('div');
-      example.className = 'exportGalleryExample';
-      example.textContent = '例：横2×縦4 → 1 2 / 3 4 / 5 6 / 7 8';
-      body.appendChild(example);
-
-      const pagesWrap = document.createElement('div');
-      pagesWrap.className = 'exportPages';
-      body.appendChild(pagesWrap);
-
-      // source images (in list order)
-      const srcItems = [];
-      (dList || []).forEach(d => {
-        const base = String(d?._baseName || d?.name || '').trim();
-        const k = imageKeyFromBaseName(base);
-        const u = imageCache[k];
-        if (u) srcItems.push({ name: String(d.name || base || ''), src: u });
-      });
-
-      // draw pages
-      const GAP = 12; // 画像間の隙間
-      const PAD = 14; // 外周パディング
-
-      const loadImg = (src) => new Promise((resolve, reject) => {
-        const im = new Image();
-        im.onload = () => resolve(im);
-        im.onerror = reject;
-        im.src = src;
-      });
-
-      const makeCircled = (n) => {
-        const base = 0x2460; // ①
-        if (n >= 1 && n <= 20) return String.fromCharCode(base + (n - 1));
-        return `(${n})`;
-      };
-
-      const renderPages = async () => {
-        pagesWrap.innerHTML = '';
-        const rows = Math.max(1, parseInt(v.inp.value || '1', 10));
-        const cols = Math.max(1, parseInt(h.inp.value || '1', 10));
-        const perPage = rows * cols;
-
-        if (!srcItems.length) {
-          const empty = document.createElement('div');
-          empty.className = 'exportGalleryEmpty';
-          empty.textContent = '画像が1枚も設定されていません。';
-          pagesWrap.appendChild(empty);
+        let imgs = [];
+        try {
+          imgs = await Promise.all(urls.map(u => loadImg(u)));
+        } catch (e) {
+          openToast('画像の読み込みに失敗しました');
+          console.error(e);
           return;
         }
+// セルサイズは最大値に合わせる（カード画像が混在しても欠けない）
+const cellW = Math.max(...imgs.map(im => im.naturalWidth || im.width || 0), 1);
+const cellH = Math.max(...imgs.map(im => im.naturalHeight || im.height || 0), 1);
 
-        // iPhoneで固まりやすいので、UIを先に返す
-        await new Promise(r => requestAnimationFrame(r));
+// ✅ 画像間の隙間（px）
+const gap = 12;
 
-        // 画像を先にロード
-        const imgs = [];
-        for (const it of srcItems) {
-          try {
-            imgs.push({ it, im: await loadImg(it.src) });
-          } catch {
-            // 読み込み失敗はスキップ
-          }
-        }
+const cap = rows * cols;
+const pages = Math.max(1, Math.ceil(imgs.length / cap));
 
-        // 1セルのサイズ：元画像の比率に寄せる（最初の画像基準）
-        const ref = imgs[0]?.im;
-        const cellW = ref ? Math.round(ref.width / 1.0) : 640;
-        const cellH = ref ? Math.round(ref.height / 1.0) : 360;
+const imgsBox = body.querySelector('#exportGridImgs');
+if (imgsBox) imgsBox.innerHTML = ''; 
 
-        const canvasW = PAD * 2 + cols * cellW + GAP * (cols - 1);
-        const canvasH = PAD * 2 + rows * cellH + GAP * (rows - 1);
+for (let p = 0; p < pages; p++) {
+  const slice = imgs.slice(p * cap, (p + 1) * cap);
 
-        let pageNo = 1;
-        for (let p = 0; p < imgs.length; p += perPage) {
-          const chunk = imgs.slice(p, p + perPage);
+  const canvas = document.createElement('canvas');
+  canvas.width = cellW * cols + gap * (cols - 1);
+  canvas.height = cellH * rows + gap * (rows - 1);
 
-          const cvs = document.createElement('canvas');
-          cvs.width = canvasW;
-          cvs.height = canvasH;
-          const ctx = cvs.getContext('2d');
+  const ctx = canvas.getContext('2d');
+  // 背景を黒に
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-          // 背景は黒
-          ctx.fillStyle = '#000';
-          ctx.fillRect(0, 0, cvs.width, cvs.height);
+  for (let i = 0; i < slice.length; i++) {
+    const r = Math.floor(i / cols);
+    const c = i % cols;
+    if (r >= rows) break;
+    const x = c * (cellW + gap);
+    const y = r * (cellH + gap);
 
-          chunk.forEach((obj, idx) => {
-            const r = Math.floor(idx / cols);
-            const c = idx % cols;
-            const x = PAD + c * (cellW + GAP);
-            const y = PAD + r * (cellH + GAP);
+    // セルに収まるようにcontain描画
+    const im = slice[i];
+    const iw = im.naturalWidth || im.width;
+    const ih = im.naturalHeight || im.height;
+    const s = Math.min(cellW / iw, cellH / ih);
+    const dw = iw * s;
+    const dh = ih * s;
+    const dx = x + (cellW - dw) / 2;
+    const dy = y + (cellH - dh) / 2;
+    ctx.drawImage(im, dx, dy, dw, dh);
+  }
 
-            // 画像をセル内に収める（余白は黒のまま）
-            ctx.drawImage(obj.im, x, y, cellW, cellH);
-          });
+  const dataUrl = canvas.toDataURL('image/png', 1.0);
 
-          const dataUrl = cvs.toDataURL('image/png');
+  if (imgsBox) {
+    const wrap = document.createElement('div');
+    wrap.className = 'exportPage';
 
-          const page = document.createElement('div');
-          page.className = 'exportPage';
+    const capEl = document.createElement('div');
+    capEl.className = 'exportPageNo';
+    capEl.textContent = circled(p + 1);
 
-          const label = document.createElement('div');
-          label.className = 'exportPageLabel';
-          label.textContent = makeCircled(pageNo);
+    const out = document.createElement('img');
+    out.className = 'exportPageImg';
+    out.alt = `配置画像 ${p + 1}/${pages}`;
+    out.src = dataUrl;
 
-          const img = document.createElement('img');
-          img.className = 'exportPageImg';
-          img.alt = `export_${pageNo}`;
-          img.src = dataUrl;
-          img.decoding = 'async';
-
-          page.appendChild(label);
-          page.appendChild(img);
-          pagesWrap.appendChild(page);
-
-          pageNo++;
-          // 連続生成で固まらないように小休止
-          await new Promise(r => setTimeout(r, 30));
-        }
-
-        // 先頭にスナップ
-        pagesWrap.scrollLeft = 0;
-      };
-
-      genBtn.addEventListener('click', () => {
-        renderPages().catch(err => {
-          console.error(err);
-          openToast('画像生成でエラーが発生しました');
-        });
+    wrap.appendChild(capEl);
+    wrap.appendChild(out);
+    imgsBox.appendChild(wrap);
+  }
+}
       });
-
-      // 初回は生成しない（入力後に押してもらう）
     }
 
     try { ScrollLock.lock(); } catch {}
     ov.style.display = 'flex';
   }
 
-  /* ========= template editor ========= */
+
+/* ========= template editor ========= */
   let templateEditorResolve = null;
   function openTemplateEditor(tpl) {
     return new Promise((resolve) => {
@@ -1114,7 +1054,16 @@ function sortByOrder(list, kind) {
     });
   }
 
-  /* ========= output ========= */
+  
+  // ✅ 管理用の並び替え接頭辞（"A:名前"）を表示では除外
+  function displayName(raw) {
+    const s = String(raw ?? '');
+    const i = s.indexOf(':');
+    if (i >= 0) return s.slice(i + 1).trim();
+    return s;
+  }
+
+/* ========= output ========= */
   function rebuildOutput() {
     const lines = [];
     let sum = 0;
@@ -1456,7 +1405,7 @@ if (!nameWrap) {
 }
 
 const nameEl = $('.name', card);
-if (nameEl) nameEl.textContent = getDisplayName(d.name);
+if (nameEl) nameEl.textContent = displayName(d.name);
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -1727,7 +1676,7 @@ if (!nameWrap) {
 }
 
 const nameEl = $('.name', card);
-if (nameEl) nameEl.textContent = getDisplayName(d.name);
+if (nameEl) nameEl.textContent = displayName(d.name);
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -1919,7 +1868,7 @@ const tOut = String(type).replace('(指定)', '');
       </div>
     `;
 
-    $('.name', card).textContent = it.name;
+    $('.name', card).textContent = displayName(it.name);
     $('.unit', card).textContent = `${it.unit}個/単価${it.price}円`;
 
     const toggle = $('.cardToggle', card);
@@ -2095,7 +2044,7 @@ const top = document.createElement('div');
     const dinoCount = dinos.filter(x => !hidden.dino.has(x.id)).length;
 
     top.innerHTML = `
-      <div class="mCountPill">${dinoCount}種</div>
+      <div class="mCountText">${dinoCount}種</div>
       <button class="pill" type="button" data-act="gojuon">五十音順</button>
       <button class="pill" type="button" data-act="add">＋追加</button>
     `;
@@ -2121,7 +2070,7 @@ const top = document.createElement('div');
     wrap.addEventListener('click', async (e) => {
       const btn = e.target?.closest('button');
       if (!btn) {
-        // ✅ テンプレカード本体タップで確認画面
+        // ✅ テンプレカード本体タップで内容確認
         const tRow = e.target?.closest('#templateWrap .mRow');
         const tid2 = tRow?.dataset?.tid;
         if (tid2) {
@@ -2129,8 +2078,8 @@ const top = document.createElement('div');
           if (t) {
             const text = String(t.text ?? '').trim();
             if (!text) { openToast('テンプレ本文が空です'); return; }
-            showRoomCopyPreview(text, '確認画面');
-          }
+            showTemplatePreview(text);
+}
         }
         return;
       }
@@ -2669,7 +2618,7 @@ if (act === 'gojuon') {
 
       const name = document.createElement('div');
       name.className = 'imgName';
-      name.textContent = getDisplayName(d.name);
+      name.textContent = displayName(d.name);
 
       const btns = document.createElement('div');
       btns.className = 'imgBtns';
@@ -2883,7 +2832,7 @@ function buildCopyText(room) {
       console.error(e);
     }
 
-    const place = ps.hasDino && ps.hasItem ? '冷蔵庫、金庫' : (ps.hasItem ? '金庫' : '冷蔵庫');
+    const place = (ps.hasDino && ps.hasItem) ? '冷蔵庫、金庫' : (ps.hasItem ? '金庫' : '冷蔵庫');
 
 // ✅ ROOMコピーには購入内容を入れない
 let text =
@@ -2892,7 +2841,7 @@ let text =
 サーバー番号 : 5041 (アイランド)
 座標 : 87 / 16 (西部2、赤オベ付近)
 入口パスワード【${entry}】
-${roomText}の方にパスワード【${pw}】で入室をして頂き、${place}より受け取りお願いします。${warn}`;
+${roomText}の方にパスワード【${pw}】で入室をして頂き、${place}より受け取りください。${warn}`;
 
     // ✅ 配送追記（設定ON & 合計が閾値以上）
     if (roomCopyCfg?.deliveryAppendEnabled && ps.sum >= Number(roomCopyCfg.deliveryMin || 0)) {
@@ -3025,6 +2974,7 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
         const row = document.createElement('div');
         row.className = 'mRow';
         row.dataset.tid = t.id;
+        row.classList.add('templateRow');
 
         row.innerHTML = `
           <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
@@ -3036,7 +2986,15 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
              <button class="pill danger" data-act="tdel"  data-tid="${escapeHtml(t.id)}" type="button">削除</button>
            </div>
         `;
-        tWrap.appendChild(row);
+        
+// ✅ テンプレ本体タップ = 確認画面（コピーはしない）
+row.addEventListener('click', (ev) => {
+  if (ev.target && ev.target.closest('button')) return; // ボタンは別処理
+  const t2 = roomTemplates.find(x => x.id === t.id);
+  if (!t2) return;
+  showTemplatePreview(String(t2.text ?? ''));
+});
+tWrap.appendChild(row);
       });
     };
 
@@ -3073,7 +3031,7 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
     wrap.addEventListener('click', async (e) => {
        const btn = e.target?.closest('button');
        if (!btn) {
-         // ✅ テンプレカード本体タップで確認画面
+         // ✅ テンプレカード本体タップで内容確認
          const tRow = e.target?.closest('#templateWrap .mRow');
          const tid2 = tRow?.dataset?.tid;
          if (tid2) {
@@ -3081,8 +3039,8 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
            if (t) {
              const text = String(t.text ?? '').trim();
              if (!text) { openToast('テンプレ本文が空です'); return; }
-             showRoomCopyPreview(text, '確認画面');
-           }
+             showTemplatePreview(text);
+}
          }
          return;
        }
@@ -3144,8 +3102,8 @@ if (act === 'copy') {
           const text = String(t.text ?? '').trim();
           if (!text) { openToast('テンプレ本文が空です'); return; }
           await copyText(text);
-          showRoomCopyPreview(text);
-          const prev = btn.textContent;
+          showRoomCopyPreview(text, 'コピー完了✨️');
+const prev = btn.textContent;
           btn.textContent = 'コピー済';
           btn.disabled = true;
           setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 900);
@@ -3248,6 +3206,19 @@ if (act === 'copy') {
     }
   });
 
+  // ✅ 隠しボタン：右上の合計金額タップで全入力を一括リセット（枠なし）
+  el.total?.addEventListener('click', () => {
+    const ok = confirm('入力した数値をすべてリセットします。よろしいですか？');
+    if (!ok) return;
+    inputState.clear();
+    ephemeralKeys.clear();
+    renderList();
+    applyCollapseAndSearch();
+    rebuildOutput();
+    openToast('リセットしました');
+  });
+
+
   el.openManage?.addEventListener('click', openModal);
   el.closeManage?.addEventListener('click', closeModal);
   el.modalOverlay?.addEventListener('click', (e) => {
@@ -3299,7 +3270,7 @@ if (act === 'copy') {
 
   init().catch((err) => {
     console.error(err);
-    openToast('初期化エラーで停止しました（管理＞Version/Console確認）');
+    openToast('初期化エラー: ' + (err?.message || err) + '（管理＞Version/Console確認）');
 
     // ここで落ちても「何も表示されない」を回避する
     try { setTab('dino'); } catch {}
