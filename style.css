@@ -1081,85 +1081,89 @@ button{cursor:pointer}
 .gachaWrap{padding-bottom: 12px;}
 .gInfo{padding-bottom: 14px;}
 
-/* ===== 画像出力（配置画像） ===== */
-.exportGalleryPanel{
-  -webkit-user-select:none;
-  user-select:none;
-}
-.exportGalleryPanel input,
-.exportGalleryPanel textarea{
-  -webkit-user-select:text;
-  user-select:text;
-}
-.exportGalleryBody{ -webkit-user-select:none; user-select:none; }
-.exportGalleryHint,
-.exportGallerySubHint,
-.exportGalleryCap{
-  -webkit-user-select:none;
-  user-select:none;
-}
-.exportGalleryControls{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  padding:12px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(255,255,255,.05);
-  margin-bottom:12px;
-}
-.exportGalleryCtrlRow{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
-}
-.exportGalleryLbl{
-  font-weight:900;
-  color:rgba(255,255,255,.75);
-}
-.exportGalleryNum{
-  width:70px;
-  height:40px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  text-align:center;
-  font-weight:950;
-}
-.exportGallerySubHint{
-  font-size:12px;
-  color:rgba(255,255,255,.60);
+/* ===== 画像出力モーダル ===== */
+#imageExportOverlay {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
-.exportGalleryCollages{
-  display:flex;
-  flex-direction:column;
-  gap:16px;
-}
-.exportGalleryCollageItem{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  padding:10px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.10);
-  background:#000; /* ✅ 背景黒 */
-}
-.exportGalleryCap{
-  font-size:16px;
-  font-weight:950;
-  color:rgba(255,255,255,.86);
-}
-.exportGalleryImg{
-  width:100%;
-  height:auto;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.12);
-  background:#000;
-  -webkit-user-select:none;
-  user-select:none;
-  -webkit-touch-callout: default;
+#imageExportOverlay input,
+#imageExportOverlay textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
+.exportGalleryPanel {
+  width: min(720px, 94vw);
+  max-height: 82vh;
+  overflow: hidden;
+  border-radius: 18px;
+  background: rgba(18, 18, 18, 0.92);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+.exportGalleryHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 14px 10px;
+}
+
+.exportGalleryTitle {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.exportGalleryBody {
+  padding: 12px 14px 14px;
+  overflow: auto;
+  max-height: calc(82vh - 56px);
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.imageExportControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.imageExportControls .exportInputs {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.imageExportControls .btnGenerate {
+  margin-left: auto; /* 右寄せ */
+}
+
+.exportPages {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 10px 0 6px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.exportPage {
+  flex: 0 0 min(86vw, 680px);
+  scroll-snap-align: start;
+}
+
+.exportPageLabel {
+  font-weight: 800;
+  font-size: 18px;
+  margin: 8px 0 6px;
+}
+
+.exportPageImg {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+  background: #000;
+}
