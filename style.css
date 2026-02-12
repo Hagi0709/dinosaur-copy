@@ -1081,79 +1081,10 @@ button{cursor:pointer}
 .gachaWrap{padding-bottom: 12px;}
 .gInfo{padding-bottom: 14px;}
 
-/* ===== Image Export (grid collage) ===== */
-.exportGalleryPanel{ width:min(720px, 100%); max-height:min(86vh, 900px); overflow:hidden; border-radius:18px; border:1px solid rgba(255,255,255,.14); background:rgba(20,20,20,.78); backdrop-filter: blur(14px); }
-.exportGalleryHead{ display:flex; align-items:center; justify-content:space-between; padding:14px 14px 10px; }
-.exportGalleryTitle{ font-weight:950; font-size:18px; }
-.exportGalleryBody{ padding:12px 14px 14px; overflow:auto; max-height:calc(86vh - 70px); }
-.exportGalleryHint{ font-size:12px; color:rgba(255,255,255,.70); margin-bottom:10px; }
-
-.exportGridCtrl{ display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.05); margin-bottom:12px; }
-.exportGridInputs{ display:flex; align-items:center; gap:10px; }
-.exportGridLabel{ font-weight:900; color:rgba(255,255,255,.75); }
-.exportGridInput{ width:70px; height:40px; border-radius:14px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.08); color:#fff; text-align:center; font-weight:950; }
-.exportGridExample{ font-size:12px; color:rgba(255,255,255,.60); }
-
-.exportGridImgs{ display:flex; flex-direction:column; gap:14px; }
-.exportGridImgWrap{ display:flex; flex-direction:column; gap:8px; }
-.exportGridImgCap{ font-size:12px; font-weight:950; color:rgba(255,255,255,.75); }
-.exportGridImg{ width:100%; height:auto; border-radius:16px; border:1px solid rgba(255,255,255,.12); background:#111; }
-
-
-/* ===== 画像出力：横スクロール（スナップ） ===== */
-#imgOverlay{ touch-action: pan-y; } /* touch-action:none を上書き */
-#imgOverlay.modalOverlay{ background: rgba(0,0,0,.78); } /* 透過しすぎ対策 */
-
-.exportPages{
-  display:flex;
-  gap:16px;
-  overflow-x:auto;
-  overflow-y:hidden;
-  padding:10px 4px 14px;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-x pan-y;
-}
-.exportPage{
-  flex:0 0 92%;
-  scroll-snap-align: start;
-  background: rgba(0,0,0,.55);
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 16px;
-  padding: 10px;
-}
-.exportPageNo{
-  font-weight: 950;
-  margin-bottom: 8px;
-  user-select:none;
-  -webkit-user-select:none;
-}
-.exportPageImg{
-  width:100%;
-  height:auto;
-  display:block;
-  border-radius: 12px;
-  user-select:none;
-  -webkit-user-select:none;
-}
-
-/* 画像出力モーダル内は文字選択を抑える（入力欄は除外） */
-#imgOverlay *{
-  -webkit-user-select:none;
-  user-select:none;
-}
-#imgOverlay input, #imgOverlay textarea{
-  -webkit-user-select:text;
-  user-select:text;
-}
-
-
-/* 画像出力：縦横入力の右に生成ボタン */
-.exportGridCtrl{
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-.exportGridCtrl .exportGridBtn{
-  margin-left:auto;
-}
+/* ===== Export Gallery Controls (compat) ===== */
+.exportGalleryControls{ display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.05); margin-bottom:12px; }
+.exportGalleryCtrlRow{ display:grid; grid-template-columns:auto 70px auto 70px; gap:10px; align-items:center; }
+.exportGalleryLbl{ font-weight:900; color:rgba(255,255,255,.75); }
+.exportGalleryNum{ width:70px; height:40px; border-radius:14px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.08); color:#fff; text-align:center; font-weight:950; }
+.exportGallerySubHint{ font-size:12px; color:rgba(255,255,255,.60); }
+#expMake{ grid-column:1 / -1; justify-self:center; }
