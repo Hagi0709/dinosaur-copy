@@ -112,6 +112,17 @@ const BUILD_VERSION = '2026-02-11 23:30';
     }
   }
 
+  // ========= file helpers =========
+  function readFileAsDataURL(file) {
+    return new Promise((resolve) => {
+      if (!file) return resolve('');
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result || ''));
+      fr.onerror = () => resolve('');
+      fr.readAsDataURL(file);
+    });
+  }
+
   /* ========= toast ========= */
   let toastTimer = null;
   function openToast(text) {
@@ -307,6 +318,7 @@ const BUILD_VERSION = '2026-02-11 23:30';
 
       const hint = document.createElement('div');
       hint.className = 'exportGalleryHint';
+      hint.textContent = '生成された画像を長押し →「写真に追加」でカメラロールへ保存できます。';
       body.appendChild(hint);
 
       const ctrl = document.createElement('div');
@@ -314,12 +326,12 @@ const BUILD_VERSION = '2026-02-11 23:30';
       ctrl.innerHTML = `
         <div class="exportGridInputs">
           <div class="exportGridLabel">縦</div>
-          <input class="exportGridInput" id="exportRows" type="number" inputmode="numeric" min="1" value="6">
+          <input class="exportGridInput" id="exportRows" type="number" inputmode="numeric" min="1" value="4">
           <div class="exportGridLabel">横</div>
           <input class="exportGridInput" id="exportCols" type="number" inputmode="numeric" min="1" value="2">
         </div>
-        <button class="pill exportGridBtn" type="button" id="exportMake">生成</button>
-        <div class="exportGridExample"></div>
+        <button class="pill exportGridBtn" type="button" id="exportMake">配置画像を生成</button>
+        <div class="exportGridExample">例：横2×縦4 → 1 2 / 3 4 / 5 6 / 7 8</div>
       `;
       body.appendChild(ctrl);
 
@@ -1094,18 +1106,18 @@ function sortByOrder(list, kind) {
             const tOut = String(type).replace('(指定)', '');
             const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
 
-               let line = '';
+            let line = '';
             if (isPair) {
               if (m === f) {
-                line = `${displayName(d.name)}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+                line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
               } else {
                 const p = [];
                 if (m > 0) p.push(`♂︎×${m}`);
                 if (f > 0) p.push(`♀︎×${f}`);
-                line = `${displayName(d.name)}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+                line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
               }
             } else {
-              line = `${displayName(d.name)}${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
+              line = `${d.name}${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
             }
 
             lines.push(`${idx}. ${line}`);
@@ -1120,7 +1132,7 @@ function sortByOrder(list, kind) {
             const price = allPrice;
             if (price > 0) {
               sum += price;
-              lines.push(`${idx}. ${displayName(d.name)}全種 = ${price.toLocaleString('ja-JP')}円`);
+              lines.push(`${idx}. ${d.name}全種 = ${price.toLocaleString('ja-JP')}円`);
               idx++;
             }
             continue;
@@ -1133,7 +1145,7 @@ function sortByOrder(list, kind) {
           sum += price;
 
           const seq = picks.map(n => circled(n)).join('');
-          lines.push(`${idx}. ${displayName(d.name)}${seq} = ${price.toLocaleString('ja-JP')}円`);
+          lines.push(`${idx}. ${d.name}${seq} = ${price.toLocaleString('ja-JP')}円`);
           idx++;
           continue;
         }
@@ -1154,15 +1166,15 @@ function sortByOrder(list, kind) {
         let line = '';
         if (isPair) {
           if (m === f) {
-            line = `${displayName(d.name)}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+            line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
           } else {
             const p = [];
             if (m > 0) p.push(`♂︎×${m}`);
             if (f > 0) p.push(`♀︎×${f}`);
-            line = `${displayName(d.name)}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+            line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
           }
         } else {
-          line = `${displayName(d.name)}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+          line = `${d.name}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
         }
 
         lines.push(`${idx}. ${line}`);
@@ -1181,7 +1193,7 @@ function sortByOrder(list, kind) {
       const price = qty * Number(it.price || 0);
       sum += price;
 
-      lines.push(`${idx}. ${displayName(it.name)} × ${totalCount} = ${price.toLocaleString('ja-JP')}円`);
+      lines.push(`${idx}. ${it.name} × ${totalCount} = ${price.toLocaleString('ja-JP')}円`);
       idx++;
     }
 
@@ -1288,12 +1300,101 @@ function installLeftToggleHit(card) {
     return '';
   }
 
+  function getMemoImgForDinoId(id) {
+    const c = custom.dino.find(x => x.id === id);
+    if (c && typeof c.memoImg === 'string') return c.memoImg;
+
+    const o = dinoOverride[id];
+    if (o && typeof o.memoImg === 'string') return o.memoImg;
+
+    return '';
+  }
+
+  function setMemoImgForDinoId(id, memoImg) {
+    const cIdx = custom.dino.findIndex(x => x.id === id);
+    if (cIdx >= 0) {
+      custom.dino[cIdx] = { ...custom.dino[cIdx], memoImg: String(memoImg || '') };
+      saveJSON(LS.DINO_CUSTOM, custom.dino);
+      return;
+    }
+
+    const o = dinoOverride[id] || {};
+    dinoOverride[id] = { ...o, memoImg: String(memoImg || '') };
+    saveJSON(LS.DINO_OVERRIDE, dinoOverride);
+  }
+
   function applyMemoToCard(card, did) {
     const memo = String(getMemoForDinoId(did) || '').trim();
+    const memoImg = String(getMemoImgForDinoId(did) || '').trim();
     const memoEl = $('.js-memo', card);
     if (!memoEl) return;
-    memoEl.textContent = memo;
-    memoEl.style.display = memo ? 'block' : 'none';
+
+    if (!memoEl.dataset.built) {
+      memoEl.dataset.built = '1';
+      memoEl.innerHTML = `
+        <div class="memoRow">
+          <div class="memoText js-memoText"></div>
+
+          <div class="memoBtns">
+            <label class="memoImgBtn" title="画像を追加">
+              <input class="memoImgInput js-memoImgInput" type="file" accept="image/*">
+              画像
+            </label>
+            <button class="memoImgClear js-memoImgClear" type="button" data-act="memoClear">×</button>
+          </div>
+        </div>
+        <div class="memoThumb js-memoThumb" style="display:none;">
+          <img class="memoThumbImg js-memoThumbImg" alt="">
+        </div>
+      `;
+
+      const inp = $('.js-memoImgInput', memoEl);
+      inp?.addEventListener('change', async (ev) => {
+        const file = ev.target?.files?.[0];
+        if (!file) return;
+        const url = await readFileAsDataURL(file);
+        if (!url) return openToast('画像の読み込みに失敗しました');
+        setMemoImgForDinoId(did, url);
+        applyMemoToCard(card, did);
+        openToast('画像を保存しました');
+        ev.target.value = '';
+      });
+
+      const thumbImg = $('.js-memoThumbImg', memoEl);
+      thumbImg?.addEventListener('click', () => {
+        const url = String(getMemoImgForDinoId(did) || '').trim();
+        if (url) openImgViewer(url);
+      });
+
+      memoEl.addEventListener('click', (ev) => {
+        const t = ev.target;
+        if (t?.dataset?.act === 'memoClear') {
+          setMemoImgForDinoId(did, '');
+          applyMemoToCard(card, did);
+          openToast('画像を削除しました');
+        }
+      });
+    }
+
+    const textEl = $('.js-memoText', memoEl);
+    if (textEl) textEl.textContent = memo;
+
+    const thumb = $('.js-memoThumb', memoEl);
+    const thumbImg = $('.js-memoThumbImg', memoEl);
+    const clearBtn = $('.js-memoImgClear', memoEl);
+
+    if (thumb && thumbImg) {
+      if (memoImg) {
+        thumbImg.src = memoImg;
+        thumb.style.display = 'block';
+      } else {
+        thumbImg.removeAttribute('src');
+        thumb.style.display = 'none';
+      }
+    }
+    if (clearBtn) clearBtn.style.display = memoImg ? 'inline-flex' : 'none';
+
+    memoEl.style.display = (memo || memoImg) ? 'block' : 'none';
   }
 
   function buildDinoCard(d, keyOverride = null) {
@@ -1833,6 +1934,112 @@ const tOut = String(type).replace('(指定)', '');
     return card;
   }
 
+  function getMemoForItemId(id) {
+    const c = custom.item.find(x => x.id === id);
+    if (c && typeof c.memo === 'string') return c.memo;
+    return '';
+  }
+
+  function getMemoImgForItemId(id) {
+    const c = custom.item.find(x => x.id === id);
+    if (c && typeof c.memoImg === 'string') return c.memoImg;
+    return '';
+  }
+
+  function setMemoImgForItemId(id, memoImg) {
+    const idx = custom.item.findIndex(x => x.id === id);
+    if (idx >= 0) {
+      custom.item[idx] = { ...custom.item[idx], memoImg: String(memoImg || '') };
+      saveJSON(LS.ITEM_CUSTOM, custom.item);
+      return;
+    }
+
+    const base = items.find(x => x.id === id) || null;
+    custom.item.push({
+      id,
+      name: base?.name || '',
+      unit: Number(base?.unit || 1),
+      price: Number(base?.price || 0),
+      memo: '',
+      memoImg: String(memoImg || ''),
+    });
+    saveJSON(LS.ITEM_CUSTOM, custom.item);
+  }
+
+  function applyMemoToItemCard(card, iid) {
+    const memo = String(getMemoForItemId(iid) || '').trim();
+    const memoImg = String(getMemoImgForItemId(iid) || '').trim();
+    const memoEl = $('.js-memo', card);
+    if (!memoEl) return;
+
+    if (!memoEl.dataset.built) {
+      memoEl.dataset.built = '1';
+      memoEl.innerHTML = `
+        <div class="memoRow">
+          <div class="memoText js-memoText"></div>
+
+          <div class="memoBtns">
+            <label class="memoImgBtn" title="画像を追加">
+              <input class="memoImgInput js-memoImgInput" type="file" accept="image/*">
+              画像
+            </label>
+            <button class="memoImgClear js-memoImgClear" type="button" data-act="memoClear">×</button>
+          </div>
+        </div>
+        <div class="memoThumb js-memoThumb" style="display:none;">
+          <img class="memoThumbImg js-memoThumbImg" alt="">
+        </div>
+      `;
+
+      const inp = $('.js-memoImgInput', memoEl);
+      inp?.addEventListener('change', async (ev) => {
+        const file = ev.target?.files?.[0];
+        if (!file) return;
+        const url = await readFileAsDataURL(file);
+        if (!url) return openToast('画像の読み込みに失敗しました');
+        setMemoImgForItemId(iid, url);
+        applyMemoToItemCard(card, iid);
+        openToast('画像を保存しました');
+        ev.target.value = '';
+      });
+
+      const thumbImg = $('.js-memoThumbImg', memoEl);
+      thumbImg?.addEventListener('click', () => {
+        const url = String(getMemoImgForItemId(iid) || '').trim();
+        if (url) openImgViewer(url);
+      });
+
+      memoEl.addEventListener('click', (ev) => {
+        const t = ev.target;
+        if (t?.dataset?.act === 'memoClear') {
+          setMemoImgForItemId(iid, '');
+          applyMemoToItemCard(card, iid);
+          openToast('画像を削除しました');
+        }
+      });
+    }
+
+    const textEl = $('.js-memoText', memoEl);
+    if (textEl) textEl.textContent = memo;
+
+    const thumb = $('.js-memoThumb', memoEl);
+    const thumbImg = $('.js-memoThumbImg', memoEl);
+    const clearBtn = $('.js-memoImgClear', memoEl);
+
+    if (thumb && thumbImg) {
+      if (memoImg) {
+        thumbImg.src = memoImg;
+        thumb.style.display = 'block';
+      } else {
+        thumbImg.removeAttribute('src');
+        thumb.style.display = 'none';
+      }
+    }
+    if (clearBtn) clearBtn.style.display = memoImg ? 'inline-flex' : 'none';
+
+    memoEl.style.display = (memo || memoImg) ? 'block' : 'none';
+  }
+
   function buildItemCard(it) {
     const s = ensureItemState(it.id);
 
@@ -1864,11 +2071,14 @@ const tOut = String(type).replace('(指定)', '');
             <button class="btn" type="button" data-act="+">＋</button>
           </div>
         </div>
+
+        <div class="memo js-memo" style="display:none;"></div>
       </div>
     `;
 
     $('.name', card).textContent = displayName(it.name);
     $('.unit', card).textContent = `${it.unit}個/単価${it.price}円`;
+    applyMemoToItemCard(card, it.id);
 
     const toggle = $('.cardToggle', card);
 
@@ -2409,10 +2619,22 @@ if (act === 'gojuon') {
 
         const cIdx = custom.dino.findIndex(x => x.id === id);
         if (cIdx >= 0) {
-          custom.dino[cIdx] = { id, name: newName, defType: newDef, memo, _baseName: custom.dino[cIdx]._baseName || newName };
+          custom.dino[cIdx] = {
+            id,
+            name: newName,
+            defType: newDef,
+            memo,
+            memoImg: String(custom.dino[cIdx].memoImg || ''),
+            _baseName: custom.dino[cIdx]._baseName || newName,
+          };
           saveJSON(LS.DINO_CUSTOM, custom.dino);
         } else {
-          dinoOverride[id] = { name: newName, defType: newDef, memo };
+          dinoOverride[id] = {
+            ...(dinoOverride[id] || {}),
+            name: newName,
+            defType: newDef,
+            memo,
+          };
           saveJSON(LS.DINO_OVERRIDE, dinoOverride);
         }
 
