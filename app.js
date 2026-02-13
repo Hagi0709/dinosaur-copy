@@ -1782,7 +1782,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
         // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵×1 = 30円）
 const tOut = String(type).replace('(指定)', '');
         const baseType = tOut; // (指定)を外した表示名
-        const hideSex = (baseType === '受精卵' || baseType === '胚');
+        const hideSex = (baseType === '受精卵' || baseType === '胚') && !/\(指定\)$/.test(type);
         const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
 
         if (hideSex) {
@@ -1838,7 +1838,7 @@ const tOut = String(type).replace('(指定)', '');
         // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵×1 = 30円）
 const tOut = String(type).replace('(指定)', '');
         const baseType = tOut; // (指定)を外した表示名
-        const hideSex = (baseType === '受精卵' || baseType === '胚');
+        const hideSex = (baseType === '受精卵' || baseType === '胚') && !/\(指定\)$/.test(type);
         const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
 
         if (hideSex) {
