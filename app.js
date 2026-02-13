@@ -112,17 +112,6 @@ const BUILD_VERSION = '2026-02-11 23:30';
     }
   }
 
-  // ========= file helpers =========
-  function readFileAsDataURL(file) {
-    return new Promise((resolve) => {
-      if (!file) return resolve('');
-      const fr = new FileReader();
-      fr.onload = () => resolve(String(fr.result || ''));
-      fr.onerror = () => resolve('');
-      fr.readAsDataURL(file);
-    });
-  }
-
   /* ========= toast ========= */
   let toastTimer = null;
   function openToast(text) {
@@ -318,7 +307,6 @@ const BUILD_VERSION = '2026-02-11 23:30';
 
       const hint = document.createElement('div');
       hint.className = 'exportGalleryHint';
-      hint.textContent = '生成された画像を長押し →「写真に追加」でカメラロールへ保存できます。';
       body.appendChild(hint);
 
       const ctrl = document.createElement('div');
@@ -326,12 +314,12 @@ const BUILD_VERSION = '2026-02-11 23:30';
       ctrl.innerHTML = `
         <div class="exportGridInputs">
           <div class="exportGridLabel">縦</div>
-          <input class="exportGridInput" id="exportRows" type="number" inputmode="numeric" min="1" value="4">
+          <input class="exportGridInput" id="exportRows" type="number" inputmode="numeric" min="1" value="6">
           <div class="exportGridLabel">横</div>
           <input class="exportGridInput" id="exportCols" type="number" inputmode="numeric" min="1" value="2">
         </div>
-        <button class="pill exportGridBtn" type="button" id="exportMake">配置画像を生成</button>
-        <div class="exportGridExample">例：横2×縦4 → 1 2 / 3 4 / 5 6 / 7 8</div>
+        <button class="pill exportGridBtn" type="button" id="exportMake">生成</button>
+        <div class="exportGridExample"></div>
       `;
       body.appendChild(ctrl);
 
@@ -1300,74 +1288,15 @@ function installLeftToggleHit(card) {
     return '';
   }
 
-  function getMemoImgForDinoId(id) {
-    const c = custom.dino.find(x => x.id === id);
-    if (c && typeof c.memoImg === 'string') return c.memoImg;
-
-    const o = dinoOverride[id];
-    if (o && typeof o.memoImg === 'string') return o.memoImg;
-
-    return '';
-  }
-
-  function setMemoImgForDinoId(id, memoImg) {
-    const cIdx = custom.dino.findIndex(x => x.id === id);
-    if (cIdx >= 0) {
-      custom.dino[cIdx] = { ...custom.dino[cIdx], memoImg: String(memoImg || '') };
-      saveJSON(LS.DINO_CUSTOM, custom.dino);
-      return;
-    }
-
-    const o = dinoOverride[id] || {};
-    dinoOverride[id] = { ...o, memoImg: String(memoImg || '') };
-    saveJSON(LS.DINO_OVERRIDE, dinoOverride);
-  }
-
   function applyMemoToCard(card, did) {
     const memo = String(getMemoForDinoId(did) || '').trim();
-    const memoImg = String(getMemoImgForDinoId(did) || '').trim();
     const memoEl = $('.js-memo', card);
     if (!memoEl) return;
-
-    // メモ欄からの画像「追加/削除」操作は廃止（管理画面の追加/編集で行う）
-    if (!memoEl.dataset.built) {
-      memoEl.dataset.built = '1';
-      memoEl.innerHTML = `
-        <div class="memoRow">
-          <div class="memoText js-memoText"></div>
-        </div>
-        <div class="memoThumb js-memoThumb" style="display:none;">
-          <img class="memoThumbImg js-memoThumbImg" alt="">
-        </div>
-      `;
-
-      const thumbImg = $('.js-memoThumbImg', memoEl);
-      thumbImg?.addEventListener('click', () => {
-        const url = String(getMemoImgForDinoId(did) || '').trim();
-        if (url) openImgViewer(url);
-      });
-    }
-
-    const textEl = $('.js-memoText', memoEl);
-    if (textEl) textEl.textContent = memo;
-
-    const thumb = $('.js-memoThumb', memoEl);
-    const thumbImg = $('.js-memoThumbImg', memoEl);
-
-    if (thumb && thumbImg) {
-      if (memoImg) {
-        thumbImg.src = memoImg;
-        thumb.style.display = 'block';
-      } else {
-        thumbImg.removeAttribute('src');
-        thumb.style.display = 'none';
-      }
-    }
-
-    memoEl.style.display = (memo || memoImg) ? 'block' : 'none';
+    memoEl.textContent = memo;
+    memoEl.style.display = memo ? 'block' : 'none';
   }
 
-function buildDinoCard(d, keyOverride = null) {
+  function buildDinoCard(d, keyOverride = null) {
     const sp = getSpecialCfgForDino(d);
     const key = keyOverride || d.id;
     const s = ensureDinoState(key, d.defType, sp);
@@ -1904,113 +1833,42 @@ const tOut = String(type).replace('(指定)', '');
     return card;
   }
 
-  function getMemoForItemId(id) {
-    const c = custom.item.find(x => x.id === id);
-    if (c && typeof c.memo === 'string') return c.memo;
-    return '';
-  }
+  function buildItemCard(it) {
+    const s = ensureItemState(it.id);
 
-  function getMemoImgForItemId(id) {
-    const c = custom.item.find(x => x.id === id);
-    if (c && typeof c.memoImg === 'string') return c.memoImg;
-    return '';
-  }
+    const card = document.createElement('div');
+    card.className = 'card isCollapsed';
+    card.dataset.card = '1';
+    card.dataset.key = it.id;
+    card.dataset.name = it.name;
+    card.dataset.kind = 'item';
 
-  function setMemoImgForItemId(id, memoImg) {
-    const idx = custom.item.findIndex(x => x.id === id);
-    if (idx >= 0) {
-      custom.item[idx] = { ...custom.item[idx], memoImg: String(memoImg || '') };
-      saveJSON(LS.ITEM_CUSTOM, custom.item);
-      return;
-    }
+    card.innerHTML = `
+      <div class="cardInner">
+        <div class="cardHead">
+          <button class="cardToggle" type="button" aria-label="開閉" data-act="toggle"></button>
 
-    const base = items.find(x => x.id === id) || null;
-    custom.item.push({
-      id,
-      name: base?.name || '',
-      unit: Number(base?.unit || 1),
-      price: Number(base?.price || 0),
-      memo: '',
-      memoImg: String(memoImg || ''),
-    });
-    saveJSON(LS.ITEM_CUSTOM, custom.item);
-  }
+          <div class="nameWrap">
+            <div class="name"></div>
+          </div>
 
-  function applyMemoToItemCard(card, iid) {
-    const memo = String(getMemoForItemId(iid) || '').trim();
-    const memoImg = String(getMemoImgForItemId(iid) || '').trim();
-    const memoEl = $('.js-memo', card);
-    if (!memoEl) return;
-
-    if (!memoEl.dataset.built) {
-      memoEl.dataset.built = '1';
-      memoEl.innerHTML = `
-        <div class="memoRow">
-          <div class="memoText js-memoText"></div>
-
-          <div class="memoBtns">
-            <label class="memoImgBtn" title="画像を追加">
-              <input class="memoImgInput js-memoImgInput" type="file" accept="image/*">
-              画像
-            </label>
-            <button class="memoImgClear js-memoImgClear" type="button" data-act="memoClear">×</button>
+          <div class="right">
+            <div class="unit"></div>
           </div>
         </div>
-        <div class="memoThumb js-memoThumb" style="display:none;">
-          <img class="memoThumbImg js-memoThumbImg" alt="">
+
+        <div class="controls">
+          <div class="stepper" data-flex="1">
+            <button class="btn" type="button" data-act="-">−</button>
+            <div class="val js-q">0</div>
+            <button class="btn" type="button" data-act="+">＋</button>
+          </div>
         </div>
-      `;
+      </div>
+    `;
 
-      const inp = $('.js-memoImgInput', memoEl);
-      inp?.addEventListener('change', async (ev) => {
-        const file = ev.target?.files?.[0];
-        if (!file) return;
-        const url = afunction applyMemoToItemCard(card, iid) {
-    const memo = String(getMemoForItemId(iid) || '').trim();
-    const memoImg = String(getMemoImgForItemId(iid) || '').trim();
-    const memoEl = $('.js-memo', card);
-    if (!memoEl) return;
-
-    // メモ欄からの画像「追加/削除」操作は廃止（管理画面の追加/編集で行う）
-    if (!memoEl.dataset.built) {
-      memoEl.dataset.built = '1';
-      memoEl.innerHTML = `
-        <div class="memoRow">
-          <div class="memoText js-memoText"></div>
-        </div>
-        <div class="memoThumb js-memoThumb" style="display:none;">
-          <img class="memoThumbImg js-memoThumbImg" alt="">
-        </div>
-      `;
-
-      const thumbImg = $('.js-memoThumbImg', memoEl);
-      thumbImg?.addEventListener('click', () => {
-        const url = String(getMemoImgForItemId(iid) || '').trim();
-        if (url) openImgViewer(url);
-      });
-    }
-
-    const textEl = $('.js-memoText', memoEl);
-    if (textEl) textEl.textContent = memo;
-
-    const thumb = $('.js-memoThumb', memoEl);
-    const thumbImg = $('.js-memoThumbImg', memoEl);
-
-    if (thumb && thumbImg) {
-      if (memoImg) {
-        thumbImg.src = memoImg;
-        thumb.style.display = 'block';
-      } else {
-        thumbImg.removeAttribute('src');
-        thumb.style.display = 'none';
-      }
-    }
-
-    memoEl.style.display = (memo || memoImg) ? 'block' : 'none';
-  }
-
-xtContent = `${it.unit}個/単価${it.price}円`;
-    applyMemoToItemCard(card, it.id);
+    $('.name', card).textContent = displayName(it.name);
+    $('.unit', card).textContent = `${it.unit}個/単価${it.price}円`;
 
     const toggle = $('.cardToggle', card);
 
@@ -2200,7 +2058,7 @@ const top = document.createElement('div');
       r.className = 'mRow';
       r.innerHTML = `
         <div class="mName">${escapeHtml(obj.name)}</div>
-        <button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">✎</button>
+        ${activeTab === 'dino' ? `<button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">✎</button>` : ``}
         <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
         <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
         <button class="sBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
@@ -2300,11 +2158,6 @@ if (act === 'gojuon') {
         openEditDino(id);
         return;
       }
-
-      if (act === 'edit' && kind === 'item') {
-        openEditItem(id);
-        return;
-      }
     });
 
     return wrap;
@@ -2328,19 +2181,6 @@ if (act === 'gojuon') {
 
         <div class="editLabel">メモ</div>
         <textarea id="addMemo" class="editTextarea" placeholder="例：在庫少 / 予約あり / 取り置き不可"></textarea>
-
-        <div class="editLabel">メモ画像</div>
-        <div class="memoBtns">
-          <label class="memoImgBtn" title="画像を追加">
-            <input id="addMemoImgInput" class="memoImgInput" type="file" accept="image/*">
-            画像
-          </label>
-          <button id="addMemoImgClear" class="memoImgClear" type="button" data-act="memoImgClear">×</button>
-        </div>
-        <div id="addMemoImgThumb" class="memoThumb" style="display:none;">
-          <img id="addMemoImgThumbImg" class="memoThumbImg" alt="">
-        </div>
-
 
         <div style="height:1px;background:rgba(255,255,255,.10);margin:6px 0;"></div>
 
@@ -2372,45 +2212,7 @@ if (act === 'gojuon') {
       </div>
     `;
 
-    
-    // --- メモ画像（追加画面：一時保持） ---
-    let tempMemoImg = '';
-    const addMemoImgInp = $('#addMemoImgInput', box);
-    const addMemoImgThumb = $('#addMemoImgThumb', box);
-    const addMemoImgThumbImg = $('#addMemoImgThumbImg', box);
-    const addMemoImgClear = $('#addMemoImgClear', box);
-
-    const syncAddMemoImgUI = () => {
-      if (addMemoImgThumb && addMemoImgThumbImg) {
-        if (tempMemoImg) {
-          addMemoImgThumbImg.src = tempMemoImg;
-          addMemoImgThumb.style.display = 'block';
-        } else {
-          addMemoImgThumbImg.removeAttribute('src');
-          addMemoImgThumb.style.display = 'none';
-        }
-      }
-      if (addMemoImgClear) addMemoImgClear.style.display = tempMemoImg ? 'inline-flex' : 'none';
-    };
-
-    addMemoImgInp?.addEventListener('change', async (ev) => {
-      const file = ev.target?.files?.[0];
-      if (!file) return;
-      const url = await readFileAsDataURL(file);
-      if (!url) return openToast('画像の読み込みに失敗しました');
-      tempMemoImg = url;
-      syncAddMemoImgUI();
-      openToast('画像をセットしました');
-      ev.target.value = '';
-    });
-
-    addMemoImgThumbImg?.addEventListener('click', () => {
-      if (tempMemoImg) openImgViewer(tempMemoImg);
-    });
-
-    syncAddMemoImgUI();
-
-const spEnable = $('#spEnable', box);
+    const spEnable = $('#spEnable', box);
     const spBox = $('#spBox', box);
     const spAllowSex = $('#spAllowSex', box);
 
@@ -2427,12 +2229,6 @@ const spEnable = $('#spEnable', box);
       const act = e.target?.dataset?.act;
       if (!act) return;
 
-      if (act === 'memoImgClear') {
-        tempMemoImg = '';
-        syncAddMemoImgUI();
-        return;
-      }
-
       if (act === 'cancel') {
         closeEditModal();
         return;
@@ -2446,7 +2242,7 @@ const spEnable = $('#spEnable', box);
 
         const id = stableId('d', name);
         const existIdx = custom.dino.findIndex(x => x.id === id);
-        const rec = { id, name, defType, memo, memoImg: String(tempMemoImg || ''), _baseName: name };
+        const rec = { id, name, defType, memo, _baseName: name };
         if (existIdx >= 0) custom.dino[existIdx] = rec;
         else custom.dino.push(rec);
         saveJSON(LS.DINO_CUSTOM, custom.dino);
@@ -2483,22 +2279,6 @@ const spEnable = $('#spEnable', box);
         <div class="editLabel">価格（1セット）</div>
         <input id="addPrice" class="editInput" type="number" inputmode="numeric" value="0">
 
-        <div class="editLabel">メモ</div>
-        <textarea id="addMemo" class="editTextarea" placeholder="例：在庫少 / 予約あり / 取り置き不可"></textarea>
-
-        <div class="editLabel">メモ画像</div>
-        <div class="memoBtns">
-          <label class="memoImgBtn" title="画像を追加">
-            <input id="addMemoImgInput" class="memoImgInput" type="file" accept="image/*">
-            画像
-          </label>
-          <button id="addMemoImgClear" class="memoImgClear" type="button" data-act="memoImgClear">×</button>
-        </div>
-        <div id="addMemoImgThumb" class="memoThumb" style="display:none;">
-          <img id="addMemoImgThumbImg" class="memoThumbImg" alt="">
-        </div>
-
-
         <div class="editBtns">
           <button class="ghost" type="button" data-act="cancel">キャンセル</button>
           <button class="pill" type="button" data-act="save">保存</button>
@@ -2507,54 +2287,10 @@ const spEnable = $('#spEnable', box);
     `;
 
     openEditModal('追加 / 編集', box);
-    // --- メモ画像（アイテム追加画面：一時保持） ---
-    let tempMemoImg = '';
-    const addMemoImgInp = $('#addMemoImgInput', box);
-    const addMemoImgThumb = $('#addMemoImgThumb', box);
-    const addMemoImgThumbImg = $('#addMemoImgThumbImg', box);
-    const addMemoImgClear = $('#addMemoImgClear', box);
-
-    const syncAddMemoImgUI = () => {
-      if (addMemoImgThumb && addMemoImgThumbImg) {
-        if (tempMemoImg) {
-          addMemoImgThumbImg.src = tempMemoImg;
-          addMemoImgThumb.style.display = 'block';
-        } else {
-          addMemoImgThumbImg.removeAttribute('src');
-          addMemoImgThumb.style.display = 'none';
-        }
-      }
-      if (addMemoImgClear) addMemoImgClear.style.display = tempMemoImg ? 'inline-flex' : 'none';
-    };
-
-    addMemoImgInp?.addEventListener('change', async (ev) => {
-      const file = ev.target?.files?.[0];
-      if (!file) return;
-      const url = await readFileAsDataURL(file);
-      if (!url) return openToast('画像の読み込みに失敗しました');
-      tempMemoImg = url;
-      syncAddMemoImgUI();
-      openToast('画像をセットしました');
-      ev.target.value = '';
-    });
-
-    addMemoImgThumbImg?.addEventListener('click', () => {
-      if (tempMemoImg) openImgViewer(tempMemoImg);
-    });
-
-    syncAddMemoImgUI();
-
-
 
     box.addEventListener('click', (e) => {
       const act = e.target?.dataset?.act;
       if (!act) return;
-
-      if (act === 'memoImgClear') {
-        tempMemoImg = '';
-        syncAddMemoImgUI();
-        return;
-      }
 
       if (act === 'cancel') {
         closeEditModal();
@@ -2571,8 +2307,7 @@ const spEnable = $('#spEnable', box);
 
         const id = stableId('i', name);
         const existIdx = custom.item.findIndex(x => x.id === id);
-        const memo = ($('#addMemo', box)?.value || '').trim();
-        const rec = { id, name, unit, price, memo, memoImg: String(tempMemoImg || '') };
+        const rec = { id, name, unit, price };
         if (existIdx >= 0) custom.item[existIdx] = rec;
         else custom.item.push(rec);
         saveJSON(LS.ITEM_CUSTOM, custom.item);
@@ -2587,141 +2322,12 @@ const spEnable = $('#spEnable', box);
     });
   }
 
-  
-  function openEditItem(id) {
-    const it = items.find(x => x.id === id);
-    if (!it) return;
-
-    const curMemo = getMemoForItemId(id);
-    const curMemoImg = getMemoImgForItemId(id);
-
-    const box = document.createElement('div');
-    box.innerHTML = `
-      <div class="editForm">
-        <div class="editLabel">名前</div>
-        <input id="editName" class="editInput" type="text" value="${escapeHtml(it.name)}" autocomplete="off">
-
-        <div class="editLabel">1セットあたり個数</div>
-        <input id="editUnit" class="editInput" type="number" inputmode="numeric" value="${Number(it.unit || 1)}">
-
-        <div class="editLabel">価格（1セット）</div>
-        <input id="editPrice" class="editInput" type="number" inputmode="numeric" value="${Number(it.price || 0)}">
-
-        <div class="editLabel">メモ</div>
-        <textarea id="editMemo" class="editTextarea" placeholder="例：在庫少 / 予約あり / 取り置き不可">${escapeHtml(curMemo || '')}</textarea>
-
-        <div class="editLabel">メモ画像</div>
-        <div class="memoBtns">
-          <label class="memoImgBtn" title="画像を追加">
-            <input id="editMemoImgInput" class="memoImgInput" type="file" accept="image/*">
-            画像
-          </label>
-          <button id="editMemoImgClear" class="memoImgClear" type="button" data-act="memoImgClear">×</button>
-        </div>
-        <div id="editMemoImgThumb" class="memoThumb" style="display:none;">
-          <img id="editMemoImgThumbImg" class="memoThumbImg" alt="">
-        </div>
-
-        <div class="editBtns">
-          <button class="ghost" type="button" data-act="cancel">キャンセル</button>
-          <button class="pill" type="button" data-act="save">保存</button>
-        </div>
-      </div>
-    `;
-
-    openEditModal('追加 / 編集', box);
-
-    // --- メモ画像（編集画面） ---
-    const editMemoImgInp = $('#editMemoImgInput', box);
-    const editMemoImgThumb = $('#editMemoImgThumb', box);
-    const editMemoImgThumbImg = $('#editMemoImgThumbImg', box);
-    const editMemoImgClear = $('#editMemoImgClear', box);
-
-    const syncEditMemoImgUI = () => {
-      const url = String(getMemoImgForItemId(id) || '').trim();
-      if (editMemoImgThumb && editMemoImgThumbImg) {
-        if (url) {
-          editMemoImgThumbImg.src = url;
-          editMemoImgThumb.style.display = 'block';
-        } else {
-          editMemoImgThumbImg.removeAttribute('src');
-          editMemoImgThumb.style.display = 'none';
-        }
-      }
-      if (editMemoImgClear) editMemoImgClear.style.display = url ? 'inline-flex' : 'none';
-    };
-
-    if (curMemoImg) setMemoImgForItemId(id, curMemoImg);
-    syncEditMemoImgUI();
-
-    editMemoImgInp?.addEventListener('change', async (ev) => {
-      const file = ev.target?.files?.[0];
-      if (!file) return;
-      const url = await readFileAsDataURL(file);
-      if (!url) return openToast('画像の読み込みに失敗しました');
-      setMemoImgForItemId(id, url);
-      syncEditMemoImgUI();
-      openToast('画像を保存しました');
-      ev.target.value = '';
-    });
-
-    editMemoImgThumbImg?.addEventListener('click', () => {
-      const url = String(getMemoImgForItemId(id) || '').trim();
-      if (url) openImgViewer(url);
-    });
-
-    box.addEventListener('click', (e) => {
-      const act = e.target?.dataset?.act;
-      if (!act) return;
-
-      if (act === 'memoImgClear') {
-        setMemoImgForItemId(id, '');
-        syncEditMemoImgUI();
-        openToast('画像を削除しました');
-        return;
-      }
-
-      if (act === 'cancel') {
-        closeEditModal();
-        return;
-      }
-
-      if (act === 'save') {
-        const newName = ($('#editName', box)?.value || '').trim();
-        const unit = Number($('#editUnit', box)?.value || 1);
-        const price = Number($('#editPrice', box)?.value || 0);
-        const memo = ($('#editMemo', box)?.value || '').trim();
-
-        if (!newName) return openToast('名前を入力してください');
-        if (!Number.isFinite(unit) || unit <= 0) return openToast('個数は1以上');
-        if (!Number.isFinite(price) || price < 0) return openToast('価格が不正です');
-
-        const memoImg = String(getMemoImgForItemId(id) || '').trim();
-
-        const idx = custom.item.findIndex(x => x.id === id);
-        const rec = { id, name: newName, unit, price, memo, memoImg };
-        if (idx >= 0) custom.item[idx] = rec;
-        else custom.item.push(rec);
-        saveJSON(LS.ITEM_CUSTOM, custom.item);
-
-        const ii = items.findIndex(x => x.id === id);
-        if (ii >= 0) items[ii] = Object.assign({}, items[ii], { name: newName, unit, price });
-
-        closeEditModal();
-        renderList();
-        setManageTab('catalog');
-        openToast('保存しました');
-      }
-    });
-  }
-
-function openEditDino(id) {
+  function openEditDino(id) {
     const d = dinos.find(x => x.id === id);
     if (!d) return;
 
     const curSp = specialCfg[id] || getSpecialCfgForDino(d) || null;
     const curMemo = getMemoForDinoId(id);
-    const curMemoImg = getMemoImgForDinoId(id);
 
     const box = document.createElement('div');
     box.innerHTML = `
@@ -2736,19 +2342,6 @@ function openEditDino(id) {
 
         <div class="editLabel">メモ</div>
         <textarea id="editMemo" class="editTextarea" placeholder="例：在庫少 / 予約あり / 取り置き不可">${escapeHtml(curMemo || '')}</textarea>
-
-        <div class="editLabel">メモ画像</div>
-        <div class="memoBtns">
-          <label class="memoImgBtn" title="画像を追加">
-            <input id="editMemoImgInput" class="memoImgInput" type="file" accept="image/*">
-            画像
-          </label>
-          <button id="editMemoImgClear" class="memoImgClear" type="button" data-act="memoImgClear">×</button>
-        </div>
-        <div id="editMemoImgThumb" class="memoThumb" style="display:none;">
-          <img id="editMemoImgThumbImg" class="memoThumbImg" alt="">
-        </div>
-
 
         <div style="height:1px;background:rgba(255,255,255,.10);margin:6px 0;"></div>
 
@@ -2798,58 +2391,10 @@ function openEditDino(id) {
     });
 
     openEditModal('追加 / 編集', box);
-    // --- メモ画像（編集画面） ---
-    const editMemoImgInp = $('#editMemoImgInput', box);
-    const editMemoImgThumb = $('#editMemoImgThumb', box);
-    const editMemoImgThumbImg = $('#editMemoImgThumbImg', box);
-    const editMemoImgClear = $('#editMemoImgClear', box);
-
-    const syncEditMemoImgUI = () => {
-      const url = String(getMemoImgForDinoId(id) || '').trim();
-      if (editMemoImgThumb && editMemoImgThumbImg) {
-        if (url) {
-          editMemoImgThumbImg.src = url;
-          editMemoImgThumb.style.display = 'block';
-        } else {
-          editMemoImgThumbImg.removeAttribute('src');
-          editMemoImgThumb.style.display = 'none';
-        }
-      }
-      if (editMemoImgClear) editMemoImgClear.style.display = url ? 'inline-flex' : 'none';
-    };
-
-    // 初期表示（curMemoImgを反映）
-    if (curMemoImg) setMemoImgForDinoId(id, curMemoImg);
-    syncEditMemoImgUI();
-
-    editMemoImgInp?.addEventListener('change', async (ev) => {
-      const file = ev.target?.files?.[0];
-      if (!file) return;
-      const url = await readFileAsDataURL(file);
-      if (!url) return openToast('画像の読み込みに失敗しました');
-      setMemoImgForDinoId(id, url);
-      syncEditMemoImgUI();
-      openToast('画像を保存しました');
-      ev.target.value = '';
-    });
-
-    editMemoImgThumbImg?.addEventListener('click', () => {
-      const url = String(getMemoImgForDinoId(id) || '').trim();
-      if (url) openImgViewer(url);
-    });
-
-
 
     box.addEventListener('click', (e) => {
       const act = e.target?.dataset?.act;
       if (!act) return;
-
-      if (act === 'memoImgClear') {
-        setMemoImgForDinoId(id, '');
-        syncEditMemoImgUI();
-        openToast('画像を削除しました');
-        return;
-      }
 
       if (act === 'cancel') {
         closeEditModal();
@@ -2864,22 +2409,10 @@ function openEditDino(id) {
 
         const cIdx = custom.dino.findIndex(x => x.id === id);
         if (cIdx >= 0) {
-          custom.dino[cIdx] = {
-            id,
-            name: newName,
-            defType: newDef,
-            memo,
-            memoImg: String(custom.dino[cIdx].memoImg || ''),
-            _baseName: custom.dino[cIdx]._baseName || newName,
-          };
+          custom.dino[cIdx] = { id, name: newName, defType: newDef, memo, _baseName: custom.dino[cIdx]._baseName || newName };
           saveJSON(LS.DINO_CUSTOM, custom.dino);
         } else {
-          dinoOverride[id] = {
-            ...(dinoOverride[id] || {}),
-            name: newName,
-            defType: newDef,
-            memo,
-          };
+          dinoOverride[id] = { name: newName, defType: newDef, memo };
           saveJSON(LS.DINO_OVERRIDE, dinoOverride);
         }
 
