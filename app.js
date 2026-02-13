@@ -1109,15 +1109,15 @@ function sortByOrder(list, kind) {
             let line = '';
             if (isPair) {
               if (m === f) {
-                line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+                line = `${displayName(d.name)}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
               } else {
                 const p = [];
                 if (m > 0) p.push(`♂︎×${m}`);
                 if (f > 0) p.push(`♀︎×${f}`);
-                line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+                line = `${displayName(d.name)}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
               }
             } else {
-              line = `${d.name}${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
+              line = `${displayName(d.name)}${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
             }
 
             lines.push(`${idx}. ${line}`);
@@ -1132,7 +1132,7 @@ function sortByOrder(list, kind) {
             const price = allPrice;
             if (price > 0) {
               sum += price;
-              lines.push(`${idx}. ${d.name}全種 = ${price.toLocaleString('ja-JP')}円`);
+              lines.push(`${idx}. ${displayName(d.name)}全種 = ${price.toLocaleString('ja-JP')}円`);
               idx++;
             }
             continue;
@@ -1145,7 +1145,7 @@ function sortByOrder(list, kind) {
           sum += price;
 
           const seq = picks.map(n => circled(n)).join('');
-          lines.push(`${idx}. ${d.name}${seq} = ${price.toLocaleString('ja-JP')}円`);
+          lines.push(`${idx}. ${displayName(d.name)}${seq} = ${price.toLocaleString('ja-JP')}円`);
           idx++;
           continue;
         }
@@ -1166,15 +1166,15 @@ function sortByOrder(list, kind) {
         let line = '';
         if (isPair) {
           if (m === f) {
-            line = `${d.name}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+            line = `${displayName(d.name)}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
           } else {
             const p = [];
             if (m > 0) p.push(`♂︎×${m}`);
             if (f > 0) p.push(`♀︎×${f}`);
-            line = `${d.name}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+            line = `${displayName(d.name)}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
           }
         } else {
-          line = `${d.name}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+          line = `${displayName(d.name)}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
         }
 
         lines.push(`${idx}. ${line}`);
@@ -1193,7 +1193,7 @@ function sortByOrder(list, kind) {
       const price = qty * Number(it.price || 0);
       sum += price;
 
-      lines.push(`${idx}. ${it.name} × ${totalCount} = ${price.toLocaleString('ja-JP')}円`);
+      lines.push(`${idx}. ${displayName(it.name)} × ${totalCount} = ${price.toLocaleString('ja-JP')}円`);
       idx++;
     }
 
@@ -1779,19 +1779,27 @@ requestAnimationFrame(() => installLeftToggleHit(card));
         const unitPrice = prices[type] || 0;
         const price = unitPrice * qty;
 
-        // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵 オス×1 ︎︎ メス×1= 100円）
+        // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵×1 = 30円）
 const tOut = String(type).replace('(指定)', '');
+        const baseType = tOut; // (指定)を外した表示名
+        const hideSex = (baseType === '受精卵' || baseType === '胚');
         const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
-        const parts = [];
-        if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
-        if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
 
-        if (isPair && m === f && m > 0) {
-          priceEl.textContent = `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
-        } else if (parts.length) {
-          priceEl.innerHTML = `${tOut} ${parts.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
-        } else {
+        if (hideSex) {
+          // ✅ 受精卵・胚はオスメス表記を出さない
           priceEl.textContent = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+        } else {
+          const parts = [];
+          if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
+          if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
+
+          if (isPair && m === f && m > 0) {
+            priceEl.textContent = `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+          } else if (parts.length) {
+            priceEl.innerHTML = `${tOut} ${parts.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+          } else {
+            priceEl.textContent = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+          }
         }
       }
 
@@ -1827,19 +1835,27 @@ const tOut = String(type).replace('(指定)', '');
         const unitPrice = prices[type] || 0;
         const price = unitPrice * qty;
 
-        // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵 オス×1 ︎︎ メス×1= 100円）
+        // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵×1 = 30円）
 const tOut = String(type).replace('(指定)', '');
+        const baseType = tOut; // (指定)を外した表示名
+        const hideSex = (baseType === '受精卵' || baseType === '胚');
         const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
-        const parts = [];
-        if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
-        if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
 
-        if (isPair && m === f && m > 0) {
-          priceEl.textContent = `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
-        } else if (parts.length) {
-          priceEl.innerHTML = `${tOut} ${parts.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
-        } else {
+        if (hideSex) {
+          // ✅ 受精卵・胚はオスメス表記を出さない
           priceEl.textContent = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+        } else {
+          const parts = [];
+          if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
+          if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
+
+          if (isPair && m === f && m > 0) {
+            priceEl.textContent = `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+          } else if (parts.length) {
+            priceEl.innerHTML = `${tOut} ${parts.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+          } else {
+            priceEl.textContent = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+          }
         }
       }
       mEl.textContent = String(s.m || 0);
