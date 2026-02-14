@@ -1213,8 +1213,22 @@ button{cursor:pointer}
 /* 画像出力：縦横入力の右に生成ボタン */
 .exportGridCtrl{
   display:flex;
-  align-items:center;
+  flex-direction:column;   /* ← 縦並びに変更 */
+  gap:12px;
+  align-items:center;      /* ← 横中央寄せ */
+}
+
+/* 縦横入力だけ横並び維持 */
+.exportGridInputs{
+  display:flex;
   gap:10px;
+  align-items:center;
+  justify-content:center;
+}
+
+/* 生成ボタンを完全中央 */
+.exportGridBtn{
+  align-self:center;
 }
 .exportGridCtrl .exportGridBtn{
   margin-left:auto;
