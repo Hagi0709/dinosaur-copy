@@ -3086,7 +3086,7 @@ if (act === 'gojuon') {
     ROOM9: '',
   };
 
-  let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '2580');
+  let entryPw = loadJSON(LS.ROOM_ENTRY_PW, '0000');
   let roomPw = loadJSON(LS.ROOM_PW, DEFAULT_ROOM_PW);
   let roomUser = loadJSON(LS.ROOM_USER, DEFAULT_ROOM_USER);
   let roomCopyCfg = loadJSON(LS.ROOM_COPY_CFG, {
