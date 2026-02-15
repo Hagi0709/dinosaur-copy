@@ -892,68 +892,6 @@ button{cursor:pointer}
   word-break:break-word;
 }
 
-.memoRow{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:10px;
-}
-
-.memoText{
-  flex:1;
-  min-width:0;
-}
-
-.memoBtns{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  flex:0 0 auto;
-}
-
-.memoImgBtn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:6px 10px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.06);
-  font-weight:900;
-  font-size:12px;
-  cursor:pointer;
-  user-select:none;
-}
-
-.memoImgInput{ display:none; }
-
-.memoImgClear{
-  display:none;
-  width:30px;
-  height:30px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.06);
-  color:rgba(255,255,255,.90);
-  font-weight:900;
-  cursor:pointer;
-}
-
-.memoThumb{
-  margin-top:10px;
-  border-radius:14px;
-  overflow:hidden;
-  border:1px solid rgba(255,255,255,.12);
-}
-
-.memoThumbImg{
-  width:100%;
-  display:block;
-  max-height:220px;
-  object-fit:cover;
-  cursor:pointer;
-}
-
 .editBtns{
   display:flex;
   gap:10px;
@@ -1150,8 +1088,8 @@ button{cursor:pointer}
 .exportGalleryBody{ padding:12px 14px 14px; overflow:auto; max-height:calc(86vh - 70px); }
 .exportGalleryHint{ font-size:12px; color:rgba(255,255,255,.70); margin-bottom:10px; }
 
-.exportGridCtrl{ display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.05); margin-bottom:12px;  align-items:center;}
-.exportGridInputs{ display:flex; align-items:center; gap:10px;  justify-content:center;}
+.exportGridCtrl{ display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.05); margin-bottom:12px; }
+.exportGridInputs{ display:flex; align-items:center; gap:10px; }
 .exportGridLabel{ font-weight:900; color:rgba(255,255,255,.75); }
 .exportGridInput{ width:70px; height:40px; border-radius:14px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.08); color:#fff; text-align:center; font-weight:950; }
 .exportGridExample{ font-size:12px; color:rgba(255,255,255,.60); }
@@ -1210,26 +1148,20 @@ button{cursor:pointer}
 }
 
 
-/* 画像出力：縦横入力の右に生成ボタン */
+/* ===== 画像出力：縦横入力の下に生成ボタン（中央） ===== */
 .exportGridCtrl{
   display:flex;
-  flex-direction:column;   /* ← 縦並びに変更 */
+  flex-direction:column;
+  align-items:center;
   gap:12px;
-  align-items:center;      /* ← 横中央寄せ */
 }
-
-/* 縦横入力だけ横並び維持 */
 .exportGridInputs{
   display:flex;
-  gap:10px;
   align-items:center;
   justify-content:center;
+  gap:10px;
 }
-
-/* 生成ボタンを完全中央 */
 .exportGridBtn{
   align-self:center;
-}
-.exportGridCtrl .exportGridBtn{
-  margin-left:auto;
+  margin-left:0;
 }
