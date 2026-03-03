@@ -4460,6 +4460,7 @@ om(byDino.values()).sort((a, b) => (b.totalAmt - a.totalAmt) || ((b.eggQty + b.a
     try { ScrollLock.lock(); } catch {}
     ov.style.display = 'flex';
   }
+  }
 
   el.pos?.addEventListener('click', () => {
     // POSはメニューを挟まず「入力」へ直行
@@ -4536,7 +4537,6 @@ om(byDino.values()).sort((a, b) => (b.totalAmt - a.totalAmt) || ((b.eggQty + b.a
     // ここで落ちても「何も表示されない」を回避する
     try { setTab('dino'); } catch {}
   });
-})()
   function openEditItem(id) {
     const it = items.find(x => x.id === id);
     if (!it) return;
@@ -4660,4 +4660,4 @@ om(byDino.values()).sort((a, b) => (b.totalAmt - a.totalAmt) || ((b.eggQty + b.a
     });
   }
 
-;
+})();
