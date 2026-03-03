@@ -1202,18 +1202,15 @@ el.out.value = lines.join('\n');
     el.total.textContent = yen(sum);
     fitTotalText();
 
-    el.out.value =
-`この度はご検討いただきありがとうございます！
-ご希望内容は以下となります👇🏻
-
-${lines.join('\n')}
-ーーーーーーーーーーーーーーー
-計：${sum.toLocaleString('ja-JP')}円
-最短納品目安 : ${el.delivery.value}
-
-ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻
-
-また、追加や変更などありましたら、お気軽にお申し付けください👍🏻`;
+el.out.value =
+  "この度はご検討いただきありがとうございます！\n" +
+  "ご希望内容は以下となります👇🏻\n\n" +
+  lines.join('\n') + "\n" +
+  "ーーーーーーーーーーーーーーー\n" +
+  "計：" + sum.toLocaleString('ja-JP') + "円\n" +
+  "最短納品目安 : " + el.delivery.value + "\n\n" +
+  "ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻\n\n" +
+  "また、追加や変更などありましたら、お気軽にお申し付けください👍🏻";
   }
 
   /* ========= collapse & search ========= */
