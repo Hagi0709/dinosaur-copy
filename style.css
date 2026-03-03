@@ -109,10 +109,9 @@ button{cursor:pointer}
   padding:0 12px;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.10);
+  background:rgba(255,255,255,.08);
   color:#fff;
-  font-weight:950;
-  letter-spacing:.2px;
+  font-weight:900; /* コピーと合わせる */
   white-space:nowrap;
 }
 
@@ -156,6 +155,7 @@ button{cursor:pointer}
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
   color:#fff;
+  font-weight:900; /* コピーと合わせる */
   font-size:13px;
   padding:0 34px 0 10px;
   position:relative;
@@ -1183,4 +1183,70 @@ button{cursor:pointer}
 .exportGridBtn{
   align-self:center;
   margin-left:0;
+}
+
+
+/* ✅ 確認モーダルを最前面に（POS等のオーバーレイより上） */
+#confirmOverlay{ z-index:11000; }
+
+/* ========= POS report tables ========= */
+.posTopBar{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-bottom:10px;
+}
+.posTopLabel{ font-weight:900; }
+.posTopTotal{
+  margin-left:auto;
+  font-weight:950;
+  color:rgba(120,255,179,.95);
+  white-space:nowrap;
+}
+.posSectionTitle{
+  font-weight:950;
+  margin:12px 0 6px;
+}
+.posTableWrap{
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;
+}
+.posTable{
+  width:100%;
+  border-collapse:collapse;
+  table-layout:fixed;
+  font-size:12px;
+}
+.posTable thead tr{
+  background:rgba(255,255,255,.06);
+}
+.posTable th{
+  text-align:left;
+  padding:8px 10px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.posCell{
+  padding:8px 10px;
+  border-top:1px solid rgba(255,255,255,.06);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.posR{ text-align:right; }
+.posNum{ font-variant-numeric: tabular-nums; }
+.posStrong{ font-weight:900; }
+.posDel{
+  width:32px;
+  height:26px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-weight:900;
+  line-height:1;
+  cursor:pointer;
 }
