@@ -93,6 +93,7 @@ const BUILD_VERSION = '2026-02-11 23:30';
     SPECIAL_CFG: 'special_cfg_v1',
     POS_SALES: 'pos_sales_v1',
 
+    POS_DATE: 'pos_date_v1',
   };
 
   const loadJSON = (k, fb) => {
@@ -3546,6 +3547,8 @@ const prev = btn.textContent;
   el.copy?.addEventListener('click', async () => {
     const text = el.out.value.trim();
     if (!text) return;
+
+    // 1) まずコピーは必ず実行（POS記録は後で確認）
     try {
       await navigator.clipboard.writeText(text);
       const prev = el.copy.textContent;
@@ -3553,27 +3556,57 @@ const prev = btn.textContent;
       el.copy.disabled = true;
       setTimeout(() => { el.copy.textContent = prev; el.copy.disabled = false; }, 1100);
     } catch {
+      // iOS向けフォールバック
       el.out.focus();
       el.out.select();
       document.execCommand('copy');
     }
+
+    // 2) コピー後にPOSへ自動記録（確認あり）
+    try {
+      if (typeof posAutoRecordFromCopy === 'function') {
+        await posAutoRecordFromCopy();
+      }
+    } catch {}
   });
+
 
 
   /* ========= POS ========= */
   const pos = {
     sales: loadJSON(LS.POS_SALES, []), // flat lines
+    date: String(localStorage.getItem(LS.POS_DATE) || '').trim(), // YYYY-MM-DD
   };
+  if (!Array.isArray(pos.sales)) pos.sales = [];
+  // 既存データにIDが無ければ補完（削除用）
+  for (const s of pos.sales) {
+    if (!s || typeof s !== 'object') continue;
+    if (!s.id) s.id = 'pos_' + uid();
+    if (!s.month) s.month = monthKeyFromTs(s.ts);
+  }
 
-  function fmtDateTime(ts) {
-    const d = new Date(Number(ts) || Date.now());
+  function todayStr() {
+    const d = new Date();
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const da = String(d.getDate()).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    return `${y}-${m}-${da} ${hh}:${mm}`;
+    return `${y}-${m}-${da}`;
   }
+
+  // 日付（YYYY-MM-DD）→ ローカルの正午に固定してTS化（時刻は不要なのでズレにくい）
+  function tsFromDateStr(ds) {
+    const s = String(ds || '').trim() || todayStr();
+    const d = new Date(s + 'T12:00:00');
+    return Number.isFinite(d.getTime()) ? d.getTime() : Date.now();
+  }
+
+  function fmtMD(ts) {
+    const d = new Date(Number(ts) || Date.now());
+    const m = d.getMonth() + 1;
+    const da = d.getDate();
+    return `${m}/${da}`;
+  }
+
   function monthKeyFromTs(ts) {
     const d = new Date(Number(ts) || Date.now());
     const y = d.getFullYear();
@@ -3583,14 +3616,21 @@ const prev = btn.textContent;
 
   function posSave() {
     saveJSON(LS.POS_SALES, pos.sales || []);
+    localStorage.setItem(LS.POS_DATE, String(pos.date || ''));
   }
 
-  function collectCurrentSelectionForPOS() {
+  function posGetDate() {
+    const ds = String(pos.date || '').trim();
+    return ds || todayStr();
+  }
+
+  function collectCurrentSelectionForPOS(dateStr) {
     const lines = [];
-    const ts = Date.now();
+    const ts = tsFromDateStr(dateStr);
+    const month = monthKeyFromTs(ts);
     const delivery = el.delivery?.value || '即納品可能';
 
-    // dinos (visible list 기준)
+    // dinos
     const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
     for (const d of dList) {
       const baseKey = d.id;
@@ -3613,7 +3653,8 @@ const prev = btn.textContent;
             const unitPrice = prices[type] || 0;
             const amount = unitPrice * sexQty;
             lines.push({
-              ts, month: monthKeyFromTs(ts),
+              id: 'pos_' + uid(),
+              ts, month,
               delivery,
               kind: 'dino',
               dinoId: d.id,
@@ -3632,7 +3673,8 @@ const prev = btn.textContent;
             const amount = allPrice;
             if (amount > 0) {
               lines.push({
-                ts, month: monthKeyFromTs(ts),
+                id: 'pos_' + uid(),
+                ts, month,
                 delivery,
                 kind: 'dino',
                 dinoId: d.id,
@@ -3651,7 +3693,8 @@ const prev = btn.textContent;
           if (picks.length > 0 && unitPrice > 0) {
             const amount = picks.length * unitPrice;
             lines.push({
-              ts, month: monthKeyFromTs(ts),
+              id: 'pos_' + uid(),
+              ts, month,
               delivery,
               kind: 'dino',
               dinoId: d.id,
@@ -3677,7 +3720,8 @@ const prev = btn.textContent;
         const amount = unitPrice * qty;
 
         lines.push({
-          ts, month: monthKeyFromTs(ts),
+          id: 'pos_' + uid(),
+          ts, month,
           delivery,
           kind: 'dino',
           dinoId: d.id,
@@ -3700,7 +3744,8 @@ const prev = btn.textContent;
       const unitPrice = Number(it.price || 0);
       const amount = unitPrice * qty;
       lines.push({
-        ts, month: monthKeyFromTs(ts),
+        id: 'pos_' + uid(),
+        ts, month,
         delivery,
         kind: 'item',
         itemId: it.id,
@@ -3714,6 +3759,28 @@ const prev = btn.textContent;
     return lines;
   }
 
+  function posRecordCurrentSelection(dateStr) {
+    const ds = String(dateStr || '').trim() || posGetDate();
+    pos.date = ds;
+    const lines = collectCurrentSelectionForPOS(ds);
+    if (!lines.length) return { ok: false, count: 0 };
+
+    pos.sales = Array.isArray(pos.sales) ? pos.sales : [];
+    pos.sales.push(...lines);
+    posSave();
+    return { ok: true, count: lines.length };
+  }
+
+  // コピー押下→POS自動記録（確認あり）
+  async function posAutoRecordFromCopy() {
+    const ok = await confirmAsk('コピー内容をPOSに自動記録しますか？');
+    if (!ok) return;
+
+    const r = posRecordCurrentSelection(posGetDate());
+    if (!r.ok) return openToast('記録する商品がありません');
+    openToast(`POSに記録しました（${r.count}件）`);
+  }
+
   function openPosMenu() {
     const id = 'posMenuOverlay';
     let ov = document.getElementById(id);
@@ -3722,7 +3789,7 @@ const prev = btn.textContent;
       ov.id = id;
       ov.style.position = 'fixed';
       ov.style.inset = '0';
-      ov.style.zIndex = '9999';
+      ov.style.zIndex = '10000';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
@@ -3766,12 +3833,6 @@ const prev = btn.textContent;
       body.style.flexDirection = 'column';
       body.style.gap = '10px';
 
-      const hint = document.createElement('div');
-      hint.textContent = '入力 / 確認 / キャンセル';
-      hint.style.opacity = '.8';
-      hint.style.fontSize = '12px';
-      hint.style.fontWeight = '800';
-
       const btnRow = document.createElement('div');
       btnRow.style.display = 'flex';
       btnRow.style.gap = '10px';
@@ -3780,22 +3841,16 @@ const prev = btn.textContent;
       bInput.type = 'button';
       bInput.className = 'pill';
       bInput.textContent = '入力';
+      bInput.style.flex = '1';
 
       const bCheck = document.createElement('button');
       bCheck.type = 'button';
       bCheck.className = 'pill';
       bCheck.textContent = '確認';
-
-      const bCancel = document.createElement('button');
-      bCancel.type = 'button';
-      bCancel.className = 'pill';
-      bCancel.textContent = 'キャンセル';
+      bCheck.style.flex = '1';
 
       btnRow.appendChild(bInput);
       btnRow.appendChild(bCheck);
-      btnRow.appendChild(bCancel);
-
-      body.appendChild(hint);
       body.appendChild(btnRow);
 
       head.appendChild(title);
@@ -3810,24 +3865,11 @@ const prev = btn.textContent;
         try { ScrollLock.unlock(); } catch {}
       };
       closeBtn.addEventListener('click', hide);
-      bCancel.addEventListener('click', hide);
       ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
 
-      bInput.addEventListener('click', async () => {
-        const ok = await confirmAsk('現在の選択中の商品を記録します。よろしいですか？');
-        if (!ok) return;
-
-        const lines = collectCurrentSelectionForPOS();
-        if (!lines.length) {
-          openToast('記録する商品がありません');
-          return;
-        }
-
-        pos.sales = Array.isArray(pos.sales) ? pos.sales : [];
-        pos.sales.push(...lines);
-        posSave();
-        openToast(`記録しました（${lines.length}件）`);
+      bInput.addEventListener('click', () => {
         hide();
+        openPosInput();
       });
 
       bCheck.addEventListener('click', () => {
@@ -3835,9 +3877,118 @@ const prev = btn.textContent;
         openPosReport();
       });
 
-      // scroll guard
       installOverlayScrollGuard(ov, body);
     }
+
+    try { ScrollLock.lock(); } catch {}
+    ov.style.display = 'flex';
+  }
+
+  function openPosInput() {
+    const id = 'posInputOverlay';
+    let ov = document.getElementById(id);
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = id;
+      ov.style.position = 'fixed';
+      ov.style.inset = '0';
+      ov.style.zIndex = '10000';
+      ov.style.display = 'none';
+      ov.style.alignItems = 'center';
+      ov.style.justifyContent = 'center';
+      ov.style.padding = '16px';
+      ov.style.background = 'rgba(0,0,0,.35)';
+      ov.style.backdropFilter = 'blur(6px)';
+
+      const panel = document.createElement('div');
+      panel.style.width = 'min(520px, 92vw)';
+      panel.style.borderRadius = '18px';
+      panel.style.border = '1px solid rgba(255,255,255,.14)';
+      panel.style.background = 'rgba(20,20,20,.78)';
+      panel.style.backdropFilter = 'blur(12px)';
+      panel.style.boxShadow = '0 20px 60px rgba(0,0,0,.45)';
+      panel.style.overflow = 'hidden';
+      panel.style.display = 'flex';
+      panel.style.flexDirection = 'column';
+
+      const head = document.createElement('div');
+      head.style.display = 'flex';
+      head.style.alignItems = 'center';
+      head.style.justifyContent = 'space-between';
+      head.style.gap = '10px';
+      head.style.padding = '12px 12px 8px 14px';
+
+      const title = document.createElement('div');
+      title.textContent = 'POS 入力';
+      title.style.fontWeight = '900';
+      title.style.fontSize = '14px';
+      title.style.color = '#fff';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.textContent = '×';
+      closeBtn.setAttribute('aria-label', '閉じる');
+      closeBtn.className = 'iconBtn';
+
+      const body = document.createElement('div');
+      body.id = 'posInputBody';
+      body.style.padding = '12px 14px 14px';
+
+      head.appendChild(title);
+      head.appendChild(closeBtn);
+      panel.appendChild(head);
+      panel.appendChild(body);
+      ov.appendChild(panel);
+      document.body.appendChild(ov);
+
+      const hide = () => {
+        ov.style.display = 'none';
+        try { ScrollLock.unlock(); } catch {}
+      };
+      closeBtn.addEventListener('click', hide);
+      ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
+
+      installOverlayScrollGuard(ov, body);
+    }
+
+    const body = document.getElementById('posInputBody');
+    if (!body) return;
+
+    const ds = posGetDate();
+    body.innerHTML = `
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <div style="font-weight:900;">日付</div>
+        <input id="posDate" class="editInput" type="date" value="${escapeHtml(ds)}" style="height:34px;max-width:180px;">
+        <div style="margin-left:auto;opacity:.75;font-size:11px;">※後日入力OK</div>
+      </div>
+
+      <div style="margin-top:10px;display:flex;gap:10px;">
+        <button id="posDoRecord" class="pill" type="button" style="flex:1;">この日付で記録</button>
+      </div>
+
+      <div style="margin-top:10px;opacity:.65;font-size:11px;line-height:1.35;">
+        ※ 現在の数量をそのまま記録します（自動クリアしません）。<br>
+        ※ 記録データはこの端末のローカル保存です（localStorage）。
+      </div>
+    `;
+
+    const dateEl = document.getElementById('posDate');
+    const btn = document.getElementById('posDoRecord');
+
+    btn?.addEventListener('click', async () => {
+      const v = String(dateEl?.value || '').trim() || todayStr();
+      pos.date = v;
+      posSave();
+
+      const ok = await confirmAsk(`${v} で現在の選択中の商品を記録します。よろしいですか？`);
+      if (!ok) return;
+
+      const r = posRecordCurrentSelection(v);
+      if (!r.ok) return openToast('記録する商品がありません');
+      openToast(`記録しました（${r.count}件）`);
+
+      // 継続入力しやすいように閉じない
+    });
 
     try { ScrollLock.lock(); } catch {}
     ov.style.display = 'flex';
@@ -3851,7 +4002,7 @@ const prev = btn.textContent;
       ov.id = id;
       ov.style.position = 'fixed';
       ov.style.inset = '0';
-      ov.style.zIndex = '9999';
+      ov.style.zIndex = '10000';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
@@ -3860,7 +4011,7 @@ const prev = btn.textContent;
       ov.style.backdropFilter = 'blur(6px)';
 
       const panel = document.createElement('div');
-      panel.style.width = 'min(760px, 94vw)';
+      panel.style.width = 'min(820px, 94vw)';
       panel.style.maxHeight = '84vh';
       panel.style.borderRadius = '18px';
       panel.style.border = '1px solid rgba(255,255,255,.14)';
@@ -3912,149 +4063,150 @@ const prev = btn.textContent;
       installOverlayScrollGuard(ov, body);
     }
 
-    // render
     const body = document.getElementById('posReportBody');
     if (!body) return;
 
-    const sales = Array.isArray(pos.sales) ? pos.sales.slice() : [];
-    const months = Array.from(new Set(sales.map(x => String(x.month || monthKeyFromTs(x.ts))))).sort().reverse();
+    const salesAll = Array.isArray(pos.sales) ? pos.sales.slice() : [];
+    const months = Array.from(new Set(salesAll.map(x => String(x.month || monthKeyFromTs(x.ts))))).sort().reverse();
     const curMonth = monthKeyFromTs(Date.now());
     const selected = months.includes(curMonth) ? curMonth : (months[0] || curMonth);
 
     const render = (month) => {
+      const sales = Array.isArray(pos.sales) ? pos.sales.slice() : [];
       const mSales = sales.filter(x => String(x.month || '') === String(month));
       const total = mSales.reduce((a, b) => a + (Number(b.amount) || 0), 0);
 
-      // product ranking
-      const byProd = new Map();
-      for (const s of mSales) {
-        const kind = s.kind || '';
-        const name = String(s.name || '');
-        const type = String(s.type || '');
-        const key = `${kind}__${name}__${type}`;
-        const cur = byProd.get(key) || { kind, name, type, qty: 0, amount: 0 };
-        cur.qty += Number(s.qty || 0);
-        cur.amount += Number(s.amount || 0);
-        byProd.set(key, cur);
-      }
-      const prodList = Array.from(byProd.values()).sort((a, b) => (b.amount - a.amount) || (b.qty - a.qty));
-
-      // dino summary (egg/embryo vs adult)
+      // 恐竜別（受精卵/胚/幼体） vs （成体/クローン/その他）
       const byDino = new Map();
       for (const s of mSales.filter(x => x.kind === 'dino')) {
         const name = String(s.name || '');
         const typeRaw = String(s.type || '').replace('(指定)', '');
-        const cat = (typeRaw === '受精卵' || typeRaw === '胚') ? 'egg' : (typeRaw === '成体' ? 'adult' : 'other');
+        const isYoung = /(受精卵|胚|幼体)/.test(typeRaw);
         const cur = byDino.get(name) || {
           name,
-          eggQty: 0, eggAmt: 0,
+          youngQty: 0, youngAmt: 0,
           adultQty: 0, adultAmt: 0,
-          otherQty: 0, otherAmt: 0,
         };
         const qty = Number(s.qty || 0);
         const amt = Number(s.amount || 0);
-        if (cat === 'egg') { cur.eggQty += qty; cur.eggAmt += amt; }
-        else if (cat === 'adult') { cur.adultQty += qty; cur.adultAmt += amt; }
-        else { cur.otherQty += qty; cur.otherAmt += amt; }
+        if (isYoung) { cur.youngQty += qty; cur.youngAmt += amt; }
+        else { cur.adultQty += qty; cur.adultAmt += amt; }
         byDino.set(name, cur);
       }
-      const dinoList = Array.from(byDino.values()).sort((a, b) => ((b.eggAmt + b.adultAmt + b.otherAmt) - (a.eggAmt + a.adultAmt + a.otherAmt)));
+      const dinoList = Array.from(byDino.values()).sort((a, b) => ((b.youngAmt + b.adultAmt) - (a.youngAmt + a.adultAmt)));
 
-      // timeline
+      // 取引履歴（新しい順）
       const timeline = mSales.slice().sort((a, b) => (b.ts - a.ts));
 
       const monthOpts = months.map(m => `<option value="${escapeHtml(m)}"${m===month?' selected':''}>${escapeHtml(m)}</option>`).join('');
-      const prodRows = prodList.slice(0, 200).map(p => {
-        const label = p.kind === 'item' ? `${p.name}` : `${p.name}${p.type ? ' ' + p.type.replace('(指定)','') : ''}`;
-        return `<tr><td>${escapeHtml(label)}</td><td style="text-align:right">${escapeHtml(String(p.qty))}</td><td style="text-align:right">${escapeHtml(yen(p.amount))}</td></tr>`;
-      }).join('');
+
       const dinoRows = dinoList.map(d => {
-        const egg = `${d.eggQty} / ${yen(d.eggAmt)}`;
-        const adult = `${d.adultQty} / ${yen(d.adultAmt)}`;
-        const other = (d.otherQty || d.otherAmt) ? `${d.otherQty} / ${yen(d.otherAmt)}` : '-';
-        const sum = yen(d.eggAmt + d.adultAmt + d.otherAmt);
+        const sum = d.youngAmt + d.adultAmt;
         return `<tr>
-          <td>${escapeHtml(d.name)}</td>
-          <td style="text-align:right">${escapeHtml(egg)}</td>
-          <td style="text-align:right">${escapeHtml(adult)}</td>
-          <td style="text-align:right">${escapeHtml(other)}</td>
-          <td style="text-align:right;font-weight:900">${escapeHtml(sum)}</td>
+          <td class="posCell posName">${escapeHtml(d.name)}</td>
+          <td class="posCell posNum posR">${escapeHtml(String(d.youngQty))}</td>
+          <td class="posCell posNum posR">${escapeHtml(yen(d.youngAmt))}</td>
+          <td class="posCell posNum posR">${escapeHtml(String(d.adultQty))}</td>
+          <td class="posCell posNum posR">${escapeHtml(yen(d.adultAmt))}</td>
+          <td class="posCell posNum posR posStrong">${escapeHtml(yen(sum))}</td>
         </tr>`;
       }).join('');
-      const timeRows = timeline.slice(0, 400).map(s => {
-        const t = fmtDateTime(s.ts);
-        const label = s.kind === 'item' ? `${s.name}` : `${s.name}${s.type ? ' ' + String(s.type).replace('(指定)','') : ''}`;
-        return `<tr><td>${escapeHtml(t)}</td><td>${escapeHtml(label)}</td><td style="text-align:right">${escapeHtml(String(s.qty))}</td><td style="text-align:right">${escapeHtml(yen(s.amount))}</td></tr>`;
+
+      const timeRows = timeline.slice(0, 600).map(s => {
+        const label = s.kind === 'item'
+          ? `${s.name}`
+          : `${s.name}${s.type ? ' ' + String(s.type).replace('(指定)','') : ''}`;
+        const md = fmtMD(s.ts);
+        return `<tr>
+          <td class="posCell posDate">${escapeHtml(md)}</td>
+          <td class="posCell posItem">${escapeHtml(label)}</td>
+          <td class="posCell posNum posR">${escapeHtml(String(s.qty))}</td>
+          <td class="posCell posNum posR">${escapeHtml(yen(s.amount))}</td>
+          <td class="posCell posR">
+            <button class="posDel" type="button" data-id="${escapeHtml(String(s.id||''))}" aria-label="削除">×</button>
+          </td>
+        </tr>`;
       }).join('');
 
       body.innerHTML = `
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
-          <div style="font-weight:900;">月</div>
+        <div class="posTopBar">
+          <div class="posTopLabel">月</div>
           <select id="posMonthSel" class="delivery" style="height:34px;border-radius:14px;padding:0 34px 0 10px;min-width:120px;">
             ${monthOpts || `<option value="${escapeHtml(month)}" selected>${escapeHtml(month)}</option>`}
           </select>
-          <div style="margin-left:auto;font-weight:950;color:rgba(120,255,179,.95)">合計 ${escapeHtml(yen(total))}</div>
+          <div class="posTopTotal">合計 ${escapeHtml(yen(total))}</div>
         </div>
 
-        <div style="font-weight:950;margin:10px 0 6px;">売上順（商品）</div>
-        <div style="overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;">
-          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <div class="posSectionTitle">恐竜別（売上順）</div>
+        <div class="posTableWrap">
+          <table class="posTable">
+            <colgroup>
+              <col style="width:36%">
+              <col style="width:10%">
+              <col style="width:14%">
+              <col style="width:10%">
+              <col style="width:14%">
+              <col style="width:16%">
+            </colgroup>
             <thead>
-              <tr style="background:rgba(255,255,255,.06)">
-                <th style="text-align:left;padding:8px 10px;">商品</th>
-                <th style="text-align:right;padding:8px 10px;">個数</th>
-                <th style="text-align:right;padding:8px 10px;">売上</th>
+              <tr>
+                <th>恐竜</th>
+                <th class="posR">卵/胚/幼</th>
+                <th class="posR">円</th>
+                <th class="posR">成/ク/他</th>
+                <th class="posR">円</th>
+                <th class="posR">合計</th>
               </tr>
             </thead>
             <tbody>
-              ${prodRows || `<tr><td colspan="3" style="padding:10px;opacity:.8;">データなし</td></tr>`}
+              ${dinoRows || `<tr><td class="posCell" colspan="6" style="opacity:.8;">データなし</td></tr>`}
             </tbody>
           </table>
         </div>
 
-        <div style="font-weight:950;margin:14px 0 6px;">恐竜別（受精卵/胚・成体）</div>
-        <div style="overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;">
-          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <div class="posSectionTitle">取引履歴（3/3 / 何 / 個数 / 円）</div>
+        <div class="posTableWrap">
+          <table class="posTable">
+            <colgroup>
+              <col style="width:64px">
+              <col style="width:auto">
+              <col style="width:60px">
+              <col style="width:90px">
+              <col style="width:44px">
+            </colgroup>
             <thead>
-              <tr style="background:rgba(255,255,255,.06)">
-                <th style="text-align:left;padding:8px 10px;">恐竜</th>
-                <th style="text-align:right;padding:8px 10px;">受精卵/胚 (個数/円)</th>
-                <th style="text-align:right;padding:8px 10px;">成体 (個数/円)</th>
-                <th style="text-align:right;padding:8px 10px;">その他</th>
-                <th style="text-align:right;padding:8px 10px;">合計</th>
+              <tr>
+                <th>日付</th>
+                <th>商品</th>
+                <th class="posR">個数</th>
+                <th class="posR">売上</th>
+                <th class="posR">削除</th>
               </tr>
             </thead>
             <tbody>
-              ${dinoRows || `<tr><td colspan="5" style="padding:10px;opacity:.8;">データなし</td></tr>`}
+              ${timeRows || `<tr><td class="posCell" colspan="5" style="opacity:.8;">データなし</td></tr>`}
             </tbody>
           </table>
-        </div>
-
-        <div style="font-weight:950;margin:14px 0 6px;">取引履歴（いつ / 何 / 何個 / 円）</div>
-        <div style="overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;">
-          <table style="width:100%;border-collapse:collapse;font-size:12px;">
-            <thead>
-              <tr style="background:rgba(255,255,255,.06)">
-                <th style="text-align:left;padding:8px 10px;">日時</th>
-                <th style="text-align:left;padding:8px 10px;">商品</th>
-                <th style="text-align:right;padding:8px 10px;">個数</th>
-                <th style="text-align:right;padding:8px 10px;">売上</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${timeRows || `<tr><td colspan="4" style="padding:10px;opacity:.8;">データなし</td></tr>`}
-            </tbody>
-          </table>
-        </div>
-
-        <div style="margin-top:10px;opacity:.65;font-size:11px;line-height:1.35;">
-          ※「入力」は現在の数量をそのまま記録します（自動クリアはしません）。<br>
-          ※ 記録データはこの端末のローカル保存です（localStorage）。
         </div>
       `;
 
       const sel = document.getElementById('posMonthSel');
       sel?.addEventListener('change', () => render(String(sel.value || month)));
+
+      // 削除
+      body.querySelectorAll('.posDel').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = String(btn.dataset.id || '');
+          if (!id) return;
+          const ok = await confirmAsk('この行を削除しますか？');
+          if (!ok) return;
+
+          pos.sales = (Array.isArray(pos.sales) ? pos.sales : []).filter(x => String(x.id || '') !== id);
+          posSave();
+          render(month);
+          openToast('削除しました');
+        });
+      });
     };
 
     render(selected);
@@ -4067,8 +4219,7 @@ const prev = btn.textContent;
     openPosMenu();
   });
 
-
-  // ✅ 隠しボタン：右上の合計金額タップで全入力を一括リセット（枠なし）
+// ✅ 隠しボタン：右上の合計金額タップで全入力を一括リセット（枠なし）
   el.total?.addEventListener('click', () => {
     const ok = confirm('入力した数値をすべてリセットします。よろしいですか？');
     if (!ok) return;
