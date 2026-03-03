@@ -97,6 +97,25 @@ button{cursor:pointer}
   font-size: calc(13px * var(--topScale, 1));
 }
 
+
+/* ================= POS / delivery short ================= */
+.delivery.deliveryShort{
+  padding:0 22px 0 10px; /* 矢印分だけ残して詰める */
+  width:62px;
+  text-align:left;
+}
+.pos{
+  height:36px;
+  padding:0 12px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.10);
+  color:#fff;
+  font-weight:950;
+  letter-spacing:.2px;
+  white-space:nowrap;
+}
+
 .search{
   flex:1;
   display:flex;
