@@ -3546,6 +3546,8 @@ const prev = btn.textContent;
   el.copy?.addEventListener('click', async () => {
     const text = el.out.value.trim();
     if (!text) return;
+
+    // 先にコピー
     try {
       await navigator.clipboard.writeText(text);
       const prev = el.copy.textContent;
@@ -3557,6 +3559,23 @@ const prev = btn.textContent;
       el.out.select();
       document.execCommand('copy');
     }
+
+    // ✅ コピー時にPOSも記録（確認あり）
+    const preview = collectCurrentSelectionForPOS({});
+    if (!preview.length) return;
+
+    const ok = await confirmAsk('コピーに加えて、POSにも記録しますか？');
+    if (!ok) return;
+
+    const ts = Date.now();
+    const orderId = uid();
+    const lines = collectCurrentSelectionForPOS({ ts, orderId });
+    if (!lines.length) return;
+
+    pos.sales = Array.isArray(pos.sales) ? pos.sales : [];
+    pos.sales.push(...lines);
+    posSave();
+    openToast(`POS記録しました（${lines.length}件）`);
   });
 
 
@@ -3574,6 +3593,12 @@ const prev = btn.textContent;
     const mm = String(d.getMinutes()).padStart(2, '0');
     return `${y}-${m}-${da} ${hh}:${mm}`;
   }
+  function fmtMD(ts) {
+    const d = new Date(Number(ts) || Date.now());
+    const m = String(d.getMonth() + 1);
+    const da = String(d.getDate());
+    return `${m}/${da}`;
+  }
   function monthKeyFromTs(ts) {
     const d = new Date(Number(ts) || Date.now());
     const y = d.getFullYear();
@@ -3585,10 +3610,11 @@ const prev = btn.textContent;
     saveJSON(LS.POS_SALES, pos.sales || []);
   }
 
-  function collectCurrentSelectionForPOS() {
+  function collectCurrentSelectionForPOS(opts = {}) {
     const lines = [];
-    const ts = Date.now();
-    const delivery = el.delivery?.value || '即納品可能';
+    const ts = Number(opts.ts) || Date.now();
+    const orderId = String(opts.orderId || uid());
+    const delivery = String(opts.delivery || el.delivery?.value || '即納品可能');
 
     // dinos (visible list 기준)
     const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
@@ -3613,7 +3639,7 @@ const prev = btn.textContent;
             const unitPrice = prices[type] || 0;
             const amount = unitPrice * sexQty;
             lines.push({
-              ts, month: monthKeyFromTs(ts),
+              ts, orderId, month: monthKeyFromTs(ts),
               delivery,
               kind: 'dino',
               dinoId: d.id,
@@ -3632,7 +3658,7 @@ const prev = btn.textContent;
             const amount = allPrice;
             if (amount > 0) {
               lines.push({
-                ts, month: monthKeyFromTs(ts),
+                ts, orderId, month: monthKeyFromTs(ts),
                 delivery,
                 kind: 'dino',
                 dinoId: d.id,
@@ -3651,7 +3677,7 @@ const prev = btn.textContent;
           if (picks.length > 0 && unitPrice > 0) {
             const amount = picks.length * unitPrice;
             lines.push({
-              ts, month: monthKeyFromTs(ts),
+              ts, orderId, month: monthKeyFromTs(ts),
               delivery,
               kind: 'dino',
               dinoId: d.id,
@@ -3677,7 +3703,7 @@ const prev = btn.textContent;
         const amount = unitPrice * qty;
 
         lines.push({
-          ts, month: monthKeyFromTs(ts),
+          ts, orderId, month: monthKeyFromTs(ts),
           delivery,
           kind: 'dino',
           dinoId: d.id,
@@ -3700,7 +3726,7 @@ const prev = btn.textContent;
       const unitPrice = Number(it.price || 0);
       const amount = unitPrice * qty;
       lines.push({
-        ts, month: monthKeyFromTs(ts),
+        ts, orderId, month: monthKeyFromTs(ts),
         delivery,
         kind: 'item',
         itemId: it.id,
@@ -3767,7 +3793,7 @@ const prev = btn.textContent;
       body.style.gap = '10px';
 
       const hint = document.createElement('div');
-      hint.textContent = '入力 / 確認 / キャンセル';
+      hint.textContent = '入力 / 確認';
       hint.style.opacity = '.8';
       hint.style.fontSize = '12px';
       hint.style.fontWeight = '800';
@@ -3780,20 +3806,16 @@ const prev = btn.textContent;
       bInput.type = 'button';
       bInput.className = 'pill';
       bInput.textContent = '入力';
+      bInput.style.flex = '1';
 
       const bCheck = document.createElement('button');
       bCheck.type = 'button';
       bCheck.className = 'pill';
       bCheck.textContent = '確認';
-
-      const bCancel = document.createElement('button');
-      bCancel.type = 'button';
-      bCancel.className = 'pill';
-      bCancel.textContent = 'キャンセル';
+      bCheck.style.flex = '1';
 
       btnRow.appendChild(bInput);
       btnRow.appendChild(bCheck);
-      btnRow.appendChild(bCancel);
 
       body.appendChild(hint);
       body.appendChild(btnRow);
@@ -3810,24 +3832,11 @@ const prev = btn.textContent;
         try { ScrollLock.unlock(); } catch {}
       };
       closeBtn.addEventListener('click', hide);
-      bCancel.addEventListener('click', hide);
       ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
 
-      bInput.addEventListener('click', async () => {
-        const ok = await confirmAsk('現在の選択中の商品を記録します。よろしいですか？');
-        if (!ok) return;
-
-        const lines = collectCurrentSelectionForPOS();
-        if (!lines.length) {
-          openToast('記録する商品がありません');
-          return;
-        }
-
-        pos.sales = Array.isArray(pos.sales) ? pos.sales : [];
-        pos.sales.push(...lines);
-        posSave();
-        openToast(`記録しました（${lines.length}件）`);
+      bInput.addEventListener('click', () => {
         hide();
+        openPosEntry();
       });
 
       bCheck.addEventListener('click', () => {
@@ -3843,7 +3852,182 @@ const prev = btn.textContent;
     ov.style.display = 'flex';
   }
 
-  function openPosReport() {
+  
+  function openPosEntry() {
+    const id = 'posEntryOverlay';
+    let ov = document.getElementById(id);
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = id;
+      ov.style.position = 'fixed';
+      ov.style.inset = '0';
+      ov.style.zIndex = '9999';
+      ov.style.display = 'none';
+      ov.style.alignItems = 'center';
+      ov.style.justifyContent = 'center';
+      ov.style.padding = '16px';
+      ov.style.background = 'rgba(0,0,0,.35)';
+      ov.style.backdropFilter = 'blur(6px)';
+
+      const panel = document.createElement('div');
+      panel.style.width = 'min(520px, 94vw)';
+      panel.style.maxHeight = '84vh';
+      panel.style.borderRadius = '18px';
+      panel.style.border = '1px solid rgba(255,255,255,.14)';
+      panel.style.background = 'rgba(20,20,20,.78)';
+      panel.style.backdropFilter = 'blur(12px)';
+      panel.style.boxShadow = '0 20px 60px rgba(0,0,0,.45)';
+      panel.style.overflow = 'hidden';
+      panel.style.display = 'flex';
+      panel.style.flexDirection = 'column';
+
+      const head = document.createElement('div');
+      head.style.display = 'flex';
+      head.style.alignItems = 'center';
+      head.style.justifyContent = 'space-between';
+      head.style.gap = '10px';
+      head.style.padding = '12px 12px 8px 14px';
+
+      const title = document.createElement('div');
+      title.textContent = 'POS 入力';
+      title.style.fontWeight = '900';
+      title.style.fontSize = '14px';
+      title.style.color = '#fff';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.textContent = '×';
+      closeBtn.setAttribute('aria-label', '閉じる');
+      closeBtn.className = 'iconBtn';
+
+      const body = document.createElement('div');
+      body.id = 'posEntryBody';
+      body.style.padding = '12px 14px 14px';
+      body.style.overflow = 'auto';
+
+      head.appendChild(title);
+      head.appendChild(closeBtn);
+      panel.appendChild(head);
+      panel.appendChild(body);
+      ov.appendChild(panel);
+      document.body.appendChild(ov);
+      // 行削除（売上セルを隠しボタン化）
+      body.addEventListener('click', async (e) => {
+        const t = e.target;
+        const btn = t && t.closest ? t.closest('[data-pos-del]') : null;
+        if (!btn) return;
+        const idx = Number(btn.getAttribute('data-pos-del'));
+        if (!Number.isFinite(idx) || idx < 0) return;
+        const s = pos.sales && pos.sales[idx];
+        if (!s) return;
+        const label = s.kind === 'item' ? String(s.name||'') : `${String(s.name||'')}${s.type ? ' ' + String(s.type).replace('(指定)','') : ''}`;
+        const ok = await confirmAsk(`削除しますか？\n${fmtMD(s.ts)} ${label} ×${s.qty} / ${yen(s.amount)}`);
+        if (!ok) return;
+        pos.sales.splice(idx, 1);
+        posSave();
+        openToast('削除しました');
+        try { render(String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()))); } catch {}
+      });
+
+
+      const hide = () => {
+        ov.style.display = 'none';
+        try { ScrollLock.unlock(); } catch {}
+      };
+      closeBtn.addEventListener('click', hide);
+      ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
+
+      ov.__hide = hide;
+    }
+
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    const defaultDate = `${y}-${m}-${d}`;
+
+    const body = document.getElementById('posEntryBody');
+    if (!body) return;
+
+    const lines = collectCurrentSelectionForPOS({}); // preview (today)
+    const total = lines.reduce((a, s) => a + (Number(s.amount) || 0), 0);
+
+    body.innerHTML = `
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+        <div style="font-weight:900;">日付</div>
+        <input id="posEntryDate" type="date" value="${escapeHtml(defaultDate)}"
+          style="height:34px;border-radius:14px;padding:0 10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:#fff;font-weight:900;"/>
+        <div style="margin-left:auto;font-weight:950;color:rgba(120,255,179,.95)">合計 ${escapeHtml(yen(total))}</div>
+      </div>
+
+      <div style="opacity:.75;font-size:11px;line-height:1.35;margin-bottom:8px;">
+        現在の選択中の商品を、指定日付で記録します。
+      </div>
+
+      <div class="posBox" style="margin-bottom:12px;">
+        <table class="posT tabularNums" style="font-size:12px;">
+          <thead>
+            <tr>
+              <th style="width:72%;">恐竜/商品</th>
+              <th class="r" style="width:14%;">個数</th>
+              <th class="r" style="width:14%;">売上</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lines.length ? lines.map(s => {
+              const label = s.kind === 'item'
+                ? `${s.name}`
+                : `${s.name}${s.type ? ' ' + String(s.type).replace('(指定)','') : ''}`;
+              return `<tr>
+                <td title="${escapeHtml(label)}">${escapeHtml(label)}</td>
+                <td class="r tabularNums">${escapeHtml(String(s.qty))}</td>
+                <td class="r tabularNums">${escapeHtml(yen(s.amount))}</td>
+              </tr>`;
+            }).join('') : `<tr><td colspan="3" style="padding:10px;opacity:.8;">記録する商品がありません</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;gap:10px;">
+        <button id="posEntrySave" class="pill" type="button" style="flex:1;">記録</button>
+        <button id="posEntryToReport" class="pill" type="button" style="flex:1;">確認</button>
+      </div>
+    `;
+
+    const saveBtn = document.getElementById('posEntrySave');
+    const repBtn = document.getElementById('posEntryToReport');
+
+    const hide = ov.__hide || (() => {});
+    saveBtn?.addEventListener('click', async () => {
+      const dateVal = String((document.getElementById('posEntryDate') || {}).value || defaultDate);
+      // local noon to avoid DST edge cases
+      const ts = new Date(`${dateVal}T12:00:00`).getTime();
+      const orderId = uid();
+
+      const lines2 = collectCurrentSelectionForPOS({ ts, orderId });
+      if (!lines2.length) {
+        openToast('記録する商品がありません');
+        return;
+      }
+      const ok = await confirmAsk(`${fmtMD(ts)} に記録します。よろしいですか？`);
+      if (!ok) return;
+
+      pos.sales = Array.isArray(pos.sales) ? pos.sales : [];
+      pos.sales.push(...lines2);
+      posSave();
+      openToast(`記録しました（${lines2.length}件）`);
+      hide();
+    });
+
+    repBtn?.addEventListener('click', () => {
+      hide();
+      openPosReport();
+    });
+
+    try { ScrollLock.lock(); } catch {}
+    ov.style.display = 'flex';
+  }
+function openPosReport() {
     const id = 'posReportOverlay';
     let ov = document.getElementById(id);
     if (!ov) {
@@ -3939,26 +4123,25 @@ const prev = btn.textContent;
       }
       const prodList = Array.from(byProd.values()).sort((a, b) => (b.amount - a.amount) || (b.qty - a.qty));
 
-      // dino summary (egg/embryo vs adult)
+      // dino summary (売上順 / 卵系 vs 成体系)
       const byDino = new Map();
+      const eggSet = new Set(['受精卵','胚','幼体']);
+      const adultSet = new Set(['成体','クローン','その他','全種']);
       for (const s of mSales.filter(x => x.kind === 'dino')) {
         const name = String(s.name || '');
         const typeRaw = String(s.type || '').replace('(指定)', '');
-        const cat = (typeRaw === '受精卵' || typeRaw === '胚') ? 'egg' : (typeRaw === '成体' ? 'adult' : 'other');
-        const cur = byDino.get(name) || {
-          name,
-          eggQty: 0, eggAmt: 0,
-          adultQty: 0, adultAmt: 0,
-          otherQty: 0, otherAmt: 0,
-        };
         const qty = Number(s.qty || 0);
         const amt = Number(s.amount || 0);
-        if (cat === 'egg') { cur.eggQty += qty; cur.eggAmt += amt; }
-        else if (cat === 'adult') { cur.adultQty += qty; cur.adultAmt += amt; }
-        else { cur.otherQty += qty; cur.otherAmt += amt; }
+
+        const cur = byDino.get(name) || { name, eggQty: 0, adultQty: 0, totalAmt: 0 };
+        if (eggSet.has(typeRaw)) cur.eggQty += qty;
+        else if (adultSet.has(typeRaw)) cur.adultQty += qty;
+        else cur.adultQty += qty; // 未知タイプは成体系側に寄せる
+
+        cur.totalAmt += amt;
         byDino.set(name, cur);
       }
-      const dinoList = Array.from(byDino.values()).sort((a, b) => ((b.eggAmt + b.adultAmt + b.otherAmt) - (a.eggAmt + a.adultAmt + a.otherAmt)));
+      const dinoList = Array.from(byDino.values()).sort((a, b) => (b.totalAmt - a.totalAmt) || ((b.eggQty + b.adultQty) - (a.eggQty + a.adultQty)));
 
       // timeline
       const timeline = mSales.slice().sort((a, b) => (b.ts - a.ts));
@@ -3968,23 +4151,47 @@ const prev = btn.textContent;
         const label = p.kind === 'item' ? `${p.name}` : `${p.name}${p.type ? ' ' + p.type.replace('(指定)','') : ''}`;
         return `<tr><td>${escapeHtml(label)}</td><td style="text-align:right">${escapeHtml(String(p.qty))}</td><td style="text-align:right">${escapeHtml(yen(p.amount))}</td></tr>`;
       }).join('');
-      const dinoRows = dinoList.map(d => {
-        const egg = `${d.eggQty} / ${yen(d.eggAmt)}`;
-        const adult = `${d.adultQty} / ${yen(d.adultAmt)}`;
-        const other = (d.otherQty || d.otherAmt) ? `${d.otherQty} / ${yen(d.otherAmt)}` : '-';
-        const sum = yen(d.eggAmt + d.adultAmt + d.otherAmt);
+      const dinoRows = dinoList.slice(0, 260).map(d => {
         return `<tr>
-          <td>${escapeHtml(d.name)}</td>
-          <td style="text-align:right">${escapeHtml(egg)}</td>
-          <td style="text-align:right">${escapeHtml(adult)}</td>
-          <td style="text-align:right">${escapeHtml(other)}</td>
-          <td style="text-align:right;font-weight:900">${escapeHtml(sum)}</td>
+          <td title="${escapeHtml(d.name)}">${escapeHtml(d.name)}</td>
+          <td class="r tabularNums" title="${escapeHtml(String(d.eggQty))}">${escapeHtml(String(d.eggQty))}</td>
+          <td class="r tabularNums" title="${escapeHtml(String(d.adultQty))}">${escapeHtml(String(d.adultQty))}</td>
+          <td class="r tabularNums" title="${escapeHtml(yen(d.totalAmt))}">${escapeHtml(yen(d.totalAmt))}</td>
         </tr>`;
       }).join('');
-      const timeRows = timeline.slice(0, 400).map(s => {
-        const t = fmtDateTime(s.ts);
-        const label = s.kind === 'item' ? `${s.name}` : `${s.name}${s.type ? ' ' + String(s.type).replace('(指定)','') : ''}`;
-        return `<tr><td>${escapeHtml(t)}</td><td>${escapeHtml(label)}</td><td style="text-align:right">${escapeHtml(String(s.qty))}</td><td style="text-align:right">${escapeHtml(yen(s.amount))}</td></tr>`;
+      const groups = [];
+      // group by orderId (fallback: ts)
+      const groupMap = new Map();
+      for (const s of timeline) {
+        const gid = String(s.orderId || s.ts || '');
+        if (!groupMap.has(gid)) groupMap.set(gid, []);
+        groupMap.get(gid).push(s);
+      }
+      // sort groups by newest ts
+      const groupList = Array.from(groupMap.values()).sort((ga, gb) => {
+        const ta = Math.max(...ga.map(x => Number(x.ts) || 0));
+        const tb = Math.max(...gb.map(x => Number(x.ts) || 0));
+        return tb - ta;
+      });
+
+      const timeRows = groupList.slice(0, 220).map((g) => {
+        g.sort((a,b)=> (a.kind||'').localeCompare(b.kind||'') );
+        const ts = Math.max(...g.map(x => Number(x.ts) || 0));
+        const gTotal = g.reduce((a,x)=>a+(Number(x.amount)||0),0);
+        const head = `<tr class="posGroupRow"><td colspan="4">${escapeHtml(fmtMD(ts))}　注文　<span style="opacity:.75;font-weight:900">合計 ${escapeHtml(yen(gTotal))}</span></td></tr>`;
+        const rows = g.map((s) => {
+          const t = fmtMD(s.ts);
+          const label = s.kind === 'item' ? `${s.name}` : `${s.name}${s.type ? ' ' + String(s.type).replace('(指定)','') : ''}`;
+          const idx = sales.indexOf(s);
+          // 売上を「隠し削除ボタン」にする（タップで確認→削除）
+          return `<tr>
+            <td title="${escapeHtml(t)}">${escapeHtml(t)}</td>
+            <td title="${escapeHtml(label)}">${escapeHtml(label)}</td>
+            <td class="r tabularNums" title="${escapeHtml(String(s.qty))}">${escapeHtml(String(s.qty))}</td>
+            <td class="r tabularNums posAmtBtn" data-pos-del="${escapeHtml(String(idx))}" title="タップで削除">${escapeHtml(yen(s.amount))}</td>
+          </tr>`;
+        }).join('');
+        return head + rows;
       }).join('');
 
       body.innerHTML = `
@@ -3996,49 +4203,33 @@ const prev = btn.textContent;
           <div style="margin-left:auto;font-weight:950;color:rgba(120,255,179,.95)">合計 ${escapeHtml(yen(total))}</div>
         </div>
 
-        <div style="font-weight:950;margin:10px 0 6px;">売上順（商品）</div>
-        <div style="overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;">
-          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <div style="font-weight:950;margin:10px 0 6px;">
+        <div style="font-weight:950;margin:10px 0 6px;">恐竜別（売上順）</div>
+        <div class="posBox">
+          <table class="posT tabularNums" style="font-size:11px;">
             <thead>
-              <tr style="background:rgba(255,255,255,.06)">
-                <th style="text-align:left;padding:8px 10px;">商品</th>
-                <th style="text-align:right;padding:8px 10px;">個数</th>
-                <th style="text-align:right;padding:8px 10px;">売上</th>
+              <tr>
+                <th style="width:54%;">恐竜</th>
+                <th class="r" style="width:14%;">卵系</th>
+                <th class="r" style="width:14%;">成体系</th>
+                <th class="r" style="width:18%;">合計</th>
               </tr>
             </thead>
             <tbody>
-              ${prodRows || `<tr><td colspan="3" style="padding:10px;opacity:.8;">データなし</td></tr>`}
+              ${dinoRows || `<tr><td colspan="4" style="padding:10px;opacity:.8;">データなし</td></tr>`}
             </tbody>
           </table>
         </div>
 
-        <div style="font-weight:950;margin:14px 0 6px;">恐竜別（受精卵/胚・成体）</div>
-        <div style="overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;">
-          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <div style="font-weight:950;margin:14px 0 6px;">取引履歴</div>
+        <div class="posBox">
+          <table class="posT tabularNums" style="font-size:12px;">
             <thead>
-              <tr style="background:rgba(255,255,255,.06)">
-                <th style="text-align:left;padding:8px 10px;">恐竜</th>
-                <th style="text-align:right;padding:8px 10px;">受精卵/胚 (個数/円)</th>
-                <th style="text-align:right;padding:8px 10px;">成体 (個数/円)</th>
-                <th style="text-align:right;padding:8px 10px;">その他</th>
-                <th style="text-align:right;padding:8px 10px;">合計</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${dinoRows || `<tr><td colspan="5" style="padding:10px;opacity:.8;">データなし</td></tr>`}
-            </tbody>
-          </table>
-        </div>
-
-        <div style="font-weight:950;margin:14px 0 6px;">取引履歴（いつ / 何 / 何個 / 円）</div>
-        <div style="overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;">
-          <table style="width:100%;border-collapse:collapse;font-size:12px;">
-            <thead>
-              <tr style="background:rgba(255,255,255,.06)">
-                <th style="text-align:left;padding:8px 10px;">日時</th>
-                <th style="text-align:left;padding:8px 10px;">商品</th>
-                <th style="text-align:right;padding:8px 10px;">個数</th>
-                <th style="text-align:right;padding:8px 10px;">売上</th>
+              <tr>
+                <th style="width:62px;">日付</th>
+                <th>恐竜</th>
+                <th class="r" style="width:44px;">個数</th>
+                <th class="r" style="width:92px;">売上</th>
               </tr>
             </thead>
             <tbody>
@@ -4048,7 +4239,7 @@ const prev = btn.textContent;
         </div>
 
         <div style="margin-top:10px;opacity:.65;font-size:11px;line-height:1.35;">
-          ※「入力」は現在の数量をそのまま記録します（自動クリアはしません）。<br>
+※「入力」は現在の数量をそのまま記録します（自動クリアはしません）。<br>
           ※ 記録データはこの端末のローカル保存です（localStorage）。
         </div>
       `;
