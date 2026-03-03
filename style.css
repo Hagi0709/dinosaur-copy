@@ -101,6 +101,12 @@ button{cursor:pointer}
 
 /* ================= POS / delivery short ================= */
 .delivery.deliveryShort{
+  height:36px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-weight:900;
   padding:0 22px 0 10px; /* 矢印分だけ残して詰める */
   width:62px;
   text-align:left;
@@ -575,7 +581,7 @@ button{cursor:pointer}
 .modalOverlay{
   position:fixed;
   inset:0;
-  z-index:2000;
+  z-index:12000;
   background:rgba(0,0,0,.55);
   backdrop-filter:blur(8px);
   display:flex;
@@ -1185,3 +1191,15 @@ button{cursor:pointer}
   align-self:center;
   margin-left:0;
 }
+
+
+/* POS tables */
+.tabularNums{font-variant-numeric:tabular-nums;}
+.posT{table-layout:fixed;width:100%;border-collapse:collapse;}
+.posT th,.posT td{padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.posT thead tr{background:rgba(255,255,255,.06)}
+.posT th{text-align:left;}
+.posT .r{text-align:right;}
+.posBox{overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;}
+.posGroupRow td{background:rgba(255,255,255,.04);font-weight:950;}
+.posAmtBtn{cursor:pointer;}
