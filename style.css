@@ -1226,6 +1226,45 @@ button{cursor:pointer}
 }
 .posHistAmt:active{ opacity:.7; }
 .posColTotal{ min-width:110px; }
+/* POS: entry preview */
+.posEntryPreview{ display:flex; flex-direction:column; }
+.posEntryLine{ border-top:none; }
+.posEntryAmt{
+  flex:0 0 auto;
+  min-width:96px;
+  text-align:right;
+  white-space:nowrap;
+  font-weight:950;
+  color:rgba(255,255,255,.92);
+}
+
+/* POS: output-like two-line label */
+.posHistL{ white-space:normal; }
+.posHistTitle{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.posHistSub{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:.82; font-weight:850; font-size:11px; margin-top:1px; }
+
+/* POS: dino table column sizing */
+.posColNum{ width:3.4ch; }
+.posColStock{ width:5.2ch; }
+.posSortTh{ cursor:pointer; user-select:none; }
+.posSortTh:active{ opacity:.75; }
+
+/* POS: stock colors */
+.posStockBtn{
+  border:none;
+  background:transparent;
+  color:rgba(255,255,255,.92);
+  font-weight:950;
+  padding:0;
+  cursor:pointer;
+}
+.posStockDash{ opacity:.7; }
+.posStockM{ color:rgba(160,210,255,.92); }
+.posStockF{ color:rgba(255,170,210,.92); }
+.posStockSep{ opacity:.65; padding:0 1px; }
+
 
 /* POS tables: avoid wrapping */
 .posT th, .posT td{ white-space:nowrap; }
+
+.posT .posColNum, .posT .posColStock{ padding-left:6px; padding-right:6px; }
