@@ -1203,3 +1203,29 @@ button{cursor:pointer}
 .posBox{overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;}
 .posGroupRow td{background:rgba(255,255,255,.04);font-weight:950;}
 .posAmtBtn{cursor:pointer;}
+
+
+/* ===== POS: report history (output-like) ===== */
+.posHistory{ display:flex; flex-direction:column; gap:10px; }
+.posHistGroup{ border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.04); border-radius:14px; overflow:hidden; }
+.posHistHead{ display:flex; align-items:center; gap:10px; padding:10px 10px 8px; border-bottom:1px solid rgba(255,255,255,.08); }
+.posHistHeadL{ font-weight:950; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.posHistHeadR{ margin-left:auto; font-weight:950; color:rgba(120,255,179,.95); white-space:nowrap; }
+.posHistLine{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-top:1px solid rgba(255,255,255,.06); }
+.posHistL{ flex:1; min-width:0; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:850; }
+.posHistAmt{
+  flex:0 0 auto;
+  min-width:92px;
+  text-align:right;
+  white-space:nowrap;
+  font-weight:950;
+  border:none;
+  background:transparent;
+  color:rgba(255,255,255,.92);
+  padding:2px 0;
+}
+.posHistAmt:active{ opacity:.7; }
+.posColTotal{ min-width:110px; }
+
+/* POS tables: avoid wrapping */
+.posT th, .posT td{ white-space:nowrap; }
