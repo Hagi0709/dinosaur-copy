@@ -3781,6 +3781,14 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
       return { title: `${name}×${qty}`, sub: '' };
     }
 
+    // special (ガチャ①②など) : 出力画面の見た目に合わせる
+    const meta = (s && typeof s.meta === 'object') ? s.meta : null;
+    if (meta && meta.mode === 'special_picks' && Array.isArray(meta.picks) && meta.picks.length) {
+      const name = String(s.name || '');
+      const picks = meta.picks.map(x => String(x)).join('');
+      return { title: `${name}${picks}`, sub: '' };
+    }
+
     const name = String(s.name || '');
     const rawType = String(s.type || '');
     const typeClean = rawType.replace('(指定)', '');
@@ -4424,14 +4432,14 @@ function openPosReport() {
 
         <div style="font-weight:950;margin:10px 0 6px;">恐竜別（売上順）</div>
         <div class="posBox">
-          <table class="posT tabularNums" style="font-size:11px;">
+          <table class="posT tabularNums" style="font-size:12px;">
             <thead>
               <tr>
                 <th class="posSortTh" data-pos-sort="name" style="width:auto;">恐竜</th>
-                <th class="r posSortTh posColNum" data-pos-sort="eggQty" style="width:3.4ch;">卵/胚</th>
-                <th class="r posSortTh posColNum" data-pos-sort="adultQty" style="width:3.4ch;">成体</th>
-                <th class="r posSortTh posColStock" data-pos-sort="stock" style="width:5.2ch;">在庫</th>
-                <th class="r posSortTh posColTotal" data-pos-sort="totalAmt" style="width:110px;">合計</th>
+                <th class="r posSortTh posColNum" data-pos-sort="eggQty" style="width:3.2ch;">卵/胚</th>
+                <th class="r posSortTh posColNum" data-pos-sort="adultQty" style="width:3.2ch;">成体</th>
+                <th class="r posSortTh posColStock" data-pos-sort="stock" style="width:4.6ch;">在庫</th>
+                <th class="r posSortTh posColTotal" data-pos-sort="totalAmt" style="width:96px;">合計</th>
               </tr>
             </thead>
             <tbody>
