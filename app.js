@@ -91,6 +91,8 @@ const BUILD_VERSION = '2026-02-11 23:30';
     ROOM_TEMPLATES: 'room_templates_v1',
 
     SPECIAL_CFG: 'special_cfg_v1',
+    POS_SALES: 'pos_sales_v1',
+
   };
 
   const loadJSON = (k, fb) => {
@@ -823,6 +825,7 @@ for (let p = 0; p < pages; p++) {
     qClear: $('#qClear'),
     delivery: $('#delivery'),
     copy: $('#copy'),
+    pos: $('#pos'),
     total: $('#total'),
     out: $('#out'),
 
@@ -3555,6 +3558,515 @@ const prev = btn.textContent;
       document.execCommand('copy');
     }
   });
+
+
+  /* ========= POS ========= */
+  const pos = {
+    sales: loadJSON(LS.POS_SALES, []), // flat lines
+  };
+
+  function fmtDateTime(ts) {
+    const d = new Date(Number(ts) || Date.now());
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const da = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${y}-${m}-${da} ${hh}:${mm}`;
+  }
+  function monthKeyFromTs(ts) {
+    const d = new Date(Number(ts) || Date.now());
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  }
+
+  function posSave() {
+    saveJSON(LS.POS_SALES, pos.sales || []);
+  }
+
+  function collectCurrentSelectionForPOS() {
+    const lines = [];
+    const ts = Date.now();
+    const delivery = el.delivery?.value || '即納品可能';
+
+    // dinos (visible list 기준)
+    const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
+    for (const d of dList) {
+      const baseKey = d.id;
+      const keys = [baseKey, ...Array.from(ephemeralKeys).filter(k => k.startsWith(baseKey + '__dup'))];
+      const sp = getSpecialCfgForDino(d);
+
+      for (const k of keys) {
+        const s = inputState.get(k);
+        if (!s) continue;
+
+        // special (ガチャ等)
+        if (sp?.enabled && s.mode === 'special') {
+          const allowSex = !!sp.allowSex;
+          const m = Number(s.m || 0);
+          const f = Number(s.f || 0);
+          const sexQty = m + f;
+
+          if (allowSex && sexQty > 0) {
+            const type = s.type || d.defType || '受精卵';
+            const unitPrice = prices[type] || 0;
+            const amount = unitPrice * sexQty;
+            lines.push({
+              ts, month: monthKeyFromTs(ts),
+              delivery,
+              kind: 'dino',
+              dinoId: d.id,
+              name: displayName(d.name),
+              type,
+              qty: sexQty,
+              m, f,
+              amount,
+            });
+            continue;
+          }
+
+          const unitPrice = Number(sp.unit || 0);
+          const allPrice = Number(sp.all || 0);
+          if (s.all) {
+            const amount = allPrice;
+            if (amount > 0) {
+              lines.push({
+                ts, month: monthKeyFromTs(ts),
+                delivery,
+                kind: 'dino',
+                dinoId: d.id,
+                name: displayName(d.name),
+                type: '全種',
+                qty: 1,
+                m: 0, f: 0,
+                amount,
+                meta: { mode: 'special_all' },
+              });
+            }
+            continue;
+          }
+
+          const picks = Array.isArray(s.picks) ? s.picks.slice() : [];
+          if (picks.length > 0 && unitPrice > 0) {
+            const amount = picks.length * unitPrice;
+            lines.push({
+              ts, month: monthKeyFromTs(ts),
+              delivery,
+              kind: 'dino',
+              dinoId: d.id,
+              name: displayName(d.name),
+              type: '特殊',
+              qty: picks.length,
+              m: 0, f: 0,
+              amount,
+              meta: { mode: 'special_picks', picks },
+            });
+          }
+          continue;
+        }
+
+        // normal
+        const type = s.type || d.defType || '受精卵';
+        const m = Number(s.m || 0);
+        const f = Number(s.f || 0);
+        const qty = m + f;
+        if (qty <= 0) continue;
+
+        const unitPrice = prices[type] || 0;
+        const amount = unitPrice * qty;
+
+        lines.push({
+          ts, month: monthKeyFromTs(ts),
+          delivery,
+          kind: 'dino',
+          dinoId: d.id,
+          name: displayName(d.name),
+          type,
+          qty,
+          m, f,
+          amount,
+        });
+      }
+    }
+
+    // items
+    const iList = sortByOrder(items.filter(it => !hidden.item.has(it.id)), 'item');
+    for (const it of iList) {
+      const s = inputState.get(it.id);
+      if (!s) continue;
+      const qty = Number(s.qty || 0);
+      if (qty <= 0) continue;
+      const unitPrice = Number(it.price || 0);
+      const amount = unitPrice * qty;
+      lines.push({
+        ts, month: monthKeyFromTs(ts),
+        delivery,
+        kind: 'item',
+        itemId: it.id,
+        name: String(it.name || ''),
+        type: 'アイテム',
+        qty,
+        amount,
+      });
+    }
+
+    return lines;
+  }
+
+  function openPosMenu() {
+    const id = 'posMenuOverlay';
+    let ov = document.getElementById(id);
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = id;
+      ov.style.position = 'fixed';
+      ov.style.inset = '0';
+      ov.style.zIndex = '9999';
+      ov.style.display = 'none';
+      ov.style.alignItems = 'center';
+      ov.style.justifyContent = 'center';
+      ov.style.padding = '16px';
+      ov.style.background = 'rgba(0,0,0,.35)';
+      ov.style.backdropFilter = 'blur(6px)';
+
+      const panel = document.createElement('div');
+      panel.style.width = 'min(420px, 92vw)';
+      panel.style.borderRadius = '18px';
+      panel.style.border = '1px solid rgba(255,255,255,.14)';
+      panel.style.background = 'rgba(20,20,20,.78)';
+      panel.style.backdropFilter = 'blur(12px)';
+      panel.style.boxShadow = '0 20px 60px rgba(0,0,0,.45)';
+      panel.style.overflow = 'hidden';
+      panel.style.display = 'flex';
+      panel.style.flexDirection = 'column';
+
+      const head = document.createElement('div');
+      head.style.display = 'flex';
+      head.style.alignItems = 'center';
+      head.style.justifyContent = 'space-between';
+      head.style.gap = '10px';
+      head.style.padding = '12px 12px 8px 14px';
+
+      const title = document.createElement('div');
+      title.textContent = 'POS';
+      title.style.fontWeight = '900';
+      title.style.fontSize = '14px';
+      title.style.color = '#fff';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.textContent = '×';
+      closeBtn.setAttribute('aria-label', '閉じる');
+      closeBtn.className = 'iconBtn';
+
+      const body = document.createElement('div');
+      body.style.padding = '12px 14px 14px';
+      body.style.display = 'flex';
+      body.style.flexDirection = 'column';
+      body.style.gap = '10px';
+
+      const hint = document.createElement('div');
+      hint.textContent = '入力 / 確認 / キャンセル';
+      hint.style.opacity = '.8';
+      hint.style.fontSize = '12px';
+      hint.style.fontWeight = '800';
+
+      const btnRow = document.createElement('div');
+      btnRow.style.display = 'flex';
+      btnRow.style.gap = '10px';
+
+      const bInput = document.createElement('button');
+      bInput.type = 'button';
+      bInput.className = 'pill';
+      bInput.textContent = '入力';
+
+      const bCheck = document.createElement('button');
+      bCheck.type = 'button';
+      bCheck.className = 'pill';
+      bCheck.textContent = '確認';
+
+      const bCancel = document.createElement('button');
+      bCancel.type = 'button';
+      bCancel.className = 'pill';
+      bCancel.textContent = 'キャンセル';
+
+      btnRow.appendChild(bInput);
+      btnRow.appendChild(bCheck);
+      btnRow.appendChild(bCancel);
+
+      body.appendChild(hint);
+      body.appendChild(btnRow);
+
+      head.appendChild(title);
+      head.appendChild(closeBtn);
+      panel.appendChild(head);
+      panel.appendChild(body);
+      ov.appendChild(panel);
+      document.body.appendChild(ov);
+
+      const hide = () => {
+        ov.style.display = 'none';
+        try { ScrollLock.unlock(); } catch {}
+      };
+      closeBtn.addEventListener('click', hide);
+      bCancel.addEventListener('click', hide);
+      ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
+
+      bInput.addEventListener('click', async () => {
+        const ok = await confirmAsk('現在の選択中の商品を記録します。よろしいですか？');
+        if (!ok) return;
+
+        const lines = collectCurrentSelectionForPOS();
+        if (!lines.length) {
+          openToast('記録する商品がありません');
+          return;
+        }
+
+        pos.sales = Array.isArray(pos.sales) ? pos.sales : [];
+        pos.sales.push(...lines);
+        posSave();
+        openToast(`記録しました（${lines.length}件）`);
+        hide();
+      });
+
+      bCheck.addEventListener('click', () => {
+        hide();
+        openPosReport();
+      });
+
+      // scroll guard
+      installOverlayScrollGuard(ov, body);
+    }
+
+    try { ScrollLock.lock(); } catch {}
+    ov.style.display = 'flex';
+  }
+
+  function openPosReport() {
+    const id = 'posReportOverlay';
+    let ov = document.getElementById(id);
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = id;
+      ov.style.position = 'fixed';
+      ov.style.inset = '0';
+      ov.style.zIndex = '9999';
+      ov.style.display = 'none';
+      ov.style.alignItems = 'center';
+      ov.style.justifyContent = 'center';
+      ov.style.padding = '16px';
+      ov.style.background = 'rgba(0,0,0,.35)';
+      ov.style.backdropFilter = 'blur(6px)';
+
+      const panel = document.createElement('div');
+      panel.style.width = 'min(760px, 94vw)';
+      panel.style.maxHeight = '84vh';
+      panel.style.borderRadius = '18px';
+      panel.style.border = '1px solid rgba(255,255,255,.14)';
+      panel.style.background = 'rgba(20,20,20,.78)';
+      panel.style.backdropFilter = 'blur(12px)';
+      panel.style.boxShadow = '0 20px 60px rgba(0,0,0,.45)';
+      panel.style.overflow = 'hidden';
+      panel.style.display = 'flex';
+      panel.style.flexDirection = 'column';
+
+      const head = document.createElement('div');
+      head.style.display = 'flex';
+      head.style.alignItems = 'center';
+      head.style.justifyContent = 'space-between';
+      head.style.gap = '10px';
+      head.style.padding = '12px 12px 8px 14px';
+
+      const title = document.createElement('div');
+      title.textContent = 'POS 売上';
+      title.style.fontWeight = '900';
+      title.style.fontSize = '14px';
+      title.style.color = '#fff';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.textContent = '×';
+      closeBtn.setAttribute('aria-label', '閉じる');
+      closeBtn.className = 'iconBtn';
+
+      const body = document.createElement('div');
+      body.id = 'posReportBody';
+      body.style.padding = '12px 14px 14px';
+      body.style.overflow = 'auto';
+
+      head.appendChild(title);
+      head.appendChild(closeBtn);
+      panel.appendChild(head);
+      panel.appendChild(body);
+      ov.appendChild(panel);
+      document.body.appendChild(ov);
+
+      const hide = () => {
+        ov.style.display = 'none';
+        try { ScrollLock.unlock(); } catch {}
+      };
+      closeBtn.addEventListener('click', hide);
+      ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
+
+      installOverlayScrollGuard(ov, body);
+    }
+
+    // render
+    const body = document.getElementById('posReportBody');
+    if (!body) return;
+
+    const sales = Array.isArray(pos.sales) ? pos.sales.slice() : [];
+    const months = Array.from(new Set(sales.map(x => String(x.month || monthKeyFromTs(x.ts))))).sort().reverse();
+    const curMonth = monthKeyFromTs(Date.now());
+    const selected = months.includes(curMonth) ? curMonth : (months[0] || curMonth);
+
+    const render = (month) => {
+      const mSales = sales.filter(x => String(x.month || '') === String(month));
+      const total = mSales.reduce((a, b) => a + (Number(b.amount) || 0), 0);
+
+      // product ranking
+      const byProd = new Map();
+      for (const s of mSales) {
+        const kind = s.kind || '';
+        const name = String(s.name || '');
+        const type = String(s.type || '');
+        const key = `${kind}__${name}__${type}`;
+        const cur = byProd.get(key) || { kind, name, type, qty: 0, amount: 0 };
+        cur.qty += Number(s.qty || 0);
+        cur.amount += Number(s.amount || 0);
+        byProd.set(key, cur);
+      }
+      const prodList = Array.from(byProd.values()).sort((a, b) => (b.amount - a.amount) || (b.qty - a.qty));
+
+      // dino summary (egg/embryo vs adult)
+      const byDino = new Map();
+      for (const s of mSales.filter(x => x.kind === 'dino')) {
+        const name = String(s.name || '');
+        const typeRaw = String(s.type || '').replace('(指定)', '');
+        const cat = (typeRaw === '受精卵' || typeRaw === '胚') ? 'egg' : (typeRaw === '成体' ? 'adult' : 'other');
+        const cur = byDino.get(name) || {
+          name,
+          eggQty: 0, eggAmt: 0,
+          adultQty: 0, adultAmt: 0,
+          otherQty: 0, otherAmt: 0,
+        };
+        const qty = Number(s.qty || 0);
+        const amt = Number(s.amount || 0);
+        if (cat === 'egg') { cur.eggQty += qty; cur.eggAmt += amt; }
+        else if (cat === 'adult') { cur.adultQty += qty; cur.adultAmt += amt; }
+        else { cur.otherQty += qty; cur.otherAmt += amt; }
+        byDino.set(name, cur);
+      }
+      const dinoList = Array.from(byDino.values()).sort((a, b) => ((b.eggAmt + b.adultAmt + b.otherAmt) - (a.eggAmt + a.adultAmt + a.otherAmt)));
+
+      // timeline
+      const timeline = mSales.slice().sort((a, b) => (b.ts - a.ts));
+
+      const monthOpts = months.map(m => `<option value="${escapeHtml(m)}"${m===month?' selected':''}>${escapeHtml(m)}</option>`).join('');
+      const prodRows = prodList.slice(0, 200).map(p => {
+        const label = p.kind === 'item' ? `${p.name}` : `${p.name}${p.type ? ' ' + p.type.replace('(指定)','') : ''}`;
+        return `<tr><td>${escapeHtml(label)}</td><td style="text-align:right">${escapeHtml(String(p.qty))}</td><td style="text-align:right">${escapeHtml(yen(p.amount))}</td></tr>`;
+      }).join('');
+      const dinoRows = dinoList.map(d => {
+        const egg = `${d.eggQty} / ${yen(d.eggAmt)}`;
+        const adult = `${d.adultQty} / ${yen(d.adultAmt)}`;
+        const other = (d.otherQty || d.otherAmt) ? `${d.otherQty} / ${yen(d.otherAmt)}` : '-';
+        const sum = yen(d.eggAmt + d.adultAmt + d.otherAmt);
+        return `<tr>
+          <td>${escapeHtml(d.name)}</td>
+          <td style="text-align:right">${escapeHtml(egg)}</td>
+          <td style="text-align:right">${escapeHtml(adult)}</td>
+          <td style="text-align:right">${escapeHtml(other)}</td>
+          <td style="text-align:right;font-weight:900">${escapeHtml(sum)}</td>
+        </tr>`;
+      }).join('');
+      const timeRows = timeline.slice(0, 400).map(s => {
+        const t = fmtDateTime(s.ts);
+        const label = s.kind === 'item' ? `${s.name}` : `${s.name}${s.type ? ' ' + String(s.type).replace('(指定)','') : ''}`;
+        return `<tr><td>${escapeHtml(t)}</td><td>${escapeHtml(label)}</td><td style="text-align:right">${escapeHtml(String(s.qty))}</td><td style="text-align:right">${escapeHtml(yen(s.amount))}</td></tr>`;
+      }).join('');
+
+      body.innerHTML = `
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+          <div style="font-weight:900;">月</div>
+          <select id="posMonthSel" class="delivery" style="height:34px;border-radius:14px;padding:0 34px 0 10px;min-width:120px;">
+            ${monthOpts || `<option value="${escapeHtml(month)}" selected>${escapeHtml(month)}</option>`}
+          </select>
+          <div style="margin-left:auto;font-weight:950;color:rgba(120,255,179,.95)">合計 ${escapeHtml(yen(total))}</div>
+        </div>
+
+        <div style="font-weight:950;margin:10px 0 6px;">売上順（商品）</div>
+        <div style="overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="background:rgba(255,255,255,.06)">
+                <th style="text-align:left;padding:8px 10px;">商品</th>
+                <th style="text-align:right;padding:8px 10px;">個数</th>
+                <th style="text-align:right;padding:8px 10px;">売上</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${prodRows || `<tr><td colspan="3" style="padding:10px;opacity:.8;">データなし</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="font-weight:950;margin:14px 0 6px;">恐竜別（受精卵/胚・成体）</div>
+        <div style="overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="background:rgba(255,255,255,.06)">
+                <th style="text-align:left;padding:8px 10px;">恐竜</th>
+                <th style="text-align:right;padding:8px 10px;">受精卵/胚 (個数/円)</th>
+                <th style="text-align:right;padding:8px 10px;">成体 (個数/円)</th>
+                <th style="text-align:right;padding:8px 10px;">その他</th>
+                <th style="text-align:right;padding:8px 10px;">合計</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${dinoRows || `<tr><td colspan="5" style="padding:10px;opacity:.8;">データなし</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="font-weight:950;margin:14px 0 6px;">取引履歴（いつ / 何 / 何個 / 円）</div>
+        <div style="overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="background:rgba(255,255,255,.06)">
+                <th style="text-align:left;padding:8px 10px;">日時</th>
+                <th style="text-align:left;padding:8px 10px;">商品</th>
+                <th style="text-align:right;padding:8px 10px;">個数</th>
+                <th style="text-align:right;padding:8px 10px;">売上</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${timeRows || `<tr><td colspan="4" style="padding:10px;opacity:.8;">データなし</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:10px;opacity:.65;font-size:11px;line-height:1.35;">
+          ※「入力」は現在の数量をそのまま記録します（自動クリアはしません）。<br>
+          ※ 記録データはこの端末のローカル保存です（localStorage）。
+        </div>
+      `;
+
+      const sel = document.getElementById('posMonthSel');
+      sel?.addEventListener('change', () => render(String(sel.value || month)));
+    };
+
+    render(selected);
+
+    try { ScrollLock.lock(); } catch {}
+    ov.style.display = 'flex';
+  }
+
+  el.pos?.addEventListener('click', () => {
+    openPosMenu();
+  });
+
 
   // ✅ 隠しボタン：右上の合計金額タップで全入力を一括リセット（枠なし）
   el.total?.addEventListener('click', () => {
