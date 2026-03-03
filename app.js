@@ -3792,9 +3792,10 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
 
     if (isPair) {
       if (m > 0 && f > 0 && m !== f) {
+        // ✅ 画像/出力では「ペア」見出しを出さず、明細行だけ表示する
         return {
-          title: `${name}${typeClean}ペア`,
-          sub: `${name}${typeClean}♂︎×${m} ♀︎×${f}`,
+          title: `${name}${typeClean}♂︎×${m} ♀︎×${f}`,
+          sub: '',
         };
       }
       const pairs = (m > 0 || f > 0) ? Math.min(m, f) : Math.ceil(qty / 2);
@@ -4290,7 +4291,7 @@ function openPosReport() {
       ov.__renderPosReport = render;
       // 最新のソート状態を参照
       dinoSort = (ov && ov.__dinoSort) ? ov.__dinoSort : dinoSort;
-      const mSales = sales.filter(x => String(x.month || '') === String(month));
+      const mSales = sales.filter(x => String(x.month || monthKeyFromTs(x.ts)) === String(month));
       const total = mSales.reduce((a, b) => a + (Number(b.amount) || 0), 0);
 
       // product ranking
@@ -4304,10 +4305,13 @@ function openPosReport() {
         cur.qty += Number(s.qty || 0);
         cur.amount += Number(s.amount || 0);
         byProd.set(key, cur);
+      }
+      const prodList = Array.from(byProd.values()).sort((a, b) => (b.amount - a.amount) || (b.qty - a.qty));
+
       // dino summary (並び替え対応 / 卵系 vs 成体系 + 在庫)
       const byDino = new Map();
-      const eggSet = new Set(['受精卵','胚','幼体']);
-      const adultSet = new Set(['成体','クローン','その他','全種']);
+      const eggSet = new Set(['受精卵', '胚', '幼体']);
+      const adultSet = new Set(['成体', 'クローン', 'その他', '全種']);
       for (const s of mSales.filter(x => x.kind === 'dino')) {
         const name = String(s.name || '');
         const id = String(s.dinoId || name);
@@ -4339,7 +4343,6 @@ function openPosReport() {
         // totalAmt
         return dir * ((a.totalAmt - b.totalAmt) || ((a.eggQty + a.adultQty) - (b.eggQty + b.adultQty)));
       });
-om(byDino.values()).sort((a, b) => (b.totalAmt - a.totalAmt) || ((b.eggQty + b.adultQty) - (a.eggQty + a.adultQty)));
 
       // timeline
       const timeline = mSales.slice().sort((a, b) => (b.ts - a.ts));
@@ -4419,7 +4422,6 @@ om(byDino.values()).sort((a, b) => (b.totalAmt - a.totalAmt) || ((b.eggQty + b.a
           <div style="margin-left:auto;font-weight:950;color:rgba(120,255,179,.95)">合計 ${escapeHtml(yen(total))}</div>
         </div>
 
-        <div style="font-weight:950;margin:10px 0 6px;">
         <div style="font-weight:950;margin:10px 0 6px;">恐竜別（売上順）</div>
         <div class="posBox">
           <table class="posT tabularNums" style="font-size:11px;">
@@ -4459,7 +4461,6 @@ om(byDino.values()).sort((a, b) => (b.totalAmt - a.totalAmt) || ((b.eggQty + b.a
 
     try { ScrollLock.lock(); } catch {}
     ov.style.display = 'flex';
-  }
   }
 
   el.pos?.addEventListener('click', () => {
