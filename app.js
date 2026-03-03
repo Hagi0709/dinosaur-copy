@@ -92,6 +92,7 @@ const BUILD_VERSION = '2026-02-11 23:30';
 
     SPECIAL_CFG: 'special_cfg_v1',
     POS_SALES: 'pos_sales_v1',
+    POS_STOCK: 'pos_stock_v1',
 
   };
 
@@ -312,6 +313,74 @@ const BUILD_VERSION = '2026-02-11 23:30';
       ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
 
       installOverlayScrollGuard(ov, body);
+
+      // イベント委譲（削除/在庫入力/並び替え）
+      body.addEventListener('click', async (e) => {
+        const delBtn = e.target && e.target.closest ? e.target.closest('[data-pos-del-id]') : null;
+        if (delBtn) {
+          const id = String(delBtn.getAttribute('data-pos-del-id') || '');
+          if (!id) return;
+          const s = (Array.isArray(pos.sales) ? pos.sales : []).find(x => String(x.id||'') === id);
+          if (!s) return;
+
+          const parts = posDisplayParts(s);
+          const ok = await confirmAsk(`削除しますか？\n${fmtMD(s.ts)} ${parts.title} / ${yen(s.amount)}`);
+          if (!ok) return;
+
+          const idx = (Array.isArray(pos.sales) ? pos.sales : []).findIndex(x => String(x.id||'') === id);
+          if (idx >= 0) {
+            pos.sales.splice(idx, 1);
+            posSave();
+            openToast('削除しました');
+            try {
+              const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
+              (ov.__renderPosReport || (()=>{}))(month);
+            } catch {}
+          }
+          return;
+        }
+
+        const stockBtn = e.target && e.target.closest ? e.target.closest('[data-stock-id]') : null;
+        if (stockBtn) {
+          const key = String(stockBtn.getAttribute('data-stock-id') || '');
+          if (!key) return;
+          const cur = stockGet(key);
+          const curTxt = (cur.m === null || cur.f === null) ? '' : `${cur.m}/${cur.f}`;
+          const v = prompt('在庫を入力（オス/メス）\n例: 4/5\n空欄で未入力(-)に戻す', curTxt);
+          if (v === null) return;
+          const s = String(v).trim();
+          if (!s) {
+            stockSet(key, null, null);
+          } else {
+            const mm = s.match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);
+            if (!mm) {
+              openToast('形式が正しくありません（例: 4/5）');
+              return;
+            }
+            stockSet(key, Number(mm[1]), Number(mm[2]));
+          }
+          try {
+            const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
+            (ov.__renderPosReport || (()=>{}))(month);
+          } catch {}
+          return;
+        }
+
+        const sortTh = e.target && e.target.closest ? e.target.closest('[data-pos-sort]') : null;
+        if (sortTh) {
+          const key = String(sortTh.getAttribute('data-pos-sort') || '');
+          if (!key) return;
+          const cur = (ov.__dinoSort) ? ov.__dinoSort : { key: 'totalAmt', dir: 'desc' };
+          let dir = cur.dir || 'desc';
+          if (cur.key === key) dir = (dir === 'asc') ? 'desc' : 'asc';
+          else dir = (key === 'name') ? 'asc' : 'desc';
+          ov.__dinoSort = { key, dir };
+          try {
+            const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
+            (ov.__renderPosReport || (()=>{}))(month);
+          } catch {}
+        }
+      });
     }
 
     const body = ov.querySelector('.exportGalleryBody');
@@ -3582,6 +3651,7 @@ const prev = btn.textContent;
   /* ========= POS ========= */
   const pos = {
     sales: loadJSON(LS.POS_SALES, []), // flat lines
+    stock: loadJSON(LS.POS_STOCK, {}), // { [dinoId]: { m:number|null, f:number|null } }
   };
 
   // ✅ 既存データ互換：idが無い行にidを付与（削除が安定する）
@@ -3593,6 +3663,18 @@ const prev = btn.textContent;
   }
   if (posNeedsSave) posSave();
 
+
+if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave = true; }
+  // 既存データ互換：stock の形を正規化
+  for (const [k,v] of Object.entries(pos.stock)) {
+    if (!v || typeof v !== 'object') { pos.stock[k] = { m: null, f: null }; posNeedsSave = true; continue; }
+    if (!('m' in v)) { v.m = null; posNeedsSave = true; }
+    if (!('f' in v)) { v.f = null; posNeedsSave = true; }
+    if (v.m !== null && !Number.isFinite(Number(v.m))) { v.m = null; posNeedsSave = true; }
+    if (v.f !== null && !Number.isFinite(Number(v.f))) { v.f = null; posNeedsSave = true; }
+    v.m = (v.m === null) ? null : Math.max(0, Math.floor(Number(v.m)));
+    v.f = (v.f === null) ? null : Math.max(0, Math.floor(Number(v.f)));
+  }
 
   function fmtDateTime(ts) {
     const d = new Date(Number(ts) || Date.now());
@@ -3618,7 +3700,112 @@ const prev = btn.textContent;
 
   function posSave() {
     saveJSON(LS.POS_SALES, pos.sales || []);
+    saveJSON(LS.POS_STOCK, pos.stock || {});
   }
+
+  function getStockKeyForDinoLine(s) {
+    // 優先: dinoId / fallback: name
+    if (s && typeof s === 'object') {
+      if (s.dinoId) return String(s.dinoId);
+      if (s.name) return String(s.name);
+    }
+    return '';
+  }
+
+  function stockGet(key) {
+    if (!key) return { m: null, f: null };
+    const v = pos.stock && pos.stock[key];
+    if (!v || typeof v !== 'object') return { m: null, f: null };
+    const m = (v.m === null || v.m === undefined) ? null : Number(v.m);
+    const f = (v.f === null || v.f === undefined) ? null : Number(v.f);
+    return {
+      m: Number.isFinite(m) ? Math.max(0, Math.floor(m)) : null,
+      f: Number.isFinite(f) ? Math.max(0, Math.floor(f)) : null,
+    };
+  }
+
+  function stockSet(key, m, f) {
+    if (!key) return;
+    const mm = (m === null || m === undefined) ? null : Math.max(0, Math.floor(Number(m)));
+    const ff = (f === null || f === undefined) ? null : Math.max(0, Math.floor(Number(f)));
+    pos.stock = pos.stock && typeof pos.stock === 'object' ? pos.stock : {};
+    pos.stock[key] = { m: (Number.isFinite(mm) ? mm : null), f: (Number.isFinite(ff) ? ff : null) };
+    posSave();
+  }
+
+  function stockDec(key, dm, df) {
+    const st = stockGet(key);
+    if (st.m === null || st.f === null) return; // 未入力は減らさない
+    const mm = Math.max(0, st.m - Math.max(0, Math.floor(Number(dm)||0)));
+    const ff = Math.max(0, st.f - Math.max(0, Math.floor(Number(df)||0)));
+    stockSet(key, mm, ff);
+  }
+
+  function stockDecTotal(key, d) {
+    const st = stockGet(key);
+    if (st.m === null || st.f === null) return;
+    let need = Math.max(0, Math.floor(Number(d)||0));
+    let mm = st.m;
+    let ff = st.f;
+    // まずオス→次にメス（配分不明の時の保守的な減算）
+    const takeM = Math.min(mm, need);
+    mm -= takeM; need -= takeM;
+    const takeF = Math.min(ff, need);
+    ff -= takeF; need -= takeF;
+    stockSet(key, mm, ff);
+  }
+
+  function applyStockDeductions(lines) {
+    const adultSet = new Set(['成体','クローン','その他','全種']);
+    for (const s of (Array.isArray(lines) ? lines : [])) {
+      if (!s || s.kind !== 'dino') continue;
+      const typeClean = String(s.type || '').replace('(指定)', '');
+      if (!adultSet.has(typeClean)) continue;
+      const key = getStockKeyForDinoLine(s);
+      if (!key) continue;
+      const m = Math.max(0, Math.floor(Number(s.m)||0));
+      const f = Math.max(0, Math.floor(Number(s.f)||0));
+      if (m > 0 || f > 0) {
+        stockDec(key, m, f);
+      } else {
+        stockDecTotal(key, Number(s.qty)||0);
+      }
+    }
+  }
+
+  function posDisplayParts(s) {
+    if (!s || typeof s !== 'object') return { title: '', sub: '' };
+    if (s.kind === 'item') {
+      const name = String(s.name || '');
+      const qty = Math.max(0, Math.floor(Number(s.qty)||0));
+      return { title: `${name}×${qty}`, sub: '' };
+    }
+
+    const name = String(s.name || '');
+    const rawType = String(s.type || '');
+    const typeClean = rawType.replace('(指定)', '');
+    const isPair = /\(指定\)$/.test(rawType) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(rawType);
+
+    const m = Math.max(0, Math.floor(Number(s.m)||0));
+    const f = Math.max(0, Math.floor(Number(s.f)||0));
+    const qty = Math.max(0, Math.floor(Number(s.qty)|| (m+f) ));
+
+    if (isPair) {
+      if (m > 0 && f > 0 && m !== f) {
+        return {
+          title: `${name}${typeClean}ペア`,
+          sub: `${name}${typeClean}♂︎×${m} ♀︎×${f}`,
+        };
+      }
+      const pairs = (m > 0 || f > 0) ? Math.min(m, f) : Math.ceil(qty / 2);
+      const mult = pairs > 1 ? `×${pairs}` : '';
+      return { title: `${name}${typeClean}ペア${mult}`, sub: '' };
+    }
+
+    return { title: `${name}${typeClean}×${qty}`, sub: '' };
+  }
+
+
 
   function collectCurrentSelectionForPOS(opts = {}) {
     const lines = [];
@@ -3925,24 +4112,6 @@ const prev = btn.textContent;
       panel.appendChild(body);
       ov.appendChild(panel);
       document.body.appendChild(ov);
-      // 行削除（売上セルを隠しボタン化）
-      body.addEventListener('click', async (e) => {
-        const t = e.target;
-        const btn = t && t.closest ? t.closest('[data-pos-del]') : null;
-        if (!btn) return;
-        const idx = Number(btn.getAttribute('data-pos-del'));
-        if (!Number.isFinite(idx) || idx < 0) return;
-        const s = pos.sales && pos.sales[idx];
-        if (!s) return;
-        const label = s.kind === 'item' ? String(s.name||'') : `${String(s.name||'')}${s.type ? ' ' + String(s.type).replace('(指定)','') : ''}`;
-        const ok = await confirmAsk(`削除しますか？\n${fmtMD(s.ts)} ${label} ×${s.qty} / ${yen(s.amount)}`);
-        if (!ok) return;
-        pos.sales.splice(idx, 1);
-        posSave();
-        openToast('削除しました');
-        try { render(String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()))); } catch {}
-      });
-
 
       const hide = () => {
         ov.style.display = 'none';
@@ -3979,27 +4148,20 @@ const prev = btn.textContent;
       </div>
 
       <div class="posBox" style="margin-bottom:12px;">
-        <table class="posT tabularNums" style="font-size:12px;">
-          <thead>
-            <tr>
-              <th style="width:72%;">恐竜/商品</th>
-              <th class="r" style="width:14%;">個数</th>
-              <th class="r" style="width:14%;">売上</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${lines.length ? lines.map(s => {
-              const label = s.kind === 'item'
-                ? `${s.name}`
-                : `${s.name}${s.type ? ' ' + String(s.type).replace('(指定)','') : ''}`;
-              return `<tr>
-                <td title="${escapeHtml(label)}">${escapeHtml(label)}</td>
-                <td class="r tabularNums">${escapeHtml(String(s.qty))}</td>
-                <td class="r tabularNums">${escapeHtml(yen(s.amount))}</td>
-              </tr>`;
-            }).join('') : `<tr><td colspan="3" style="padding:10px;opacity:.8;">記録する商品がありません</td></tr>`}
-          </tbody>
-        </table>
+        <div class="posEntryPreview tabularNums">
+          ${lines.length ? lines.map(s => {
+            const parts = posDisplayParts(s);
+            return `
+              <div class="posHistLine posEntryLine">
+                <div class="posHistL">
+                  <div class="posHistTitle" title="${escapeHtml(parts.title)}">${escapeHtml(parts.title)}</div>
+                  ${parts.sub ? `<div class="posHistSub" title="${escapeHtml(parts.sub)}">${escapeHtml(parts.sub)}</div>` : ``}
+                </div>
+                <div class="posEntryAmt tabularNums" title="${escapeHtml(yen(s.amount))}">${escapeHtml(yen(s.amount))}</div>
+              </div>
+            `;
+          }).join('') : `<div style="padding:10px;opacity:.8;">記録する商品がありません</div>`}
+        </div>
       </div>
 
       <div style="display:flex;gap:10px;">
@@ -4028,6 +4190,8 @@ const prev = btn.textContent;
 
       pos.sales = Array.isArray(pos.sales) ? pos.sales : [];
       pos.sales.push(...lines2);
+      // 在庫（成体）を減算
+      applyStockDeductions(lines2);
       posSave();
       openToast(`記録しました（${lines2.length}件）`);
       hide();
@@ -4119,7 +4283,13 @@ function openPosReport() {
     const curMonth = monthKeyFromTs(Date.now());
     const selected = months.includes(curMonth) ? curMonth : (months[0] || curMonth);
 
+    // sort state (恐竜別)
+    let dinoSort = (ov && ov.__dinoSort) ? ov.__dinoSort : { key: 'totalAmt', dir: 'desc' };
+
     const render = (month) => {
+      ov.__renderPosReport = render;
+      // 最新のソート状態を参照
+      dinoSort = (ov && ov.__dinoSort) ? ov.__dinoSort : dinoSort;
       const mSales = sales.filter(x => String(x.month || '') === String(month));
       const total = mSales.reduce((a, b) => a + (Number(b.amount) || 0), 0);
 
@@ -4134,28 +4304,42 @@ function openPosReport() {
         cur.qty += Number(s.qty || 0);
         cur.amount += Number(s.amount || 0);
         byProd.set(key, cur);
-      }
-      const prodList = Array.from(byProd.values()).sort((a, b) => (b.amount - a.amount) || (b.qty - a.qty));
-
-      // dino summary (売上順 / 卵系 vs 成体系)
+      // dino summary (並び替え対応 / 卵系 vs 成体系 + 在庫)
       const byDino = new Map();
       const eggSet = new Set(['受精卵','胚','幼体']);
       const adultSet = new Set(['成体','クローン','その他','全種']);
       for (const s of mSales.filter(x => x.kind === 'dino')) {
         const name = String(s.name || '');
+        const id = String(s.dinoId || name);
         const typeRaw = String(s.type || '').replace('(指定)', '');
         const qty = Number(s.qty || 0);
         const amt = Number(s.amount || 0);
 
-        const cur = byDino.get(name) || { name, eggQty: 0, adultQty: 0, totalAmt: 0 };
+        const cur = byDino.get(id) || { id, name, eggQty: 0, adultQty: 0, totalAmt: 0 };
         if (eggSet.has(typeRaw)) cur.eggQty += qty;
         else if (adultSet.has(typeRaw)) cur.adultQty += qty;
         else cur.adultQty += qty; // 未知タイプは成体系側に寄せる
 
         cur.totalAmt += amt;
-        byDino.set(name, cur);
+        byDino.set(id, cur);
       }
-      const dinoList = Array.from(byDino.values()).sort((a, b) => (b.totalAmt - a.totalAmt) || ((b.eggQty + b.adultQty) - (a.eggQty + a.adultQty)));
+
+      const dinoList = Array.from(byDino.values()).map(d => {
+        const st = stockGet(d.id);
+        const has = (st.m !== null && st.f !== null);
+        const stockTotal = has ? (Number(st.m) + Number(st.f)) : -1;
+        return { ...d, stock: st, stockTotal };
+      }).sort((a, b) => {
+        const dir = (dinoSort.dir === 'asc') ? 1 : -1;
+        const k = String(dinoSort.key || 'totalAmt');
+        if (k === 'name') return dir * a.name.localeCompare(b.name, 'ja');
+        if (k === 'eggQty') return dir * ((a.eggQty - b.eggQty) || a.name.localeCompare(b.name, 'ja'));
+        if (k === 'adultQty') return dir * ((a.adultQty - b.adultQty) || a.name.localeCompare(b.name, 'ja'));
+        if (k === 'stock') return dir * ((a.stockTotal - b.stockTotal) || a.name.localeCompare(b.name, 'ja'));
+        // totalAmt
+        return dir * ((a.totalAmt - b.totalAmt) || ((a.eggQty + a.adultQty) - (b.eggQty + b.adultQty)));
+      });
+om(byDino.values()).sort((a, b) => (b.totalAmt - a.totalAmt) || ((b.eggQty + b.adultQty) - (a.eggQty + a.adultQty)));
 
       // timeline
       const timeline = mSales.slice().sort((a, b) => (b.ts - a.ts));
@@ -4166,11 +4350,19 @@ function openPosReport() {
         return `<tr><td>${escapeHtml(label)}</td><td style="text-align:right">${escapeHtml(String(p.qty))}</td><td style="text-align:right">${escapeHtml(yen(p.amount))}</td></tr>`;
       }).join('');
       const dinoRows = dinoList.slice(0, 260).map(d => {
+        const st = d.stock || { m: null, f: null };
+        const stockTxt = (st.m === null || st.f === null) ? '-' : `${st.m}/${st.f}`;
+        const stockHtml = (st.m === null || st.f === null)
+          ? `<span class="posStockDash">-</span>`
+          : `<span class="posStockM">${escapeHtml(String(st.m))}</span><span class="posStockSep">/</span><span class="posStockF">${escapeHtml(String(st.f))}</span>`;
         return `<tr>
           <td title="${escapeHtml(d.name)}">${escapeHtml(d.name)}</td>
-          <td class="r tabularNums" title="${escapeHtml(String(d.eggQty))}">${escapeHtml(String(d.eggQty))}</td>
-          <td class="r tabularNums" title="${escapeHtml(String(d.adultQty))}">${escapeHtml(String(d.adultQty))}</td>
-          <td class="r tabularNums" title="${escapeHtml(yen(d.totalAmt))}">${escapeHtml(yen(d.totalAmt))}</td>
+          <td class="r tabularNums posColNum" title="${escapeHtml(String(d.eggQty))}">${escapeHtml(String(d.eggQty))}</td>
+          <td class="r tabularNums posColNum" title="${escapeHtml(String(d.adultQty))}">${escapeHtml(String(d.adultQty))}</td>
+          <td class="r tabularNums posColStock" title="${escapeHtml(stockTxt)}">
+            <button type="button" class="posStockBtn" data-stock-id="${escapeHtml(String(d.id))}" aria-label="在庫を入力">${stockHtml}</button>
+          </td>
+          <td class="r tabularNums posColTotal" title="${escapeHtml(yen(d.totalAmt))}">${escapeHtml(yen(d.totalAmt))}</td>
         </tr>`;
       }).join('');
       const groups = [];
@@ -4203,19 +4395,13 @@ function openPosReport() {
 
         const rows = g.map((s) => {
           const t = fmtMD(s.ts);
-          const typeClean = s.type ? String(s.type).replace('(指定)','') : '';
-          const sex = (s.kind === 'dino')
-            ? ((Number(s.m||0) > 0 && Number(s.f||0) === 0) ? ' ♂︎' :
-               (Number(s.f||0) > 0 && Number(s.m||0) === 0) ? ' ♀︎' :
-               (Number(s.m||0) > 0 && Number(s.f||0) > 0) ? ' ♂︎♀︎' : '')
-            : '';
-          const label = (s.kind === 'item')
-            ? `${String(s.name||'')}`
-            : `${String(s.name||'')}${typeClean}${sex}`;
-
+          const parts = posDisplayParts(s);
           return `
             <div class="posHistLine">
-              <div class="posHistL" title="${escapeHtml(t)}">${escapeHtml(label)}×${escapeHtml(String(s.qty))}</div>
+              <div class="posHistL" title="${escapeHtml(t)}">
+                <div class="posHistTitle" title="${escapeHtml(parts.title)}">${escapeHtml(parts.title)}</div>
+                ${parts.sub ? `<div class="posHistSub" title="${escapeHtml(parts.sub)}">${escapeHtml(parts.sub)}</div>` : ``}
+              </div>
               <button type="button" class="posHistAmt posAmtBtn tabularNums" data-pos-del-id="${escapeHtml(String(s.id||''))}" title="タップで削除">${escapeHtml(yen(s.amount))}</button>
             </div>
           `;
@@ -4239,14 +4425,15 @@ function openPosReport() {
           <table class="posT tabularNums" style="font-size:11px;">
             <thead>
               <tr>
-                <th style="width:auto;">恐竜</th>
-                <th class="r" style="width:70px;">卵/胚</th>
-                <th class="r" style="width:70px;">成体</th>
-                <th class="r posColTotal" style="width:110px;">合計</th>
+                <th class="posSortTh" data-pos-sort="name" style="width:auto;">恐竜</th>
+                <th class="r posSortTh posColNum" data-pos-sort="eggQty" style="width:3.4ch;">卵/胚</th>
+                <th class="r posSortTh posColNum" data-pos-sort="adultQty" style="width:3.4ch;">成体</th>
+                <th class="r posSortTh posColStock" data-pos-sort="stock" style="width:5.2ch;">在庫</th>
+                <th class="r posSortTh posColTotal" data-pos-sort="totalAmt" style="width:110px;">合計</th>
               </tr>
             </thead>
             <tbody>
-              ${dinoRows || `<tr><td colspan="4" style="padding:10px;opacity:.8;">データなし</td></tr>`}
+              ${dinoRows || `<tr><td colspan="5" style="padding:10px;opacity:.8;">データなし</td></tr>`}
             </tbody>
           </table>
         </div>
