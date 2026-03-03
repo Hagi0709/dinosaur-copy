@@ -3584,6 +3584,16 @@ const prev = btn.textContent;
     sales: loadJSON(LS.POS_SALES, []), // flat lines
   };
 
+  // ✅ 既存データ互換：idが無い行にidを付与（削除が安定する）
+  if (!Array.isArray(pos.sales)) pos.sales = [];
+  let posNeedsSave = false;
+  for (const s of pos.sales) {
+    if (!s || typeof s !== 'object') continue;
+    if (!s.id) { s.id = 's_' + uid(); posNeedsSave = true; }
+  }
+  if (posNeedsSave) posSave();
+
+
   function fmtDateTime(ts) {
     const d = new Date(Number(ts) || Date.now());
     const y = d.getFullYear();
@@ -3735,6 +3745,10 @@ const prev = btn.textContent;
         qty,
         amount,
       });
+    }
+    // ✅ idを付与（削除が安定する）
+    for (const l of lines) {
+      if (l && typeof l === 'object' && !l.id) l.id = 's_' + uid();
     }
 
     return lines;
@@ -4175,23 +4189,42 @@ function openPosReport() {
       });
 
       const timeRows = groupList.slice(0, 220).map((g) => {
+        // できるだけ「出力画面の表示」に寄せる（行内は折り返し無し＆はみ出しは見切り）
         g.sort((a,b)=> (a.kind||'').localeCompare(b.kind||'') );
         const ts = Math.max(...g.map(x => Number(x.ts) || 0));
         const gTotal = g.reduce((a,x)=>a+(Number(x.amount)||0),0);
-        const head = `<tr class="posGroupRow"><td colspan="4">${escapeHtml(fmtMD(ts))}　注文　<span style="opacity:.75;font-weight:900">合計 ${escapeHtml(yen(gTotal))}</span></td></tr>`;
+
+        const head = `
+          <div class="posHistHead">
+            <div class="posHistHeadL">${escapeHtml(fmtMD(ts))} 注文</div>
+            <div class="posHistHeadR">合計 ${escapeHtml(yen(gTotal))}</div>
+          </div>
+        `;
+
         const rows = g.map((s) => {
           const t = fmtMD(s.ts);
-          const label = s.kind === 'item' ? `${s.name}` : `${s.name}${s.type ? ' ' + String(s.type).replace('(指定)','') : ''}`;
-          const idx = sales.indexOf(s);
-          // 売上を「隠し削除ボタン」にする（タップで確認→削除）
-          return `<tr>
-            <td title="${escapeHtml(t)}">${escapeHtml(t)}</td>
-            <td title="${escapeHtml(label)}">${escapeHtml(label)}</td>
-            <td class="r tabularNums" title="${escapeHtml(String(s.qty))}">${escapeHtml(String(s.qty))}</td>
-            <td class="r tabularNums posAmtBtn" data-pos-del="${escapeHtml(String(idx))}" title="タップで削除">${escapeHtml(yen(s.amount))}</td>
-          </tr>`;
+          const typeClean = s.type ? String(s.type).replace('(指定)','') : '';
+          const sex = (s.kind === 'dino')
+            ? ((Number(s.m||0) > 0 && Number(s.f||0) === 0) ? ' ♂︎' :
+               (Number(s.f||0) > 0 && Number(s.m||0) === 0) ? ' ♀︎' :
+               (Number(s.m||0) > 0 && Number(s.f||0) > 0) ? ' ♂︎♀︎' : '')
+            : '';
+          const label = (s.kind === 'item')
+            ? `${String(s.name||'')}`
+            : `${String(s.name||'')}${typeClean}${sex}`;
+
+          return `
+            <div class="posHistLine">
+              <div class="posHistL" title="${escapeHtml(t)}">${escapeHtml(label)}×${escapeHtml(String(s.qty))}</div>
+              <button type="button" class="posHistAmt posAmtBtn tabularNums" data-pos-del-id="${escapeHtml(String(s.id||''))}" title="タップで削除">${escapeHtml(yen(s.amount))}</button>
+            </div>
+          `;
         }).join('');
-        return head + rows;
+
+        return `<div class="posHistGroup">${head}${rows}</div>`;
+      }).join('');
+
+return head + rows;
       }).join('');
 
       body.innerHTML = `
@@ -4209,10 +4242,10 @@ function openPosReport() {
           <table class="posT tabularNums" style="font-size:11px;">
             <thead>
               <tr>
-                <th style="width:54%;">恐竜</th>
-                <th class="r" style="width:14%;">卵系</th>
-                <th class="r" style="width:14%;">成体系</th>
-                <th class="r" style="width:18%;">合計</th>
+                <th style="width:auto;">恐竜</th>
+                <th class="r" style="width:70px;">卵/胚</th>
+                <th class="r" style="width:70px;">成体</th>
+                <th class="r posColTotal" style="width:110px;">合計</th>
               </tr>
             </thead>
             <tbody>
@@ -4223,22 +4256,12 @@ function openPosReport() {
 
         <div style="font-weight:950;margin:14px 0 6px;">取引履歴</div>
         <div class="posBox">
-          <table class="posT tabularNums" style="font-size:12px;">
-            <thead>
-              <tr>
-                <th style="width:62px;">日付</th>
-                <th>恐竜</th>
-                <th class="r" style="width:44px;">個数</th>
-                <th class="r" style="width:92px;">売上</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${timeRows || `<tr><td colspan="4" style="padding:10px;opacity:.8;">データなし</td></tr>`}
-            </tbody>
-          </table>
+          <div class="posHistory tabularNums">
+            ${timeRows || `<div style="padding:10px;opacity:.8;">データなし</div>`}
+          </div>
         </div>
 
-        <div style="margin-top:10px;opacity:.65;font-size:11px;line-height:1.35;">
+<div style="margin-top:10px;opacity:.65;font-size:11px;line-height:1.35;">
 ※「入力」は現在の数量をそのまま記録します（自動クリアはしません）。<br>
           ※ 記録データはこの端末のローカル保存です（localStorage）。
         </div>
@@ -4255,7 +4278,8 @@ function openPosReport() {
   }
 
   el.pos?.addEventListener('click', () => {
-    openPosMenu();
+    // POSはメニューを挟まず「入力」へ直行
+    openPosEntry();
   });
 
 
