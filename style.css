@@ -84,6 +84,11 @@ button{cursor:pointer}
   flex-wrap:nowrap;
 }
 
+.row button{
+  position:relative;
+  z-index:1;
+}
+
 /* ✅ 上部バー：合計金額が長くなっても全体が下にズレないように
    - JSで --topScale を調整（rowが1行に収まるまで縮小）
 */
