@@ -1196,8 +1196,9 @@ button{cursor:pointer}
 /* POS tables */
 .tabularNums{font-variant-numeric:tabular-nums;}
 .posT{table-layout:fixed;width:100%;border-collapse:collapse;}
-.posT th,.posT td{padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.posT th,.posT td{padding:7px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:900;font-size:12px;}
 .posT thead tr{background:rgba(255,255,255,.06)}
+.posT thead th{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.05;font-size:11px;font-weight:950;}
 .posT th{text-align:left;}
 .posT .r{text-align:right;}
 .posBox{overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;}
@@ -1206,7 +1207,7 @@ button{cursor:pointer}
 
 
 /* ===== POS: report history (output-like) ===== */
-.posHistory{ display:flex; flex-direction:column; gap:10px; }
+.posHistory{ display:flex; flex-direction:column; gap:10px; font-size:12px; }
 .posHistGroup{ border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.04); border-radius:14px; overflow:hidden; }
 .posHistHead{ display:flex; align-items:center; gap:10px; padding:10px 10px 8px; border-bottom:1px solid rgba(255,255,255,.08); }
 .posHistHeadL{ font-weight:950; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -1225,7 +1226,10 @@ button{cursor:pointer}
   padding:2px 0;
 }
 .posHistAmt:active{ opacity:.7; }
-.posColTotal{ min-width:110px; }
+.posColTotal{ min-width:96px; }
+.posT th.posColStock,.posT td.posColStock{padding-right:4px;}
+.posT th.posColTotal,.posT td.posColTotal{padding-left:6px;padding-right:6px;}
+.posT th.posColNum,.posT td.posColNum{padding-left:6px;padding-right:6px;}
 /* POS: entry preview */
 .posEntryPreview{ display:flex; flex-direction:column; }
 .posEntryLine{ border-top:none; }
@@ -1244,19 +1248,26 @@ button{cursor:pointer}
 .posHistSub{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:.82; font-weight:850; font-size:11px; margin-top:1px; }
 
 /* POS: dino table column sizing */
-.posColNum{ width:3.4ch; }
-.posColStock{ width:5.2ch; }
+.posColNum{ width:3.2ch; }
+.posColStock{ width:4.6ch; }
 .posSortTh{ cursor:pointer; user-select:none; }
 .posSortTh:active{ opacity:.75; }
 
 /* POS: stock colors */
 .posStockBtn{
+  pointer-events:auto;
   border:none;
   background:transparent;
   color:rgba(255,255,255,.92);
   font-weight:950;
-  padding:0;
+  padding:4px 0;
   cursor:pointer;
+  width:100%;
+  display:inline-flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:2px;
+  -webkit-tap-highlight-color: transparent;
 }
 .posStockDash{ opacity:.7; }
 .posStockM{ color:rgba(160,210,255,.92); }
