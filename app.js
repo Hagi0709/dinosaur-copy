@@ -1190,9 +1190,14 @@ function sortByOrder(list, kind) {
       const price = qty * Number(it.price || 0);
       sum += price;
 
-      lines.push(`${idx}. ${displayName(it.name)} × ${totalCount} = ${price.toLocaleString('ja-JP')}円`);
-      idx++;
-    }
+ lines.push(`${idx}. ${displayName(it.name)} × ${totalCount} = ${price.toLocaleString('ja-JP')}円`);
+idx++;
+}
+
+el.total.textContent = yen(sum);
+fitTotalText();
+el.out.value = lines.join('\n');
+}
 
     el.total.textContent = yen(sum);
     fitTotalText();
