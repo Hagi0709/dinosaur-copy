@@ -3658,6 +3658,8 @@ const prev = btn.textContent;
 
     pos.sales = Array.isArray(pos.sales) ? pos.sales : [];
     pos.sales.push(...lines);
+    // 在庫（成体）を減算
+    applyStockDeductions(lines);
     posSave();
     openToast(`POS記録しました（${lines.length}件）`);
   });
@@ -4604,15 +4606,9 @@ if (stockBtn) {
         const md = (m === null) ? 0 : m;
         const fd = (f === null) ? 0 : f;
         return `
-          <div class="posStockBtns">
-            <button type="button" class="posStockBtn" data-stock-id="${sid}" data-stock-sex="m" title="オス在庫を入力">
-              <span class="posStockM tabularNums">♂${escapeHtml(String(md))}</span>
-            </button>
-            <span class="posStockSep">/</span>
-            <button type="button" class="posStockBtn" data-stock-id="${sid}" data-stock-sex="f" title="メス在庫を入力">
-              <span class="posStockF tabularNums">♀${escapeHtml(String(fd))}</span>
-            </button>
-          </div>
+          <button type="button" class="posStockBtn" data-stock-id="${sid}" data-stock-both="1" title="在庫を入力">
+            <span class="tabularNums">${escapeHtml(String(md))}/${escapeHtml(String(fd))}</span>
+          </button>
         `;
       })()
   }
@@ -4694,11 +4690,11 @@ const head = `
             <table class="posT tabularNums">
               <thead>
                 <tr>
-                  <th class="l posSortTh posColName" data-pos-sort="name">種<br>別</th>
+                  <th class="l posSortTh posColName" data-pos-sort="name">種別</th>
                   <th class="c posSortTh posColEgg" data-pos-sort="eggQty">卵</th>
-                  <th class="c posSortTh posColAdult" data-pos-sort="adultQty">成<br>体</th>
-                  <th class="c posSortTh posColStock" data-pos-sort="stock">在<br>庫</th>
-                  <th class="r posSortTh posColTotal" data-pos-sort="totalAmt">合<br>計</th>
+                  <th class="c posSortTh posColAdult" data-pos-sort="adultQty">成体</th>
+                  <th class="c posSortTh posColStock" data-pos-sort="stock">在庫</th>
+                  <th class="r posSortTh posColTotal" data-pos-sort="totalAmt">合計</th>
                 </tr>
               </thead>
               <tbody>
