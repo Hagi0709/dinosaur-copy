@@ -71,7 +71,22 @@ const BUILD_VERSION = '2026-02-11 23:30';
     return String(n);
   };
 
-  /* ========= localStorage keys ========= */
+  // special label formatting (ガチャ①② など)
+function formatSpecialLabel(name) {
+  const s = String(name || '').trim();
+  if (!s) return s;
+  // "ガチャ 1 2", "ガチャ12", "ガチャ①②" を "ガチャ①②" に寄せる
+  if (s.startsWith('ガチャ')) {
+    const digits = s.replace(/^ガチャ\s*/,'').replace(/[^\d]/g,'');
+    if (digits) {
+      const out = digits.split('').map(d => circled(Number(d))).join('');
+      return `ガチャ${out}`;
+    }
+  }
+  return s;
+}
+
+/* ========= localStorage keys ========= */
   const LS = {
     DINO_CUSTOM: 'dino_custom_v1',
     ITEM_CUSTOM: 'item_custom_v1',
@@ -3776,7 +3791,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
   function posDisplayParts(s) {
     if (!s || typeof s !== 'object') return { title: '', sub: '' };
     if (s.kind === 'item') {
-      const name = String(s.name || '');
+      let name = formatSpecialLabel(String(s.name || ''));
       const qty = Math.max(0, Math.floor(Number(s.qty)||0));
       return { title: `${name}×${qty}`, sub: '' };
     }
@@ -3784,12 +3799,12 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
     // special (ガチャ①②など) : 出力画面の見た目に合わせる
     const meta = (s && typeof s.meta === 'object') ? s.meta : null;
     if (meta && meta.mode === 'special_picks' && Array.isArray(meta.picks) && meta.picks.length) {
-      const name = String(s.name || '');
-      const picks = meta.picks.map(x => String(x)).join('');
+      let name = formatSpecialLabel(String(s.name || ''));
+      const picks = meta.picks.map(x => circled(x)).join('');
       return { title: `${name}${picks}`, sub: '' };
     }
 
-    const name = String(s.name || '');
+    let name = formatSpecialLabel(String(s.name || ''));
     const rawType = String(s.type || '');
     const typeClean = rawType.replace('(指定)', '');
     const isPair = /\(指定\)$/.test(rawType) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(rawType);
@@ -4296,7 +4311,98 @@ function openPosReport() {
           return;
         }
 
-        // 取引履歴：金額タップで削除
+        // 取引履歴：注文単位（合計）タップで削除
+const orderBtn = e.target && e.target.closest ? e.target.closest('[data-pos-del-order]') : null;
+if (orderBtn) {
+  const gKey = String(orderBtn.getAttribute('data-pos-del-order') || '');
+  if (!gKey) return;
+  const ids = gKey.split('|').map(x => x.trim()).filter(Boolean);
+  if (!ids.length) return;
+
+  const list = (Array.isArray(pos.sales) ? pos.sales : []).filter(x => ids.includes(String(x.id || '')));
+  if (!list.length) return;
+
+  const gTotal = list.reduce((a, x) => a + (Number(x.amount) || 0), 0);
+  const ts = Math.max(...list.map(x => Number(x.ts) || 0), 0);
+  const ok = await confirmAsk(`注文ごと削除しますか？\n${fmtMD(ts)} 注文 / 合計 ${yen(gTotal)}`);
+  if (!ok) return;
+
+  pos.sales = (Array.isArray(pos.sales) ? pos.sales : []).filter(x => !ids.includes(String(x.id || '')));
+  posSave();
+  openToast('削除しました');
+  try { (ov.__renderPosReport || (()=>{}))(); } catch {}
+  return;
+}
+
+// 種別売上：在庫（♂/♀）タップで入力
+const stockBtn = e.target && e.target.closest ? e.target.closest('[data-stock-id]') : null;
+if (stockBtn) {
+  const key = String(stockBtn.getAttribute('data-stock-id') || '');
+  if (!key) return;
+
+  const cur = stockGet(key);
+  const sex = String(stockBtn.getAttribute('data-stock-sex') || '');
+  const both = String(stockBtn.getAttribute('data-stock-both') || '');
+
+  const normalize = (m, f) => {
+    // 片方入力なら、もう片方は0
+    if (m === null && f !== null) m = 0;
+    if (f === null && m !== null) f = 0;
+    return { m, f };
+  };
+
+  const askOne = (label, curVal) => {
+    const v = prompt(`${label}の在庫を入力（空欄で未入力）`, (curVal === null ? '' : String(curVal)));
+    if (v === null) return null; // cancel
+    const s = String(v).trim();
+    if (!s) return { val: null };
+    if (!/^\d+$/.test(s)) return { err: true };
+    return { val: Math.max(0, Math.floor(Number(s))) };
+  };
+
+  if (sex === 'm' || sex === 'f') {
+    const r = askOne(sex === 'm' ? 'オス(♂)' : 'メス(♀)', sex === 'm' ? cur.m : cur.f);
+    if (r === null) return;
+    if (r.err) { openToast('数字で入力してください'); return; }
+
+    let m = cur.m, f = cur.f;
+    if (sex === 'm') m = r.val;
+    else f = r.val;
+
+    // 片方だけ空欄にした場合は0に寄せる（両方空欄だけ "-"）
+    if (m === null && f === null) {
+      stockSet(key, null, null);
+    } else {
+      const nn = normalize(m, f);
+      stockSet(key, nn.m, nn.f);
+    }
+
+    try { (ov.__renderPosReport || (()=>{}))(); } catch {}
+    return;
+  }
+
+  if (both) {
+    const r1 = askOne('オス(♂)', cur.m);
+    if (r1 === null) return;
+    if (r1.err) { openToast('数字で入力してください'); return; }
+
+    const tmpM = r1.val;
+    const r2 = askOne('メス(♀)', cur.f);
+    if (r2 === null) return;
+    if (r2.err) { openToast('数字で入力してください'); return; }
+
+    let m = tmpM, f = r2.val;
+    if (m === null && f === null) stockSet(key, null, null);
+    else {
+      const nn = normalize(m, f);
+      stockSet(key, nn.m, nn.f);
+    }
+    try { (ov.__renderPosReport || (()=>{}))(); } catch {}
+    return;
+  }
+}
+
+// 取引履歴：金額タップで削除
         const delBtn = e.target && e.target.closest ? e.target.closest('[data-pos-del-id]') : null;
         if (delBtn) {
           const sid = String(delBtn.getAttribute('data-pos-del-id') || '');
@@ -4365,7 +4471,9 @@ function openPosReport() {
           // モード切替時：先頭へ
           const salesNow = Array.isArray(pos.sales) ? pos.sales : [];
           const monthsNow = Array.from(new Set(salesNow.map(x => String(x.month || monthKeyFromTs(x.ts))))).sort().reverse();
+      if (!monthsNow.length) monthsNow.push(monthKeyFromTs(Date.now()));
           const yearsNow = Array.from(new Set(monthsNow.map(m => String(m).slice(0,4)))).sort().reverse();
+      if (!yearsNow.length) yearsNow.push(String(new Date().getFullYear()));
 
           if (ov.__periodMode === 'year') ov.__periodKey = yearsNow[0] || String(new Date().getFullYear());
           else ov.__periodKey = monthsNow[0] || monthKeyFromTs(Date.now());
@@ -4391,7 +4499,9 @@ function openPosReport() {
 
       const salesNow = Array.isArray(pos.sales) ? pos.sales : [];
       const monthsNow = Array.from(new Set(salesNow.map(x => String(x.month || monthKeyFromTs(x.ts))))).sort().reverse();
+      if (!monthsNow.length) monthsNow.push(monthKeyFromTs(Date.now()));
       const yearsNow = Array.from(new Set(monthsNow.map(m => String(m).slice(0,4)))).sort().reverse();
+      if (!yearsNow.length) yearsNow.push(String(new Date().getFullYear()));
 
       if (!ov.__periodMode) ov.__periodMode = 'month';
       if (!ov.__periodKey) ov.__periodKey = (ov.__periodMode === 'year'
@@ -4479,17 +4589,34 @@ function openPosReport() {
             <td class="c posColEgg tabularNums">${escapeHtml(String(d.eggQty || 0))}</td>
             <td class="c posColAdult tabularNums">${d.kind === 'item' ? `<span class="posDash">-</span>` : escapeHtml(String(d.adultQty || 0))}</td>
             <td class="c posColStock">
-              ${d.kind === 'item'
-                ? `<span class="posDash">-</span>`
-                : `<div class="posStockWrap">
-                    <input class="posStockIn tabularNums" inputmode="numeric" type="text" min="0"
-                           data-stock-id="${escapeHtml(String(d.id))}" data-stock-sex="m"
-                           value="${d.stock && d.stock.m !== null ? escapeHtml(String(d.stock.m)) : ''}" placeholder="♂︎">
-                    <input class="posStockIn tabularNums" inputmode="numeric" type="text" min="0"
-                           data-stock-id="${escapeHtml(String(d.id))}" data-stock-sex="f"
-                           value="${d.stock && d.stock.f !== null ? escapeHtml(String(d.stock.f)) : ''}" placeholder="♀︎">
-                  </div>`}
-            </td>
+  ${d.kind === 'item'
+    ? `<span class="posDash">-</span>`
+    : (() => {
+        const sid = escapeHtml(String(d.id));
+        const st = d.stock || { m: null, f: null };
+        const m = st.m;
+        const f = st.f;
+        // 両方未入力 → "-"
+        if (m === null && f === null) {
+          return `<button type="button" class="posStockBtn posStockDash" data-stock-id="${sid}" data-stock-both="1">-</button>`;
+        }
+        // 片方未入力 → もう片方は 0 として表示
+        const md = (m === null) ? 0 : m;
+        const fd = (f === null) ? 0 : f;
+        return `
+          <div class="posStockBtns">
+            <button type="button" class="posStockBtn" data-stock-id="${sid}" data-stock-sex="m" title="オス在庫を入力">
+              <span class="posStockM tabularNums">${escapeHtml(String(md))}</span>
+            </button>
+            <span class="posStockSep">/</span>
+            <button type="button" class="posStockBtn" data-stock-id="${sid}" data-stock-sex="f" title="メス在庫を入力">
+              <span class="posStockF tabularNums">${escapeHtml(String(fd))}</span>
+            </button>
+          </div>
+        `;
+      })()
+  }
+</td>
             <td class="r posColTotal tabularNums">${escapeHtml(yen(d.totalAmt || 0))}</td>
           </tr>
         `;
@@ -4512,12 +4639,15 @@ function openPosReport() {
         const ts = Number(g.ts) || 0;
         const gTotal = g.list.reduce((a, x) => a + (Number(x.amount) || 0), 0);
 
-        const head = `
-          <div class="posHistHead">
-            <div class="posHistHeadL">${escapeHtml(fmtMD(ts))} 注文</div>
-            <div class="posHistHeadR">合計 ${escapeHtml(yen(gTotal))}</div>
-          </div>
-        `;
+        const gKey = g.list.map(x => String(x.id || '')).filter(Boolean).join('|');
+const head = `
+  <div class="posHistHead">
+    <div class="posHistHeadL">${escapeHtml(fmtMD(ts))} 注文</div>
+    <button type="button" class="posHistHeadR posOrderDel tabularNums" data-pos-del-order="${escapeHtml(gKey)}" title="タップで注文ごと削除">
+      合計 ${escapeHtml(yen(gTotal))}
+    </button>
+  </div>
+`;
 
         const rows = g.list.map((s) => {
           const t = fmtMD(s.ts);
@@ -4528,7 +4658,7 @@ function openPosReport() {
                 <div class="posHistTitle" title="${escapeHtml(parts.title)}">${escapeHtml(parts.title)}</div>
                 ${parts.sub ? `<div class="posHistSub" title="${escapeHtml(parts.sub)}">${escapeHtml(parts.sub)}</div>` : ``}
               </div>
-              <button type="button" class="posHistAmt posAmtBtn tabularNums" data-pos-del-id="${escapeHtml(String(s.id || ''))}" title="タップで削除">${escapeHtml(yen(s.amount))}</button>
+              <button type="button" class="posHistAmt tabularNums" data-pos-del-id="${escapeHtml(String(s.id || ''))}" title="タップで削除">${escapeHtml(yen(s.amount))}</button>
             </div>
           `;
         }).join('');
@@ -4564,11 +4694,11 @@ function openPosReport() {
             <table class="posT tabularNums">
               <thead>
                 <tr>
-                  <th class="l posSortTh posColName" data-pos-sort="name" style="width:40%;">種別</th>
-                  <th class="c posSortTh posColEgg" data-pos-sort="eggQty" style="width:14%;">卵/胚</th>
-                  <th class="c posSortTh posColAdult" data-pos-sort="adultQty" style="width:12%;">成体</th>
-                  <th class="c posSortTh posColStock" data-pos-sort="stock" style="width:18%;">在庫</th>
-                  <th class="r posSortTh posColTotal" data-pos-sort="totalAmt" style="width:16%;">合計</th>
+                  <th class="l posSortTh posColName" data-pos-sort="name" style="width:46%;">種<br>別</th>
+                  <th class="c posSortTh posColEgg" data-pos-sort="eggQty" style="width:12%;">卵</th>
+                  <th class="c posSortTh posColAdult" data-pos-sort="adultQty" style="width:10%;">成<br>体</th>
+                  <th class="c posSortTh posColStock" data-pos-sort="stock" style="width:18%;">在<br>庫</th>
+                  <th class="r posSortTh posColTotal" data-pos-sort="totalAmt" style="width:16%;">合<br>計</th>
                 </tr>
               </thead>
               <tbody>
