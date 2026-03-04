@@ -1284,20 +1284,23 @@ button{cursor:pointer}
 /* ===== POS stock inputs ===== */
 .posStockWrap{
   display:flex;
-  flex-direction:column;
-  gap:6px;
+  flex-direction:row;
+  gap:8px;
   align-items:center;
+  justify-content:center;
 }
 .posStockIn{
-  width:54px;
+  width:46px;
   height:30px;
-  border-radius:10px;
+  border-radius:12px;
   border:1px solid rgba(255,255,255,.14);
-  background:rgba(0,0,0,.18);
+  background:rgba(255,255,255,.06);
   color:#fff;
-  font-weight:900;
+  font-weight:950;
   text-align:center;
   font-size:12px;
+  line-height:1;
+  padding:0 6px;
 }
 .posDash{ opacity:.75; }
 
@@ -1432,3 +1435,5 @@ button{cursor:pointer}
   margin:0;
 }
 
+
+.posStockIn::placeholder{color:rgba(255,255,255,.55);font-weight:900;}
