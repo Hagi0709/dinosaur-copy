@@ -392,9 +392,9 @@ const BUILD_VERSION = '2026-02-11 23:30';
       ctrl.innerHTML = `
         <div class="exportGridInputs">
           <div class="exportGridLabel">縦</div>
-          <input class="exportGridInput" id="exportRows" type="number" inputmode="numeric" min="1" value="6">
+          <input class="exportGridInput" id="exportRows" type="text" inputmode="numeric" min="1" value="6">
           <div class="exportGridLabel">横</div>
-          <input class="exportGridInput" id="exportCols" type="number" inputmode="numeric" min="1" value="2">
+          <input class="exportGridInput" id="exportCols" type="text" inputmode="numeric" min="1" value="2">
         </div>
         <button class="pill exportGridBtn" type="button" id="exportMake">生成</button>
       `;
@@ -2237,7 +2237,7 @@ const tOut = String(type).replace('(指定)', '');
 
       const val = document.createElement('div');
       val.className = 'pVal';
-      val.innerHTML = `<input type="number" inputmode="numeric" value="${prices[t] || 0}" data-type="${t}">`;
+      val.innerHTML = `<input type="text" inputmode="numeric" value="${prices[t] || 0}" data-type="${t}">`;
 
       grid.appendChild(key);
       grid.appendChild(val);
@@ -2441,13 +2441,13 @@ if (act === 'gojuon') {
 
         <div id="spBox" style="display:none;">
           <div class="editLabel">何番までボタンを用意するか</div>
-          <input id="spMax" class="editInput" type="number" inputmode="numeric" value="16">
+          <input id="spMax" class="editInput" type="text" inputmode="numeric" value="16">
 
           <div class="editLabel">1体あたりの価格</div>
-          <input id="spUnit" class="editInput" type="number" inputmode="numeric" value="300">
+          <input id="spUnit" class="editInput" type="text" inputmode="numeric" value="300">
 
           <div class="editLabel">全種の場合の価格</div>
-          <input id="spAll" class="editInput" type="number" inputmode="numeric" value="3000">
+          <input id="spAll" class="editInput" type="text" inputmode="numeric" value="3000">
         </div>
 
         <div class="editBtns">
@@ -2563,10 +2563,10 @@ if (act === 'gojuon') {
         <input id="addName" class="editInput" type="text" value="" autocomplete="off" placeholder="例：金庫">
 
         <div class="editLabel">1セットあたり個数</div>
-        <input id="addUnit" class="editInput" type="number" inputmode="numeric" value="1">
+        <input id="addUnit" class="editInput" type="text" inputmode="numeric" value="1">
 
         <div class="editLabel">価格（1セット）</div>
-        <input id="addPrice" class="editInput" type="number" inputmode="numeric" value="0">
+        <input id="addPrice" class="editInput" type="text" inputmode="numeric" value="0">
 
         <div class="editLabel">メモ</div>
         <textarea id="addMemo" class="editTextarea" placeholder="例：在庫少 / 取り置き不可"></textarea>
@@ -2718,13 +2718,13 @@ if (act === 'gojuon') {
 
         <div id="spBox" style="display:${curSp?.enabled ? 'block' : 'none'};">
           <div class="editLabel">何番までボタンを用意するか</div>
-          <input id="spMax" class="editInput" type="number" inputmode="numeric" value="${Number(curSp?.max || 16)}">
+          <input id="spMax" class="editInput" type="text" inputmode="numeric" value="${Number(curSp?.max || 16)}">
 
           <div class="editLabel">1体あたりの価格</div>
-          <input id="spUnit" class="editInput" type="number" inputmode="numeric" value="${Number(curSp?.unit || 300)}">
+          <input id="spUnit" class="editInput" type="text" inputmode="numeric" value="${Number(curSp?.unit || 300)}">
 
           <div class="editLabel">全種の場合の価格</div>
-          <input id="spAll" class="editInput" type="number" inputmode="numeric" value="${Number(curSp?.all || 3000)}">
+          <input id="spAll" class="editInput" type="text" inputmode="numeric" value="${Number(curSp?.all || 3000)}">
         </div>
 
         <div class="editBtns">
@@ -4482,10 +4482,10 @@ function openPosReport() {
               ${d.kind === 'item'
                 ? `<span class="posDash">-</span>`
                 : `<div class="posStockWrap">
-                    <input class="posStockIn tabularNums" inputmode="numeric" type="number" min="0"
+                    <input class="posStockIn tabularNums" inputmode="numeric" type="text" min="0"
                            data-stock-id="${escapeHtml(String(d.id))}" data-stock-sex="m"
                            value="${d.stock && d.stock.m !== null ? escapeHtml(String(d.stock.m)) : ''}" placeholder="♂">
-                    <input class="posStockIn tabularNums" inputmode="numeric" type="number" min="0"
+                    <input class="posStockIn tabularNums" inputmode="numeric" type="text" min="0"
                            data-stock-id="${escapeHtml(String(d.id))}" data-stock-sex="f"
                            value="${d.stock && d.stock.f !== null ? escapeHtml(String(d.stock.f)) : ''}" placeholder="♀">
                   </div>`}
@@ -4697,10 +4697,10 @@ function openPosReport() {
         <input id="editName" class="editInput" type="text" value="${escapeHtml(it.name)}" autocomplete="off">
 
         <div class="editLabel">1セットあたり個数</div>
-        <input id="editUnit" class="editInput" type="number" inputmode="numeric" value="${Number(it.unit || 1)}">
+        <input id="editUnit" class="editInput" type="text" inputmode="numeric" value="${Number(it.unit || 1)}">
 
         <div class="editLabel">価格（1セット）</div>
-        <input id="editPrice" class="editInput" type="number" inputmode="numeric" value="${Number(it.price || 0)}">
+        <input id="editPrice" class="editInput" type="text" inputmode="numeric" value="${Number(it.price || 0)}">
 
         <div class="editLabel">メモ</div>
         <textarea id="editMemo" class="editTextarea" placeholder="例：在庫少 / 取り置き不可">${escapeHtml(curMemo || '')}</textarea>
