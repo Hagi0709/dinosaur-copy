@@ -1,11 +1,3 @@
-
-// ===== 成体注文時 在庫減算保険 =====
-function __adjustAdultStock(item,qty){
- if(!item) return;
- if(typeof item.stockAdult==="number"){
-  item.stockAdult=Math.max(0,item.stockAdult-qty);
- }
-}
 (() => {
 'use strict';
 
@@ -1201,8 +1193,8 @@ function sortByOrder(list, kind) {
                 line = `${displayName(d.name)}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
               } else {
                 const p = [];
-                if (m > 0) p.push(`︎×${m}`);
-                if (f > 0) p.push(`︎×${f}`);
+                if (m > 0) p.push(`♂︎×${m}`);
+                if (f > 0) p.push(`♀︎×${f}`);
                 line = `${displayName(d.name)}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
               }
             } else {
@@ -1258,8 +1250,8 @@ function sortByOrder(list, kind) {
             line = `${displayName(d.name)}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
           } else {
             const p = [];
-            if (m > 0) p.push(`︎×${m}`);
-            if (f > 0) p.push(`︎×${f}`);
+            if (m > 0) p.push(`♂︎×${m}`);
+            if (f > 0) p.push(`♀︎×${f}`);
             line = `${displayName(d.name)}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
           }
         } else {
@@ -2459,7 +2451,7 @@ if (act === 'gojuon') {
 
         <label style="display:flex;gap:10px;align-items:center;font-weight:900;color:rgba(255,255,255,.85);margin-top:-6px;">
           <input id="spAllowSex" type="checkbox" style="transform:scale(1.2);" disabled>
-          特殊＋通常の入力を許可
+          特殊＋通常の♂♀入力を許可
         </label>
 
         <div id="spBox" style="display:none;">
@@ -2736,7 +2728,7 @@ if (act === 'gojuon') {
 
         <label style="display:flex;gap:10px;align-items:center;font-weight:900;color:rgba(255,255,255,.85);margin-top:-6px;">
           <input id="spAllowSex" type="checkbox" ${curSp?.allowSex ? 'checked' : ''} style="transform:scale(1.2);" ${curSp?.enabled ? '' : 'disabled'}>
-          特殊＋通常の入力を許可
+          特殊＋通常の♂♀入力を許可
         </label>
 
         <div id="spBox" style="display:${curSp?.enabled ? 'block' : 'none'};">
@@ -3293,7 +3285,7 @@ ${roomText}の方にパスワード【${pw}】で入室をして頂き、${place
       text += `
 
 🚚配送希望の場合は
-以下の情報をコメントしてください🙇🏻‍️
+以下の情報をコメントしてください🙇🏻‍♂️
 
 ①サーバー番号
 ②配送先座標
@@ -3825,7 +3817,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
       if (m > 0 && f > 0 && m !== f) {
         // ✅ 画像/出力では「ペア」見出しを出さず、明細行だけ表示する
         return {
-          title: `${name}${typeClean}︎×${m} ︎×${f}`,
+          title: `${name}${typeClean}♂︎×${m} ♀︎×${f}`,
           sub: '',
         };
       }
@@ -4342,7 +4334,7 @@ if (orderBtn) {
   return;
 }
 
-// 種別売上：在庫（/）タップで入力
+// 種別売上：在庫（♂/♀）タップで入力
 const stockBtn = e.target && e.target.closest ? e.target.closest('[data-stock-id]') : null;
 if (stockBtn) {
   const key = String(stockBtn.getAttribute('data-stock-id') || '');
@@ -4369,7 +4361,7 @@ if (stockBtn) {
   };
 
   if (sex === 'm' || sex === 'f') {
-    const r = askOne(sex === 'm' ? 'オス()' : 'メス()', sex === 'm' ? cur.m : cur.f);
+    const r = askOne(sex === 'm' ? 'オス(♂)' : 'メス(♀)', sex === 'm' ? cur.m : cur.f);
     if (r === null) return;
     if (r.err) { openToast('数字で入力してください'); return; }
 
@@ -4390,12 +4382,12 @@ if (stockBtn) {
   }
 
   if (both) {
-    const r1 = askOne('オス()', cur.m);
+    const r1 = askOne('オス(♂)', cur.m);
     if (r1 === null) return;
     if (r1.err) { openToast('数字で入力してください'); return; }
 
     const tmpM = r1.val;
-    const r2 = askOne('メス()', cur.f);
+    const r2 = askOne('メス(♀)', cur.f);
     if (r2 === null) return;
     if (r2.err) { openToast('数字で入力してください'); return; }
 
@@ -4455,7 +4447,7 @@ if (stockBtn) {
         const t = e && e.target ? e.target : null;
         if (!t) return;
 
-        // 在庫入力（/）
+        // 在庫入力（♂/♀）
         if (t.matches && t.matches('input.posStockIn[data-stock-id][data-stock-sex]')) {
           const key = String(t.getAttribute('data-stock-id') || '');
           const sex = String(t.getAttribute('data-stock-sex') || '');
@@ -4614,11 +4606,11 @@ if (stockBtn) {
         return `
           <div class="posStockBtns">
             <button type="button" class="posStockBtn" data-stock-id="${sid}" data-stock-sex="m" title="オス在庫を入力">
-              <span class="posStockM tabularNums">${escapeHtml(String(md))}</span>
+              <span class="posStockM tabularNums">♂${escapeHtml(String(md))}</span>
             </button>
             <span class="posStockSep">/</span>
             <button type="button" class="posStockBtn" data-stock-id="${sid}" data-stock-sex="f" title="メス在庫を入力">
-              <span class="posStockF tabularNums">${escapeHtml(String(fd))}</span>
+              <span class="posStockF tabularNums">♀${escapeHtml(String(fd))}</span>
             </button>
           </div>
         `;
