@@ -1537,3 +1537,22 @@ button{cursor:pointer}
 .posT thead tr{ background:rgba(255,255,255,.06); }
 .posT thead th{ background:transparent; }
 
+
+
+/* ===== POS 売上テーブル安定レイアウト ===== */
+.salesTable{
+  width:100%;
+  table-layout:fixed;
+  border-collapse:collapse;
+}
+.salesTable th,.salesTable td{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  padding:6px 8px;
+}
+.salesTable th:first-child,.salesTable td:first-child{width:48%;text-align:left;}
+.salesTable th:nth-child(2),.salesTable td:nth-child(2){width:42px;text-align:center;}
+.salesTable th:nth-child(3),.salesTable td:nth-child(3){width:42px;text-align:center;}
+.salesTable th:nth-child(4),.salesTable td:nth-child(4){width:80px;text-align:center;}
+.salesTable th:last-child,.salesTable td:last-child{width:90px;text-align:right;}
