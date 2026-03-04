@@ -1502,3 +1502,50 @@ button{cursor:pointer}
 .posStockBtn{justify-content:center;}
 .posStockBtns .posStockBtn{min-width:2.2ch;}
 
+/* ===============================
+   POS 売上テーブル 修正
+   =============================== */
+
+/* テーブルレイアウトを固定 */
+.posReport table{
+  table-layout:fixed;
+  width:100%;
+}
+
+/* 列名の折り返し禁止（縦文字防止） */
+.posReport th{
+  white-space:nowrap;
+  text-align:center;
+}
+
+/* 種別列を広く確保 */
+.posReport th:first-child,
+.posReport td:first-child{
+  width:160px;
+  min-width:160px;
+  text-align:left;
+  white-space:nowrap;
+}
+
+/* 卵 / 成体 */
+.posReport th:nth-child(2),
+.posReport td:nth-child(2),
+.posReport th:nth-child(3),
+.posReport td:nth-child(3){
+  width:48px;
+  text-align:center;
+}
+
+/* 在庫 */
+.posReport th:nth-child(4),
+.posReport td:nth-child(4){
+  width:70px;
+  text-align:center;
+}
+
+/* 合計 */
+.posReport th:nth-child(5),
+.posReport td:nth-child(5){
+  width:80px;
+  text-align:right;
+}
