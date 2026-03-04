@@ -1502,17 +1502,3 @@ button{cursor:pointer}
 .posStockBtn{justify-content:center;}
 .posStockBtns .posStockBtn{min-width:2.2ch;}
 
-
-
-/* POS table fix */
-.posT{
-  width:100%;
-  table-layout:fixed;
-  font-size:12px;
-}
-.posColName{width:38%;}
-.posColEgg{width:40px;}
-.posColAdult{width:40px;}
-.posColStock{width:70px;}
-.posColTotal{width:90px;font-size:11px;}
-.posT th,.posT td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
