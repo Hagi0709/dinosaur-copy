@@ -4607,7 +4607,9 @@ if (stockBtn) {
         const fd = (f === null) ? 0 : f;
         return `
           <button type="button" class="posStockBtn" data-stock-id="${sid}" data-stock-both="1" title="在庫を入力">
-            <span class="tabularNums">${escapeHtml(String(md))}/${escapeHtml(String(fd))}</span>
+            <span class="posStockM tabularNums">${escapeHtml(String(md))}</span>
+            <span class="posStockSep">/</span>
+            <span class="posStockF tabularNums">${escapeHtml(String(fd))}</span>
           </button>
         `;
       })()
