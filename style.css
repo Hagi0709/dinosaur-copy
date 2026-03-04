@@ -1228,7 +1228,7 @@ button{cursor:pointer}
   padding:2px 0;
 }
 .posHistAmt:active{ opacity:.7; }
-.posColTotal{ min-width:96px; }
+.posColTotal{ min-width:9ch; }
 .posT th.posColStock,.posT td.posColStock{padding-right:4px;}
 .posT th.posColTotal,.posT td.posColTotal{padding-left:6px;padding-right:6px;}
 .posT th.posColNum,.posT td.posColNum{padding-left:6px;padding-right:6px;}
@@ -1535,7 +1535,10 @@ button{cursor:pointer}
 .posT th.posColStock,.posT td.posColStock{ width:6.2ch !important; min-width:6.2ch !important; }
 
 /* 合計は金額が入るので少し広め */
-.posT th.posColTotal,.posT td.posColTotal{ width:10ch !important; min-width:10ch !important; }
+.posT th.posColTotal,.posT td.posColTotal{
+  width:auto !important;
+  min-width:9ch !important;
+}
 
 /* 種別(名称)列：見切れないように最優先で広く */
 .posT th.posColName,.posT td.posColName{
