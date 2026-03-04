@@ -1198,7 +1198,7 @@ button{cursor:pointer}
 .posT{table-layout:fixed;width:100%;border-collapse:collapse;}
 .posT th,.posT td{padding:7px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:900;font-size:12px;}
 .posT thead tr{background:rgba(255,255,255,.06)}
-.posT thead th{white-space:nowrap;overflow:visible;text-overflow:clip;line-height:1.05;font-size:11px;font-weight:950;}
+.posT thead th{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.05;font-size:11px;font-weight:950;}
 .posT th{text-align:left;}
 .posT .r{text-align:right;}
 .posBox{overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;}
@@ -1279,3 +1279,32 @@ button{cursor:pointer}
 .posT th, .posT td{ white-space:nowrap; }
 
 .posT .posColNum, .posT .posColStock{ padding-left:6px; padding-right:6px; }
+
+
+/* =========================
+   POS 売上：タブ
+========================= */
+.posTabsWrap{
+  display:flex;
+  gap:0;
+  padding:4px;
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.05);
+  margin:6px 0 10px;
+}
+.posTabBtn{
+  flex:1;
+  height:40px;
+  border-radius:16px;
+  border:0;
+  background:transparent;
+  color:rgba(255,255,255,.75);
+  font-weight:900;
+}
+.posTabBtn.isActive{
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  box-shadow:0 6px 14px rgba(0,0,0,.22);
+}
+.posTabPanel.isHidden{ display:none; }
