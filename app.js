@@ -4484,10 +4484,10 @@ function openPosReport() {
                 : `<div class="posStockWrap">
                     <input class="posStockIn tabularNums" inputmode="numeric" type="text" min="0"
                            data-stock-id="${escapeHtml(String(d.id))}" data-stock-sex="m"
-                           value="${d.stock && d.stock.m !== null ? escapeHtml(String(d.stock.m)) : ''}" placeholder="♂">
+                           value="${d.stock && d.stock.m !== null ? escapeHtml(String(d.stock.m)) : ''}" placeholder="♂︎">
                     <input class="posStockIn tabularNums" inputmode="numeric" type="text" min="0"
                            data-stock-id="${escapeHtml(String(d.id))}" data-stock-sex="f"
-                           value="${d.stock && d.stock.f !== null ? escapeHtml(String(d.stock.f)) : ''}" placeholder="♀">
+                           value="${d.stock && d.stock.f !== null ? escapeHtml(String(d.stock.f)) : ''}" placeholder="♀︎">
                   </div>`}
             </td>
             <td class="r posColTotal tabularNums">${escapeHtml(yen(d.totalAmt || 0))}</td>
