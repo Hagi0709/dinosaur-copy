@@ -1437,3 +1437,50 @@ button{cursor:pointer}
 
 
 .posStockIn::placeholder{color:rgba(255,255,255,.55);font-weight:900;}
+
+/* ===== POS report fixes (2026-03) ===== */
+.posStockBtns{
+  width:100%;
+  display:inline-flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:2px;
+}
+.posStockBtns .posStockBtn{
+  width:auto;
+  padding:4px 0;
+}
+.posStockBtn{
+  -webkit-appearance:none;
+  appearance:none;
+}
+.posHistAmt{
+  -webkit-appearance:none;
+  appearance:none;
+  border-radius:0;
+}
+.posOrderDel{
+  -webkit-appearance:none;
+  appearance:none;
+  border:none;
+  background:transparent;
+  padding:0;
+  cursor:pointer;
+  color:rgba(120,255,179,.95);
+  font-weight:950;
+}
+.posOrderDel:active{ opacity:.7; }
+
+/* 種別列を広めに */
+.posT th.posColName, .posT td.posColName{
+  min-width:12ch;
+}
+.posT th.posColEgg, .posT td.posColEgg{ min-width:4ch; }
+.posT th.posColAdult, .posT td.posColAdult{ min-width:4ch; }
+.posT th.posColStock, .posT td.posColStock{ min-width:7ch; }
+.posT th.posColTotal, .posT td.posColTotal{ min-width:8ch; }
+
+/* ヘッダの背景が文字高さに追随 */
+.posT thead th{
+  background:rgba(255,255,255,.06);
+}
