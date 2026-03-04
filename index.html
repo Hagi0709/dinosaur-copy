@@ -1,159 +1,159 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>恐竜リスト</title>
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <title>恐竜リスト</title>
 
-  <!-- PWA / iOS icon -->
-  <link rel="apple-touch-icon" href="1BD7F9DA-64AA-4346-B5AE-E67C22148484.png">
-  <link rel="icon" href="1BD7F9DA-64AA-4346-B5AE-E67C22148484.png">
+    <!-- PWA / iOS icon -->
+    <link rel="apple-touch-icon" href="1BD7F9DA-64AA-4346-B5AE-E67C22148484.png">
+    <link rel="icon" href="1BD7F9DA-64AA-4346-B5AE-E67C22148484.png">
 
-  <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css" />
 
-  <script>
-    // app.js 側が「実行前に死ぬ」ケース（構文エラー/読込失敗）でも表示する
-    window.__bootError = function (msg) {
-      try {
-        const out = document.getElementById('out');
-        if (out) out.value = (msg || 'Unknown error');
-      } catch {}
-      try {
-        const box = document.createElement('div');
-        box.style.position = 'fixed';
-        box.style.left = '12px';
-        box.style.right = '12px';
-        box.style.bottom = '12px';
-        box.style.zIndex = '99999';
-        box.style.padding = '10px 12px';
-        box.style.borderRadius = '14px';
-        box.style.border = '1px solid rgba(255,255,255,.18)';
-        box.style.background = 'rgba(120,40,40,.35)';
-        box.style.backdropFilter = 'blur(10px)';
-        box.style.color = '#fff';
-        box.style.fontWeight = '900';
-        box.style.fontSize = '12px';
-        box.style.whiteSpace = 'pre-wrap';
-        box.textContent = msg || 'Unknown error';
-        document.body.appendChild(box);
-      } catch {}
-    };
+    <script>
+      // app.js 側が「実行前に死ぬ」ケース（構文エラー/読込失敗）でも表示する
+      window.__bootError = function (msg) {
+        try {
+          const out = document.getElementById('out');
+          if (out) out.value = (msg || 'Unknown error');
+        } catch {}
+        try {
+          const box = document.createElement('div');
+          box.style.position = 'fixed';
+          box.style.left = '12px';
+          box.style.right = '12px';
+          box.style.bottom = '12px';
+          box.style.zIndex = '99999';
+          box.style.padding = '10px 12px';
+          box.style.borderRadius = '14px';
+          box.style.border = '1px solid rgba(255,255,255,.18)';
+          box.style.background = 'rgba(120,40,40,.35)';
+          box.style.backdropFilter = 'blur(10px)';
+          box.style.color = '#fff';
+          box.style.fontWeight = '900';
+          box.style.fontSize = '12px';
+          box.style.whiteSpace = 'pre-wrap';
+          box.textContent = msg || 'Unknown error';
+          document.body.appendChild(box);
+        } catch {}
+      };
 
-    window.addEventListener('error', (e) => {
-      const m = e && e.message ? e.message : 'Script error';
-      const src = e && e.filename ? e.filename : '';
-      const line = e && e.lineno ? e.lineno : '';
-      window.__bootError(`[BOOT ERROR]\n${m}\n${src}:${line}`);
-    });
+      window.addEventListener('error', (e) => {
+        const m = e && e.message ? e.message : 'Script error';
+        const src = e && e.filename ? e.filename : '';
+        const line = e && e.lineno ? e.lineno : '';
+        window.__bootError(`[BOOT ERROR]\n${m}\n${src}:${line}`);
+      });
 
-    window.addEventListener('unhandledrejection', (e) => {
-      const r = e && e.reason ? (e.reason.stack || e.reason.message || String(e.reason)) : 'Promise rejected';
-      window.__bootError(`[BOOT REJECTION]\n${r}`);
-    });
-  </script>
+      window.addEventListener('unhandledrejection', (e) => {
+        const r = e && e.reason ? (e.reason.stack || e.reason.message || String(e.reason)) : 'Promise rejected';
+        window.__bootError(`[BOOT REJECTION]\n${r}`);
+      });
+    </script>
 
-  <script defer src="app.js" onerror="window.__bootError('[LOAD ERROR]\\napp.js の読み込みに失敗しました（ファイル名/配置/キャッシュ確認）');"></script>
-</head>
+    <script defer src="app.js" onerror="window.__bootError('[LOAD ERROR]\\napp.js の読み込みに失敗しました（ファイル名/配置/キャッシュ確認）');"></script>
+  </head>
 
-<body>
-  <header class="top">
-    <div class="row">
-      <button id="openManage" class="ghost" type="button">管理</button>
-      <button id="openRoom" class="ghost" type="button">ルーム</button>
+  <body>
+    <header class="top">
+      <div class="row">
+        <button id="openManage" class="ghost" type="button">管理</button>
+        <button id="openRoom" class="ghost" type="button">ルーム</button>
 
-      <select id="delivery" class="delivery deliveryShort">
-        <option value="即納品可能">即</option>
-        <option value="本日夜">夜</option>
-      </select>
+        <select id="delivery" class="delivery deliveryShort">
+          <option value="即納品可能">即</option>
+          <option value="本日夜">夜</option>
+        </select>
 
-      <button id="pos" class="copy" type="button">帳簿</button>
-      <button id="copy" class="copy" type="button">コピー</button>
-      <div id="total" class="total">0円</div>
-    </div>
-
-    <textarea id="out" class="out" readonly></textarea>
-
-    <div class="subrow">
-      <div class="search">
-        <input id="q" type="text" placeholder="検索" autocomplete="off" />
-        <button id="qClear" class="qClear" type="button" aria-label="検索をクリア">×</button>
+        <button id="pos" class="copy" type="button">帳簿</button>
+        <button id="copy" class="copy" type="button">コピー</button>
+        <div id="total" class="total">0円</div>
       </div>
 
-      <div class="tabs" role="tablist" aria-label="表示切替">
-        <button id="tabDinos" class="tab isActive" type="button" role="tab" aria-selected="true">恐竜</button>
-        <button id="tabItems" class="tab" type="button" role="tab" aria-selected="false">アイテム</button>
+      <textarea id="out" class="out" readonly></textarea>
+
+      <div class="subrow">
+        <div class="search">
+          <input id="q" type="text" placeholder="検索" autocomplete="off" />
+          <button id="qClear" class="qClear" type="button" aria-label="検索をクリア">×</button>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="表示切替">
+          <button id="tabDinos" class="tab isActive" type="button" role="tab" aria-selected="true">恐竜</button>
+          <button id="tabItems" class="tab" type="button" role="tab" aria-selected="false">アイテム</button>
+        </div>
       </div>
-    </div>
-  </header>
+    </header>
 
-  <main class="list" id="list"></main>
+    <main class="list" id="list"></main>
 
-  <!-- Manage Modal -->
-  <div id="modalOverlay" class="modalOverlay isHidden" aria-hidden="true">
-    <div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="管理">
-      <div class="modalHead">
-        <div class="modalTitle">管理<div id="versionText" class="versionText"></div></div>
-        <button id="closeManage" class="iconBtn" type="button" aria-label="閉じる">×</button>
-      </div>
+    <!-- Manage Modal -->
+    <div id="modalOverlay" class="modalOverlay isHidden" aria-hidden="true">
+      <div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="管理">
+        <div class="modalHead">
+          <div class="modalTitle">管理<div id="versionText" class="versionText"></div></div>
+          <button id="closeManage" class="iconBtn" type="button" aria-label="閉じる">×</button>
+        </div>
 
-      <div class="modalTabs">
-        <button id="mTabCatalog" class="mTab isActive" type="button">一覧</button>
-        <button id="mTabPrices" class="mTab" type="button">価格</button>
-        <button id="mTabImages" class="mTab" type="button">画像</button>
-      </div>
+        <div class="modalTabs">
+          <button id="mTabCatalog" class="mTab isActive" type="button">一覧</button>
+          <button id="mTabPrices" class="mTab" type="button">価格</button>
+          <button id="mTabImages" class="mTab" type="button">画像</button>
+        </div>
 
-      <div class="modalBody" id="modalBody">
-        <!-- injected -->
-      </div>
-    </div>
-  </div>
-
-  <!-- Room Modal -->
-  <div id="roomOverlay" class="modalOverlay isHidden" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-label="ルーム">
-      <div class="modalHead">
-        <div class="modalTitle">ルーム</div>
-        <button id="closeRoom" class="iconBtn" type="button" aria-label="閉じる">×</button>
-      </div>
-
-      <div class="modalBody" id="roomBody">
-        <!-- injected -->
+        <div class="modalBody" id="modalBody">
+          <!-- injected -->
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Confirm Modal -->
-  <div id="confirmOverlay" class="modalOverlay isHidden" aria-hidden="true">
-    <div class="confirm" role="dialog" aria-modal="true" aria-label="確認">
-      <div class="confirmTitle">確認</div>
-      <div class="confirmText" id="confirmText">削除しますか？</div>
-      <div class="confirmBtns">
-        <button id="confirmCancel" class="ghost" type="button">キャンセル</button>
-        <button id="confirmOk" class="ghost" type="button">OK</button>
+    <!-- Room Modal -->
+    <div id="roomOverlay" class="modalOverlay isHidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-label="ルーム">
+        <div class="modalHead">
+          <div class="modalTitle">ルーム</div>
+          <button id="closeRoom" class="iconBtn" type="button" aria-label="閉じる">×</button>
+        </div>
+
+        <div class="modalBody" id="roomBody">
+          <!-- injected -->
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Image Viewer Modal (tap to enlarge) -->
-  <div id="imgOverlay" class="modalOverlay isHidden" aria-hidden="true">
-    <div class="imgViewer" role="dialog" aria-modal="true" aria-label="画像">
-      <button id="imgClose" class="iconBtn imgClose" type="button" aria-label="閉じる">×</button>
-      <img id="imgViewerImg" alt="画像" />
-    </div>
-  </div>
-
-  <!-- Edit/Add Modal -->
-  <div id="editOverlay" class="modalOverlay isHidden" aria-hidden="true">
-    <div class="edit" role="dialog" aria-modal="true" aria-label="編集">
-      <div class="editHead">
-        <div class="editTitle" id="editTitle">追加 / 編集</div>
-      </div>
-
-      <div class="editBody" id="editBody">
-        <!-- injected -->
+    <!-- Confirm Modal -->
+    <div id="confirmOverlay" class="modalOverlay isHidden" aria-hidden="true">
+      <div class="confirm" role="dialog" aria-modal="true" aria-label="確認">
+        <div class="confirmTitle">確認</div>
+        <div class="confirmText" id="confirmText">削除しますか？</div>
+        <div class="confirmBtns">
+          <button id="confirmCancel" class="ghost" type="button">キャンセル</button>
+          <button id="confirmOk" class="ghost" type="button">OK</button>
+        </div>
       </div>
     </div>
-  </div>
-</body>
-</html>
+
+    <!-- Image Viewer Modal (tap to enlarge) -->
+    <div id="imgOverlay" class="modalOverlay isHidden" aria-hidden="true">
+      <div class="imgViewer" role="dialog" aria-modal="true" aria-label="画像">
+        <button id="imgClose" class="iconBtn imgClose" type="button" aria-label="閉じる">×</button>
+        <img id="imgViewerImg" alt="画像" />
+      </div>
+    </div>
+
+    <!-- Edit/Add Modal -->
+    <div id="editOverlay" class="modalOverlay isHidden" aria-hidden="true">
+      <div class="edit" role="dialog" aria-modal="true" aria-label="編集">
+        <div class="editHead">
+          <div class="editTitle" id="editTitle">追加 / 編集</div>
+        </div>
+
+        <div class="editBody" id="editBody">
+          <!-- injected -->
+        </div>
+      </div>
+    </div>
+  </body>
+  </html>
