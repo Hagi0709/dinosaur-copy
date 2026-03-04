@@ -1198,7 +1198,7 @@ button{cursor:pointer}
 .posT{table-layout:fixed;width:100%;border-collapse:collapse;}
 .posT th,.posT td{padding:7px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:900;font-size:12px;}
 .posT thead tr{background:rgba(255,255,255,.06)}
-.posT thead th{writing-mode:vertical-rl;text-orientation:upright;white-space:nowrap;overflow:visible;text-overflow:clip;line-height:1.05;font-size:11px;font-weight:950;padding:10px 6px;}
+.posT thead th{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.05;font-size:11px;font-weight:950;padding:8px 6px;height:44px;display:flex;align-items:center;justify-content:center;text-align:center;}
 .posT th{text-align:left;}
 .posT .r{text-align:right;}
 .posBox{overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;}
@@ -1484,3 +1484,21 @@ button{cursor:pointer}
 .posT thead th{
   background:rgba(255,255,255,.06);
 }
+
+
+/* ===== POS 種別売上: ヘッダ縦表示と列幅（fix） ===== */
+.posT thead th{writing-mode:horizontal-tb;text-orientation:mixed;}
+.posT thead th.l{justify-content:flex-start;text-align:left;}
+.posT thead th.c{justify-content:center;text-align:center;}
+.posT thead th.r{justify-content:flex-end;text-align:right;}
+/* 列幅：種別は約1/3、卵/成体/在庫は2文字（2桁）想定 */
+.posT th.posColName, .posT td.posColName{width:34%;}
+.posT th.posColEgg, .posT td.posColEgg{width:3.2ch;min-width:3.2ch;}
+.posT th.posColAdult, .posT td.posColAdult{width:3.2ch;min-width:3.2ch;}
+.posT th.posColStock, .posT td.posColStock{width:3.2ch;min-width:3.2ch;}
+.posT th.posColTotal, .posT td.posColTotal{min-width:9ch;}
+/* 在庫（♂/♀）は中央揃えでガタつきを抑える */
+.posStockBtns{justify-content:center;}
+.posStockBtn{justify-content:center;}
+.posStockBtns .posStockBtn{min-width:2.2ch;}
+
