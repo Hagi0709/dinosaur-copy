@@ -1300,3 +1300,135 @@ button{cursor:pointer}
   font-size:12px;
 }
 .posDash{ opacity:.75; }
+
+
+/* ===== POS Report UI (帳簿 売上) ===== */
+.posTopRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+.posPeriod{
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+.posSel{
+  height:36px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-weight:900;
+  padding:0 34px 0 10px;
+  min-width:86px;
+  position:relative;
+  background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
+                   linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat:no-repeat;
+  appearance:none;
+  -webkit-appearance:none;
+}
+.posSel:focus{ outline:none; box-shadow:0 0 0 2px rgba(120,255,179,.18); }
+
+.posTotal{
+  font-weight:950;
+  color:var(--ok);
+  white-space:nowrap;
+}
+
+.posTabsWrap{
+  display:flex;
+  gap:10px;
+  margin:10px 0 12px;
+}
+.posTabBtn{
+  flex:1;
+  height:40px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  color:rgba(255,255,255,.78);
+  font-weight:950;
+}
+.posTabBtn.isActive{
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  box-shadow:0 10px 24px rgba(0,0,0,.22);
+}
+
+.posTabPanel.isHidden{ display:none; }
+
+.posBox{
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.18);
+  overflow:hidden;
+}
+
+.posT{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+}
+.posT thead th{
+  background:rgba(255,255,255,.06);
+  border-bottom:1px solid rgba(255,255,255,.10);
+}
+.posT tbody td{
+  border-bottom:1px solid rgba(255,255,255,.06);
+  padding:10px 10px;
+  vertical-align:middle;
+}
+.posT tbody tr:last-child td{ border-bottom:0; }
+
+.posColName{ padding-left:12px; }
+.posColTotal{ padding-right:12px; }
+
+.posHistBox{
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(0,0,0,.14);
+  overflow:hidden;
+  margin-bottom:10px;
+}
+.posHistHead{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  background:rgba(255,255,255,.06);
+  border-bottom:1px solid rgba(255,255,255,.10);
+  font-weight:950;
+}
+.posHistBody{ padding:8px 10px; display:flex; flex-direction:column; gap:8px; }
+.posHistLine{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+.posHistTitle{ font-weight:950; }
+.posHistSub{ opacity:.75; font-weight:800; font-size:12px; margin-top:2px; }
+.posAmtBtn{
+  border:0;
+  background:transparent;
+  color:#fff;
+  font-weight:950;
+  padding:6px 8px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.06);
+  white-space:nowrap;
+}
+.posAmtBtn:active{ transform:translateY(1px); }
+
+.posStockIn{
+  appearance:none;
+  -webkit-appearance:none;
+}
+.posStockIn::-webkit-outer-spin-button,
+.posStockIn::-webkit-inner-spin-button{
+  -webkit-appearance:none;
+  margin:0;
+}
+
