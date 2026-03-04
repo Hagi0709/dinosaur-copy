@@ -205,7 +205,7 @@ button{cursor:pointer}
   background:rgba(0,0,0,.22);
   color:#fff;
   padding:10px;
-  font-size:11px;
+  font-size:12px;
   line-height:1.45;
 }
 
@@ -398,7 +398,7 @@ button{cursor:pointer}
 /* ====== sex label & price under unit ====== */
 .sexHint{
   margin-top:2px;
-  font-size:11px;
+  font-size:12px;
   font-weight:900;
   text-align:right;
   white-space:nowrap;
@@ -610,7 +610,7 @@ button{cursor:pointer}
 .modalTitle{font-weight:950;font-size:18px}
 .versionText{
   margin-top:4px;
-  font-size:11px;
+  font-size:12px;
   font-weight:900;
   color:rgba(255,255,255,.55);
   line-height:1.2;
@@ -718,7 +718,7 @@ button{cursor:pointer}
   gap:8px;
   align-items:center;
   font-weight:900;
-  font-size:11px;
+  font-size:12px;
   opacity:.92;
 }
 .roomCfgToggle input{ transform:scale(1.05); }
@@ -736,7 +736,7 @@ button{cursor:pointer}
   color:#fff;
   padding:0 10px;
   font-weight:950;
-  font-size:11px;
+  font-size:12px;
 }
 
 
@@ -912,7 +912,7 @@ button{cursor:pointer}
   background:rgba(0,0,0,.14);
   color:rgba(255,255,255,.86);
   font-weight:900;
-  font-size:11px;
+  font-size:12px;
   line-height:1.35;
   white-space:pre-wrap;
   word-break:break-word;
@@ -1068,7 +1068,7 @@ button{cursor:pointer}
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
   color:#fff;
-  font-size:11px;
+  font-size:12px;
   font-weight:900;
   line-height:1;
   display:inline-flex;
@@ -1112,17 +1112,17 @@ button{cursor:pointer}
 .exportGalleryHead{ display:flex; align-items:center; justify-content:space-between; padding:14px 14px 10px; }
 .exportGalleryTitle{ font-weight:950; font-size:18px; }
 .exportGalleryBody{ padding:12px 14px 14px; overflow:auto; max-height:calc(86vh - 70px); }
-.exportGalleryHint{ font-size:11px; color:rgba(255,255,255,.70); margin-bottom:10px; }
+.exportGalleryHint{ font-size:12px; color:rgba(255,255,255,.70); margin-bottom:10px; }
 
 .exportGridCtrl{ display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.05); margin-bottom:12px; }
 .exportGridInputs{ display:flex; align-items:center; gap:10px; }
 .exportGridLabel{ font-weight:900; color:rgba(255,255,255,.75); }
 .exportGridInput{ width:70px; height:40px; border-radius:14px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.08); color:#fff; text-align:center; font-weight:950; }
-.exportGridExample{ font-size:11px; color:rgba(255,255,255,.60); }
+.exportGridExample{ font-size:12px; color:rgba(255,255,255,.60); }
 
 .exportGridImgs{ display:flex; flex-direction:column; gap:14px; }
 .exportGridImgWrap{ display:flex; flex-direction:column; gap:8px; }
-.exportGridImgCap{ font-size:11px; font-weight:950; color:rgba(255,255,255,.75); }
+.exportGridImgCap{ font-size:12px; font-weight:950; color:rgba(255,255,255,.75); }
 .exportGridImg{ width:100%; height:auto; border-radius:16px; border:1px solid rgba(255,255,255,.12); background:#111; }
 
 
@@ -1196,7 +1196,7 @@ button{cursor:pointer}
 /* POS tables */
 .tabularNums{font-variant-numeric:tabular-nums;}
 .posT{table-layout:fixed;width:100%;border-collapse:collapse;}
-.posT th,.posT td{padding:6px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:900;font-size:11px;}
+.posT th,.posT td{padding:7px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:900;font-size:12px;}
 .posT thead tr{background:rgba(255,255,255,.06)}
 .posT thead th{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.05;font-size:11px;font-weight:950;padding:8px 6px;height:44px;display:flex;align-items:center;justify-content:center;text-align:center;}
 .posT th{text-align:left;}
@@ -1207,7 +1207,7 @@ button{cursor:pointer}
 
 
 /* ===== POS: report history (output-like) ===== */
-.posHistory{ display:flex; flex-direction:column; gap:10px; font-size:11px; }
+.posHistory{ display:flex; flex-direction:column; gap:10px; font-size:12px; }
 .posHistGroup{ border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.04); border-radius:14px; overflow:hidden; }
 .posHistHead{ display:flex; align-items:center; gap:10px; padding:10px 10px 8px; border-bottom:1px solid rgba(255,255,255,.08); }
 .posHistHeadL{ font-weight:950; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -1298,7 +1298,7 @@ button{cursor:pointer}
   color:#fff;
   font-weight:950;
   text-align:center;
-  font-size:11px;
+  font-size:12px;
   line-height:1;
   padding:0 6px;
 }
@@ -1411,7 +1411,7 @@ button{cursor:pointer}
 .posHistBody{ padding:8px 10px; display:flex; flex-direction:column; gap:8px; }
 .posHistLine{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
 .posHistTitle{ font-weight:950; }
-.posHistSub{ opacity:.75; font-weight:800; font-size:11px; margin-top:2px; }
+.posHistSub{ opacity:.75; font-weight:800; font-size:12px; margin-top:2px; }
 .posAmtBtn{
   border:0;
   background:transparent;
@@ -1492,13 +1492,67 @@ button{cursor:pointer}
 .posT thead th.c{justify-content:center;text-align:center;}
 .posT thead th.r{justify-content:flex-end;text-align:right;}
 /* 列幅：種別は約1/3、卵/成体/在庫は2文字（2桁）想定 */
-.posT th.posColName, .posT td.posColName{width:32%;}
+.posT th.posColName, .posT td.posColName{width:34%;}
 .posT th.posColEgg, .posT td.posColEgg{width:3.2ch;min-width:3.2ch;}
 .posT th.posColAdult, .posT td.posColAdult{width:3.2ch;min-width:3.2ch;}
 .posT th.posColStock, .posT td.posColStock{width:3.2ch;min-width:3.2ch;}
-.posT th.posColTotal, .posT td.posColTotal{width:12ch;min-width:12ch;}
+.posT th.posColTotal, .posT td.posColTotal{min-width:9ch;}
 /* 在庫（♂/♀）は中央揃えでガタつきを抑える */
 .posStockBtns{justify-content:center;}
 .posStockBtn{justify-content:center;}
 .posStockBtns .posStockBtn{min-width:2.2ch;}
 
+
+/* ===== POS 種別売上: 最終fix（見切れ/縦折返し防止 & 種別列を広めに） ===== */
+.posT{ table-layout:auto; }
+
+/* th が flex になると幅計算が崩れて1文字ずつ改行しやすいので、セル表示に固定 */
+.posT thead th{
+  display:table-cell !important;
+  white-space:nowrap !important;
+  word-break:keep-all !important;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  padding:10px 8px;
+  vertical-align:middle;
+}
+
+/* 列幅：数値列は固定、種別(名称)は残りを優先して確保 */
+.posT th.posColEgg,  .posT td.posColEgg { width:3.2ch !important; min-width:3.2ch !important; }
+.posT th.posColAdult,.posT td.posColAdult{ width:3.2ch !important; min-width:3.2ch !important; }
+
+/* 在庫は「♂ / ♀」表示で最低限の幅が必要 */
+.posT th.posColStock,.posT td.posColStock{ width:6.2ch !important; min-width:6.2ch !important; }
+
+/* 合計は金額が入るので少し広め */
+.posT th.posColTotal,.posT td.posColTotal{ width:10ch !important; min-width:10ch !important; }
+
+/* 種別(名称)列：見切れないように最優先で広く */
+.posT th.posColName,.posT td.posColName{
+  width:auto !important;
+  min-width:18ch !important;
+}
+
+/* ヘッダ背景(グレー)は行全体にかかるように */
+.posT thead tr{ background:rgba(255,255,255,.06); }
+.posT thead th{ background:transparent; }
+
+
+
+/* ===== POS 売上テーブル安定レイアウト ===== */
+.salesTable{
+  width:100%;
+  table-layout:fixed;
+  border-collapse:collapse;
+}
+.salesTable th,.salesTable td{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  padding:6px 8px;
+}
+.salesTable th:first-child,.salesTable td:first-child{width:48%;text-align:left;}
+.salesTable th:nth-child(2),.salesTable td:nth-child(2){width:42px;text-align:center;}
+.salesTable th:nth-child(3),.salesTable td:nth-child(3){width:42px;text-align:center;}
+.salesTable th:nth-child(4),.salesTable td:nth-child(4){width:80px;text-align:center;}
+.salesTable th:last-child,.salesTable td:last-child{width:90px;text-align:right;}
