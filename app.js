@@ -316,6 +316,16 @@ const BUILD_VERSION = '2026-02-11 23:30';
 
       // イベント委譲（削除/在庫入力/並び替え）
       body.addEventListener('click', async (e) => {
+        const tabBtn = e.target && e.target.closest ? e.target.closest('[data-pos-tab]') : null;
+        if (tabBtn) {
+          const t = String(tabBtn.getAttribute('data-pos-tab') || '');
+          if (t) {
+            ov.__posTab = t;
+            (ov.__renderPosReport || (()=>{}))();
+          }
+          return;
+        }
+
         const delBtn = e.target && e.target.closest ? e.target.closest('[data-pos-del-id]') : null;
         if (delBtn) {
           const id = String(delBtn.getAttribute('data-pos-del-id') || '');
@@ -333,7 +343,7 @@ const BUILD_VERSION = '2026-02-11 23:30';
             posSave();
             openToast('削除しました');
             try {
-              const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
+              const month = String(document.getElementById('posPeriodSel')?.value || monthKeyFromTs(Date.now()));
               (ov.__renderPosReport || (()=>{}))(month);
             } catch {}
           }
@@ -360,7 +370,7 @@ const BUILD_VERSION = '2026-02-11 23:30';
             stockSet(key, Number(mm[1]), Number(mm[2]));
           }
           try {
-            const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
+            const month = String(document.getElementById('posPeriodSel')?.value || monthKeyFromTs(Date.now()));
             (ov.__renderPosReport || (()=>{}))(month);
           } catch {}
           return;
@@ -376,7 +386,7 @@ const BUILD_VERSION = '2026-02-11 23:30';
           else dir = (key === 'name') ? 'asc' : 'desc';
           ov.__dinoSort = { key, dir };
           try {
-            const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
+            const month = String(document.getElementById('posPeriodSel')?.value || monthKeyFromTs(Date.now()));
             (ov.__renderPosReport || (()=>{}))(month);
           } catch {}
         }
@@ -3785,7 +3795,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
     const meta = (s && typeof s.meta === 'object') ? s.meta : null;
     if (meta && meta.mode === 'special_picks' && Array.isArray(meta.picks) && meta.picks.length) {
       const name = String(s.name || '');
-      const picks = meta.picks.map(x => String(x)).join('');
+      const picks = meta.picks.map(x => circled(x)).join('');
       return { title: `${name}${picks}`, sub: '' };
     }
 
@@ -4303,8 +4313,8 @@ function openPosReport() {
             posSave();
             openToast('削除しました');
             try {
-              const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
-              (ov.__renderPosReport || (() => {}))(month);
+              const month = String(document.getElementById('posPeriodSel')?.value || monthKeyFromTs(Date.now()));
+              (ov.__renderPosReport || (() => {}))();
             } catch {}
           }
           return;
@@ -4334,8 +4344,8 @@ function openPosReport() {
           }
 
           try {
-            const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
-            (ov.__renderPosReport || (() => {}))(month);
+            const month = String(document.getElementById('posPeriodSel')?.value || monthKeyFromTs(Date.now()));
+            (ov.__renderPosReport || (() => {}))();
           } catch {}
           return;
         }
@@ -4353,9 +4363,36 @@ function openPosReport() {
 
           ov.__dinoSort = { key, dir };
           try {
-            const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
-            (ov.__renderPosReport || (() => {}))(month);
+            const month = String(document.getElementById('posPeriodSel')?.value || monthKeyFromTs(Date.now()));
+            (ov.__renderPosReport || (() => {}))();
           } catch {}
+        }
+      });
+
+      // ✅ セレクト変更：月/年 切替
+      body.addEventListener('change', (e) => {
+        const t = e && e.target ? e.target : null;
+        if (!t) return;
+        if (t.id === 'posPeriodMode') {
+          ov.__periodMode = String(t.value || 'month');
+          // モード切替時は先頭へ
+          if (ov.__periodMode === 'year') {
+            const salesNow = Array.isArray(pos.sales) ? pos.sales : [];
+            const monthsNow = Array.from(new Set(salesNow.map(x => String(x.month || monthKeyFromTs(x.ts))))).sort().reverse();
+            const yearsNow = Array.from(new Set(monthsNow.map(m => String(m).slice(0,4)))).sort().reverse();
+            ov.__periodKey = yearsNow[0] || String(new Date().getFullYear());
+          } else {
+            const salesNow = Array.isArray(pos.sales) ? pos.sales : [];
+            const monthsNow = Array.from(new Set(salesNow.map(x => String(x.month || monthKeyFromTs(x.ts))))).sort().reverse();
+            ov.__periodKey = monthsNow[0] || monthKeyFromTs(Date.now());
+          }
+          (ov.__renderPosReport || (()=>{}))();
+          return;
+        }
+        if (t.id === 'posPeriodSel') {
+          ov.__periodKey = String(t.value || '');
+          (ov.__renderPosReport || (()=>{}))();
+          return;
         }
       });
     }
@@ -4364,21 +4401,44 @@ function openPosReport() {
     const body = document.getElementById('posReportBody');
     if (!body) return;
 
-    const sales = Array.isArray(pos.sales) ? pos.sales.slice() : [];
+    const sales = Array.isArray(pos.sales) ? pos.sales : [];
     const months = Array.from(new Set(sales.map(x => String(x.month || monthKeyFromTs(x.ts))))).sort().reverse();
+    const years = Array.from(new Set(months.map(m => String(m).slice(0,4)))).sort().reverse();
     const curMonth = monthKeyFromTs(Date.now());
     const selected = months.includes(curMonth) ? curMonth : (months[0] || curMonth);
 
     // sort state (恐竜別)
     let dinoSort = (ov && ov.__dinoSort) ? ov.__dinoSort : { key: 'totalAmt', dir: 'desc' };
 
-    const render = (month) => {
+    const render = () => {
       ov.__renderPosReport = render;
-      // 最新のソート状態を参照
-      dinoSort = (ov && ov.__dinoSort) ? ov.__dinoSort : dinoSort;
-      const mSales = sales.filter(x => String(x.month || monthKeyFromTs(x.ts)) === String(month));
+      // 期間・タブの状態
+      const salesNow = Array.isArray(pos.sales) ? pos.sales : [];
+      const monthsNow = Array.from(new Set(salesNow.map(x => String(x.month || monthKeyFromTs(x.ts))))).sort().reverse();
+      const yearsNow = Array.from(new Set(monthsNow.map(m => String(m).slice(0,4)))).sort().reverse();
+
+      if (!ov.__periodMode) ov.__periodMode = 'month';
+      if (!ov.__periodKey) ov.__periodKey = (ov.__periodMode === 'year' ? (yearsNow[0] || String(new Date().getFullYear())) : (monthsNow[0] || monthKeyFromTs(Date.now())));
+      if (!ov.__posTab) ov.__posTab = 'dino';
+
+      // キーが存在しない場合は先頭へ
+      if (ov.__periodMode === 'year') {
+        if (!yearsNow.includes(String(ov.__periodKey))) ov.__periodKey = yearsNow[0] || String(new Date().getFullYear());
+      } else {
+        if (!monthsNow.includes(String(ov.__periodKey))) ov.__periodKey = monthsNow[0] || monthKeyFromTs(Date.now());
+      }
+
+      const mode = String(ov.__periodMode);
+      const key = String(ov.__periodKey);
+
+      const mSales = salesNow.filter(x => {
+        const mk = String(x.month || monthKeyFromTs(x.ts));
+        return mode === 'year' ? (mk.slice(0,4) === key) : (mk === key);
+      });
       const total = mSales.reduce((a, b) => a + (Number(b.amount) || 0), 0);
 
+      // 最新のソート状態を参照
+      dinoSort = (ov && ov.__dinoSort) ? ov.__dinoSort : dinoSort;
       // product ranking
       const byProd = new Map();
       for (const s of mSales) {
@@ -4393,8 +4453,13 @@ function openPosReport() {
       }
       const prodList = Array.from(byProd.values()).sort((a, b) => (b.amount - a.amount) || (b.qty - a.qty));
 
-      // dino summary (並び替え対応 / 卵系 vs 成体系 + 在庫)
+      // dino summary (並び替え対応 / 卵系 vs 成体系 + 在庫) ※0も全表示
       const byDino = new Map();
+      const baseDinos = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
+      for (const d of baseDinos) {
+        byDino.set(String(d.id), { id: String(d.id), name: String(d.name || ''), eggQty: 0, adultQty: 0, totalAmt: 0 });
+      }
+
       const eggSet = new Set(['受精卵', '胚', '幼体']);
       const adultSet = new Set(['成体', 'クローン', 'その他', '全種']);
       for (const s of mSales.filter(x => x.kind === 'dino')) {
@@ -4404,13 +4469,14 @@ function openPosReport() {
         const qty = Number(s.qty || 0);
         const amt = Number(s.amount || 0);
 
-        const cur = byDino.get(id) || { id, name, eggQty: 0, adultQty: 0, totalAmt: 0 };
+        if (!byDino.has(id)) byDino.set(id, { id, name, eggQty: 0, adultQty: 0, totalAmt: 0 });
+        const cur = byDino.get(id);
+
         if (eggSet.has(typeRaw)) cur.eggQty += qty;
         else if (adultSet.has(typeRaw)) cur.adultQty += qty;
         else cur.adultQty += qty; // 未知タイプは成体系側に寄せる
 
         cur.totalAmt += amt;
-        byDino.set(id, cur);
       }
 
       const dinoList = Array.from(byDino.values()).map(d => {
@@ -4432,7 +4498,8 @@ function openPosReport() {
       // timeline
       const timeline = mSales.slice().sort((a, b) => (b.ts - a.ts));
 
-      const monthOpts = months.map(m => `<option value="${escapeHtml(m)}"${m===month?' selected':''}>${escapeHtml(m)}</option>`).join('');
+      const monthOpts = monthsNow.map(m => `<option value="${escapeHtml(m)}"${String(m)===String(key)&&mode==='month'?' selected':''}>${escapeHtml(m)}</option>`).join('');
+      const yearOpts = yearsNow.map(y => `<option value=\"${escapeHtml(y)}\"${String(y)===String(key)&&mode==='year'?' selected':''}>${escapeHtml(y)}</option>`).join('');
       const prodRows = prodList.slice(0, 200).map(p => {
         const label = p.kind === 'item' ? `${p.name}` : `${p.name}${p.type ? ' ' + p.type.replace('(指定)','') : ''}`;
         return `<tr><td>${escapeHtml(label)}</td><td style="text-align:right">${escapeHtml(String(p.qty))}</td><td style="text-align:right">${escapeHtml(yen(p.amount))}</td></tr>`;
@@ -4500,15 +4567,27 @@ function openPosReport() {
 
       body.innerHTML = `
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
-          <div style="font-weight:900;">月</div>
-          <select id="posMonthSel" class="delivery" style="height:34px;border-radius:14px;padding:0 34px 0 10px;min-width:120px;">
-            ${monthOpts || `<option value="${escapeHtml(month)}" selected>${escapeHtml(month)}</option>`}
+          <div style="font-weight:900;">期間</div>
+          <select id="posPeriodMode" class="delivery" style="height:34px;border-radius:14px;padding:0 34px 0 10px;min-width:88px;">
+            <option value="month"${mode==='month'?' selected':''}>月</option>
+            <option value="year"${mode==='year'?' selected':''}>年</option>
+          </select>
+          <select id="posPeriodSel" class="delivery" style="height:34px;border-radius:14px;padding:0 34px 0 10px;min-width:120px;">
+            ${mode==='year'
+              ? (yearOpts || `<option value="${escapeHtml(key)}" selected>${escapeHtml(key)}</option>`)
+              : (monthOpts || `<option value="${escapeHtml(key)}" selected>${escapeHtml(key)}</option>`)}
           </select>
           <div style="margin-left:auto;font-weight:950;color:rgba(120,255,179,.95)">合計 ${escapeHtml(yen(total))}</div>
         </div>
 
-        <div style="font-weight:950;margin:10px 0 6px;">恐竜別（売上順）</div>
-        <div class="posBox">
+        <div class="posTabsWrap">
+          <button type="button" class="posTabBtn ${ov.__posTab==='dino'?'isActive':''}" data-pos-tab="dino">恐竜別</button>
+          <button type="button" class="posTabBtn ${ov.__posTab==='hist'?'isActive':''}" data-pos-tab="hist">取引履歴</button>
+        </div>
+
+        <div class="posTabPanel ${ov.__posTab==='dino'?'':'isHidden'}">
+          <div style="font-weight:950;margin:10px 0 6px;">恐竜別（売上順）</div>
+          <div class="posBox">
           <table class="posT tabularNums" style="font-size:12px;">
             <thead>
               <tr>
@@ -4524,9 +4603,11 @@ function openPosReport() {
             </tbody>
           </table>
         </div>
+        </div>
 
-        <div style="font-weight:950;margin:14px 0 6px;">取引履歴</div>
-        <div class="posBox">
+        <div class="posTabPanel ${ov.__posTab==='hist'?'':'isHidden'}">
+          <div style="font-weight:950;margin:14px 0 6px;">取引履歴</div>
+          <div class="posBox">
           <div class="posHistory tabularNums">
             ${timeRows || `<div style="padding:10px;opacity:.8;">データなし</div>`}
           </div>
@@ -4538,11 +4619,11 @@ function openPosReport() {
         </div>
       `;
 
-      const sel = document.getElementById('posMonthSel');
+      const sel = document.getElementById('posPeriodSel');
       sel?.addEventListener('change', () => render(String(sel.value || month)));
     };
 
-    render(selected);
+    render();
 
     try { ScrollLock.lock(); } catch {}
     ov.style.display = 'flex';
