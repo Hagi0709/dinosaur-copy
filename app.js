@@ -316,16 +316,6 @@ const BUILD_VERSION = '2026-02-11 23:30';
 
       // イベント委譲（削除/在庫入力/並び替え）
       body.addEventListener('click', async (e) => {
-        const tabBtn = e.target && e.target.closest ? e.target.closest('[data-pos-tab]') : null;
-        if (tabBtn) {
-          const t = String(tabBtn.getAttribute('data-pos-tab') || '');
-          if (t) {
-            ov.__posTab = t;
-            (ov.__renderPosReport || (()=>{}))();
-          }
-          return;
-        }
-
         const delBtn = e.target && e.target.closest ? e.target.closest('[data-pos-del-id]') : null;
         if (delBtn) {
           const id = String(delBtn.getAttribute('data-pos-del-id') || '');
@@ -343,7 +333,7 @@ const BUILD_VERSION = '2026-02-11 23:30';
             posSave();
             openToast('削除しました');
             try {
-              const month = String(document.getElementById('posPeriodSel')?.value || monthKeyFromTs(Date.now()));
+              const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
               (ov.__renderPosReport || (()=>{}))(month);
             } catch {}
           }
@@ -370,7 +360,7 @@ const BUILD_VERSION = '2026-02-11 23:30';
             stockSet(key, Number(mm[1]), Number(mm[2]));
           }
           try {
-            const month = String(document.getElementById('posPeriodSel')?.value || monthKeyFromTs(Date.now()));
+            const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
             (ov.__renderPosReport || (()=>{}))(month);
           } catch {}
           return;
@@ -386,7 +376,7 @@ const BUILD_VERSION = '2026-02-11 23:30';
           else dir = (key === 'name') ? 'asc' : 'desc';
           ov.__dinoSort = { key, dir };
           try {
-            const month = String(document.getElementById('posPeriodSel')?.value || monthKeyFromTs(Date.now()));
+            const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
             (ov.__renderPosReport || (()=>{}))(month);
           } catch {}
         }
@@ -3795,7 +3785,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
     const meta = (s && typeof s.meta === 'object') ? s.meta : null;
     if (meta && meta.mode === 'special_picks' && Array.isArray(meta.picks) && meta.picks.length) {
       const name = String(s.name || '');
-      const picks = meta.picks.map(x => circled(x)).join('');
+      const picks = meta.picks.map(x => String(x)).join('');
       return { title: `${name}${picks}`, sub: '' };
     }
 
@@ -4224,6 +4214,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
     try { ScrollLock.lock(); } catch {}
     ov.style.display = 'flex';
   }
+
 function openPosReport() {
     const id = 'posReportOverlay';
     let ov = document.getElementById(id);
@@ -4260,7 +4251,7 @@ function openPosReport() {
       head.style.padding = '12px 12px 8px 14px';
 
       const title = document.createElement('div');
-      title.textContent = 'POS 売上';
+      title.textContent = '帳簿 売上';
       title.style.fontWeight = '900';
       title.style.fontSize = '14px';
       title.style.color = '#fff';
@@ -4292,8 +4283,19 @@ function openPosReport() {
 
       installOverlayScrollGuard(ov, body);
 
-      // ✅ POSレポート内：在庫入力 / 取引履歴の削除 / 並び替え（イベント委譲）
+      // ✅ イベント委譲：タブ / 削除 / 並び替え
       body.addEventListener('click', async (e) => {
+        // タブ切替
+        const tabBtn = e.target && e.target.closest ? e.target.closest('[data-pos-tab]') : null;
+        if (tabBtn) {
+          const t = String(tabBtn.getAttribute('data-pos-tab') || '');
+          if (t) {
+            ov.__posTab = t;
+            try { (ov.__renderPosReport || (()=>{}))(); } catch {}
+          }
+          return;
+        }
+
         // 取引履歴：金額タップで削除
         const delBtn = e.target && e.target.closest ? e.target.closest('[data-pos-del-id]') : null;
         if (delBtn) {
@@ -4312,114 +4314,92 @@ function openPosReport() {
             pos.sales.splice(idx, 1);
             posSave();
             openToast('削除しました');
-            try {
-              const month = String(document.getElementById('posPeriodSel')?.value || monthKeyFromTs(Date.now()));
-              (ov.__renderPosReport || (() => {}))();
-            } catch {}
+            try { (ov.__renderPosReport || (()=>{}))(); } catch {}
           }
           return;
         }
 
-        // 恐竜別：在庫タップで入力
-        const stockBtn = e.target && e.target.closest ? e.target.closest('[data-stock-id]') : null;
-        if (stockBtn) {
-          const key = String(stockBtn.getAttribute('data-stock-id') || '');
-          if (!key) return;
-
-          const cur = stockGet(key);
-          const curTxt = (cur.m === null || cur.f === null) ? '' : `${cur.m}/${cur.f}`;
-          const v = prompt('在庫を入力（オス/メス）\n例: 4/5\n空欄で未入力(-)に戻す', curTxt);
-          if (v === null) return;
-
-          const s = String(v).trim();
-          if (!s) {
-            stockSet(key, null, null);
-          } else {
-            const mm = s.match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);
-            if (!mm) {
-              openToast('形式が正しくありません（例: 4/5）');
-              return;
-            }
-            stockSet(key, Number(mm[1]), Number(mm[2]));
-          }
-
-          try {
-            const month = String(document.getElementById('posPeriodSel')?.value || monthKeyFromTs(Date.now()));
-            (ov.__renderPosReport || (() => {}))();
-          } catch {}
-          return;
-        }
-
-        // 恐竜別：ヘッダタップで並び替え
+        // 種別売上：ヘッダタップで並び替え
         const sortTh = e.target && e.target.closest ? e.target.closest('[data-pos-sort]') : null;
         if (sortTh) {
           const key = String(sortTh.getAttribute('data-pos-sort') || '');
           if (!key) return;
 
-          const cur = (ov.__dinoSort) ? ov.__dinoSort : { key: 'totalAmt', dir: 'desc' };
+          const cur = (ov.__typeSort) ? ov.__typeSort : { key: 'totalAmt', dir: 'desc' };
           let dir = cur.dir || 'desc';
           if (cur.key === key) dir = (dir === 'asc') ? 'desc' : 'asc';
           else dir = (key === 'name') ? 'asc' : 'desc';
 
-          ov.__dinoSort = { key, dir };
-          try {
-            const month = String(document.getElementById('posPeriodSel')?.value || monthKeyFromTs(Date.now()));
-            (ov.__renderPosReport || (() => {}))();
-          } catch {}
+          ov.__typeSort = { key, dir };
+          try { (ov.__renderPosReport || (()=>{}))(); } catch {}
+          return;
         }
       });
 
-      // ✅ セレクト変更：月/年 切替
+      // ✅ 変更：期間モード / 期間キー / 在庫入力
       body.addEventListener('change', (e) => {
         const t = e && e.target ? e.target : null;
         if (!t) return;
-        if (t.id === 'posPeriodMode') {
-          ov.__periodMode = String(t.value || 'month');
-          // モード切替時は先頭へ
-          if (ov.__periodMode === 'year') {
-            const salesNow = Array.isArray(pos.sales) ? pos.sales : [];
-            const monthsNow = Array.from(new Set(salesNow.map(x => String(x.month || monthKeyFromTs(x.ts))))).sort().reverse();
-            const yearsNow = Array.from(new Set(monthsNow.map(m => String(m).slice(0,4)))).sort().reverse();
-            ov.__periodKey = yearsNow[0] || String(new Date().getFullYear());
-          } else {
-            const salesNow = Array.isArray(pos.sales) ? pos.sales : [];
-            const monthsNow = Array.from(new Set(salesNow.map(x => String(x.month || monthKeyFromTs(x.ts))))).sort().reverse();
-            ov.__periodKey = monthsNow[0] || monthKeyFromTs(Date.now());
-          }
-          (ov.__renderPosReport || (()=>{}))();
+
+        // 在庫入力（♂/♀）
+        if (t.matches && t.matches('input.posStockIn[data-stock-id][data-stock-sex]')) {
+          const key = String(t.getAttribute('data-stock-id') || '');
+          const sex = String(t.getAttribute('data-stock-sex') || '');
+          if (!key || (sex !== 'm' && sex !== 'f')) return;
+
+          const cur = stockGet(key);
+          const raw = String(t.value || '').trim();
+          const vv = raw === '' ? null : Math.max(0, Math.floor(Number(raw)));
+          const mm = (sex === 'm') ? (Number.isFinite(vv) ? vv : null) : cur.m;
+          const ff = (sex === 'f') ? (Number.isFinite(vv) ? vv : null) : cur.f;
+          stockSet(key, mm, ff);
+
+          try { (ov.__renderPosReport || (()=>{}))(); } catch {}
           return;
         }
+
+        // 期間モード（月/年）
+        if (t.id === 'posPeriodMode') {
+          ov.__periodMode = String(t.value || 'month');
+
+          // モード切替時：先頭へ
+          const salesNow = Array.isArray(pos.sales) ? pos.sales : [];
+          const monthsNow = Array.from(new Set(salesNow.map(x => String(x.month || monthKeyFromTs(x.ts))))).sort().reverse();
+          const yearsNow = Array.from(new Set(monthsNow.map(m => String(m).slice(0,4)))).sort().reverse();
+
+          if (ov.__periodMode === 'year') ov.__periodKey = yearsNow[0] || String(new Date().getFullYear());
+          else ov.__periodKey = monthsNow[0] || monthKeyFromTs(Date.now());
+
+          try { (ov.__renderPosReport || (()=>{}))(); } catch {}
+          return;
+        }
+
+        // 期間キー
         if (t.id === 'posPeriodSel') {
           ov.__periodKey = String(t.value || '');
-          (ov.__renderPosReport || (()=>{}))();
+          try { (ov.__renderPosReport || (()=>{}))(); } catch {}
           return;
         }
       });
     }
 
-    // render
     const body = document.getElementById('posReportBody');
     if (!body) return;
 
-    const sales = Array.isArray(pos.sales) ? pos.sales : [];
-    const months = Array.from(new Set(sales.map(x => String(x.month || monthKeyFromTs(x.ts))))).sort().reverse();
-    const years = Array.from(new Set(months.map(m => String(m).slice(0,4)))).sort().reverse();
-    const curMonth = monthKeyFromTs(Date.now());
-    const selected = months.includes(curMonth) ? curMonth : (months[0] || curMonth);
-
-    // sort state (恐竜別)
-    let dinoSort = (ov && ov.__dinoSort) ? ov.__dinoSort : { key: 'totalAmt', dir: 'desc' };
-
     const render = () => {
       ov.__renderPosReport = render;
-      // 期間・タブの状態
+
       const salesNow = Array.isArray(pos.sales) ? pos.sales : [];
       const monthsNow = Array.from(new Set(salesNow.map(x => String(x.month || monthKeyFromTs(x.ts))))).sort().reverse();
       const yearsNow = Array.from(new Set(monthsNow.map(m => String(m).slice(0,4)))).sort().reverse();
 
       if (!ov.__periodMode) ov.__periodMode = 'month';
-      if (!ov.__periodKey) ov.__periodKey = (ov.__periodMode === 'year' ? (yearsNow[0] || String(new Date().getFullYear())) : (monthsNow[0] || monthKeyFromTs(Date.now())));
-      if (!ov.__posTab) ov.__posTab = 'dino';
+      if (!ov.__periodKey) ov.__periodKey = (ov.__periodMode === 'year'
+        ? (yearsNow[0] || String(new Date().getFullYear()))
+        : (monthsNow[0] || monthKeyFromTs(Date.now()))
+      );
+      if (!ov.__posTab) ov.__posTab = 'types';
+      if (!ov.__typeSort) ov.__typeSort = { key: 'totalAmt', dir: 'desc' };
 
       // キーが存在しない場合は先頭へ
       if (ov.__periodMode === 'year') {
@@ -4435,111 +4415,102 @@ function openPosReport() {
         const mk = String(x.month || monthKeyFromTs(x.ts));
         return mode === 'year' ? (mk.slice(0,4) === key) : (mk === key);
       });
+
       const total = mSales.reduce((a, b) => a + (Number(b.amount) || 0), 0);
 
-      // 最新のソート状態を参照
-      dinoSort = (ov && ov.__dinoSort) ? ov.__dinoSort : dinoSort;
-      // product ranking
-      const byProd = new Map();
-      for (const s of mSales) {
-        const kind = s.kind || '';
-        const name = String(s.name || '');
-        const type = String(s.type || '');
-        const key = `${kind}__${name}__${type}`;
-        const cur = byProd.get(key) || { kind, name, type, qty: 0, amount: 0 };
-        cur.qty += Number(s.qty || 0);
-        cur.amount += Number(s.amount || 0);
-        byProd.set(key, cur);
-      }
-      const prodList = Array.from(byProd.values()).sort((a, b) => (b.amount - a.amount) || (b.qty - a.qty));
-
-      // dino summary (並び替え対応 / 卵系 vs 成体系 + 在庫) ※0も全表示
-      const byDino = new Map();
+      // 種別売上（恐竜 + アイテム、0も全表示）
+      const byType = new Map();
       const baseDinos = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
-      for (const d of baseDinos) {
-        byDino.set(String(d.id), { id: String(d.id), name: String(d.name || ''), eggQty: 0, adultQty: 0, totalAmt: 0 });
-      }
+      const baseItems = sortByOrder(items.filter(it => !hidden.item.has(it.id)), 'item');
+
+      for (const d of baseDinos) byType.set(String(d.id), { id: String(d.id), name: String(d.name || ''), kind: 'dino', eggQty: 0, adultQty: 0, totalAmt: 0 });
+      for (const it of baseItems) byType.set(String(it.id), { id: String(it.id), name: String(it.name || ''), kind: 'item', eggQty: 0, adultQty: 0, totalAmt: 0 });
 
       const eggSet = new Set(['受精卵', '胚', '幼体']);
       const adultSet = new Set(['成体', 'クローン', 'その他', '全種']);
-      for (const s of mSales.filter(x => x.kind === 'dino')) {
+
+      for (const s of mSales) {
+        const kind = String(s.kind || '');
         const name = String(s.name || '');
-        const id = String(s.dinoId || name);
-        const typeRaw = String(s.type || '').replace('(指定)', '');
         const qty = Number(s.qty || 0);
         const amt = Number(s.amount || 0);
 
-        if (!byDino.has(id)) byDino.set(id, { id, name, eggQty: 0, adultQty: 0, totalAmt: 0 });
-        const cur = byDino.get(id);
-
-        if (eggSet.has(typeRaw)) cur.eggQty += qty;
-        else if (adultSet.has(typeRaw)) cur.adultQty += qty;
-        else cur.adultQty += qty; // 未知タイプは成体系側に寄せる
-
-        cur.totalAmt += amt;
+        if (kind === 'dino') {
+          const id = String(s.dinoId || name);
+          const typeRaw = String(s.type || '').replace('(指定)', '');
+          if (!byType.has(id)) byType.set(id, { id, name, kind: 'dino', eggQty: 0, adultQty: 0, totalAmt: 0 });
+          const cur = byType.get(id);
+          if (eggSet.has(typeRaw)) cur.eggQty += qty;
+          else if (adultSet.has(typeRaw)) cur.adultQty += qty;
+          else cur.adultQty += qty;
+          cur.totalAmt += amt;
+        } else if (kind === 'item') {
+          const id = String(s.itemId || stableId('i', name));
+          if (!byType.has(id)) byType.set(id, { id, name, kind: 'item', eggQty: 0, adultQty: 0, totalAmt: 0 });
+          const cur = byType.get(id);
+          cur.eggQty += qty;
+          cur.totalAmt += amt;
+        }
       }
 
-      const dinoList = Array.from(byDino.values()).map(d => {
-        const st = stockGet(d.id);
-        const has = (st.m !== null && st.f !== null);
-        const stockTotal = has ? (Number(st.m) + Number(st.f)) : -1;
-        return { ...d, stock: st, stockTotal };
+      const sortCfg = ov.__typeSort || { key: 'totalAmt', dir: 'desc' };
+      const typeList = Array.from(byType.values()).map(d => {
+        if (d.kind === 'dino') {
+          const st = stockGet(d.id);
+          const has = (st.m !== null && st.f !== null);
+          const stockTotal = has ? (Number(st.m) + Number(st.f)) : -1;
+          return { ...d, stock: st, stockTotal };
+        }
+        return { ...d, stock: { m: null, f: null }, stockTotal: -1 };
       }).sort((a, b) => {
-        const dir = (dinoSort.dir === 'asc') ? 1 : -1;
-        const k = String(dinoSort.key || 'totalAmt');
+        const dir = (sortCfg.dir === 'asc') ? 1 : -1;
+        const k = String(sortCfg.key || 'totalAmt');
         if (k === 'name') return dir * a.name.localeCompare(b.name, 'ja');
         if (k === 'eggQty') return dir * ((a.eggQty - b.eggQty) || a.name.localeCompare(b.name, 'ja'));
         if (k === 'adultQty') return dir * ((a.adultQty - b.adultQty) || a.name.localeCompare(b.name, 'ja'));
         if (k === 'stock') return dir * ((a.stockTotal - b.stockTotal) || a.name.localeCompare(b.name, 'ja'));
-        // totalAmt
         return dir * ((a.totalAmt - b.totalAmt) || ((a.eggQty + a.adultQty) - (b.eggQty + b.adultQty)));
       });
 
-      // timeline
+      const typeRows = typeList.slice(0, 300).map((d) => {
+        return `
+          <tr>
+            <td class="l posColName" title="${escapeHtml(d.name)}">${escapeHtml(d.name)}</td>
+            <td class="c posColEgg tabularNums">${escapeHtml(String(d.eggQty || 0))}</td>
+            <td class="c posColAdult tabularNums">${d.kind === 'item' ? `<span class="posDash">-</span>` : escapeHtml(String(d.adultQty || 0))}</td>
+            <td class="c posColStock">
+              ${d.kind === 'item'
+                ? `<span class="posDash">-</span>`
+                : `<div class="posStockWrap">
+                    <input class="posStockIn tabularNums" inputmode="numeric" type="number" min="0"
+                           data-stock-id="${escapeHtml(String(d.id))}" data-stock-sex="m"
+                           value="${d.stock && d.stock.m !== null ? escapeHtml(String(d.stock.m)) : ''}" placeholder="♂">
+                    <input class="posStockIn tabularNums" inputmode="numeric" type="number" min="0"
+                           data-stock-id="${escapeHtml(String(d.id))}" data-stock-sex="f"
+                           value="${d.stock && d.stock.f !== null ? escapeHtml(String(d.stock.f)) : ''}" placeholder="♀">
+                  </div>`}
+            </td>
+            <td class="r posColTotal tabularNums">${escapeHtml(yen(d.totalAmt || 0))}</td>
+          </tr>
+        `;
+      }).join('');
+
+      // 取引履歴（同時刻グループ化）
       const timeline = mSales.slice().sort((a, b) => (b.ts - a.ts));
-
-      const monthOpts = monthsNow.map(m => `<option value="${escapeHtml(m)}"${String(m)===String(key)&&mode==='month'?' selected':''}>${escapeHtml(m)}</option>`).join('');
-      const yearOpts = yearsNow.map(y => `<option value=\"${escapeHtml(y)}\"${String(y)===String(key)&&mode==='year'?' selected':''}>${escapeHtml(y)}</option>`).join('');
-      const prodRows = prodList.slice(0, 200).map(p => {
-        const label = p.kind === 'item' ? `${p.name}` : `${p.name}${p.type ? ' ' + p.type.replace('(指定)','') : ''}`;
-        return `<tr><td>${escapeHtml(label)}</td><td style="text-align:right">${escapeHtml(String(p.qty))}</td><td style="text-align:right">${escapeHtml(yen(p.amount))}</td></tr>`;
-      }).join('');
-      const dinoRows = dinoList.slice(0, 260).map(d => {
-        const st = d.stock || { m: null, f: null };
-        const stockTxt = (st.m === null || st.f === null) ? '-' : `${st.m}/${st.f}`;
-        const stockHtml = (st.m === null || st.f === null)
-          ? `<span class="posStockDash">-</span>`
-          : `<span class="posStockM">${escapeHtml(String(st.m))}</span><span class="posStockSep">/</span><span class="posStockF">${escapeHtml(String(st.f))}</span>`;
-        return `<tr>
-          <td title="${escapeHtml(d.name)}">${escapeHtml(d.name)}</td>
-          <td class="r tabularNums posColNum" title="${escapeHtml(String(d.eggQty))}">${escapeHtml(String(d.eggQty))}</td>
-          <td class="r tabularNums posColNum" title="${escapeHtml(String(d.adultQty))}">${escapeHtml(String(d.adultQty))}</td>
-          <td class="r tabularNums posColStock" title="${escapeHtml(stockTxt)}">
-            <button type="button" class="posStockBtn" data-stock-id="${escapeHtml(String(d.id))}" aria-label="在庫を入力">${stockHtml}</button>
-          </td>
-          <td class="r tabularNums posColTotal" title="${escapeHtml(yen(d.totalAmt))}">${escapeHtml(yen(d.totalAmt))}</td>
-        </tr>`;
-      }).join('');
       const groups = [];
-      // group by orderId (fallback: ts)
-      const groupMap = new Map();
+      const windowMs = 30 * 1000;
       for (const s of timeline) {
-        const gid = String(s.orderId || s.ts || '');
-        if (!groupMap.has(gid)) groupMap.set(gid, []);
-        groupMap.get(gid).push(s);
+        const ts = Number(s.ts) || 0;
+        let g = groups.find(x => Math.abs((x.ts || 0) - ts) <= windowMs);
+        if (!g) { g = { ts, list: [] }; groups.push(g); }
+        g.list.push(s);
+        g.ts = Math.max(g.ts, ts);
       }
-      // sort groups by newest ts
-      const groupList = Array.from(groupMap.values()).sort((ga, gb) => {
-        const ta = Math.max(...ga.map(x => Number(x.ts) || 0));
-        const tb = Math.max(...gb.map(x => Number(x.ts) || 0));
-        return tb - ta;
-      });
+      groups.sort((a, b) => (b.ts - a.ts));
 
-      const timeRows = groupList.slice(0, 220).map((g) => {
-        // できるだけ「出力画面の表示」に寄せる（行内は折り返し無し＆はみ出しは見切り）
-        g.sort((a,b)=> (a.kind||'').localeCompare(b.kind||'') );
-        const ts = Math.max(...g.map(x => Number(x.ts) || 0));
-        const gTotal = g.reduce((a,x)=>a+(Number(x.amount)||0),0);
+      const timeRows = groups.slice(0, 220).map((g) => {
+        const ts = Number(g.ts) || 0;
+        const gTotal = g.list.reduce((a, x) => a + (Number(x.amount) || 0), 0);
 
         const head = `
           <div class="posHistHead">
@@ -4548,7 +4519,7 @@ function openPosReport() {
           </div>
         `;
 
-        const rows = g.map((s) => {
+        const rows = g.list.map((s) => {
           const t = fmtMD(s.ts);
           const parts = posDisplayParts(s);
           return `
@@ -4557,70 +4528,77 @@ function openPosReport() {
                 <div class="posHistTitle" title="${escapeHtml(parts.title)}">${escapeHtml(parts.title)}</div>
                 ${parts.sub ? `<div class="posHistSub" title="${escapeHtml(parts.sub)}">${escapeHtml(parts.sub)}</div>` : ``}
               </div>
-              <button type="button" class="posHistAmt posAmtBtn tabularNums" data-pos-del-id="${escapeHtml(String(s.id||''))}" title="タップで削除">${escapeHtml(yen(s.amount))}</button>
+              <button type="button" class="posHistAmt posAmtBtn tabularNums" data-pos-del-id="${escapeHtml(String(s.id || ''))}" title="タップで削除">${escapeHtml(yen(s.amount))}</button>
             </div>
           `;
         }).join('');
 
-        return `<div class="posHistGroup">${head}${rows}</div>`;
+        return `<div class="posHistBox">${head}<div class="posHistBody">${rows}</div></div>`;
       }).join('');
 
+      const monthOpts = monthsNow.map(m => `<option value="${escapeHtml(m)}"${String(m)===String(key)&&mode==='month'?' selected':''}>${escapeHtml(m)}</option>`).join('');
+      const yearOpts = yearsNow.map(y => `<option value="${escapeHtml(y)}"${String(y)===String(key)&&mode==='year'?' selected':''}>${escapeHtml(y)}</option>`).join('');
+
       body.innerHTML = `
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
-          <div style="font-weight:900;">期間</div>
-          <select id="posPeriodMode" class="delivery" style="height:34px;border-radius:14px;padding:0 34px 0 10px;min-width:88px;">
-            <option value="month"${mode==='month'?' selected':''}>月</option>
-            <option value="year"${mode==='year'?' selected':''}>年</option>
-          </select>
-          <select id="posPeriodSel" class="delivery" style="height:34px;border-radius:14px;padding:0 34px 0 10px;min-width:120px;">
-            ${mode==='year'
-              ? (yearOpts || `<option value="${escapeHtml(key)}" selected>${escapeHtml(key)}</option>`)
-              : (monthOpts || `<option value="${escapeHtml(key)}" selected>${escapeHtml(key)}</option>`)}
-          </select>
-          <div style="margin-left:auto;font-weight:950;color:rgba(120,255,179,.95)">合計 ${escapeHtml(yen(total))}</div>
+        <div class="posTopRow">
+          <div class="posPeriod">
+            <select id="posPeriodMode" class="posSel">
+              <option value="month"${mode==='month'?' selected':''}>月</option>
+              <option value="year"${mode==='year'?' selected':''}>年</option>
+            </select>
+            <select id="posPeriodSel" class="posSel">
+              ${mode==='year' ? yearOpts : monthOpts}
+            </select>
+          </div>
+          <div class="posTotal">合計 ${escapeHtml(yen(total))}</div>
         </div>
 
         <div class="posTabsWrap">
-          <button type="button" class="posTabBtn ${ov.__posTab==='dino'?'isActive':''}" data-pos-tab="dino">恐竜別</button>
+          <button type="button" class="posTabBtn ${ov.__posTab==='types'?'isActive':''}" data-pos-tab="types">種別売上</button>
           <button type="button" class="posTabBtn ${ov.__posTab==='hist'?'isActive':''}" data-pos-tab="hist">取引履歴</button>
         </div>
 
-        <div class="posTabPanel ${ov.__posTab==='dino'?'':'isHidden'}">
-          <div style="font-weight:950;margin:10px 0 6px;">恐竜別（売上順）</div>
+        <div class="posTabPanel ${ov.__posTab==='types'?'':'isHidden'}">
+          <div style="font-weight:950;margin:14px 0 6px;">種別売上（売上順）</div>
           <div class="posBox">
-          <table class="posT tabularNums" style="font-size:12px;">
-            <thead>
-              <tr>
-                <th class="posSortTh" data-pos-sort="name" style="width:auto;">恐竜</th>
-                <th class="r posSortTh posColNum" data-pos-sort="eggQty" style="width:3.2ch;">卵</th>
-                <th class="r posSortTh posColNum" data-pos-sort="adultQty" style="width:3.2ch;">成体</th>
-                <th class="r posSortTh posColStock" data-pos-sort="stock" style="width:4.6ch;">在庫</th>
-                <th class="r posSortTh posColTotal" data-pos-sort="totalAmt" style="width:96px;">合計</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${dinoRows || `<tr><td colspan="5" style="padding:10px;opacity:.8;">データなし</td></tr>`}
-            </tbody>
-          </table>
-        </div>
+            <table class="posT tabularNums">
+              <thead>
+                <tr>
+                  <th class="l posSortTh posColName" data-pos-sort="name" style="width:40%;">種別</th>
+                  <th class="c posSortTh posColEgg" data-pos-sort="eggQty" style="width:14%;">卵/胚</th>
+                  <th class="c posSortTh posColAdult" data-pos-sort="adultQty" style="width:12%;">成体</th>
+                  <th class="c posSortTh posColStock" data-pos-sort="stock" style="width:18%;">在庫</th>
+                  <th class="r posSortTh posColTotal" data-pos-sort="totalAmt" style="width:16%;">合計</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${typeRows || `<tr><td colspan="5" style="padding:10px;opacity:.8;">データなし</td></tr>`}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div class="posTabPanel ${ov.__posTab==='hist'?'':'isHidden'}">
           <div style="font-weight:950;margin:14px 0 6px;">取引履歴</div>
           <div class="posBox">
-          <div class="posHistory tabularNums">
-            ${timeRows || `<div style="padding:10px;opacity:.8;">データなし</div>`}
+            <div class="posHistory tabularNums">
+              ${timeRows || `<div style="padding:10px;opacity:.8;">データなし</div>`}
+            </div>
           </div>
-        </div>
 
-<div style="margin-top:10px;opacity:.65;font-size:11px;line-height:1.35;">
-※「入力」は現在の数量をそのまま記録します（自動クリアはしません）。<br>
-          ※ 記録データはこの端末のローカル保存です（localStorage）。
+          <div style="margin-top:10px;opacity:.65;font-size:11px;line-height:1.35;">
+            ※「入力」は現在の数量をそのまま記録します（自動クリアはしません）。<br>
+            ※ 記録データはこの端末のローカル保存です（localStorage）。
+          </div>
         </div>
       `;
 
+      // モードに応じてセレクトの中身を更新（innerHTML書き換えでイベントが消えるのでrender内で差し替え）
       const sel = document.getElementById('posPeriodSel');
-      sel?.addEventListener('change', () => render(String(sel.value || month)));
+      if (sel) {
+        sel.innerHTML = (mode === 'year') ? yearOpts : monthOpts;
+        sel.value = String(key);
+      }
     };
 
     render();
@@ -4628,6 +4606,7 @@ function openPosReport() {
     try { ScrollLock.lock(); } catch {}
     ov.style.display = 'flex';
   }
+
 
   el.pos?.addEventListener('click', () => {
     // POSはメニューを挟まず「入力」へ直行
