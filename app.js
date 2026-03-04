@@ -4606,11 +4606,11 @@ if (stockBtn) {
         return `
           <div class="posStockBtns">
             <button type="button" class="posStockBtn" data-stock-id="${sid}" data-stock-sex="m" title="オス在庫を入力">
-              <span class="posStockM tabularNums">${escapeHtml(String(md))}</span>
+              <span class="posStockM tabularNums">♂${escapeHtml(String(md))}</span>
             </button>
             <span class="posStockSep">/</span>
             <button type="button" class="posStockBtn" data-stock-id="${sid}" data-stock-sex="f" title="メス在庫を入力">
-              <span class="posStockF tabularNums">${escapeHtml(String(fd))}</span>
+              <span class="posStockF tabularNums">♀${escapeHtml(String(fd))}</span>
             </button>
           </div>
         `;
@@ -4694,11 +4694,11 @@ const head = `
             <table class="posT tabularNums">
               <thead>
                 <tr>
-                  <th class="l posSortTh posColName" data-pos-sort="name" style="width:46%;">種<br>別</th>
-                  <th class="c posSortTh posColEgg" data-pos-sort="eggQty" style="width:12%;">卵</th>
-                  <th class="c posSortTh posColAdult" data-pos-sort="adultQty" style="width:10%;">成<br>体</th>
-                  <th class="c posSortTh posColStock" data-pos-sort="stock" style="width:18%;">在<br>庫</th>
-                  <th class="r posSortTh posColTotal" data-pos-sort="totalAmt" style="width:16%;">合<br>計</th>
+                  <th class="l posSortTh posColName" data-pos-sort="name">種<br>別</th>
+                  <th class="c posSortTh posColEgg" data-pos-sort="eggQty">卵</th>
+                  <th class="c posSortTh posColAdult" data-pos-sort="adultQty">成<br>体</th>
+                  <th class="c posSortTh posColStock" data-pos-sort="stock">在<br>庫</th>
+                  <th class="r posSortTh posColTotal" data-pos-sort="totalAmt">合<br>計</th>
                 </tr>
               </thead>
               <tbody>
