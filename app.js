@@ -314,6 +314,84 @@ const BUILD_VERSION = '2026-02-11 23:30';
 
       installOverlayScrollGuard(ov, body);
 
+      // ✅ POSレポート内の操作（在庫入力 / 取引履歴の削除 / 並び替え）
+      body.addEventListener('click', async (e) => {
+        // 取引履歴：金額タップで削除
+        const delBtn = e.target && e.target.closest ? e.target.closest('[data-pos-del-id]') : null;
+        if (delBtn) {
+          const sid = String(delBtn.getAttribute('data-pos-del-id') || '');
+          if (!sid) return;
+
+          const s = (Array.isArray(pos.sales) ? pos.sales : []).find(x => String(x.id || '') === sid);
+          if (!s) return;
+
+          const parts = posDisplayParts(s);
+          const ok = await confirmAsk(`削除しますか？\n${fmtMD(s.ts)} ${parts.title} / ${yen(s.amount)}`);
+          if (!ok) return;
+
+          const idx = (Array.isArray(pos.sales) ? pos.sales : []).findIndex(x => String(x.id || '') === sid);
+          if (idx >= 0) {
+            pos.sales.splice(idx, 1);
+            posSave();
+            openToast('削除しました');
+            try {
+              const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
+              (ov.__renderPosReport || (() => {}))(month);
+            } catch {}
+          }
+          return;
+        }
+
+        // 恐竜別：在庫タップで入力
+        const stockBtn = e.target && e.target.closest ? e.target.closest('[data-stock-id]') : null;
+        if (stockBtn) {
+          const key = String(stockBtn.getAttribute('data-stock-id') || '');
+          if (!key) return;
+
+          const cur = stockGet(key);
+          const curTxt = (cur.m === null || cur.f === null) ? '' : `${cur.m}/${cur.f}`;
+          const v = prompt('在庫を入力（オス/メス）\n例: 4/5\n空欄で未入力(-)に戻す', curTxt);
+          if (v === null) return;
+
+          const s = String(v).trim();
+          if (!s) {
+            stockSet(key, null, null);
+          } else {
+            const mm = s.match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);
+            if (!mm) {
+              openToast('形式が正しくありません（例: 4/5）');
+              return;
+            }
+            stockSet(key, Number(mm[1]), Number(mm[2]));
+          }
+
+          try {
+            const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
+            (ov.__renderPosReport || (() => {}))(month);
+          } catch {}
+          return;
+        }
+
+        // 恐竜別：ヘッダタップで並び替え
+        const sortTh = e.target && e.target.closest ? e.target.closest('[data-pos-sort]') : null;
+        if (sortTh) {
+          const key = String(sortTh.getAttribute('data-pos-sort') || '');
+          if (!key) return;
+
+          const cur = (ov.__dinoSort) ? ov.__dinoSort : { key: 'totalAmt', dir: 'desc' };
+          let dir = cur.dir || 'desc';
+          if (cur.key === key) dir = (dir === 'asc') ? 'desc' : 'asc';
+          else dir = (key === 'name') ? 'asc' : 'desc';
+
+          ov.__dinoSort = { key, dir };
+          try {
+            const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
+            (ov.__renderPosReport || (() => {}))(month);
+          } catch {}
+          return;
+        }
+      });
+
       // イベント委譲（削除/在庫入力/並び替え）
       body.addEventListener('click', async (e) => {
         const delBtn = e.target && e.target.closest ? e.target.closest('[data-pos-del-id]') : null;
@@ -3785,7 +3863,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
     const meta = (s && typeof s.meta === 'object') ? s.meta : null;
     if (meta && meta.mode === 'special_picks' && Array.isArray(meta.picks) && meta.picks.length) {
       const name = String(s.name || '');
-      const picks = meta.picks.map(x => String(x)).join('');
+      const picks = meta.picks.map(x => circled(x)).join('');
       return { title: `${name}${picks}`, sub: '' };
     }
 
