@@ -1502,50 +1502,38 @@ button{cursor:pointer}
 .posStockBtn{justify-content:center;}
 .posStockBtns .posStockBtn{min-width:2.2ch;}
 
-/* ===============================
-   POS 売上テーブル 修正
-   =============================== */
 
-/* テーブルレイアウトを固定 */
-.posReport table{
-  table-layout:fixed;
-  width:100%;
+/* ===== POS 種別売上: 最終fix（見切れ/縦折返し防止 & 種別列を広めに） ===== */
+.posT{ table-layout:auto; }
+
+/* th が flex になると幅計算が崩れて1文字ずつ改行しやすいので、セル表示に固定 */
+.posT thead th{
+  display:table-cell !important;
+  white-space:nowrap !important;
+  word-break:keep-all !important;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  padding:10px 8px;
+  vertical-align:middle;
 }
 
-/* 列名の折り返し禁止（縦文字防止） */
-.posReport th{
-  white-space:nowrap;
-  text-align:center;
+/* 列幅：数値列は固定、種別(名称)は残りを優先して確保 */
+.posT th.posColEgg,  .posT td.posColEgg { width:3.2ch !important; min-width:3.2ch !important; }
+.posT th.posColAdult,.posT td.posColAdult{ width:3.2ch !important; min-width:3.2ch !important; }
+
+/* 在庫は「♂ / ♀」表示で最低限の幅が必要 */
+.posT th.posColStock,.posT td.posColStock{ width:6.2ch !important; min-width:6.2ch !important; }
+
+/* 合計は金額が入るので少し広め */
+.posT th.posColTotal,.posT td.posColTotal{ width:10ch !important; min-width:10ch !important; }
+
+/* 種別(名称)列：見切れないように最優先で広く */
+.posT th.posColName,.posT td.posColName{
+  width:auto !important;
+  min-width:18ch !important;
 }
 
-/* 種別列を広く確保 */
-.posReport th:first-child,
-.posReport td:first-child{
-  width:160px;
-  min-width:160px;
-  text-align:left;
-  white-space:nowrap;
-}
+/* ヘッダ背景(グレー)は行全体にかかるように */
+.posT thead tr{ background:rgba(255,255,255,.06); }
+.posT thead th{ background:transparent; }
 
-/* 卵 / 成体 */
-.posReport th:nth-child(2),
-.posReport td:nth-child(2),
-.posReport th:nth-child(3),
-.posReport td:nth-child(3){
-  width:48px;
-  text-align:center;
-}
-
-/* 在庫 */
-.posReport th:nth-child(4),
-.posReport td:nth-child(4){
-  width:70px;
-  text-align:center;
-}
-
-/* 合計 */
-.posReport th:nth-child(5),
-.posReport td:nth-child(5){
-  width:80px;
-  text-align:right;
-}
