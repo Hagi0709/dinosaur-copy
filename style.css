@@ -1644,3 +1644,6 @@ button{cursor:pointer}
 
 /* 余白を詰めて横幅を稼ぐ */
 .posT th, .posT td{ padding-left:6px !important; padding-right:6px !important; }
+
+/* ✅ Confirm overlay always top (削除確認など) */
+#confirmOverlay.modalOverlay{ z-index:15000; }
