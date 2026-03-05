@@ -152,7 +152,7 @@ function formatSpecialLabel(name) {
       t.style.left = '50%';
       t.style.bottom = '18px';
       t.style.transform = 'translateX(-50%)';
-      t.style.zIndex = '12500';
+      t.style.zIndex = '9999';
       t.style.padding = '10px 12px';
       t.style.borderRadius = '14px';
       t.style.border = '1px solid rgba(255,255,255,.14)';
@@ -183,7 +183,7 @@ function formatSpecialLabel(name) {
       ov.style.position = 'fixed';
       ov.style.inset = '0';
       // ✅ ルーム画面のモーダル等より常に前面に出す（背面回り込み防止）
-      ov.style.zIndex = '13000';
+      ov.style.zIndex = '10010';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
@@ -285,7 +285,7 @@ function formatSpecialLabel(name) {
       ov.id = id;
       ov.style.position = 'fixed';
       ov.style.inset = '0';
-      ov.style.zIndex = '9999';
+      ov.style.zIndex = '14000';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
@@ -542,7 +542,7 @@ for (let p = 0; p < pages; p++) {
         ov.id = id;
         ov.style.position = 'fixed';
         ov.style.inset = '0';
-        ov.style.zIndex = '9999';
+        ov.style.zIndex = '14000';
         ov.style.display = 'none';
         ov.style.alignItems = 'center';
         ov.style.justifyContent = 'center';
@@ -3978,7 +3978,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
       ov.id = id;
       ov.style.position = 'fixed';
       ov.style.inset = '0';
-      ov.style.zIndex = '9999';
+      ov.style.zIndex = '14000';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
@@ -4091,7 +4091,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
       ov.id = id;
       ov.style.position = 'fixed';
       ov.style.inset = '0';
-      ov.style.zIndex = '9999';
+      ov.style.zIndex = '14000';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
@@ -4243,7 +4243,7 @@ function openPosReport() {
       ov.id = id;
       ov.style.position = 'fixed';
       ov.style.inset = '0';
-      ov.style.zIndex = '9999';
+      ov.style.zIndex = '14000';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
