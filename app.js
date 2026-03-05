@@ -182,7 +182,8 @@ function formatSpecialLabel(name) {
       ov.id = id;
       ov.style.position = 'fixed';
       ov.style.inset = '0';
-      ov.style.zIndex = '9998';
+      // ✅ ルーム画面のモーダル等より常に前面に出す（背面回り込み防止）
+      ov.style.zIndex = '10010';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
@@ -339,7 +340,9 @@ function formatSpecialLabel(name) {
           if (!s) return;
 
           const parts = posDisplayParts(s);
-          const ok = await confirmAsk(`削除しますか？\n${fmtMD(s.ts)} ${parts.title} / ${yen(s.amount)}`);
+          // ✅ 「削除しますか？」→次行から注文内容を改行で表示
+          const msg = `削除しますか？\n${parts.title}${parts.sub ? `\n${parts.sub}` : ''}\n${fmtMD(s.ts)} / ${yen(s.amount)}`;
+          const ok = await confirmAsk(msg);
           if (!ok) return;
 
           const idx = (Array.isArray(pos.sales) ? pos.sales : []).findIndex(x => String(x.id||'') === id);
@@ -4326,7 +4329,17 @@ if (orderBtn) {
 
   const gTotal = list.reduce((a, x) => a + (Number(x.amount) || 0), 0);
   const ts = Math.max(...list.map(x => Number(x.ts) || 0), 0);
-  const ok = await confirmAsk(`注文ごと削除しますか？\n${fmtMD(ts)} 注文 / 合計 ${yen(gTotal)}`);
+
+  // ✅ 「削除しますか？」→次行から注文内容を改行で表示
+  const orderLines = list
+    .slice()
+    .sort((a, b) => (Number(a.ts) || 0) - (Number(b.ts) || 0))
+    .map((s) => {
+      const p = posDisplayParts(s);
+      const left = p.sub ? `${p.title} ${p.sub}` : p.title;
+      return `${left} = ${yen(s.amount)}`;
+    });
+  const ok = await confirmAsk(`削除しますか？\n${fmtMD(ts)} 注文 合計 ${yen(gTotal)}\n${orderLines.join('\n')}`);
   if (!ok) return;
 
   pos.sales = (Array.isArray(pos.sales) ? pos.sales : []).filter(x => !ids.includes(String(x.id || '')));
@@ -4343,65 +4356,28 @@ if (stockBtn) {
   if (!key) return;
 
   const cur = stockGet(key);
-  const sex = String(stockBtn.getAttribute('data-stock-sex') || '');
-  const both = String(stockBtn.getAttribute('data-stock-both') || '');
 
-  const normalize = (m, f) => {
-    // 片方入力なら、もう片方は0
-    if (m === null && f !== null) m = 0;
-    if (f === null && m !== null) f = 0;
-    return { m, f };
-  };
+  // ✅ 在庫入力は「1/2」形式で1回入力に統一（♂︎/♀︎どちらをタップしても同じ入力）
+  // 表示ルール：片方未入力なら、もう片方は0扱い（両方未入力のみ "-"）
+  const curM = (cur.m === null && cur.f !== null) ? 0 : cur.m;
+  const curF = (cur.f === null && cur.m !== null) ? 0 : cur.f;
+  const curTxt = (curM === null && curF === null) ? '' : `${curM ?? 0}/${curF ?? 0}`;
 
-  const askOne = (label, curVal) => {
-    const v = prompt(`${label}の在庫を入力（空欄で未入力）`, (curVal === null ? '' : String(curVal)));
-    if (v === null) return null; // cancel
-    const s = String(v).trim();
-    if (!s) return { val: null };
-    if (!/^\d+$/.test(s)) return { err: true };
-    return { val: Math.max(0, Math.floor(Number(s))) };
-  };
-
-  if (sex === 'm' || sex === 'f') {
-    const r = askOne(sex === 'm' ? 'オス(♂)' : 'メス(♀)', sex === 'm' ? cur.m : cur.f);
-    if (r === null) return;
-    if (r.err) { openToast('数字で入力してください'); return; }
-
-    let m = cur.m, f = cur.f;
-    if (sex === 'm') m = r.val;
-    else f = r.val;
-
-    // 片方だけ空欄にした場合は0に寄せる（両方空欄だけ "-"）
-    if (m === null && f === null) {
-      stockSet(key, null, null);
-    } else {
-      const nn = normalize(m, f);
-      stockSet(key, nn.m, nn.f);
-    }
-
+  const v = prompt('在庫を「オス/メス」で入力（例 1/2、空欄で未入力）', curTxt);
+  if (v === null) return;
+  const s = String(v).trim();
+  if (!s) {
+    stockSet(key, null, null);
     try { (ov.__renderPosReport || (()=>{}))(); } catch {}
     return;
   }
-
-  if (both) {
-    const r1 = askOne('オス(♂)', cur.m);
-    if (r1 === null) return;
-    if (r1.err) { openToast('数字で入力してください'); return; }
-
-    const tmpM = r1.val;
-    const r2 = askOne('メス(♀)', cur.f);
-    if (r2 === null) return;
-    if (r2.err) { openToast('数字で入力してください'); return; }
-
-    let m = tmpM, f = r2.val;
-    if (m === null && f === null) stockSet(key, null, null);
-    else {
-      const nn = normalize(m, f);
-      stockSet(key, nn.m, nn.f);
-    }
-    try { (ov.__renderPosReport || (()=>{}))(); } catch {}
-    return;
-  }
+  const m = s.match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);
+  if (!m) { openToast('「1/2」の形式で入力してください'); return; }
+  const mm = Math.max(0, Math.floor(Number(m[1])));
+  const ff = Math.max(0, Math.floor(Number(m[2])));
+  stockSet(key, mm, ff);
+  try { (ov.__renderPosReport || (()=>{}))(); } catch {}
+  return;
 }
 
 // 取引履歴：金額タップで削除
@@ -4628,17 +4604,41 @@ if (stockBtn) {
         `;
       }).join('');
 
-      // 取引履歴（同時刻グループ化）
+      // 取引履歴：注文ごと（orderId優先）
+      // - orderId がある → orderId で必ずまとめる
+      // - orderId がない古いデータ → 従来通り「同時刻近似（30秒窓）」でまとめる
       const timeline = mSales.slice().sort((a, b) => (b.ts - a.ts));
       const groups = [];
-      const windowMs = 30 * 1000;
+
+      // 1) orderId あり
+      const byOrderId = new Map();
       for (const s of timeline) {
+        const oid = (s && s.orderId != null) ? String(s.orderId).trim() : '';
+        if (!oid) continue;
+        if (!byOrderId.has(oid)) byOrderId.set(oid, { ts: 0, list: [], orderId: oid });
+        const g = byOrderId.get(oid);
         const ts = Number(s.ts) || 0;
-        let g = groups.find(x => Math.abs((x.ts || 0) - ts) <= windowMs);
-        if (!g) { g = { ts, list: [] }; groups.push(g); }
         g.list.push(s);
         g.ts = Math.max(g.ts, ts);
       }
+      groups.push(...Array.from(byOrderId.values()));
+
+      // 2) orderId なし（同時刻近似）
+      const noOrder = timeline.filter(s => {
+        const oid = (s && s.orderId != null) ? String(s.orderId).trim() : '';
+        return !oid;
+      });
+      const windowMs = 30 * 1000;
+      const approx = [];
+      for (const s of noOrder) {
+        const ts = Number(s.ts) || 0;
+        let g = approx.find(x => Math.abs((x.ts || 0) - ts) <= windowMs);
+        if (!g) { g = { ts, list: [], orderId: '' }; approx.push(g); }
+        g.list.push(s);
+        g.ts = Math.max(g.ts, ts);
+      }
+      groups.push(...approx);
+
       groups.sort((a, b) => (b.ts - a.ts));
 
       const timeRows = groups.slice(0, 220).map((g) => {
