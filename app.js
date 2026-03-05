@@ -183,7 +183,7 @@ function formatSpecialLabel(name) {
       ov.style.position = 'fixed';
       ov.style.inset = '0';
       // ✅ ルーム画面のモーダル等より常に前面に出す（背面回り込み防止）
-      ov.style.zIndex = '14000';
+      ov.style.zIndex = '13000';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
@@ -285,7 +285,7 @@ function formatSpecialLabel(name) {
       ov.id = id;
       ov.style.position = 'fixed';
       ov.style.inset = '0';
-      ov.style.zIndex = '14000';
+      ov.style.zIndex = '9999';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
@@ -542,7 +542,7 @@ for (let p = 0; p < pages; p++) {
         ov.id = id;
         ov.style.position = 'fixed';
         ov.style.inset = '0';
-        ov.style.zIndex = '14000';
+        ov.style.zIndex = '9999';
         ov.style.display = 'none';
         ov.style.alignItems = 'center';
         ov.style.justifyContent = 'center';
@@ -699,7 +699,10 @@ for (let p = 0; p < pages; p++) {
   function confirmAsk(text) {
     return new Promise((resolve) => {
       const ov = $('#confirmOverlay');
-      const tx = $('#confirmText');
+      
+      // ✅ 確認ダイアログは常に最前面（他のオーバーレイより上）
+      ov.style.zIndex = '15000';
+const tx = $('#confirmText');
       if (!ov || !tx) return resolve(false);
       confirmResolve = resolve;
       tx.textContent = text || 'よろしいですか？';
@@ -3978,7 +3981,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
       ov.id = id;
       ov.style.position = 'fixed';
       ov.style.inset = '0';
-      ov.style.zIndex = '14000';
+      ov.style.zIndex = '9999';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
@@ -4091,7 +4094,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
       ov.id = id;
       ov.style.position = 'fixed';
       ov.style.inset = '0';
-      ov.style.zIndex = '14000';
+      ov.style.zIndex = '9999';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
@@ -4243,7 +4246,7 @@ function openPosReport() {
       ov.id = id;
       ov.style.position = 'fixed';
       ov.style.inset = '0';
-      ov.style.zIndex = '14000';
+      ov.style.zIndex = '9999';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
