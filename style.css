@@ -1591,9 +1591,9 @@ button{cursor:pointer}
   padding:7px 6px !important;
 }
 /* 幅配分（合計を在庫の右隣で必ず表示） */
-.posT th.posColName,  .posT td.posColName { width:44% !important; }
-.posT th.posColEgg,   .posT td.posColEgg  { width:8%  !important; min-width:4ch !important; }
-.posT th.posColAdult, .posT td.posColAdult{ width:8%  !important; min-width:4ch !important; }
+.posT th.posColName,  .posT td.posColName { width:38% !important; }
+.posT th.posColEgg,   .posT td.posColEgg  { width:11% !important; min-width:4ch !important; }
+.posT th.posColAdult, .posT td.posColAdult{ width:11% !important; min-width:4ch !important; }
 .posT th.posColStock, .posT td.posColStock{ width:14% !important; min-width:7ch !important; }
 .posT th.posColTotal, .posT td.posColTotal{ width:26% !important; min-width:9ch !important; }
 
