@@ -4303,7 +4303,12 @@ function openPosReport() {
       const body = document.createElement('div');
       body.id = 'posReportBody';
       body.style.padding = '12px 14px 14px';
-      body.style.overflow = 'auto';
+      // ✅ 画面上部（期間/合計/タブ/各タブのタイトル）を固定し、
+      //    タブ内容だけをスクロールさせるため、body自体はスクロールさせない
+      body.style.overflow = 'hidden';
+      body.style.display = 'flex';
+      body.style.flexDirection = 'column';
+      body.style.minHeight = '0';
 
       head.appendChild(title);
       head.appendChild(closeBtn);
@@ -4712,37 +4717,43 @@ const head = `
           <button type="button" class="posTabBtn ${ov.__posTab==='hist'?'isActive':''}" data-pos-tab="hist">取引履歴</button>
         </div>
 
-        <div class="posTabPanel ${ov.__posTab==='types'?'':'isHidden'}">
-          <div style="font-weight:950;margin:14px 0 6px;">種別売上（売上順）</div>
-          <div class="posBox">
-            <table class="posT tabularNums">
-              <thead>
-                <tr>
-                  <th class="l posSortTh posColName" data-pos-sort="name">種別</th>
-                  <th class="c posSortTh posColEgg" data-pos-sort="eggQty">卵</th>
-                  <th class="c posSortTh posColAdult" data-pos-sort="adultQty">成体</th>
-                  <th class="c posSortTh posColStock" data-pos-sort="stock">在庫</th>
-                  <th class="r posSortTh posColTotal" data-pos-sort="totalAmt">合計</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${typeRows || `<tr><td colspan="5" style="padding:10px;opacity:.8;">データなし</td></tr>`}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="posTabPanel ${ov.__posTab==='hist'?'':'isHidden'}">
-          <div style="font-weight:950;margin:14px 0 6px;">取引履歴</div>
-          <div class="posBox">
-            <div class="posHistory tabularNums">
-              ${timeRows || `<div style="padding:10px;opacity:.8;">データなし</div>`}
+        <div class="posTabViewport">
+          <div class="posTabPanel ${ov.__posTab==='types'?'':'isHidden'}">
+            <div class="posPanelTitle">種別売上（売上順）</div>
+            <div class="posScrollArea">
+              <div class="posBox">
+                <table class="posT tabularNums">
+                  <thead>
+                    <tr>
+                      <th class="l posSortTh posColName" data-pos-sort="name">種別</th>
+                      <th class="c posSortTh posColEgg" data-pos-sort="eggQty">卵</th>
+                      <th class="c posSortTh posColAdult" data-pos-sort="adultQty">成体</th>
+                      <th class="c posSortTh posColStock" data-pos-sort="stock">在庫</th>
+                      <th class="r posSortTh posColTotal" data-pos-sort="totalAmt">合計</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${typeRows || `<tr><td colspan="5" style="padding:10px;opacity:.8;">データなし</td></tr>`}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
-          <div style="margin-top:10px;opacity:.65;font-size:11px;line-height:1.35;">
-            ※「入力」は現在の数量をそのまま記録します（自動クリアはしません）。<br>
-            ※ 記録データはこの端末のローカル保存です（localStorage）。
+          <div class="posTabPanel ${ov.__posTab==='hist'?'':'isHidden'}">
+            <div class="posPanelTitle">取引履歴</div>
+            <div class="posScrollArea">
+              <div class="posBox">
+                <div class="posHistory tabularNums">
+                  ${timeRows || `<div style="padding:10px;opacity:.8;">データなし</div>`}
+                </div>
+              </div>
+
+              <div class="posHint">
+                ※「入力」は現在の数量をそのまま記録します（自動クリアはしません）。<br>
+                ※ 記録データはこの端末のローカル保存です（localStorage）。
+              </div>
+            </div>
           </div>
         </div>
       `;
