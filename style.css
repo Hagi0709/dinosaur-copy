@@ -1310,6 +1310,33 @@ button{cursor:pointer}
 
 
 /* ===== POS Report UI (帳簿 売上) ===== */
+.posTabViewport{
+  flex:1 1 auto;
+  min-height:0; /* ✅ flex内スクロールのため */
+}
+.posTabPanel{
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+}
+.posPanelTitle{
+  font-weight:950;
+  margin:14px 0 6px;
+}
+.posScrollArea{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+}
+.posHint{
+  margin-top:10px;
+  opacity:.65;
+  font-size:11px;
+  line-height:1.35;
+}
 .posTopRow{
   display:flex;
   align-items:center;
@@ -1391,6 +1418,10 @@ button{cursor:pointer}
 .posT thead th{
   background:rgba(255,255,255,.06);
   border-bottom:1px solid rgba(255,255,255,.10);
+  /* ✅ 種別売上：列名(ヘッダ)は常時表示（tbodyのみスクロール） */
+  position:sticky;
+  top:0;
+  z-index:5;
 }
 .posT tbody td{
   border-bottom:1px solid rgba(255,255,255,.06);
