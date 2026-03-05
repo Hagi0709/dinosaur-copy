@@ -1601,32 +1601,46 @@ button{cursor:pointer}
 .posT td.posColName{ white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
 .posT td.posColEgg,.posT td.posColAdult,.posT td.posColStock,.posT td.posColTotal{ white-space:nowrap !important; }
 
-/* ===== POS 種別売上: 合計が見切れない最終上書き（2026-03） =====
-   目的：在庫の右隣にある「合計」列を、iPhone幅でも必ず表示する
+/* ===== POS 種別売上: 最終上書き（割合 38/11/11/14/26） =====
+   目的：卵/成体/在庫/合計が iPhone でも「..」にならないようにする
 */
 .posT{
   width:100% !important;
   table-layout:fixed !important;
 }
 
-/* 列幅（固定レイアウト用）
-   - 種別：残りを最大限使う（長い名前は…で見切り）
-   - 卵/成体：2桁想定
-   - 在庫： "m/f" 最低限
-   - 合計： "12,345円" 程度が入る幅
-*/
-.posT th.posColEgg,  .posT td.posColEgg  { width:3.2ch !important; min-width:3.2ch !important; }
-.posT th.posColAdult,.posT td.posColAdult{ width:3.2ch !important; min-width:3.2ch !important; }
-.posT th.posColStock,.posT td.posColStock{ width:6.0ch !important; min-width:6.0ch !important; }
-.posT th.posColTotal,.posT td.posColTotal{ width:8.8ch !important; min-width:8.8ch !important; }
-
-/* ★ここが本丸：名前列の"過剰な確保"を殺す（これで合計が左に戻る） */
-.posT th.posColName,.posT td.posColName{
-  width:auto !important;
-  min-width:0 !important;
-  overflow:hidden;
-  text-overflow:ellipsis;
+/* ヘッダは省略させない（卵/成体 が .. になるのを止める） */
+.posT thead th{
+  display:table-cell !important;
+  white-space:nowrap !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  padding:8px 6px !important;
+  vertical-align:middle !important;
 }
 
-/* 余白を少し詰めて、右端切れをさらに防ぐ */
-.posT th, .posT td{ padding-left:6px; padding-right:6px; }
+/* セル側：数値は絶対に省略しない（0.. を止める） */
+.posT td.posColEgg,
+.posT td.posColAdult,
+.posT td.posColStock,
+.posT td.posColTotal{
+  overflow:visible !important;
+  text-overflow:clip !important;
+}
+
+/* 列割合（種別/卵/成体/在庫/合計 = 38/11/11/14/26） */
+.posT th.posColName,  .posT td.posColName  { width:38% !important; }
+.posT th.posColEgg,   .posT td.posColEgg   { width:11% !important; }
+.posT th.posColAdult, .posT td.posColAdult { width:11% !important; }
+.posT th.posColStock, .posT td.posColStock { width:14% !important; }
+.posT th.posColTotal, .posT td.posColTotal { width:26% !important; }
+
+/* 種別(名称)は省略OK */
+.posT td.posColName{
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+
+/* 余白を詰めて横幅を稼ぐ */
+.posT th, .posT td{ padding-left:6px !important; padding-right:6px !important; }
