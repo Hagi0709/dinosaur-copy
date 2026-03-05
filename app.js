@@ -4580,15 +4580,7 @@ if (stockBtn) {
         if (k === 'name') return dir * a.name.localeCompare(b.name, 'ja');
         if (k === 'eggQty') return dir * ((a.eggQty - b.eggQty) || a.name.localeCompare(b.name, 'ja'));
         if (k === 'adultQty') return dir * ((a.adultQty - b.adultQty) || a.name.localeCompare(b.name, 'ja'));
-        if (k === 'stock') {
-  const aInvalid = (a.stockTotal == null || a.stockTotal < 0);
-  const bInvalid = (b.stockTotal == null || b.stockTotal < 0);
-  // 「-」(未入力/対象外) はソート対象に含めず、常に下へ送る
-  if (aInvalid && bInvalid) return a.name.localeCompare(b.name, 'ja');
-  if (aInvalid) return 1;
-  if (bInvalid) return -1;
-  return dir * ((a.stockTotal - b.stockTotal) || a.name.localeCompare(b.name, 'ja'));
-}
+        if (k === 'stock') return dir * ((a.stockTotal - b.stockTotal) || a.name.localeCompare(b.name, 'ja'));
         return dir * ((a.totalAmt - b.totalAmt) || ((a.eggQty + a.adultQty) - (b.eggQty + b.adultQty)));
       });
 
