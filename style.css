@@ -581,7 +581,7 @@ button{cursor:pointer}
 .modalOverlay{
   position:fixed;
   inset:0;
-  z-index:12000;
+  z-index:20000;
   background:rgba(0,0,0,.55);
   backdrop-filter:blur(8px);
   display:flex;
@@ -1646,4 +1646,22 @@ button{cursor:pointer}
 .posT th, .posT td{ padding-left:6px !important; padding-right:6px !important; }
 
 /* ✅ Confirm overlay always top (削除確認など) */
-#confirmOverlay.modalOverlay{ z-index:15000; }
+#confirmOverlay{ z-index:21000 !important; }
+
+
+
+/* ✅ JS生成オーバーレイも常に最前面（背面回り込み防止） */
+#posMenuOverlay,
+#posEntryOverlay,
+#posReportOverlay,
+#roomCopyPreviewOverlay{
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 20000 !important;
+}
+
+
+/* ✅ 既存HTML側のオーバーレイも最前面 */
+#modalOverlay, #roomOverlay, #editOverlay, #imgOverlay{
+  z-index: 20000 !important;
+}
