@@ -183,7 +183,7 @@ function formatSpecialLabel(name) {
       ov.style.position = 'fixed';
       ov.style.inset = '0';
       // ✅ ルーム画面のモーダル等より常に前面に出す（背面回り込み防止）
-      ov.style.zIndex = '13000';
+      ov.style.zIndex = '20000';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
@@ -285,7 +285,7 @@ function formatSpecialLabel(name) {
       ov.id = id;
       ov.style.position = 'fixed';
       ov.style.inset = '0';
-      ov.style.zIndex = '9999';
+      ov.style.zIndex = '20000';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
@@ -542,7 +542,7 @@ for (let p = 0; p < pages; p++) {
         ov.id = id;
         ov.style.position = 'fixed';
         ov.style.inset = '0';
-        ov.style.zIndex = '9999';
+        ov.style.zIndex = '20000';
         ov.style.display = 'none';
         ov.style.alignItems = 'center';
         ov.style.justifyContent = 'center';
@@ -699,10 +699,7 @@ for (let p = 0; p < pages; p++) {
   function confirmAsk(text) {
     return new Promise((resolve) => {
       const ov = $('#confirmOverlay');
-      
-      // ✅ 確認ダイアログは常に最前面（他のオーバーレイより上）
-      ov.style.zIndex = '15000';
-const tx = $('#confirmText');
+      const tx = $('#confirmText');
       if (!ov || !tx) return resolve(false);
       confirmResolve = resolve;
       tx.textContent = text || 'よろしいですか？';
@@ -945,6 +942,24 @@ const tx = $('#confirmText');
     imgClose: $('#imgClose'),
     imgViewerImg: $('#imgViewerImg'),
   };
+
+  /* ========= ✅ overlay z-index hardening =========
+     iOS/Safari などでスタッキングコンテキストが壊れて「確認/プレビュー」が背面に回るのを防ぐ
+  */
+  (function ensureOverlayOnTop(){
+    const bump = (id, z) => {
+      const elx = document.getElementById(id);
+      if (!elx) return;
+      try { elx.classList.add('modalOverlay'); } catch {}
+      try { elx.style.position = 'fixed'; elx.style.inset = '0'; } catch {}
+      try { elx.style.zIndex = String(z); } catch {}
+    };
+    bump('confirmOverlay', 21000);
+    bump('modalOverlay', 20000);
+    bump('roomOverlay', 20000);
+    bump('editOverlay', 20000);
+    bump('imgOverlay', 20000);
+  })();
   if (el.versionText) el.versionText.textContent = `Version: ${BUILD_VERSION}`;
 
 /* ========= top bar auto-fit ========= */
@@ -3981,7 +3996,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
       ov.id = id;
       ov.style.position = 'fixed';
       ov.style.inset = '0';
-      ov.style.zIndex = '9999';
+      ov.style.zIndex = '20000';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
@@ -4094,7 +4109,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
       ov.id = id;
       ov.style.position = 'fixed';
       ov.style.inset = '0';
-      ov.style.zIndex = '9999';
+      ov.style.zIndex = '20000';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
@@ -4246,7 +4261,7 @@ function openPosReport() {
       ov.id = id;
       ov.style.position = 'fixed';
       ov.style.inset = '0';
-      ov.style.zIndex = '9999';
+      ov.style.zIndex = '20000';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
