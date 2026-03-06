@@ -4273,9 +4273,9 @@ function openPosReport() {
       head.style.padding = '12px 12px 8px 14px';
 
       const title = document.createElement('div');
-      title.textContent = '帳簿 売上';
+      title.textContent = '帳簿';
       title.style.fontWeight = '900';
-      title.style.fontSize = '14px';
+      title.style.fontSize = '20px';
       title.style.color = '#fff';
 
       const closeBtn = document.createElement('button');
@@ -4703,9 +4703,9 @@ const head = `
 
         <div class="posTabViewport">
           <div class="posTabPanel ${ov.__posTab==='types'?'':'isHidden'}">
-            <div class="posPanelTitle">種別売上（売上順）</div>
-            <div class="posScrollArea">
-              <div class="posBox">
+            <div class="posPanelTitle">種別売上 在庫</div>
+            <div class="posScrollArea posTypeScroll">
+              <div class="posBox posTypeBox">
                 <table class="posT tabularNums">
                   <thead>
                     <tr>
@@ -4726,17 +4726,17 @@ const head = `
 
           <div class="posTabPanel ${ov.__posTab==='hist'?'':'isHidden'}">
             <div class="posPanelTitle">取引履歴</div>
-            <div class="posScrollArea">
-              <div class="posBox">
+            <div class="posScrollArea posHistScroll">
+              <div class="posBox posHistBoxWrap">
                 <div class="posHistory tabularNums">
                   ${timeRows || `<div style="padding:10px;opacity:.8;">データなし</div>`}
                 </div>
               </div>
+            </div>
 
-              <div class="posHint">
-                ※「入力」は現在の数量をそのまま記録します（自動クリアはしません）。<br>
-                ※ 記録データはこの端末のローカル保存です（localStorage）。
-              </div>
+            <div class="posHint">
+              ※「入力」は現在の数量をそのまま記録します（自動クリアはしません）。<br>
+              ※ 記録データはこの端末のローカル保存です（localStorage）。
             </div>
           </div>
         </div>
