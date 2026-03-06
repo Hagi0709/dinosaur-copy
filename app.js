@@ -3993,6 +3993,8 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
       panel.style.overflow = 'hidden';
       panel.style.display = 'flex';
       panel.style.flexDirection = 'column';
+      panel.style.height = 'min(84vh, calc(100dvh - 32px))';
+      panel.style.minHeight = '0';
 
       const head = document.createElement('div');
       head.style.display = 'flex';
@@ -4292,7 +4294,10 @@ function openPosReport() {
       body.style.overflow = 'hidden';
       body.style.display = 'flex';
       body.style.flexDirection = 'column';
+      body.style.flex = '1 1 auto';
       body.style.minHeight = '0';
+      body.style.height = '100%';
+      body.style.touchAction = 'auto';
 
       head.appendChild(title);
       head.appendChild(closeBtn);
