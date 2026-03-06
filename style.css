@@ -1788,6 +1788,11 @@ button{cursor:pointer}
   overflow:hidden !important;
 }
 
+/* ✅ タブ非表示時は hard-fix の display:flex を必ず打ち消す */
+.posTabPanel.isHidden{
+  display:none !important;
+}
+
 .posScrollArea,
 .posTypeScroll,
 .posHistScroll{
