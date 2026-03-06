@@ -3648,41 +3648,9 @@ const prev = btn.textContent;
     rebuildOutput();
   });
 
-  el.copy?.addEventListener('click', async () => {
-    const text = el.out.value.trim();
-    if (!text) return;
-
-    // 先にコピー
-    try {
-      await navigator.clipboard.writeText(text);
-      const prev = el.copy.textContent;
-      el.copy.textContent = 'コピー済み✓';
-      el.copy.disabled = true;
-      setTimeout(() => { el.copy.textContent = prev; el.copy.disabled = false; }, 1100);
-    } catch {
-      el.out.focus();
-      el.out.select();
-      document.execCommand('copy');
-    }
-
-    // ✅ コピー時にPOSも記録（確認あり）
-    const preview = collectCurrentSelectionForPOS({});
-    if (!preview.length) return;
-
-    const ok = await confirmAsk('コピーに加えて、POSにも記録しますか？');
-    if (!ok) return;
-
-    const ts = Date.now();
-    const orderId = uid();
-    const lines = collectCurrentSelectionForPOS({ ts, orderId });
-    if (!lines.length) return;
-
-    pos.sales = Array.isArray(pos.sales) ? pos.sales : [];
-    pos.sales.push(...lines);
-    // 在庫（成体）を減算
-    applyStockDeductions(lines);
-    posSave();
-    openToast(`POS記録しました（${lines.length}件）`);
+  el.copy?.addEventListener('click', () => {
+    // 旧「帳簿→記録」で使っていた記録機能を、コピーボタン側へ移動
+    openPosEntry();
   });
 
 
@@ -4774,8 +4742,8 @@ const head = `
 
 
   el.pos?.addEventListener('click', () => {
-    // POSはメニューを挟まず「入力」へ直行
-    openPosEntry();
+    // 帳簿ボタンは直接「確認画面（帳簿 売上）」へ
+    openPosReport();
   });
 
 
