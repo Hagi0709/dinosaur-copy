@@ -4743,11 +4743,6 @@ const head = `
                 </div>
               </div>
             </div>
-
-            <div class="posHint">
-              ※「入力」は現在の数量をそのまま記録します（自動クリアはしません）。<br>
-              ※ 記録データはこの端末のローカル保存です（localStorage）。
-            </div>
           </div>
         </div>
       `;
