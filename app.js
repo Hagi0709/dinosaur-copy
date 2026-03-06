@@ -524,6 +524,8 @@ for (let p = 0; p < pages; p++) {
       });
     }
 
+    if (!ov.__posTab) ov.__posTab = 'types';
+
     try { ScrollLock.lock(); } catch {}
     ov.style.display = 'flex';
   }
@@ -4243,9 +4245,7 @@ function openPosReport() {
   const id = 'posReportOverlay';
   let ov = document.getElementById(id);
 
-  // 初期タブを「種別売上」に固定
-  if (!ov || !ov.__posTab) ov.__posTab = 'types';id);
-    if (!ov) {
+  if (!ov) {
       ov = document.createElement('div');
       ov.id = id;
       ov.style.position = 'fixed';
@@ -4317,6 +4317,8 @@ function openPosReport() {
       ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
 
       installOverlayScrollGuard(ov, body);
+
+      if (!ov.__posTab) ov.__posTab = 'types';
 
       // ✅ イベント委譲：タブ / 削除 / 並び替え
       body.addEventListener('click', async (e) => {
