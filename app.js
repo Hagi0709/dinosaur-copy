@@ -4173,10 +4173,6 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
         <div style="margin-left:auto;font-weight:950;color:rgba(120,255,179,.95)">合計 ${escapeHtml(yen(total))}</div>
       </div>
 
-      <div style="opacity:.75;font-size:11px;line-height:1.35;margin-bottom:8px;">
-        記録＆コピーでは、現在の選択中の商品を指定日付で帳簿に記録し、そのまま出力画面をコピーします。コピーは帳簿に記録せず、出力画面のみコピーします。
-      </div>
-
       <div class="posBox" style="margin-bottom:12px;">
         <div class="posEntryPreview tabularNums">
           ${lines.length ? lines.map(s => {
