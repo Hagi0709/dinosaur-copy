@@ -1759,3 +1759,64 @@ button{cursor:pointer}
 .posHistory{
   min-height:0;
 }
+
+
+/* ===== POS scroll hard-fix (2026-03-06 v2) ===== */
+#posReportOverlay > div{
+  height:min(84vh, calc(100dvh - 32px)) !important;
+  min-height:0 !important;
+}
+
+#posReportBody{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  height:auto !important;
+  overflow:hidden !important;
+}
+
+.posTabViewport{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  overflow:hidden !important;
+}
+
+.posTabPanel{
+  display:flex !important;
+  flex-direction:column !important;
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  overflow:hidden !important;
+}
+
+.posScrollArea,
+.posTypeScroll,
+.posHistScroll{
+  display:flex !important;
+  flex-direction:column !important;
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  overflow:hidden !important;
+}
+
+.posTypeBox,
+.posHistBoxWrap,
+.posHistory{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+}
+
+.posTypeBox,
+.posHistBoxWrap{
+  overflow:auto !important;
+  -webkit-overflow-scrolling:touch !important;
+  overscroll-behavior:contain !important;
+  touch-action:pan-y !important;
+}
+
+.posTypeBox .posT{
+  margin-bottom:0 !important;
+}
+
+.posHint{
+  flex:0 0 auto !important;
+}
