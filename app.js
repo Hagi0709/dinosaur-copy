@@ -4240,6 +4240,9 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
   }
 
 function openPosReport() {
+
+  // 初期タブを「種別売上」に固定
+  ov.__posTab = 'types';
     const id = 'posReportOverlay';
     let ov = document.getElementById(id);
     if (!ov) {
