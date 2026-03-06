@@ -3228,6 +3228,17 @@ if (act === 'gojuon') {
     }
   }
 
+  async function copyCurrentOutput() {
+    rebuildOutput();
+    const text = String(el.out?.value || '').trim();
+    if (!text) {
+      openToast('コピーする内容がありません');
+      return false;
+    }
+    await copyText(text);
+    return true;
+  }
+
 function roomLabelForSentence(room) {
   const n = Number(String(room).replace('ROOM', '')) || 0;
   if (n >= 5) return `2階${room}`;
@@ -4159,7 +4170,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
       </div>
 
       <div style="opacity:.75;font-size:11px;line-height:1.35;margin-bottom:8px;">
-        現在の選択中の商品を、指定日付で記録します。
+        記録＆コピーでは、現在の選択中の商品を指定日付で帳簿に記録し、そのまま出力画面をコピーします。コピーは帳簿に記録せず、出力画面のみコピーします。
       </div>
 
       <div class="posBox" style="margin-bottom:12px;">
@@ -4180,16 +4191,16 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
       </div>
 
       <div style="display:flex;gap:10px;">
-        <button id="posEntrySave" class="pill" type="button" style="flex:1;">記録</button>
-        <button id="posEntryToReport" class="pill" type="button" style="flex:1;">確認</button>
+        <button id="posEntrySaveCopy" class="pill" type="button" style="flex:1;">記録＆コピー</button>
+        <button id="posEntryCopyOnly" class="pill" type="button" style="flex:1;">コピー</button>
       </div>
     `;
 
-    const saveBtn = document.getElementById('posEntrySave');
-    const repBtn = document.getElementById('posEntryToReport');
+    const saveCopyBtn = document.getElementById('posEntrySaveCopy');
+    const copyOnlyBtn = document.getElementById('posEntryCopyOnly');
 
     const hide = ov.__hide || (() => {});
-    saveBtn?.addEventListener('click', async () => {
+    saveCopyBtn?.addEventListener('click', async () => {
       const dateVal = String((document.getElementById('posEntryDate') || {}).value || defaultDate);
       // local noon to avoid DST edge cases
       const ts = new Date(`${dateVal}T12:00:00`).getTime();
@@ -4200,7 +4211,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
         openToast('記録する商品がありません');
         return;
       }
-      const ok = await confirmAsk(`${fmtMD(ts)} に記録します。よろしいですか？`);
+      const ok = await confirmAsk(`${fmtMD(ts)} に記録してコピーします。よろしいですか？`);
       if (!ok) return;
 
       pos.sales = Array.isArray(pos.sales) ? pos.sales : [];
@@ -4208,13 +4219,18 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
       // 在庫（成体）を減算
       applyStockDeductions(lines2);
       posSave();
-      openToast(`記録しました（${lines2.length}件）`);
+
+      const copied = await copyCurrentOutput();
+      openToast(copied ? `記録してコピーしました（${lines2.length}件）` : `記録しました（${lines2.length}件）`);
       hide();
     });
 
-    repBtn?.addEventListener('click', () => {
-      hide();
-      openPosReport();
+    copyOnlyBtn?.addEventListener('click', async () => {
+      const copied = await copyCurrentOutput();
+      if (copied) {
+        openToast('コピーしました');
+        hide();
+      }
     });
 
     try { ScrollLock.lock(); } catch {}
