@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-03-06 21:50';
+const BUILD_VERSION = '2026-03-06 23:58';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -3811,23 +3811,29 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
     let name = formatSpecialLabel(String(s.name || ''));
     const rawType = String(s.type || '');
     const typeClean = rawType.replace('(指定)', '');
-    const isPair = /\(指定\)$/.test(rawType) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(rawType);
+    const isSpecified = /\(指定\)$/.test(rawType);
+    const hideSex = (typeClean === '受精卵' || typeClean === '胚') && !isSpecified;
+    const isPair = isSpecified || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(rawType);
 
     const m = Math.max(0, Math.floor(Number(s.m)||0));
     const f = Math.max(0, Math.floor(Number(s.f)||0));
     const qty = Math.max(0, Math.floor(Number(s.qty)|| (m+f) ));
 
-    if (isPair) {
-      if (m > 0 && f > 0 && m !== f) {
-        // ✅ 画像/出力では「ペア」見出しを出さず、明細行だけ表示する
-        return {
-          title: `${name}${typeClean}♂︎×${m} ♀︎×${f}`,
-          sub: '',
-        };
-      }
-      const pairs = (m > 0 || f > 0) ? Math.min(m, f) : Math.ceil(qty / 2);
-      const mult = pairs > 1 ? `×${pairs}` : '';
-      return { title: `${name}${typeClean}ペア${mult}`, sub: '' };
+    // ✅ 帳簿表示は常に「現在の出力画面」と同じ見た目に寄せる
+    //    片方だけ選択されているのに「ペア」と記録されるのを防ぐ
+    if (hideSex) {
+      return { title: `${name}${typeClean}×${qty}`, sub: '' };
+    }
+
+    const parts = [];
+    if (m > 0) parts.push(`♂︎×${m}`);
+    if (f > 0) parts.push(`♀︎×${f}`);
+
+    if (isPair && m === f && m > 0) {
+      return { title: `${name}${typeClean}ペア${m > 1 ? `×${m}` : ''}`, sub: '' };
+    }
+    if (parts.length) {
+      return { title: `${name}${typeClean} ${parts.join(' ')}`, sub: '' };
     }
 
     return { title: `${name}${typeClean}×${qty}`, sub: '' };
