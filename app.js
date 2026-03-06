@@ -364,7 +364,7 @@ function formatSpecialLabel(name) {
           if (!key) return;
           const cur = stockGet(key);
           const curTxt = (cur.m === null || cur.f === null) ? '' : `${cur.m}/${cur.f}`;
-          const v = prompt('在庫を入力（オス/メス）\n例: 4/5\n空欄で未入力(-)に戻す', curTxt);
+          const v = prompt('在庫を入力（オス/メス）', curTxt);
           if (v === null) return;
           const s = String(v).trim();
           if (!s) {
