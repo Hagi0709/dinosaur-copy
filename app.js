@@ -4126,7 +4126,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
       head.style.padding = '12px 12px 8px 14px';
 
       const title = document.createElement('div');
-      title.textContent = 'POS 入力';
+      title.textContent = '帳簿入力';
       title.style.fontWeight = '900';
       title.style.fontSize = '14px';
       title.style.color = '#fff';
