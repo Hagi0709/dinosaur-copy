@@ -3792,10 +3792,21 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
     }
   }
 
+  function posLedgerName(name) {
+    const raw = String(name || '').trim();
+    if (!raw) return '';
+    const idx = raw.indexOf(':');
+    if (idx >= 0) {
+      const tail = raw.slice(idx + 1).trim();
+      if (tail) return tail;
+    }
+    return raw;
+  }
+
   function posDisplayParts(s) {
     if (!s || typeof s !== 'object') return { title: '', sub: '' };
     if (s.kind === 'item') {
-      let name = formatSpecialLabel(String(s.name || ''));
+      let name = formatSpecialLabel(posLedgerName(String(s.name || '')));
       const qty = Math.max(0, Math.floor(Number(s.qty)||0));
       return { title: `${name}×${qty}`, sub: '' };
     }
@@ -3803,12 +3814,12 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
     // special (ガチャ①②など) : 出力画面の見た目に合わせる
     const meta = (s && typeof s.meta === 'object') ? s.meta : null;
     if (meta && meta.mode === 'special_picks' && Array.isArray(meta.picks) && meta.picks.length) {
-      let name = formatSpecialLabel(String(s.name || ''));
+      let name = formatSpecialLabel(posLedgerName(String(s.name || '')));
       const picks = meta.picks.map(x => circled(x)).join('');
       return { title: `${name}${picks}`, sub: '' };
     }
 
-    let name = formatSpecialLabel(String(s.name || ''));
+    let name = formatSpecialLabel(posLedgerName(String(s.name || '')));
     const rawType = String(s.type || '');
     const typeClean = rawType.replace('(指定)', '');
     const isSpecified = /\(指定\)$/.test(rawType);
@@ -4530,15 +4541,15 @@ if (stockBtn) {
       const baseDinos = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
       const baseItems = sortByOrder(items.filter(it => !hidden.item.has(it.id)), 'item');
 
-      for (const d of baseDinos) byType.set(String(d.id), { id: String(d.id), name: String(d.name || ''), kind: 'dino', eggQty: 0, adultQty: 0, totalAmt: 0 });
-      for (const it of baseItems) byType.set(String(it.id), { id: String(it.id), name: String(it.name || ''), kind: 'item', eggQty: 0, adultQty: 0, totalAmt: 0 });
+      for (const d of baseDinos) byType.set(String(d.id), { id: String(d.id), name: posLedgerName(String(d.name || '')), kind: 'dino', eggQty: 0, adultQty: 0, totalAmt: 0 });
+      for (const it of baseItems) byType.set(String(it.id), { id: String(it.id), name: posLedgerName(String(it.name || '')), kind: 'item', eggQty: 0, adultQty: 0, totalAmt: 0 });
 
       const eggSet = new Set(['受精卵', '胚', '幼体']);
       const adultSet = new Set(['成体', 'クローン', 'その他', '全種']);
 
       for (const s of mSales) {
         const kind = String(s.kind || '');
-        const name = String(s.name || '');
+        const name = posLedgerName(String(s.name || ''));
         const qty = Number(s.qty || 0);
         const amt = Number(s.amount || 0);
 
