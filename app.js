@@ -2960,9 +2960,7 @@ if (act === 'gojuon') {
     const wrap = document.createElement('div');
 
     const topBar = document.createElement('div');
-    topBar.style.display = 'flex';
-    topBar.style.justifyContent = 'flex-end';
-    topBar.style.marginBottom = '10px';
+    topBar.className = 'imgTopBar imgTopBarSticky';
     topBar.innerHTML = `<button id="imgExport" class="pill" type="button">画像出力</button>`;
     wrap.appendChild(topBar);
 
