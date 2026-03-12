@@ -2958,13 +2958,16 @@ if (act === 'gojuon') {
 
   function renderManageImages() {
     const wrap = document.createElement('div');
+    wrap.className = 'manageImagesWrap';
 
     const topBar = document.createElement('div');
-    topBar.className = 'imgTopBar imgTopBarSticky';
-    topBar.innerHTML = `<button id="imgExport" class="pill" type="button">画像出力</button>`;
+    topBar.className = 'manageImagesTopBar';
+    topBar.innerHTML = `<button id="imgExport" class="mTab manageImagesExportBtn" type="button">画像出力</button>`;
     wrap.appendChild(topBar);
 
     const list = sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino');
+    const listBox = document.createElement('div');
+    listBox.className = 'manageImagesList';
 
     function loadImg(src) {
       return new Promise((resolve) => {
@@ -3142,9 +3145,10 @@ if (act === 'gojuon') {
       row.appendChild(mid);
       row.appendChild(file);
 
-      wrap.appendChild(row);
+      listBox.appendChild(row);
     });
 
+    wrap.appendChild(listBox);
     return wrap;
   }
 
