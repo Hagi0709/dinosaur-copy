@@ -2227,6 +2227,8 @@ const tOut = String(type).replace('(指定)', '');
   }
   function closeModal() {
     el.modalOverlay.classList.add('isHidden');
+    el.modalBody.classList.remove('isManageImages');
+    el.modal?.classList?.remove('isManageImages');
     el.modalBody.innerHTML = '';
     ScrollLock.unlock(); // ✅ 戻す
   }
@@ -2235,6 +2237,10 @@ const tOut = String(type).replace('(指定)', '');
     el.mTabCatalog.classList.toggle('isActive', kind === 'catalog');
     el.mTabPrices.classList.toggle('isActive', kind === 'prices');
     el.mTabImages?.classList.toggle('isActive', kind === 'images');
+
+    const isImages = kind === 'images';
+    el.modalBody.classList.toggle('isManageImages', isImages);
+    el.modal?.classList?.toggle('isManageImages', isImages);
 
     el.modalBody.innerHTML = '';
     if (kind === 'catalog') el.modalBody.appendChild(renderManageCatalog());
