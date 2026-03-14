@@ -1366,7 +1366,6 @@ function applyCollapseAndSearch() {
 function installLeftToggleHit(card) {
   const toggle = $('.cardToggle', card);
   const wrap = $('.nameWrap', card);
-  const statBtn = $('.statMini', card);
   if (!toggle || !wrap) return;
 
   // ✅ 重要：DOMに未挿入だと offsetWidth/Height が 0 になり、
@@ -1377,12 +1376,8 @@ function installLeftToggleHit(card) {
     return;
   }
 
-  // 折りたたみの押し判定は「左側全体」を維持しつつ、
-  // 下端はステ確認ボタンの下まで広げる
+  // 折りたたみの押し判定は「恐竜名＋画像」範囲だけに限定
   const pad = 12;
-  const wrapBottom = wrap.offsetTop + wrap.offsetHeight;
-  const statBottom = statBtn ? (statBtn.offsetTop + statBtn.offsetHeight) : wrapBottom;
-  const bottom = Math.max(wrapBottom, statBottom);
 
   toggle.style.inset = 'auto';
   toggle.style.right = 'auto';
@@ -1391,7 +1386,7 @@ function installLeftToggleHit(card) {
   toggle.style.left = `${wrap.offsetLeft - pad}px`;
   toggle.style.top = `${wrap.offsetTop - pad}px`;
   toggle.style.width = `${wrap.offsetWidth + pad * 2}px`;
-  toggle.style.height = `${(bottom - wrap.offsetTop) + pad * 2}px`;
+  toggle.style.height = `${wrap.offsetHeight + pad * 2}px`;
 
   toggle.style.zIndex = '5';
   toggle.style.pointerEvents = 'auto';
@@ -1529,18 +1524,17 @@ card.innerHTML = `
       </div>
 
       <div class="right">
-        <div class="typeArea ${allowSex ? '' : 'noSelect'}">
+        <div class="typeRow">
           <button class="dupMini" type="button" data-act="dup">複製</button>
-          ${allowSex ? `<select class="type" aria-label="種類"></select>` : `<div class="type typeGhost" aria-hidden="true"></div>`}
-          <button class="statMini" type="button" data-act="stat">ステ確認</button>
-          <div class="unit">
-            <div class="unitLine">1体=${unitPrice}円</div>
-            <div class="dispLine js-price"></div>
-          </div>
+          ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
         </div>
+        <div class="unit">
+              <div class="unitLine">1体=${unitPrice}円</div>
+            </div>
       </div>
     </div>
 
+    <div class="cardInlineDisp js-price"></div>
     ${normalBlock}
 
     <div class="controls gachaWrap">
@@ -1594,7 +1588,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
       const allBtn = $('button[data-act="all"]', card);
       const undoBtn = $('button[data-act="undo"]', card);
-      const priceEl = $('.js-price', card);
+      const priceEl = $('.cardInlineDisp.js-price', card);
 
       const mEl = $('.js-m', card);
       const fEl = $('.js-f', card);
@@ -1721,16 +1715,6 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
         const act = btn.dataset.act;
 
-if (act === 'stat') {
-  const url = getImageUrlForDino(d);
-  if (!url) {
-    openToast('画像がありません');
-    return;
-  }
-  openImgViewer(url);
-  return;
-}
-
 if (act === 'dup') {
   const dupKey = `${d.id}__dup_${uid()}`;
   ephemeralKeys.add(dupKey);
@@ -1818,15 +1802,15 @@ if (act === 'dup') {
           </div>
 
 <div class="right">
-  <div class="typeArea">
+  <div class="typeRow">
     <button class="dupMini" type="button" data-act="dup">複製</button>
     <select class="type" aria-label="種類"></select>
-    <button class="statMini" type="button" data-act="stat">ステ確認</button>
-    <div class="unit"></div>
   </div>
+  <div class="unit"></div>
 </div>
 </div>
 
+<div class="cardInlineDisp js-price"></div>
 <div class="controls">
   <div class="stepper male">
     <button class="btn" type="button" data-act="m-">−</button>
@@ -1884,11 +1868,13 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     const unit = $('.unit', card);
     // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
       unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
-      let priceEl = $('.js-price', unit);
+      let priceEl = $('.cardInlineDisp.js-price', card);
       if (!priceEl) {
         priceEl = document.createElement('div');
-        priceEl.className = 'dispLine js-price';
-        unit.appendChild(priceEl);
+        priceEl.className = 'cardInlineDisp js-price';
+        const controls = $('.controls', card);
+        if (controls && controls.parentNode === card) card.insertBefore(priceEl, controls);
+        else card.appendChild(priceEl);
       }
 
       const type = s.type || d.defType || '受精卵';
@@ -1940,11 +1926,13 @@ const tOut = String(type).replace('(指定)', '');
       sel.value = s.type;
       // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
       unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
-      let priceEl = $('.js-price', unit);
+      let priceEl = $('.cardInlineDisp.js-price', card);
       if (!priceEl) {
         priceEl = document.createElement('div');
-        priceEl.className = 'dispLine js-price';
-        unit.appendChild(priceEl);
+        priceEl.className = 'cardInlineDisp js-price';
+        const controls = $('.controls', card);
+        if (controls && controls.parentNode === card) card.insertBefore(priceEl, controls);
+        else card.appendChild(priceEl);
       }
 
       const type = s.type || d.defType || '受精卵';
@@ -2027,16 +2015,6 @@ const tOut = String(type).replace('(指定)', '');
         if (act === 'm+') step('m', +1);
         if (act === 'f-') step('f', -1);
         if (act === 'f+') step('f', +1);
-
-        if (act === 'stat') {
-          const url = getImageUrlForDino(d);
-          if (!url) {
-            openToast('画像がありません');
-            return;
-          }
-          openImgViewer(url);
-          return;
-        }
 
         if (act === 'dup') {
           const dupKey = `${d.id}__dup_${uid()}`;
