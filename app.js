@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-03-06 23:58';
+const BUILD_VERSION = '2026-03-14 23:58';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -1524,18 +1524,15 @@ card.innerHTML = `
       </div>
 
       <div class="right">
-        <div class="typeRow">
-          <div class="actionBtns">
-            <button class="dupMini" type="button" data-act="dup">複製</button>
-            <button class="statMini" type="button" data-act="stat">ステ確認</button>
+        <div class="typeArea ${allowSex ? '' : 'noSelect'}">
+          <button class="dupMini" type="button" data-act="dup">複製</button>
+          ${allowSex ? `<select class="type" aria-label="種類"></select>` : `<div class="type typeGhost" aria-hidden="true"></div>`}
+          <button class="statMini" type="button" data-act="stat">ステ確認</button>
+          <div class="unit">
+            <div class="unitLine">1体=${unitPrice}円</div>
+            <div class="dispLine js-price"></div>
           </div>
-          ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
         </div>
-        <div class="unit">
-              <div class="unitLine">1体=${unitPrice}円</div>
-              <div class="dispLine js-price"></div>
-            </div>
-            
       </div>
     </div>
 
@@ -1816,14 +1813,12 @@ if (act === 'dup') {
           </div>
 
 <div class="right">
-  <div class="typeRow">
-    <div class="actionBtns">
-      <button class="dupMini" type="button" data-act="dup">複製</button>
-      <button class="statMini" type="button" data-act="stat">ステ確認</button>
-    </div>
+  <div class="typeArea">
+    <button class="dupMini" type="button" data-act="dup">複製</button>
     <select class="type" aria-label="種類"></select>
+    <button class="statMini" type="button" data-act="stat">ステ確認</button>
+    <div class="unit"></div>
   </div>
-  <div class="unit"></div>
 </div>
 </div>
 
