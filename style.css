@@ -418,12 +418,10 @@ button{cursor:pointer}
 .sexFemale{ color: var(--femaleSoft); }
 
 .cardPrice{
-  position:absolute;
-  right:0;
-  bottom:0;
-
+  margin-top:2px;
   font-size:13px;
   font-weight:950;
+  text-align:right;
   white-space:nowrap;
 }
 
@@ -1121,19 +1119,23 @@ button{cursor:pointer}
 .unit{
   min-width:0;
   min-height:40px;
+  width:100%;
   white-space:normal;
   display:flex;
   flex-direction:column;
-  justify-content:center;
-  align-items:flex-start;
+  justify-content:flex-end;
+  align-items:flex-end;
   gap:2px;
-  padding:0 2px;
+  padding:0 2px 2px 2px;
+  text-align:right;
 }
 .unitLine, .dispLine{
+  width:100%;
   font-size:11px;
   line-height:1.2;
   color:rgba(255,255,255,.68);
   font-weight:700;
+  text-align:right;
 }
 .sex-m{color: var(--maleSoft);}
 .sex-f{color: var(--femaleSoft);}
