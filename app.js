@@ -1525,7 +1525,10 @@ card.innerHTML = `
 
       <div class="right">
         <div class="typeRow">
-          <button class="dupMini" type="button" data-act="dup">複製</button>
+          <div class="actionBtns">
+            <button class="dupMini" type="button" data-act="dup">複製</button>
+            <button class="statMini" type="button" data-act="stat">ステ確認</button>
+          </div>
           ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
         </div>
         <div class="unit">
@@ -1716,6 +1719,16 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
         const act = btn.dataset.act;
 
+if (act === 'stat') {
+  const url = getImageUrlForDino(d);
+  if (!url) {
+    openToast('画像がありません');
+    return;
+  }
+  openImgViewer(url);
+  return;
+}
+
 if (act === 'dup') {
   const dupKey = `${d.id}__dup_${uid()}`;
   ephemeralKeys.add(dupKey);
@@ -1803,15 +1816,14 @@ if (act === 'dup') {
           </div>
 
 <div class="right">
-  <div class="typeArea">
-    <button class="dupMini" type="button" data-act="dup">複製</button>
-    <select class="type" aria-label="種類"></select>
-    <button class="statMini" type="button" data-act="stat">ステ確認</button>
-    <div class="unit">
-      <div class="unitLine"></div>
-      <div class="dispLine js-price"></div>
+  <div class="typeRow">
+    <div class="actionBtns">
+      <button class="dupMini" type="button" data-act="dup">複製</button>
+      <button class="statMini" type="button" data-act="stat">ステ確認</button>
     </div>
+    <select class="type" aria-label="種類"></select>
   </div>
+  <div class="unit"><div class="unitLine"></div><div class="dispLine js-price"></div></div>
 </div>
 </div>
 
@@ -1870,14 +1882,14 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     sel.value = s.type;
 
     const unit = $('.unit', card);
-    // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
-      unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
-      let priceEl = $('.js-price', unit);
-      if (!priceEl) {
-        priceEl = document.createElement('div');
-        priceEl.className = 'dispLine js-price';
-        unit.appendChild(priceEl);
-      }
+    const unitLineEl = $('.unitLine', unit);
+    let priceEl = $('.js-price', unit);
+    if (!priceEl) {
+      priceEl = document.createElement('div');
+      priceEl.className = 'dispLine js-price';
+      unit.appendChild(priceEl);
+    }
+    if (unitLineEl) unitLineEl.textContent = `単価${prices[s.type] || 0}円`;
 
       const type = s.type || d.defType || '受精卵';
       const m = Number(s.m || 0);
@@ -1926,14 +1938,14 @@ const tOut = String(type).replace('(指定)', '');
     function syncUI() {
       if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
       sel.value = s.type;
-      // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
-      unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
+      const unitLineEl = $('.unitLine', unit);
       let priceEl = $('.js-price', unit);
       if (!priceEl) {
         priceEl = document.createElement('div');
         priceEl.className = 'dispLine js-price';
         unit.appendChild(priceEl);
       }
+      if (unitLineEl) unitLineEl.textContent = `単価${prices[s.type] || 0}円`;
 
       const type = s.type || d.defType || '受精卵';
       const m = Number(s.m || 0);
@@ -2015,6 +2027,16 @@ const tOut = String(type).replace('(指定)', '');
         if (act === 'm+') step('m', +1);
         if (act === 'f-') step('f', -1);
         if (act === 'f+') step('f', +1);
+
+        if (act === 'stat') {
+          const url = getImageUrlForDino(d);
+          if (!url) {
+            openToast('画像がありません');
+            return;
+          }
+          openImgViewer(url);
+          return;
+        }
 
         if (act === 'dup') {
           const dupKey = `${d.id}__dup_${uid()}`;
