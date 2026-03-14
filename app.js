@@ -1580,6 +1580,8 @@ if (!nameWrap) {
 
 const nameEl = $('.name', card);
 if (nameEl) nameEl.textContent = displayName(d.name);
+    const thumbImgEl = $('.miniThumb img', card);
+    if (thumbImgEl && imgUrl) installLongPressImagePreview(thumbImgEl, () => imgUrl);
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -1851,6 +1853,8 @@ if (!nameWrap) {
 
 const nameEl = $('.name', card);
 if (nameEl) nameEl.textContent = displayName(d.name);
+    const thumbImgEl = $('.miniThumb img', card);
+    if (thumbImgEl && imgUrl) installLongPressImagePreview(thumbImgEl, () => imgUrl);
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -2950,6 +2954,81 @@ if (act === 'gojuon') {
     ScrollLock.lock(); // ✅
     el.imgViewerImg.src = url;
     el.imgOverlay.classList.remove('isHidden');
+  }
+
+  function installLongPressImagePreview(target, getUrl) {
+    if (!target || target.dataset.longPressReady === '1') return;
+    target.dataset.longPressReady = '1';
+
+    const PRESS_MS = 420;
+    const MOVE_CANCEL_PX = 12;
+    let timer = null;
+    let startX = 0;
+    let startY = 0;
+    let opened = false;
+
+    const clearPress = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+
+    const beginPress = (x, y) => {
+      startX = Number(x || 0);
+      startY = Number(y || 0);
+      opened = false;
+      clearPress();
+      timer = setTimeout(() => {
+        timer = null;
+        const url = typeof getUrl === 'function' ? String(getUrl() || '').trim() : '';
+        if (!url) return;
+        opened = true;
+        openImgViewer(url);
+      }, PRESS_MS);
+    };
+
+    const maybeCancelByMove = (x, y) => {
+      if (!timer) return;
+      if (Math.abs(Number(x || 0) - startX) > MOVE_CANCEL_PX || Math.abs(Number(y || 0) - startY) > MOVE_CANCEL_PX) {
+        clearPress();
+      }
+    };
+
+    target.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+    });
+
+    target.addEventListener('touchstart', (e) => {
+      const t = e.touches && e.touches[0];
+      beginPress(t?.clientX || 0, t?.clientY || 0);
+    }, { passive: true });
+
+    target.addEventListener('touchmove', (e) => {
+      const t = e.touches && e.touches[0];
+      maybeCancelByMove(t?.clientX || 0, t?.clientY || 0);
+    }, { passive: true });
+
+    target.addEventListener('touchend', clearPress, { passive: true });
+    target.addEventListener('touchcancel', clearPress, { passive: true });
+
+    target.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      beginPress(e.clientX, e.clientY);
+    });
+    target.addEventListener('mousemove', (e) => {
+      maybeCancelByMove(e.clientX, e.clientY);
+    });
+    target.addEventListener('mouseup', clearPress);
+    target.addEventListener('mouseleave', clearPress);
+
+    target.addEventListener('click', (e) => {
+      if (opened) {
+        e.preventDefault();
+        e.stopPropagation();
+        opened = false;
+      }
+    }, true);
   }
   function closeImgViewer() {
     if (!el.imgOverlay) return;
