@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-03-14 23:58';
+const BUILD_VERSION = '2026-03-06 23:58';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -1366,6 +1366,7 @@ function applyCollapseAndSearch() {
 function installLeftToggleHit(card) {
   const toggle = $('.cardToggle', card);
   const wrap = $('.nameWrap', card);
+  const statBtn = $('.statMini', card);
   if (!toggle || !wrap) return;
 
   // ✅ 重要：DOMに未挿入だと offsetWidth/Height が 0 になり、
@@ -1376,8 +1377,12 @@ function installLeftToggleHit(card) {
     return;
   }
 
-  // 折りたたみの押し判定は「恐竜名＋画像」範囲だけに限定
+  // 折りたたみの押し判定は「左側全体」を維持しつつ、
+  // 下端はステ確認ボタンの下まで広げる
   const pad = 12;
+  const wrapBottom = wrap.offsetTop + wrap.offsetHeight;
+  const statBottom = statBtn ? (statBtn.offsetTop + statBtn.offsetHeight) : wrapBottom;
+  const bottom = Math.max(wrapBottom, statBottom);
 
   toggle.style.inset = 'auto';
   toggle.style.right = 'auto';
@@ -1386,7 +1391,7 @@ function installLeftToggleHit(card) {
   toggle.style.left = `${wrap.offsetLeft - pad}px`;
   toggle.style.top = `${wrap.offsetTop - pad}px`;
   toggle.style.width = `${wrap.offsetWidth + pad * 2}px`;
-  toggle.style.height = `${wrap.offsetHeight + pad * 2}px`;
+  toggle.style.height = `${(bottom - wrap.offsetTop) + pad * 2}px`;
 
   toggle.style.zIndex = '5';
   toggle.style.pointerEvents = 'auto';
