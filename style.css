@@ -418,10 +418,12 @@ button{cursor:pointer}
 .sexFemale{ color: var(--femaleSoft); }
 
 .cardPrice{
-  margin-top:2px;
+  position:absolute;
+  right:0;
+  bottom:0;
+
   font-size:13px;
   font-weight:950;
-  text-align:right;
   white-space:nowrap;
 }
 
