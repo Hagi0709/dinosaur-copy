@@ -1525,7 +1525,10 @@ card.innerHTML = `
 
       <div class="right">
         <div class="typeRow">
-          <button class="dupMini" type="button" data-act="dup">複製</button>
+          <div class="actionBtns">
+            <button class="dupMini" type="button" data-act="dup">複製</button>
+            <button class="statMini" type="button" data-act="stat">ステ確認</button>
+          </div>
           ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
         </div>
         <div class="unit">
@@ -1716,6 +1719,16 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
         const act = btn.dataset.act;
 
+if (act === 'stat') {
+  const url = getImageUrlForDino(d);
+  if (!url) {
+    openToast('画像がありません');
+    return;
+  }
+  openImgViewer(url);
+  return;
+}
+
 if (act === 'dup') {
   const dupKey = `${d.id}__dup_${uid()}`;
   ephemeralKeys.add(dupKey);
@@ -1804,7 +1817,10 @@ if (act === 'dup') {
 
 <div class="right">
   <div class="typeRow">
-    <button class="dupMini" type="button" data-act="dup">複製</button>
+    <div class="actionBtns">
+      <button class="dupMini" type="button" data-act="dup">複製</button>
+      <button class="statMini" type="button" data-act="stat">ステ確認</button>
+    </div>
     <select class="type" aria-label="種類"></select>
   </div>
   <div class="unit"></div>
@@ -2011,6 +2027,16 @@ const tOut = String(type).replace('(指定)', '');
         if (act === 'm+') step('m', +1);
         if (act === 'f-') step('f', -1);
         if (act === 'f+') step('f', +1);
+
+        if (act === 'stat') {
+          const url = getImageUrlForDino(d);
+          if (!url) {
+            openToast('画像がありません');
+            return;
+          }
+          openImgViewer(url);
+          return;
+        }
 
         if (act === 'dup') {
           const dupKey = `${d.id}__dup_${uid()}`;
