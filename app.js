@@ -1530,11 +1530,12 @@ card.innerHTML = `
         </div>
         <div class="unit">
               <div class="unitLine">1体=${unitPrice}円</div>
+              <div class="dispLine js-price"></div>
             </div>
+            
       </div>
     </div>
 
-    <div class="cardInlineDisp js-price"></div>
     ${normalBlock}
 
     <div class="controls gachaWrap">
@@ -1588,7 +1589,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
       const allBtn = $('button[data-act="all"]', card);
       const undoBtn = $('button[data-act="undo"]', card);
-      const priceEl = $('.cardInlineDisp.js-price', card);
+      const priceEl = $('.js-price', card);
 
       const mEl = $('.js-m', card);
       const fEl = $('.js-f', card);
@@ -1802,15 +1803,18 @@ if (act === 'dup') {
           </div>
 
 <div class="right">
-  <div class="typeRow">
+  <div class="typeArea">
     <button class="dupMini" type="button" data-act="dup">複製</button>
     <select class="type" aria-label="種類"></select>
+    <button class="statMini" type="button" data-act="stat">ステ確認</button>
+    <div class="unit">
+      <div class="unitLine"></div>
+      <div class="dispLine js-price"></div>
+    </div>
   </div>
-  <div class="unit"></div>
 </div>
 </div>
 
-<div class="cardInlineDisp js-price"></div>
 <div class="controls">
   <div class="stepper male">
     <button class="btn" type="button" data-act="m-">−</button>
@@ -1868,13 +1872,11 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     const unit = $('.unit', card);
     // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
       unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
-      let priceEl = $('.cardInlineDisp.js-price', card);
+      let priceEl = $('.js-price', unit);
       if (!priceEl) {
         priceEl = document.createElement('div');
-        priceEl.className = 'cardInlineDisp js-price';
-        const controls = $('.controls', card);
-        if (controls && controls.parentNode === card) card.insertBefore(priceEl, controls);
-        else card.appendChild(priceEl);
+        priceEl.className = 'dispLine js-price';
+        unit.appendChild(priceEl);
       }
 
       const type = s.type || d.defType || '受精卵';
@@ -1926,13 +1928,11 @@ const tOut = String(type).replace('(指定)', '');
       sel.value = s.type;
       // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
       unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
-      let priceEl = $('.cardInlineDisp.js-price', card);
+      let priceEl = $('.js-price', unit);
       if (!priceEl) {
         priceEl = document.createElement('div');
-        priceEl.className = 'cardInlineDisp js-price';
-        const controls = $('.controls', card);
-        if (controls && controls.parentNode === card) card.insertBefore(priceEl, controls);
-        else card.appendChild(priceEl);
+        priceEl.className = 'dispLine js-price';
+        unit.appendChild(priceEl);
       }
 
       const type = s.type || d.defType || '受精卵';
