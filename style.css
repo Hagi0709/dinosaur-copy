@@ -1910,21 +1910,60 @@ button{cursor:pointer}
   }
 }
 
-/* ===============================
-入力表示を下段に固定する修正
-=============================== */
 
-/* controlsは折り返し可能にする */
-.controls{
-  flex-wrap: wrap;
+
+/* ===== 2026-03-15 layout fix: 確認ボタン右は単価、表示出力はその下1行 ===== */
+.right .typeArea{
+  display:grid !important;
+  grid-template-columns:72px minmax(0,1fr) !important;
+  grid-template-rows:40px 40px auto !important;
+  gap:8px !important;
+  align-items:stretch !important;
+  width:100% !important;
+  margin-top:-4px !important;
 }
 
-/* 入力表示を必ず1行使って下に出す */
-.controls .sexHint,
-.controls .cardPrice{
-  flex-basis:100%;
-  width:100%;
-  text-align:right;
-  margin-top:6px;
-  order:10;
+/* unitの中身をgrid直下に展開して、単価と表示出力を別行に配置 */
+.unit{
+  display:contents !important;
+}
+
+/* 2行目右: 単価 */
+.unitLine{
+  grid-column:2 !important;
+  grid-row:2 !important;
+  align-self:end !important;
+  justify-self:end !important;
+  width:auto !important;
+  margin:0 !important;
+  font-size:11px !important;
+  line-height:1.2 !important;
+  color:rgba(255,255,255,.68) !important;
+  font-weight:700 !important;
+  text-align:right !important;
+  white-space:nowrap !important;
+}
+
+/* 3行目全面: 入力表示 */
+.dispLine{
+  grid-column:1 / 3 !important;
+  grid-row:3 !important;
+  align-self:start !important;
+  justify-self:stretch !important;
+  width:100% !important;
+  margin:0 !important;
+  padding-top:2px !important;
+  font-size:11px !important;
+  line-height:1.25 !important;
+  color:rgba(255,255,255,.92) !important;
+  font-weight:800 !important;
+  text-align:left !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+
+/* 既存のcontrolsはそのまま下段 */
+.controls{
+  margin-top:10px !important;
 }
