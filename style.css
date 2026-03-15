@@ -2043,5 +2043,87 @@ button{cursor:pointer}
 /* controlsは既存位置を維持 */
 .controls{
   margin-top:10px !important;
+}\n\n
+/* ===== 2026-03-15 fix: 入力表示は全文改行なし + 下余白を最大限圧縮 ===== */
+
+/* 右側レイアウト：3行目(入力表示行)を最小化して常時確保 */
+.right .typeArea{
+  display:grid !important;
+  grid-template-columns:72px minmax(0,1fr) !important;
+  grid-template-rows:40px 40px 16px !important;
+  column-gap:8px !important;
+  row-gap:6px !important;
+  align-items:stretch !important;
+  width:100% !important;
 }
 
+/* 複製/確認/セレクタ位置を固定 */
+.right .typeArea .dupBtn{
+  grid-column:1 !important;
+  grid-row:1 !important;
+}
+.right .typeArea .statMini{
+  grid-column:1 !important;
+  grid-row:2 !important;
+}
+.right .typeArea .type{
+  grid-column:2 !important;
+  grid-row:1 !important;
+  min-width:0 !important;
+  width:100% !important;
+}
+
+/* 単価＋入力表示の箱 */
+.right .typeArea .unit{
+  grid-column:2 !important;
+  grid-row:2 / 4 !important;
+  display:grid !important;
+  grid-template-rows:40px 16px !important;
+  align-items:stretch !important;
+  justify-items:stretch !important;
+  min-width:0 !important;
+  width:100% !important;
+  height:100% !important;
+}
+
+/* 単価は2行目右下 */
+.right .typeArea .unit .unitLine,
+.right .typeArea .unit .cardPrice{
+  grid-row:1 !important;
+  align-self:end !important;
+  justify-self:end !important;
+  margin:0 !important;
+  padding:0 !important;
+  text-align:right !important;
+  white-space:nowrap !important;
+  width:auto !important;
+  font-size:13px !important;
+  line-height:1 !important;
+}
+
+/* 入力表示は単価の下に右寄せ、全文改行なし */
+.right .typeArea .unit .dispLine,
+.right .typeArea .unit .sexHint{
+  grid-row:2 !important;
+  align-self:start !important;
+  justify-self:end !important;
+  margin:0 !important;
+  padding:0 !important;
+  text-align:right !important;
+  white-space:nowrap !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  width:auto !important;
+  max-width:none !important;
+  min-height:16px !important;
+  font-size:11px !important;
+  line-height:1 !important;
+  color:rgba(255,255,255,.92) !important;
+  font-weight:800 !important;
+}
+
+/* 数値入力との距離を詰める */
+.controls{
+  margin-top:6px !important;
+}
+\n
