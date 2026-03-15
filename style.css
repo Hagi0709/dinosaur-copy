@@ -1909,3 +1909,22 @@ button{cursor:pointer}
     grid-template-columns:72px minmax(0,1fr);
   }
 }
+
+/* ===============================
+入力表示を下段に固定する修正
+=============================== */
+
+/* controlsは折り返し可能にする */
+.controls{
+  flex-wrap: wrap;
+}
+
+/* 入力表示を必ず1行使って下に出す */
+.controls .sexHint,
+.controls .cardPrice{
+  flex-basis:100%;
+  width:100%;
+  text-align:right;
+  margin-top:6px;
+  order:10;
+}
