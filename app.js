@@ -1531,8 +1531,8 @@ card.innerHTML = `
       <div class="right">
         <div class="typeArea ${allowSex ? '' : 'noSelect'}">
           <button class="dupMini" type="button" data-act="dup">複製</button>
-          ${allowSex ? `<select class="type" aria-label="種類"></select>` : `<div class="type typeGhost" aria-hidden="true"></div>`}
           <button class="statMini" type="button" data-act="stat">確認</button>
+          ${allowSex ? `<select class="type" aria-label="種類"></select>` : `<div class="type typeGhost" aria-hidden="true"></div>`}
           <div class="unit">
             <div class="unitLine">1体=${unitPrice}円</div>
             <div class="dispLine js-price"></div>
@@ -1647,7 +1647,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
           if (!hasInput) {
             // ✅ 未入力時は「空白1文字」
-            priceEl.textContent = ' ';
+            priceEl.textContent = '';
           } else {
             let price = 0;
 
@@ -1820,8 +1820,8 @@ if (act === 'dup') {
 <div class="right">
   <div class="typeArea">
     <button class="dupMini" type="button" data-act="dup">複製</button>
-    <select class="type" aria-label="種類"></select>
     <button class="statMini" type="button" data-act="stat">確認</button>
+    <select class="type" aria-label="種類"></select>
     <div class="unit"></div>
   </div>
 </div>
@@ -1898,7 +1898,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
       if (qty <= 0) {
         // ✅ 未入力時は「空白1文字」
-        priceEl.textContent = ' ';
+        priceEl.textContent = '';
       } else {
         const unitPrice = prices[type] || 0;
         const price = unitPrice * qty;
@@ -1954,7 +1954,7 @@ const tOut = String(type).replace('(指定)', '');
 
       if (qty <= 0) {
         // ✅ 未入力時は「空白1文字」
-        priceEl.textContent = ' ';
+        priceEl.textContent = '';
       } else {
         const unitPrice = prices[type] || 0;
         const price = unitPrice * qty;
