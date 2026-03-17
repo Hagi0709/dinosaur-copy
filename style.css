@@ -2127,3 +2127,84 @@ button{cursor:pointer}
   margin-top:6px !important;
 }
 \n
+
+/* ===== 2026-03-17 card layout tweak: 入力表示下の余白削除 + 確認/セレクタ入れ替え ===== */
+.right .typeArea{
+  display:grid !important;
+  grid-template-columns:92px minmax(0,1fr) !important;
+  grid-template-rows:40px auto auto !important;
+  column-gap:8px !important;
+  row-gap:6px !important;
+  align-items:start !important;
+  width:100% !important;
+  margin-top:-4px !important;
+}
+
+.right .typeArea .dupMini{
+  grid-column:1 !important;
+  grid-row:1 !important;
+  width:100% !important;
+}
+
+.right .typeArea .statMini{
+  grid-column:2 !important;
+  grid-row:1 !important;
+  width:100% !important;
+}
+
+.right .typeArea .type,
+.right .typeArea .typeGhost{
+  grid-column:1 !important;
+  grid-row:2 !important;
+  width:100% !important;
+  min-width:0 !important;
+}
+
+.right .typeArea .unit{
+  grid-column:2 !important;
+  grid-row:2 / 4 !important;
+  display:grid !important;
+  grid-template-rows:auto auto !important;
+  row-gap:2px !important;
+  align-items:start !important;
+  justify-items:stretch !important;
+  min-width:0 !important;
+  width:100% !important;
+  height:auto !important;
+  white-space:normal !important;
+}
+
+.right .typeArea .unit .unitLine,
+.right .typeArea .unit .cardPrice{
+  grid-row:1 !important;
+  align-self:end !important;
+  justify-self:end !important;
+  margin:0 !important;
+  padding:0 !important;
+  text-align:right !important;
+  white-space:nowrap !important;
+  width:auto !important;
+  font-size:13px !important;
+  line-height:1 !important;
+}
+
+.right .typeArea .unit .dispLine,
+.right .typeArea .unit .sexHint{
+  grid-row:2 !important;
+  align-self:start !important;
+  justify-self:end !important;
+  margin:0 !important;
+  padding:0 !important;
+  min-height:0 !important;
+  text-align:right !important;
+  white-space:nowrap !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  width:100% !important;
+  line-height:1.05 !important;
+}
+
+.right .typeArea .unit .dispLine:empty,
+.right .typeArea .unit .sexHint:empty{
+  display:none !important;
+}
