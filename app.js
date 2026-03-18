@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-03-18 21:58';
+const BUILD_VERSION = '2026-03-06 23:58';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -1366,7 +1366,6 @@ function applyCollapseAndSearch() {
 function installLeftToggleHit(card) {
   const toggle = $('.cardToggle', card);
   const wrap = $('.nameWrap', card);
-  const statBtn = $('.statMini', card);
   if (!toggle || !wrap) return;
 
   // ✅ 重要：DOMに未挿入だと offsetWidth/Height が 0 になり、
@@ -1377,12 +1376,8 @@ function installLeftToggleHit(card) {
     return;
   }
 
-  // 折りたたみの押し判定は「左側全体」を維持しつつ、
-  // 下端はステ確認ボタンの下まで広げる
+  // 折りたたみの押し判定は「恐竜名＋画像」範囲だけに限定
   const pad = 12;
-  const wrapBottom = wrap.offsetTop + wrap.offsetHeight;
-  const statBottom = statBtn ? (statBtn.offsetTop + statBtn.offsetHeight) : wrapBottom;
-  const bottom = Math.max(wrapBottom, statBottom);
 
   toggle.style.inset = 'auto';
   toggle.style.right = 'auto';
@@ -1391,7 +1386,7 @@ function installLeftToggleHit(card) {
   toggle.style.left = `${wrap.offsetLeft - pad}px`;
   toggle.style.top = `${wrap.offsetTop - pad}px`;
   toggle.style.width = `${wrap.offsetWidth + pad * 2}px`;
-  toggle.style.height = `${(bottom - wrap.offsetTop) + pad * 2}px`;
+  toggle.style.height = `${wrap.offsetHeight + pad * 2}px`;
 
   toggle.style.zIndex = '5';
   toggle.style.pointerEvents = 'auto';
@@ -1529,15 +1524,15 @@ card.innerHTML = `
       </div>
 
       <div class="right">
-        <div class="typeArea ${allowSex ? '' : 'noSelect'}">
+        <div class="typeRow">
           <button class="dupMini" type="button" data-act="dup">複製</button>
-          <button class="statMini" type="button" data-act="stat">確認</button>
-          ${allowSex ? `<select class="type" aria-label="種類"></select>` : `<div class="type typeGhost" aria-hidden="true"></div>`}
-          <div class="unit">
-            <div class="unitLine">1体=${unitPrice}円</div>
-            <div class="dispLine js-price"></div>
-          </div>
+          ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
         </div>
+        <div class="unit">
+              <div class="unitLine">1体=${unitPrice}円</div>
+              <div class="dispLine js-price"></div>
+            </div>
+            
       </div>
     </div>
 
@@ -1585,8 +1580,6 @@ if (!nameWrap) {
 
 const nameEl = $('.name', card);
 if (nameEl) nameEl.textContent = displayName(d.name);
-    const thumbImgEl = $('.miniThumb img', card);
-    if (thumbImgEl && imgUrl) installLongPressImagePreview(thumbImgEl, () => imgUrl);
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -1647,7 +1640,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
           if (!hasInput) {
             // ✅ 未入力時は「空白1文字」
-            priceEl.textContent = '';
+            priceEl.textContent = ' ';
           } else {
             let price = 0;
 
@@ -1720,16 +1713,6 @@ requestAnimationFrame(() => installLeftToggleHit(card));
         ev.stopPropagation();
 
         const act = btn.dataset.act;
-
-if (act === 'stat') {
-  const url = getImageUrlForDino(d);
-  if (!url) {
-    openToast('画像がありません');
-    return;
-  }
-  openImgViewer(url);
-  return;
-}
 
 if (act === 'dup') {
   const dupKey = `${d.id}__dup_${uid()}`;
@@ -1818,13 +1801,11 @@ if (act === 'dup') {
           </div>
 
 <div class="right">
-  <div class="typeArea">
+  <div class="typeRow">
     <button class="dupMini" type="button" data-act="dup">複製</button>
-    <button class="statMini" type="button" data-act="stat">確認</button>
     <select class="type" aria-label="種類"></select>
-    <div class="unit"></div>
-    <div class="dispLine js-price"></div>
   </div>
+  <div class="unit"></div>
 </div>
 </div>
 
@@ -1870,8 +1851,6 @@ if (!nameWrap) {
 
 const nameEl = $('.name', card);
 if (nameEl) nameEl.textContent = displayName(d.name);
-    const thumbImgEl = $('.miniThumb img', card);
-    if (thumbImgEl && imgUrl) installLongPressImagePreview(thumbImgEl, () => imgUrl);
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -1883,15 +1862,14 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     sel.value = s.type;
 
     const unit = $('.unit', card);
-    const typeArea = $('.typeArea', card);
-    let priceEl = $('.js-price', typeArea);
-    if (!priceEl) {
-      priceEl = document.createElement('div');
-      priceEl.className = 'dispLine js-price';
-      typeArea.appendChild(priceEl);
-    }
-    // 単価は2行目右、入力表示は3行目に分離
-    unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
+    // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
+      unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
+      let priceEl = $('.js-price', unit);
+      if (!priceEl) {
+        priceEl = document.createElement('div');
+        priceEl.className = 'dispLine js-price';
+        unit.appendChild(priceEl);
+      }
 
       const type = s.type || d.defType || '受精卵';
       const m = Number(s.m || 0);
@@ -1900,7 +1878,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
       if (qty <= 0) {
         // ✅ 未入力時は「空白1文字」
-        priceEl.textContent = '';
+        priceEl.textContent = ' ';
       } else {
         const unitPrice = prices[type] || 0;
         const price = unitPrice * qty;
@@ -1940,13 +1918,13 @@ const tOut = String(type).replace('(指定)', '');
     function syncUI() {
       if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
       sel.value = s.type;
-      // 単価は2行目右、入力表示は3行目に分離
+      // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
       unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
-      let priceEl = $('.js-price', typeArea);
+      let priceEl = $('.js-price', unit);
       if (!priceEl) {
         priceEl = document.createElement('div');
         priceEl.className = 'dispLine js-price';
-        typeArea.appendChild(priceEl);
+        unit.appendChild(priceEl);
       }
 
       const type = s.type || d.defType || '受精卵';
@@ -1956,7 +1934,7 @@ const tOut = String(type).replace('(指定)', '');
 
       if (qty <= 0) {
         // ✅ 未入力時は「空白1文字」
-        priceEl.textContent = '';
+        priceEl.textContent = ' ';
       } else {
         const unitPrice = prices[type] || 0;
         const price = unitPrice * qty;
@@ -2029,16 +2007,6 @@ const tOut = String(type).replace('(指定)', '');
         if (act === 'm+') step('m', +1);
         if (act === 'f-') step('f', -1);
         if (act === 'f+') step('f', +1);
-
-        if (act === 'stat') {
-          const url = getImageUrlForDino(d);
-          if (!url) {
-            openToast('画像がありません');
-            return;
-          }
-          openImgViewer(url);
-          return;
-        }
 
         if (act === 'dup') {
           const dupKey = `${d.id}__dup_${uid()}`;
@@ -2982,81 +2950,6 @@ if (act === 'gojuon') {
     ScrollLock.lock(); // ✅
     el.imgViewerImg.src = url;
     el.imgOverlay.classList.remove('isHidden');
-  }
-
-  function installLongPressImagePreview(target, getUrl) {
-    if (!target || target.dataset.longPressReady === '1') return;
-    target.dataset.longPressReady = '1';
-
-    const PRESS_MS = 420;
-    const MOVE_CANCEL_PX = 12;
-    let timer = null;
-    let startX = 0;
-    let startY = 0;
-    let opened = false;
-
-    const clearPress = () => {
-      if (timer) {
-        clearTimeout(timer);
-        timer = null;
-      }
-    };
-
-    const beginPress = (x, y) => {
-      startX = Number(x || 0);
-      startY = Number(y || 0);
-      opened = false;
-      clearPress();
-      timer = setTimeout(() => {
-        timer = null;
-        const url = typeof getUrl === 'function' ? String(getUrl() || '').trim() : '';
-        if (!url) return;
-        opened = true;
-        openImgViewer(url);
-      }, PRESS_MS);
-    };
-
-    const maybeCancelByMove = (x, y) => {
-      if (!timer) return;
-      if (Math.abs(Number(x || 0) - startX) > MOVE_CANCEL_PX || Math.abs(Number(y || 0) - startY) > MOVE_CANCEL_PX) {
-        clearPress();
-      }
-    };
-
-    target.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-    });
-
-    target.addEventListener('touchstart', (e) => {
-      const t = e.touches && e.touches[0];
-      beginPress(t?.clientX || 0, t?.clientY || 0);
-    }, { passive: true });
-
-    target.addEventListener('touchmove', (e) => {
-      const t = e.touches && e.touches[0];
-      maybeCancelByMove(t?.clientX || 0, t?.clientY || 0);
-    }, { passive: true });
-
-    target.addEventListener('touchend', clearPress, { passive: true });
-    target.addEventListener('touchcancel', clearPress, { passive: true });
-
-    target.addEventListener('mousedown', (e) => {
-      if (e.button !== 0) return;
-      beginPress(e.clientX, e.clientY);
-    });
-    target.addEventListener('mousemove', (e) => {
-      maybeCancelByMove(e.clientX, e.clientY);
-    });
-    target.addEventListener('mouseup', clearPress);
-    target.addEventListener('mouseleave', clearPress);
-
-    target.addEventListener('click', (e) => {
-      if (opened) {
-        e.preventDefault();
-        e.stopPropagation();
-        opened = false;
-      }
-    }, true);
   }
   function closeImgViewer() {
     if (!el.imgOverlay) return;
