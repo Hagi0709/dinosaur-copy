@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-03-06 23:58';
+const BUILD_VERSION = '2026-03-18 21:58';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -1823,6 +1823,7 @@ if (act === 'dup') {
     <button class="statMini" type="button" data-act="stat">確認</button>
     <select class="type" aria-label="種類"></select>
     <div class="unit"></div>
+    <div class="dispLine js-price"></div>
   </div>
 </div>
 </div>
@@ -1882,14 +1883,15 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     sel.value = s.type;
 
     const unit = $('.unit', card);
-    // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
-      unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
-      let priceEl = $('.js-price', unit);
-      if (!priceEl) {
-        priceEl = document.createElement('div');
-        priceEl.className = 'dispLine js-price';
-        unit.appendChild(priceEl);
-      }
+    const typeArea = $('.typeArea', card);
+    let priceEl = $('.js-price', typeArea);
+    if (!priceEl) {
+      priceEl = document.createElement('div');
+      priceEl.className = 'dispLine js-price';
+      typeArea.appendChild(priceEl);
+    }
+    // 単価は2行目右、入力表示は3行目に分離
+    unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
 
       const type = s.type || d.defType || '受精卵';
       const m = Number(s.m || 0);
@@ -1938,13 +1940,13 @@ const tOut = String(type).replace('(指定)', '');
     function syncUI() {
       if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
       sel.value = s.type;
-      // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
+      // 単価は2行目右、入力表示は3行目に分離
       unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
-      let priceEl = $('.js-price', unit);
+      let priceEl = $('.js-price', typeArea);
       if (!priceEl) {
         priceEl = document.createElement('div');
         priceEl.className = 'dispLine js-price';
-        unit.appendChild(priceEl);
+        typeArea.appendChild(priceEl);
       }
 
       const type = s.type || d.defType || '受精卵';
