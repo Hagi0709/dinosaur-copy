@@ -2706,18 +2706,21 @@ if (act === 'gojuon') {
         if (!saveJSON(LS.ITEM_CUSTOM, custom.item)) return;
 
         hidden.item.delete(id);
-        saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item));
+        if (!saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item))) return;
 
         const itemRec = { id, name, unit, price, kind: 'item' };
         const itemIdx = items.findIndex(x => x.id === id);
         if (itemIdx >= 0) items[itemIdx] = itemRec;
         else items.push(itemRec);
 
+        // ✅ 同一idの重複描画を防ぐ
+        items = items.filter((x, idx, arr) => idx === arr.findIndex(y => y.id === x.id));
+
         closeEditModal();
         ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
         renderList();
         setManageTab('catalog');
-        openToast('追加しました');
+        openToast(existIdx >= 0 ? '更新しました' : '追加しました');
       }
     });
   }
