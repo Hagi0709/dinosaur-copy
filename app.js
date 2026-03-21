@@ -2334,7 +2334,7 @@ const top = document.createElement('div');
       r.className = 'mRow';
       r.innerHTML = `
         <div class="mName">${escapeHtml(obj.name)}</div>
-        <button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">✎</button>
+        ${activeTab === 'dino' ? `<button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">✎</button>` : ``}
         <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
         <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
         <button class="sBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
@@ -2703,24 +2703,14 @@ if (act === 'gojuon') {
         const rec = { id, name, unit, price, memo, memoImg: String(memoImgData || '') };
         if (existIdx >= 0) custom.item[existIdx] = rec;
         else custom.item.push(rec);
-        if (!saveJSON(LS.ITEM_CUSTOM, custom.item)) return;
-
-        hidden.item.delete(id);
-        if (!saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item))) return;
-
-        const itemRec = { id, name, unit, price, kind: 'item' };
-        const itemIdx = items.findIndex(x => x.id === id);
-        if (itemIdx >= 0) items[itemIdx] = itemRec;
-        else items.push(itemRec);
-
-        // ✅ 同一idの重複描画を防ぐ
-        items = items.filter((x, idx, arr) => idx === arr.findIndex(y => y.id === x.id));
+        saveJSON(LS.ITEM_CUSTOM, custom.item);
 
         closeEditModal();
+        items = items.concat([{ id, name, unit, price, kind: 'item' }]);
         ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
         renderList();
         setManageTab('catalog');
-        openToast(existIdx >= 0 ? '更新しました' : '追加しました');
+        openToast('追加しました');
       }
     });
   }
