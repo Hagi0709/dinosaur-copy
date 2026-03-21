@@ -1069,14 +1069,28 @@ button{cursor:pointer}
 .stepper.male .val{color: var(--maleSoft);}
 .stepper.female .val{color: var(--femaleSoft);}
 
-.right .typeRow{display:flex; gap:8px; align-items:stretch; justify-content:flex-end; width:100%; margin-top:-4px;}
-.dupMini{
+.right .typeRow,
+.right .subActionRow{
+  display:grid;
+  grid-template-columns:minmax(0, 54px) minmax(0, 1fr);
+  gap:8px;
+  align-items:stretch;
+  width:100%;
+}
+.right .typeRow{ margin-top:-4px; }
+.dupMini,
+.checkMini,
+.typePlaceholder,
+.unitSolo{
   height:40px;
-  min-width:54px;
-  padding:0 8px;
-  border-radius:16px; /* ← .type に合わせる */
+  border-radius:16px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
+}
+.dupMini,
+.checkMini{
+  min-width:54px;
+  padding:0 8px;
   color:#fff;
   font-size:12px;
   font-weight:900;
@@ -1086,12 +1100,20 @@ button{cursor:pointer}
   justify-content:center;
   white-space:nowrap;
 }
+.checkMini.isDisabled,
+.checkMini:disabled{
+  opacity:.45;
+}
 .type{
-  flex: 1;
+  width:100%;
   min-width: 100px; /* 「受精卵(指定)」が見切れない現実的な下限（少しだけ縮小） */
   height:40px;
   font-size:11px;
   padding:0 9px;
+}
+.typePlaceholder{
+  opacity:0;
+  pointer-events:none;
 }
 
 .unit{
@@ -1100,11 +1122,23 @@ button{cursor:pointer}
   flex-direction:column;
   gap:4px;
 }
-.unitLine, .dispLine{
+.unitSolo{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  padding:0 10px;
+}
+.unitLine,
+.dispLine{
   font-size: 10px;
   line-height: 1.2;
   color: rgba(255,255,255,.62);
   font-weight: 700;
+}
+.dispLine{
+  min-height:12px;
+  text-align:right;
+  white-space:nowrap;
 }
 .sex-m{color: var(--maleSoft);}
 .sex-f{color: var(--femaleSoft);}
@@ -1873,3 +1907,51 @@ button{cursor:pointer}
 #modalBody{
   min-height:0;
 }
+/* ===== POS 日別売上タブ ===== */
+.posTabsWrap3{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+}
+
+.posDailyScroll{
+  display:flex !important;
+  flex-direction:column !important;
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  overflow:hidden !important;
+}
+
+.posDailyBox{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+}
+
+.posDailyT{
+  width:100%;
+  table-layout:fixed;
+  border-collapse:collapse;
+}
+
+.posDailyT thead th{
+  position:sticky;
+  top:0;
+  z-index:6;
+  background:rgba(30,34,42,.96) !important;
+  backdrop-filter:blur(6px);
+  white-space:nowrap;
+}
+
+.posDailyT th,
+.posDailyT td{
+  padding:10px 8px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.posDailyColDate{ width:40%; }
+.posDailyColCount{ width:18%; }
+.posDailyColTotal{ width:42%; }
