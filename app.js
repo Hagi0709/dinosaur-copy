@@ -1541,10 +1541,7 @@ card.innerHTML = `
           <button class="dupMini" type="button" data-act="dup">複製</button>
           ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
         </div>
-        <div class="unit">
-              <div class="unitLine">1体=${unitPrice}円</div>
-              <div class="dispLine js-price"></div>
-            </div>
+        <div class="unit"></div>
             
       </div>
     </div>
@@ -1600,7 +1597,9 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
       const allBtn = $('button[data-act="all"]', card);
       const undoBtn = $('button[data-act="undo"]', card);
-      const priceEl = $('.js-price', card);
+      const unit = $('.unit', card);
+      bindUnitImageViewer(unit);
+      setUnitArea(unit, `<div class="unitLine">1体=${unitPrice}円</div>`, ' ', imgUrl);
 
       const mEl = $('.js-m', card);
       const fEl = $('.js-f', card);
@@ -1648,34 +1647,34 @@ requestAnimationFrame(() => installLeftToggleHit(card));
         }
 
 // 価格（単価の下）
-        if (priceEl) {
+        {
           const hasInput = (allowSex && sexQty > 0) || !!s.all || picks.length > 0;
+          let priceHtml = ' ';
 
-          if (!hasInput) {
-            // ✅ 未入力時は「空白1文字」
-            priceEl.textContent = ' ';
-          } else {
+          if (hasInput) {
             let price = 0;
 
             if (allowSex && sexQty > 0) {
               const type = s.type || d.defType || '受精卵';
               price = (prices[type] || 0) * sexQty;
 
-         const tOut = String(type).replace('(指定)', '');
+              const tOut = String(type).replace('(指定)', '');
               const parts = [];
               if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
               if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
-              priceEl.innerHTML = `${tOut} ${parts.join(' ')} = ${yen(price)}`;
+              priceHtml = `${tOut} ${parts.join(' ')} = ${yen(price)}`;
 
             } else if (s.all) {
               price = allPrice;
-              priceEl.textContent = `全種= ${yen(price)}`;
+              priceHtml = `全種= ${yen(price)}`;
             } else {
               price = picks.length * unitPrice;
               const nums = picks.map(n => circled(n)).join('');
-              priceEl.textContent = nums ? `${nums} = ${yen(price)}` : ' ';
+              priceHtml = nums ? `${nums} = ${yen(price)}` : ' ';
             }
           }
+
+          setUnitArea(unit, `<div class="unitLine">1体=${unitPrice}円</div>`, priceHtml, imgUrl);
         }
 
   
@@ -1875,24 +1874,16 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     sel.value = s.type;
 
     const unit = $('.unit', card);
-    // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
-      unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
-      let priceEl = $('.js-price', unit);
-      if (!priceEl) {
-        priceEl = document.createElement('div');
-        priceEl.className = 'dispLine js-price';
-        unit.appendChild(priceEl);
-      }
+    bindUnitImageViewer(unit);
+    const type = s.type || d.defType || '受精卵';
+    setUnitArea(unit, `<div class="unitLine">単価${prices[s.type] || 0}円</div>`, ' ', imgUrl);
 
-      const type = s.type || d.defType || '受精卵';
       const m = Number(s.m || 0);
       const f = Number(s.f || 0);
       const qty = m + f;
 
-      if (qty <= 0) {
-        // ✅ 未入力時は「空白1文字」
-        priceEl.textContent = ' ';
-      } else {
+      let priceHtml = ' ';
+      if (qty > 0) {
         const unitPrice = prices[type] || 0;
         const price = unitPrice * qty;
 
@@ -1904,21 +1895,22 @@ const tOut = String(type).replace('(指定)', '');
 
         if (hideSex) {
           // ✅ 受精卵・胚はオスメス表記を出さない
-          priceEl.textContent = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+          priceHtml = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
         } else {
           const parts = [];
           if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
           if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
 
           if (isPair && m === f && m > 0) {
-            priceEl.textContent = `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+            priceHtml = `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
           } else if (parts.length) {
-            priceEl.innerHTML = `${tOut} ${parts.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+            priceHtml = `${tOut} ${parts.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
           } else {
-            priceEl.textContent = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+            priceHtml = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
           }
         }
       }
+      setUnitArea(unit, `<div class="unitLine">単価${prices[s.type] || 0}円</div>`, priceHtml, imgUrl);
 
     const mEl = $('.js-m', card);
     const fEl = $('.js-f', card);
@@ -1931,24 +1923,13 @@ const tOut = String(type).replace('(指定)', '');
     function syncUI() {
       if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
       sel.value = s.type;
-      // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
-      unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
-      let priceEl = $('.js-price', unit);
-      if (!priceEl) {
-        priceEl = document.createElement('div');
-        priceEl.className = 'dispLine js-price';
-        unit.appendChild(priceEl);
-      }
-
       const type = s.type || d.defType || '受精卵';
       const m = Number(s.m || 0);
       const f = Number(s.f || 0);
       const qty = m + f;
 
-      if (qty <= 0) {
-        // ✅ 未入力時は「空白1文字」
-        priceEl.textContent = ' ';
-      } else {
+      let priceHtml = ' ';
+      if (qty > 0) {
         const unitPrice = prices[type] || 0;
         const price = unitPrice * qty;
 
@@ -1960,21 +1941,22 @@ const tOut = String(type).replace('(指定)', '');
 
         if (hideSex) {
           // ✅ 受精卵・胚はオスメス表記を出さない
-          priceEl.textContent = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+          priceHtml = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
         } else {
           const parts = [];
           if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
           if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
 
           if (isPair && m === f && m > 0) {
-            priceEl.textContent = `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+            priceHtml = `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
           } else if (parts.length) {
-            priceEl.innerHTML = `${tOut} ${parts.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+            priceHtml = `${tOut} ${parts.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
           } else {
-            priceEl.textContent = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+            priceHtml = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
           }
         }
       }
+      setUnitArea(unit, `<div class="unitLine">単価${prices[s.type] || 0}円</div>`, priceHtml, imgUrl);
       mEl.textContent = String(s.m || 0);
       fEl.textContent = String(s.f || 0);
 
@@ -3000,6 +2982,33 @@ if (act === 'gojuon') {
   el.imgOverlay?.addEventListener('click', (e) => {
     if (e.target === el.imgOverlay) closeImgViewer();
   });
+
+  function setUnitArea(unitEl, unitLineHtml, priceLineHtml, imageUrl) {
+    if (!unitEl) return;
+    const safeUnit = String(unitLineHtml || '');
+    const safePrice = String(priceLineHtml || ' ');
+    const safeUrl = String(imageUrl || '').trim();
+
+    unitEl.innerHTML = `
+      <button class="priceHitArea${safeUrl ? ' hasImage' : ''}" type="button" ${safeUrl ? `data-img-url="${escapeHtml(safeUrl)}"` : ''} aria-label="画像を拡大">
+        ${safeUnit}
+        <div class="dispLine js-price">${safePrice}</div>
+      </button>
+    `;
+  }
+
+  function bindUnitImageViewer(unitEl) {
+    if (!unitEl || unitEl.dataset.viewerBound === '1') return;
+    unitEl.dataset.viewerBound = '1';
+    unitEl.addEventListener('click', (ev) => {
+      const btn = ev.target?.closest?.('.priceHitArea');
+      if (!btn || !unitEl.contains(btn)) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const url = String(btn.dataset.imgUrl || '').trim();
+      if (url) openImgViewer(url);
+    });
+  }
 
   function renderManageImages() {
     const wrap = document.createElement('div');
