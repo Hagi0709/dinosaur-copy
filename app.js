@@ -2334,7 +2334,7 @@ const top = document.createElement('div');
       r.className = 'mRow';
       r.innerHTML = `
         <div class="mName">${escapeHtml(obj.name)}</div>
-        ${activeTab === 'dino' ? `<button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">✎</button>` : ``}
+        <button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">✎</button>
         <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
         <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
         <button class="sBtn danger" type="button" data-act="del" data-id="${obj.id}">削除</button>
@@ -2703,14 +2703,24 @@ if (act === 'gojuon') {
         const rec = { id, name, unit, price, memo, memoImg: String(memoImgData || '') };
         if (existIdx >= 0) custom.item[existIdx] = rec;
         else custom.item.push(rec);
-        saveJSON(LS.ITEM_CUSTOM, custom.item);
+        if (!saveJSON(LS.ITEM_CUSTOM, custom.item)) return;
+
+        hidden.item.delete(id);
+        if (!saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item))) return;
+
+        const itemRec = { id, name, unit, price, kind: 'item' };
+        const itemIdx = items.findIndex(x => x.id === id);
+        if (itemIdx >= 0) items[itemIdx] = itemRec;
+        else items.push(itemRec);
+
+        // ✅ 同一idの重複描画を防ぐ
+        items = items.filter((x, idx, arr) => idx === arr.findIndex(y => y.id === x.id));
 
         closeEditModal();
-        items = items.concat([{ id, name, unit, price, kind: 'item' }]);
         ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
         renderList();
         setManageTab('catalog');
-        openToast('追加しました');
+        openToast(existIdx >= 0 ? '更新しました' : '追加しました');
       }
     });
   }
@@ -3725,6 +3735,14 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
     return `${y}-${m}`;
   }
 
+  function dayKeyFromTs(ts) {
+    const d = new Date(Number(ts) || Date.now());
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const da = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${da}`;
+  }
+
   function posSave() {
     saveJSON(LS.POS_SALES, pos.sales || []);
     saveJSON(LS.POS_STOCK, pos.stock || {});
@@ -4456,6 +4474,22 @@ if (stockBtn) {
           try { (ov.__renderPosReport || (()=>{}))(); } catch {}
           return;
         }
+
+        // 日別売上：ヘッダタップで並び替え
+        const dailySortTh = e.target && e.target.closest ? e.target.closest('[data-pos-daily-sort]') : null;
+        if (dailySortTh) {
+          const key = String(dailySortTh.getAttribute('data-pos-daily-sort') || '');
+          if (!key) return;
+
+          const cur = (ov.__dailySort) ? ov.__dailySort : { key: 'totalAmt', dir: 'desc' };
+          let dir = cur.dir || 'desc';
+          if (cur.key === key) dir = (dir === 'asc') ? 'desc' : 'asc';
+          else dir = 'desc';
+
+          ov.__dailySort = { key, dir };
+          try { (ov.__renderPosReport || (()=>{}))(); } catch {}
+          return;
+        }
       });
 
       // ✅ 変更：期間モード / 期間キー / 在庫入力
@@ -4526,6 +4560,7 @@ if (stockBtn) {
       );
       if (!ov.__posTab) ov.__posTab = 'types';
       if (!ov.__typeSort) ov.__typeSort = { key: 'totalAmt', dir: 'desc' };
+      if (!ov.__dailySort) ov.__dailySort = { key: 'totalAmt', dir: 'desc' };
 
       // キーが存在しない場合は先頭へ
       if (ov.__periodMode === 'year') {
@@ -4642,6 +4677,36 @@ if (stockBtn) {
         `;
       }).join('');
 
+      const byDay = new Map();
+      for (const s of mSales) {
+        const ts = Number(s.ts) || 0;
+        const dayKey = dayKeyFromTs(ts);
+        if (!byDay.has(dayKey)) byDay.set(dayKey, { date: dayKey, totalAmt: 0, count: 0, latestTs: 0 });
+        const cur = byDay.get(dayKey);
+        cur.totalAmt += Number(s.amount || 0);
+        cur.count += 1;
+        cur.latestTs = Math.max(cur.latestTs, ts);
+      }
+
+      const dailySortCfg = ov.__dailySort || { key: 'totalAmt', dir: 'desc' };
+      const dailyList = Array.from(byDay.values()).sort((a, b) => {
+        const dir = (dailySortCfg.dir === 'asc') ? 1 : -1;
+        const k = String(dailySortCfg.key || 'totalAmt');
+        if (k === 'date') return dir * a.date.localeCompare(b.date, 'ja');
+        if (k === 'count') return dir * ((a.count - b.count) || b.date.localeCompare(a.date, 'ja'));
+        return dir * ((a.totalAmt - b.totalAmt) || b.date.localeCompare(a.date, 'ja'));
+      });
+
+      const dailyRows = dailyList.slice(0, 366).map((d) => {
+        return `
+          <tr>
+            <td class="l posDailyColDate tabularNums">${escapeHtml(d.date)}</td>
+            <td class="c posDailyColCount tabularNums">${escapeHtml(String(d.count || 0))}</td>
+            <td class="r posDailyColTotal tabularNums">${escapeHtml(yen(d.totalAmt || 0))}</td>
+          </tr>
+        `;
+      }).join('');
+
       // 取引履歴：注文ごと（orderId優先）
       // - orderId がある → orderId で必ずまとめる
       // - orderId がない古いデータ → 従来通り「同時刻近似（30秒窓）」でまとめる
@@ -4727,8 +4792,9 @@ const head = `
           <div class="posTotal">合計 ${escapeHtml(yen(total))}</div>
         </div>
 
-        <div class="posTabsWrap">
+        <div class="posTabsWrap posTabsWrap3">
           <button type="button" class="posTabBtn ${ov.__posTab==='types'?'isActive':''}" data-pos-tab="types">種別売上</button>
+          <button type="button" class="posTabBtn ${ov.__posTab==='daily'?'isActive':''}" data-pos-tab="daily">日別売上</button>
           <button type="button" class="posTabBtn ${ov.__posTab==='hist'?'isActive':''}" data-pos-tab="hist">取引履歴</button>
         </div>
 
@@ -4749,6 +4815,26 @@ const head = `
                   </thead>
                   <tbody>
                     ${typeRows || `<tr><td colspan="5" style="padding:10px;opacity:.8;">データなし</td></tr>`}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="posTabPanel ${ov.__posTab==='daily'?'':'isHidden'}">
+            <div class="posPanelTitle">日別売上</div>
+            <div class="posScrollArea posDailyScroll">
+              <div class="posBox posDailyBox">
+                <table class="posDailyT tabularNums">
+                  <thead>
+                    <tr>
+                      <th class="l posDailySortTh posDailyColDate" data-pos-daily-sort="date">日付</th>
+                      <th class="c posDailySortTh posDailyColCount" data-pos-daily-sort="count">件数</th>
+                      <th class="r posDailySortTh posDailyColTotal" data-pos-daily-sort="totalAmt">合計</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${dailyRows || `<tr><td colspan="3" style="padding:10px;opacity:.8;">データなし</td></tr>`}
                   </tbody>
                 </table>
               </div>
