@@ -1427,11 +1427,7 @@ function installLeftToggleHit(card) {
     saveJSON(LS.DINO_OVERRIDE, dinoOverride);
   }
 
-  function buildCheckBtn(imgUrl) {
-    return imgUrl ? `<button class="checkMini" type="button" data-act="check" aria-label="画像確認">確認</button>` : ``;
-  }
-
-  function applyMemoToCard(card, did) {
+    function applyMemoToCard(card, did) {
     const memo = String(getMemoForDinoId(did) || '').trim();
     const memoImg = String(getMemoImgForDinoId(did) || '').trim();
     const memoEl = $('.js-memo', card);
@@ -1533,8 +1529,8 @@ card.innerHTML = `
           ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
         </div>
         <div class="subActionRow">
-          ${buildCheckBtn(imgUrl)}
-          <div class="unit">
+          
+          <div class="unit js-unit-click">
                 <div class="unitLine">1体=${unitPrice}円</div>
                 <div class="dispLine js-price"></div>
               </div>
@@ -1720,11 +1716,6 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
         const act = btn.dataset.act;
 
-if (act === 'check') {
-  if (imgUrl) openImgViewer(imgUrl);
-  return;
-}
-
 if (act === 'dup') {
   const dupKey = `${d.id}__dup_${uid()}`;
   ephemeralKeys.add(dupKey);
@@ -1817,8 +1808,8 @@ if (act === 'dup') {
     <select class="type" aria-label="種類"></select>
   </div>
   <div class="subActionRow">
-    ${buildCheckBtn(imgUrl)}
-    <div class="unit"></div>
+    
+    <div class="unit js-unit-click"></div>
   </div>
 </div>
 </div>
@@ -2022,12 +2013,7 @@ const tOut = String(type).replace('(指定)', '');
         if (act === 'f-') step('f', -1);
         if (act === 'f+') step('f', +1);
 
-        if (act === 'check') {
-  if (imgUrl) openImgViewer(imgUrl);
-  return;
-}
-
-if (act === 'dup') {
+        if (act === 'dup') {
           const dupKey = `${d.id}__dup_${uid()}`;
           ephemeralKeys.add(dupKey);
           inputState.set(dupKey, { type: s.type, m: 0, f: 0 });
@@ -2139,7 +2125,7 @@ if (act === 'dup') {
           </div>
 
           <div class="right">
-            <div class="unit"></div>
+            <div class="unit js-unit-click"></div>
           </div>
         </div>
 
