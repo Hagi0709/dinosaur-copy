@@ -1012,19 +1012,6 @@ window.addEventListener('resize', () => requestAnimationFrame(fitTopRow));
     item: loadJSON(LS.ITEM_CUSTOM, []),
   };
 
-  // custom.item が過去不具合で重複保存されていても、起動時に id 単位で正規化する
-  function dedupeByIdKeepLast(list) {
-    const map = new Map();
-    for (const row of (Array.isArray(list) ? list : [])) {
-      if (!row || !row.id) continue;
-      map.set(String(row.id), row);
-    }
-    return Array.from(map.values());
-  }
-
-  custom.item = dedupeByIdKeepLast(custom.item);
-  saveJSON(LS.ITEM_CUSTOM, custom.item);
-
   let dinos = [];
   let items = [];
   let activeTab = 'dino';
@@ -1440,6 +1427,10 @@ function installLeftToggleHit(card) {
     saveJSON(LS.DINO_OVERRIDE, dinoOverride);
   }
 
+  function buildCheckBtn(imgUrl) {
+    return imgUrl ? `<button class="checkMini" type="button" data-act="check" aria-label="画像確認">確認</button>` : ``;
+  }
+
   function applyMemoToCard(card, did) {
     const memo = String(getMemoForDinoId(did) || '').trim();
     const memoImg = String(getMemoImgForDinoId(did) || '').trim();
@@ -1541,11 +1532,13 @@ card.innerHTML = `
           <button class="dupMini" type="button" data-act="dup">複製</button>
           ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
         </div>
-        <div class="unit">
-              <div class="unitLine">1体=${unitPrice}円</div>
-              <div class="dispLine js-price"></div>
-            </div>
-            
+        <div class="metaRow">
+          ${buildCheckBtn(imgUrl)}
+          <div class="unit">
+                <div class="unitLine">1体=${unitPrice}円</div>
+                <div class="dispLine js-price"></div>
+              </div>
+        </div>
       </div>
     </div>
 
@@ -1727,6 +1720,11 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
         const act = btn.dataset.act;
 
+if (act === 'check') {
+  if (imgUrl) openImgViewer(imgUrl);
+  return;
+}
+
 if (act === 'dup') {
   const dupKey = `${d.id}__dup_${uid()}`;
   ephemeralKeys.add(dupKey);
@@ -1818,7 +1816,10 @@ if (act === 'dup') {
     <button class="dupMini" type="button" data-act="dup">複製</button>
     <select class="type" aria-label="種類"></select>
   </div>
-  <div class="unit"></div>
+  <div class="metaRow">
+    ${buildCheckBtn(imgUrl)}
+    <div class="unit"></div>
+  </div>
 </div>
 </div>
 
@@ -2021,7 +2022,12 @@ const tOut = String(type).replace('(指定)', '');
         if (act === 'f-') step('f', -1);
         if (act === 'f+') step('f', +1);
 
-        if (act === 'dup') {
+        if (act === 'check') {
+  if (imgUrl) openImgViewer(imgUrl);
+  return;
+}
+
+if (act === 'dup') {
           const dupKey = `${d.id}__dup_${uid()}`;
           ephemeralKeys.add(dupKey);
           inputState.set(dupKey, { type: s.type, m: 0, f: 0 });
@@ -2716,7 +2722,6 @@ if (act === 'gojuon') {
         const rec = { id, name, unit, price, memo, memoImg: String(memoImgData || '') };
         if (existIdx >= 0) custom.item[existIdx] = rec;
         else custom.item.push(rec);
-        custom.item = dedupeByIdKeepLast(custom.item);
         if (!saveJSON(LS.ITEM_CUSTOM, custom.item)) return;
 
         hidden.item.delete(id);
@@ -4737,7 +4742,6 @@ const head = `
       const dayBuckets = new Map();
       for (const g of groups) {
         const ts = Number(g.ts) || 0;
-        if (!ts) continue;
         const d = new Date(ts);
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -4746,52 +4750,56 @@ const head = `
         if (!dayBuckets.has(dayKey)) dayBuckets.set(dayKey, { dayKey, count: 0, totalAmt: 0, latestTs: 0 });
         const cur = dayBuckets.get(dayKey);
         const gTotal = (g.list || []).reduce((a, x) => a + (Number(x.amount) || 0), 0);
-        cur.count += 1; // 注文単位
+        cur.count += 1;
         cur.totalAmt += gTotal;
         cur.latestTs = Math.max(cur.latestTs, ts);
       }
 
-      // 0円の日も表示
-      // - 月表示: 対象月が過去月なら月末まで、当月なら今日まで
-      // - 年表示: 対象年が過去年なら 12/31 まで、当年なら今日まで
+      // 0円の日も表示する。
+      // - 月表示: 選択月が当月なら今日まで、過去月なら月末まで
+      // - 年表示: 選択年が今年なら今日まで、過去年なら12/31まで
       const now = new Date();
-      const todayKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-      const fillKeys = [];
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      const fillZeroDays = (startDate, endDate) => {
+        const cur = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const last = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+        while (cur <= last) {
+          const y = cur.getFullYear();
+          const m = String(cur.getMonth() + 1).padStart(2, '0');
+          const day = String(cur.getDate()).padStart(2, '0');
+          const dayKey = `${y}-${m}-${day}`;
+          if (!dayBuckets.has(dayKey)) {
+            dayBuckets.set(dayKey, { dayKey, count: 0, totalAmt: 0, latestTs: 0 });
+          }
+          cur.setDate(cur.getDate() + 1);
+        }
+      };
 
       if (mode === 'month') {
-        const [yy, mm] = String(key).split('-').map(v => Number(v));
-        const isCurrentMonth = (yy === now.getFullYear() && mm === (now.getMonth() + 1));
-        const lastDay = isCurrentMonth
-          ? now.getDate()
-          : new Date(yy, mm, 0).getDate();
-
-        for (let dd = 1; dd <= lastDay; dd++) {
-          fillKeys.push(`${yy}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`);
+        const [yy, mm] = String(key).split('-').map(Number);
+        if (Number.isFinite(yy) && Number.isFinite(mm)) {
+          const startDate = new Date(yy, mm - 1, 1);
+          const monthEnd = new Date(yy, mm, 0);
+          const isCurrentMonth = (yy === today.getFullYear() && mm === (today.getMonth() + 1));
+          const endDate = isCurrentMonth ? today : monthEnd;
+          fillZeroDays(startDate, endDate);
         }
-      } else {
+      } else if (mode === 'year') {
         const yy = Number(key);
-        const isCurrentYear = (yy === now.getFullYear());
-        const endMonth = isCurrentYear ? (now.getMonth() + 1) : 12;
-        for (let mm = 1; mm <= endMonth; mm++) {
-          const lastDay = (isCurrentYear && mm === (now.getMonth() + 1))
-            ? now.getDate()
-            : new Date(yy, mm, 0).getDate();
-          for (let dd = 1; dd <= lastDay; dd++) {
-            fillKeys.push(`${yy}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`);
-          }
-        }
-      }
-
-      for (const dayKey of fillKeys) {
-        if (!dayBuckets.has(dayKey)) {
-          dayBuckets.set(dayKey, { dayKey, count: 0, totalAmt: 0, latestTs: 0 });
+        if (Number.isFinite(yy)) {
+          const startDate = new Date(yy, 0, 1);
+          const yearEnd = new Date(yy, 11, 31);
+          const isCurrentYear = (yy === today.getFullYear());
+          const endDate = isCurrentYear ? today : yearEnd;
+          fillZeroDays(startDate, endDate);
         }
       }
 
       const dailyList = Array.from(dayBuckets.values()).sort((a, b) => {
         if (b.totalAmt !== a.totalAmt) return b.totalAmt - a.totalAmt;
-        // 同額なら古い日付順
-        return String(a.dayKey).localeCompare(String(b.dayKey), 'ja');
+        if (b.count !== a.count) return b.count - a.count;
+        return b.dayKey.localeCompare(a.dayKey, 'ja');
       });
 
       const dailyRows = dailyList.slice(0, 366).map((d, i) => `
@@ -4958,20 +4966,7 @@ const head = `
       _baseName: x._baseName || x.name,
     })));
 
-    // built-in item と custom item を id 単位で統合する
-    // 後勝ちにして、custom 側が base を上書きする
-    const mergedItems = new Map();
-    baseI.forEach(x => mergedItems.set(String(x.id), x));
-    custom.item.forEach(x => {
-      mergedItems.set(String(x.id), {
-        id: x.id,
-        name: x.name,
-        unit: x.unit,
-        price: x.price,
-        kind: 'item'
-      });
-    });
-    items = Array.from(mergedItems.values());
+    items = baseI.concat(custom.item.map(x => ({ id: x.id, name: x.name, unit: x.unit, price: x.price, kind: 'item' })));
 
     ensureOrderList(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
     ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
@@ -5096,7 +5091,6 @@ const head = `
         const rec = { id, name, unit, price, memo, memoImg: String(memoImgData || '') };
         if (existIdx >= 0) custom.item[existIdx] = rec;
         else custom.item.push(rec);
-        custom.item = dedupeByIdKeepLast(custom.item);
         saveJSON(LS.ITEM_CUSTOM, custom.item);
 
         const ii = items.findIndex(x => x.id === id);
