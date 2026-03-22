@@ -1,2233 +1,2091 @@
-:root{
-  --bg:#0b0f14;
-  --card:#141a22;
-  --stroke:rgba(255,255,255,.10);
-  --txt:rgba(255,255,255,.92);
-  --mut:rgba(255,255,255,.60);
-  --ok:#78ffb3;
-  --danger:#b94a55;
+  :root{
+    --bg:#0b0f14;
+    --card:#141a22;
+    --stroke:rgba(255,255,255,.10);
+    --txt:rgba(255,255,255,.92);
+    --mut:rgba(255,255,255,.60);
+    --ok:#78ffb3;
+    --danger:#b94a55;
 
-  --male:#57c7ff;
-  --female:#ff5fcf;
+    --male:#57c7ff;
+    --female:#ff5fcf;
 
-  /* ✅ 表示用（淡い色） */
-  --maleSoft: rgba(130, 200, 255, .95);
-  --femaleSoft: rgba(255, 150, 200, .95);
+    /* ✅ 表示用（淡い色） */
+    --maleSoft: rgba(130, 200, 255, .95);
+    --femaleSoft: rgba(255, 150, 200, .95);
 
-  /* ✅ 固定ヘッダー高さ（JS不要。CSSで確実に下げる） */
-  --topPad: 246px; /* 初期値（画面幅で後半で調整） */
-}
+    /* ✅ 固定ヘッダー高さ（JS不要。CSSで確実に下げる） */
+    --topPad: 246px; /* 初期値（画面幅で後半で調整） */
+  }
 
-*{box-sizing:border-box}
-html,body{height:100%}
+  *{box-sizing:border-box}
+  html,body{height:100%}
 
-/* ✅ iOS Safari の select が白巨大化するのを抑止 */
-html{color-scheme:dark}
-button,select,input,textarea{touch-action:manipulation; font:inherit}
-select{appearance:none; -webkit-appearance:none}
+  /* ✅ iOS Safari の select が白巨大化するのを抑止 */
+  html{color-scheme:dark}
+  button,select,input,textarea{touch-action:manipulation; font:inherit}
+  select{appearance:none; -webkit-appearance:none}
 
-.stepper[data-flex="1"] {
-  flex: 1;
-}
+  .stepper[data-flex="1"] {
+    flex: 1;
+  }
 
-body{
-  margin:0;
-  font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
-  background:var(--bg);
-  color:var(--txt);
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    background:var(--bg);
+    color:var(--txt);
 
-  /* ✅ fixed header の分だけ押し下げる */
-  padding-top: calc(var(--topPad) + env(safe-area-inset-top));
-  padding-bottom:120px;
-}
-button{cursor:pointer}
+    /* ✅ fixed header の分だけ押し下げる */
+    padding-top: calc(var(--topPad) + env(safe-area-inset-top));
+    padding-bottom:120px;
+  }
+  button{cursor:pointer}
 
-/* =========================
-   ✅ Header 固定（stickyではなくfixedで安定化）
-========================= */
-.top{
-  position:fixed;
-  top:0;
-  left:0;
-  right:0;
-  z-index:999; /* これより上はモーダルだけ */
+  /* =========================
+     ✅ Header 固定（stickyではなくfixedで安定化）
+  ========================= */
+  .top{
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    z-index:999; /* これより上はモーダルだけ */
 
-  background:rgba(11,15,20,.95);
-  backdrop-filter:blur(14px);
+    background:rgba(11,15,20,.95);
+    backdrop-filter:blur(14px);
 
-  padding:10px;
-  padding-top:calc(10px + env(safe-area-inset-top));
-  border-bottom:1px solid rgba(255,255,255,.06);
+    padding:10px;
+    padding-top:calc(10px + env(safe-area-inset-top));
+    border-bottom:1px solid rgba(255,255,255,.06);
 
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  will-change: transform;
-}
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform;
+  }
 
-/* ✅ ヘッダー内の高さは内容で決まるので分岐 */
-@media (max-width: 420px){
-  :root{ --topPad: 248px; }
-}
-@media (max-width: 360px){
-  :root{ --topPad: 260px; }
-}
+  /* ✅ ヘッダー内の高さは内容で決まるので分岐 */
+  @media (max-width: 420px){
+    :root{ --topPad: 248px; }
+  }
+  @media (max-width: 360px){
+    :root{ --topPad: 260px; }
+  }
 
-/* ✅ listの上余白はbody側で持つので不要 */
-.list{padding:12px}
+  /* ✅ listの上余白はbody側で持つので不要 */
+  .list{padding:12px}
 
-/* ================= Top bar ================= */
+  /* ================= Top bar ================= */
 
-.row{
-  display:flex;
-  gap:8px;
-  align-items:center;
-  flex-wrap:nowrap;
-}
+  .row{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:nowrap;
+  }
 
-/* ✅ 上部バー：合計金額が長くなっても全体が下にズレないように
-   - JSで --topScale を調整（rowが1行に収まるまで縮小）
-*/
-.row > .ghost,
-.row > .delivery,
-.row > .copy,
-.row > .pos{
-  flex:0 1 auto;
-  min-width:0;
-  white-space:nowrap;
-  line-height:1.05;
-  font-size: calc(13px * var(--topScale, 1));
-}
+  /* ✅ 上部バー：合計金額が長くなっても全体が下にズレないように
+     - JSで --topScale を調整（rowが1行に収まるまで縮小）
+  */
+  .row > .ghost,
+  .row > .delivery,
+  .row > .copy,
+  .row > .pos{
+    flex:0 1 auto;
+    min-width:0;
+    white-space:nowrap;
+    line-height:1.05;
+    font-size: calc(13px * var(--topScale, 1));
+  }
 
 
-/* ================= POS / delivery short ================= */
-.delivery.deliveryShort{
-  height:36px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-weight:900;
-  padding:0 22px 0 10px; /* 矢印分だけ残して詰める */
-  width:62px;
-  text-align:left;
-}
-.pos{
-  height:36px;
-  padding:0 12px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-weight:900;
-  letter-spacing:.2px;
-  white-space:nowrap;
-}
+  /* ================= POS / delivery short ================= */
+  .delivery.deliveryShort{
+    height:36px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    font-weight:900;
+    padding:0 22px 0 10px; /* 矢印分だけ残して詰める */
+    width:62px;
+    text-align:left;
+  }
+  .pos{
+    height:36px;
+    padding:0 12px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    font-weight:900;
+    letter-spacing:.2px;
+    white-space:nowrap;
+  }
 
-.search{
-  flex:1;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  height:36px;
-  padding:0 10px;
-  border-radius:14px;
-  background:rgba(255,255,255,.07);
-  border:1px solid rgba(255,255,255,.12);
-  min-width:0;
-}
-.search input{
-  flex:1;
-  border:0;
-  outline:none;
-  background:transparent;
-  color:var(--txt);
-  font-size:14px;
-  min-width:0;
-}
-.qClear{
-  width:28px;height:28px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.06);
-  color:#fff;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  line-height:1;
-  font-size:18px;
-}
+  .search{
+    flex:1;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    height:36px;
+    padding:0 10px;
+    border-radius:14px;
+    background:rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.12);
+    min-width:0;
+  }
+  .search input{
+    flex:1;
+    border:0;
+    outline:none;
+    background:transparent;
+    color:var(--txt);
+    font-size:14px;
+    min-width:0;
+  }
+  .qClear{
+    width:28px;height:28px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.06);
+    color:#fff;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    line-height:1;
+    font-size:18px;
+  }
 
-.delivery{
-  height:36px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-size:13px;
-  padding:0 34px 0 10px;
-  position:relative;
-  background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
-                   linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
-  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
-  background-size: 6px 6px, 6px 6px;
-  background-repeat:no-repeat;
-}
-.copy{
-  height:36px;
-  padding:0 12px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-weight:900;
-}
-.total{
-  margin-left:auto;
-  height:36px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:flex-end;
-  font-size:14px; /* JSで必要に応じて縮小 */
-  color:var(--ok);
-  font-weight:900;
-  white-space:nowrap;
-  line-height:1;
-  max-width:120px;   /* ✅ ここを超えないようにJSでフィット */
-  min-width:0;
-}
+  .delivery{
+    height:36px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    font-size:13px;
+    padding:0 34px 0 10px;
+    position:relative;
+    background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
+                     linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+    background-size: 6px 6px, 6px 6px;
+    background-repeat:no-repeat;
+  }
+  .copy{
+    height:36px;
+    padding:0 12px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    font-weight:900;
+  }
+  .total{
+    margin-left:auto;
+    height:36px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:flex-end;
+    font-size:14px; /* JSで必要に応じて縮小 */
+    color:var(--ok);
+    font-weight:900;
+    white-space:nowrap;
+    line-height:1;
+    max-width:120px;   /* ✅ ここを超えないようにJSでフィット */
+    min-width:0;
+  }
 
-.out{
-  width:100%;
-  margin-top:8px;
-  height:120px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.22);
-  color:#fff;
-  padding:10px;
-  font-size:12px;
-  line-height:1.45;
-}
+  .out{
+    width:100%;
+    margin-top:8px;
+    height:120px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.22);
+    color:#fff;
+    padding:10px;
+    font-size:12px;
+    line-height:1.45;
+  }
 
-.subrow{
-  margin-top:10px;
-  display:flex;
-  gap:10px;
-  align-items:center;
-  flex-wrap:wrap;
-}
-.ghost{
-  height:34px;
-  padding:0 12px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.06);
-  color:#fff;
-  font-weight:800;
-}
+  .subrow{
+    margin-top:10px;
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+  }
+  .ghost{
+    height:34px;
+    padding:0 12px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.06);
+    color:#fff;
+    font-weight:800;
+  }
 
-.tabs{
-  flex:1;
-  display:flex;
-  gap:0;
-  padding:4px;
-  border-radius:20px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.05);
-}
-.tab{
-  flex:1;
-  height:40px;
-  border-radius:16px;
-  border:0;
-  background:transparent;
-  color:rgba(255,255,255,.75);
-  font-weight:900;
-}
-.tab.isActive{
-  background:rgba(255,255,255,.12);
-  color:#fff;
-  box-shadow:0 6px 14px rgba(0,0,0,.22);
-}
+  .tabs{
+    flex:1;
+    display:flex;
+    gap:0;
+    padding:4px;
+    border-radius:20px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.05);
+  }
+  .tab{
+    flex:1;
+    height:40px;
+    border-radius:16px;
+    border:0;
+    background:transparent;
+    color:rgba(255,255,255,.75);
+    font-weight:900;
+  }
+  .tab.isActive{
+    background:rgba(255,255,255,.12);
+    color:#fff;
+    box-shadow:0 6px 14px rgba(0,0,0,.22);
+  }
 
-/* ================= Cards ================= */
+  /* ================= Cards ================= */
 
-.card{
-  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
-  border:1px solid rgba(255,255,255,.10);
-  border-radius:18px;
-  margin-bottom:10px;
-  overflow:hidden;
-}
-.cardInner{padding:12px}
+  .card{
+    background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:18px;
+    margin-bottom:10px;
+    overflow:hidden;
+  }
+  .cardInner{padding:12px}
 
-.cardHead{
-  position:relative;
-  display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(0, 160px);
-  gap:10px;
-  align-items:flex-start; /* ✅ 入力で右側ブロックの高さが変わっても、上基準で固定 */
-}
+  .cardHead{
+    position:relative;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0, 160px);
+    gap:10px;
+    align-items:flex-start; /* ✅ 入力で右側ブロックの高さが変わっても、上基準で固定 */
+  }
 
-/* ✅ カード右上（複製/セレクト）を最初から少し上に固定して、入力時の微ズレも抑止 */
-.cardHead .right{
-  align-self:flex-start;
-  margin-top:-4px;
-}
+  /* ✅ カード右上（複製/セレクト）を最初から少し上に固定して、入力時の微ズレも抑止 */
+  .cardHead .right{
+    align-self:flex-start;
+    margin-top:-4px;
+  }
 
-/* ✅ ここが原因：toggleが前面すぎるとselectが押せない
-   → toggleを下げて、右側(select側)を上げる */
-.cardToggle{
-  position:absolute;
-  top:-12px;
-  left:-12px;
-  right:40%;                 /* ✅ 右側40%は"判定外"にして操作可能に */
-  height:calc(100% + 24px);
-  border:0;
-  background:transparent;
-  padding:0;
-  margin:0;
-  cursor:pointer;
-  z-index:2;                 /* 右側UIより下でOK */
-}
+  /* ✅ ここが原因：toggleが前面すぎるとselectが押せない
+     → toggleを下げて、右側(select側)を上げる */
+  .cardToggle{
+    position:absolute;
+    top:-12px;
+    left:-12px;
+    right:40%;                 /* ✅ 右側40%は"判定外"にして操作可能に */
+    height:calc(100% + 24px);
+    border:0;
+    background:transparent;
+    padding:0;
+    margin:0;
+    cursor:pointer;
+    z-index:2;                 /* 右側UIより下でOK */
+  }
 
-/* ✅ 右側（select等）は必ずタップを受け取る */
-.right{
-  position:relative;
-  z-index:3;
-}
-/* ✅ 右側(select/単価)は必ずトグルより前面にして操作を守る */
-.right{
-  position:relative;
-  z-index:30;
-}
-.type{
-  position:relative;
-  z-index:31;
-}
+  /* ✅ 右側（select等）は必ずタップを受け取る */
+  .right{
+    position:relative;
+    z-index:3;
+  }
+  /* ✅ 右側(select/単価)は必ずトグルより前面にして操作を守る */
+  .right{
+    position:relative;
+    z-index:30;
+  }
+  .type{
+    position:relative;
+    z-index:31;
+  }
 
-/* ✅ 右側(select等)はトグルより前面に固定 */
-.right{
-  position:relative;
-  z-index:10;
-}
-.type{
-  position:relative;
-  z-index:11;
-}
+  /* ✅ 右側(select等)はトグルより前面に固定 */
+  .right{
+    position:relative;
+    z-index:10;
+  }
+  .type{
+    position:relative;
+    z-index:11;
+  }
 
-/* ✅ 右側（select）はトグルより上にして操作可能にする */
-.right{
-  position:relative;
-  z-index:10;
-}
-.type{
-  position:relative;
-  z-index:11;
-}
+  /* ✅ 右側（select）はトグルより上にして操作可能にする */
+  .right{
+    position:relative;
+    z-index:10;
+  }
+  .type{
+    position:relative;
+    z-index:11;
+  }
 
-.nameWrap{
-  min-width:0;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  padding-right:6px;
-  position:relative;
-  z-index:2;
-}
-.name{
-  font-weight:950;
-  letter-spacing:.2px;
-  font-size:18px;
-  line-height:1.1;
-  word-break:break-word;
-}
-.miniThumb{
-  width:112px;
-  aspect-ratio:2 / 1;
-  border-radius:12px;
-  overflow:hidden;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.05);
-}
-.miniThumb img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:block;
-}
+  .nameWrap{
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    padding-right:6px;
+    position:relative;
+    z-index:2;
+  }
+  .name{
+    font-weight:950;
+    letter-spacing:.2px;
+    font-size:18px;
+    line-height:1.1;
+    word-break:break-word;
+  }
+  .miniThumb{
+    width:112px;
+    aspect-ratio:2 / 1;
+    border-radius:12px;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.05);
+  }
+  .miniThumb img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
 
-.right{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  align-items:stretch;
+  .right{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    align-items:stretch;
 
-  /* ✅ 右カラムを「中身幅で右寄せ」にしない（入力で右側ブロック幅が変わってもズレない） */
-  justify-self:stretch;
-  width:100%;
+    /* ✅ 右カラムを「中身幅で右寄せ」にしない（入力で右側ブロック幅が変わってもズレない） */
+    justify-self:stretch;
+    width:100%;
 
-  position:relative;
-  z-index:10; /* ✅ toggleより上 */
-}
-.type{
-  height:44px;
-  width:100%;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-size:13px; /* 複製ボタンと同サイズ */
-  font-weight:900;
-  padding:0 34px 0 10px; /* 左を少し詰めて表示領域確保 */
-  background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
-                   linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
-  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
-  background-size: 6px 6px, 6px 6px;
-  background-repeat:no-repeat;
-  position:relative;
-  z-index:11; /* ✅ 念のため */
-}
-.unit{
-  font-size:14px;
-  color:var(--mut);
-  white-space:nowrap;
-  text-align:right;
-}
+    position:relative;
+    z-index:10; /* ✅ toggleより上 */
+  }
+  .type{
+    height:44px;
+    width:100%;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    font-size:13px; /* 複製ボタンと同サイズ */
+    font-weight:900;
+    padding:0 34px 0 10px; /* 左を少し詰めて表示領域確保 */
+    background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
+                     linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+    background-size: 6px 6px, 6px 6px;
+    background-repeat:no-repeat;
+    position:relative;
+    z-index:11; /* ✅ 念のため */
+  }
+  .unit{
+    font-size:14px;
+    color:var(--mut);
+    white-space:nowrap;
+    text-align:right;
+  }
 
-/* ====== sex label & price under unit ====== */
-.sexHint{
-  margin-top:2px;
-  font-size:12px;
-  font-weight:900;
-  text-align:right;
-  white-space:nowrap;
-  min-height:14px;
-}
-.sexMale{ color: var(--maleSoft); }
-.sexFemale{ color: var(--femaleSoft); }
+  /* ====== sex label & price under unit ====== */
+  .sexHint{
+    margin-top:2px;
+    font-size:12px;
+    font-weight:900;
+    text-align:right;
+    white-space:nowrap;
+    min-height:14px;
+  }
+  .sexMale{ color: var(--maleSoft); }
+  .sexFemale{ color: var(--femaleSoft); }
 
-.cardPrice{
-  margin-top:2px;
-  font-size:13px;
-  font-weight:950;
-  text-align:right;
-  white-space:nowrap;
-}
+  .cardPrice{
+    margin-top:2px;
+    font-size:13px;
+    font-weight:950;
+    text-align:right;
+    white-space:nowrap;
+  }
 
-/* ====== special number buttons ====== */
-.controls.gachaWrap{ display:block; } /* ✅ 右に余白が出ないよう、行全体を専有 */
-.gWrap{ margin-top:6px; width:100%; } /* ✅ グリッドがカード幅いっぱいまで広がる */
-.gGrid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(76px, 1fr));
-  gap:10px;
-}
-.gBtn{
-  appearance:none;
-  border-radius:999px;
-  padding:11px 0;
-  font-weight:950;
-  color:#fff;
-  background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.12);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
-}
-.gBtn.isOn{
-  background:rgba(255,255,255,.12);
-  border-color:rgba(255,255,255,.22);
-}
-.gBtn:disabled{ opacity:.45; }
+  /* ====== special number buttons ====== */
+  .controls.gachaWrap{ display:block; } /* ✅ 右に余白が出ないよう、行全体を専有 */
+  .gWrap{ margin-top:6px; width:100%; } /* ✅ グリッドがカード幅いっぱいまで広がる */
+  .gGrid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(76px, 1fr));
+    gap:10px;
+  }
+  .gBtn{
+    appearance:none;
+    border-radius:999px;
+    padding:11px 0;
+    font-weight:950;
+    color:#fff;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.12);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  .gBtn.isOn{
+    background:rgba(255,255,255,.12);
+    border-color:rgba(255,255,255,.22);
+  }
+  .gBtn:disabled{ opacity:.45; }
 
-.gLineWrap{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  margin-top:12px;
-  flex-wrap:wrap;
-}
-.gAct{
-  border-radius:999px;
-  padding:10px 16px;
-  font-weight:950;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.10);
-  color:#fff;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
-}
-.gAct.isOn{
-  background:rgba(255,255,255,.14);
-  border-color:rgba(255,255,255,.22);
-}
-.gAct:disabled{ opacity:.45; }
-.gUndo{
-  background:rgba(185,74,85,.22);
-  border-color:rgba(185,74,85,.35);
-}
+  .gLineWrap{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    margin-top:12px;
+    flex-wrap:wrap;
+  }
+  .gAct{
+    border-radius:999px;
+    padding:10px 16px;
+    font-weight:950;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.10);
+    color:#fff;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  .gAct.isOn{
+    background:rgba(255,255,255,.14);
+    border-color:rgba(255,255,255,.22);
+  }
+  .gAct:disabled{ opacity:.45; }
+  .gUndo{
+    background:rgba(185,74,85,.22);
+    border-color:rgba(185,74,85,.35);
+  }
 
-.controls{
-  margin-top:10px;
-  display:flex;
-  gap:10px;
-  align-items:center;
-  flex-wrap:nowrap;
-  overflow:visible;
-}
+  .controls{
+    margin-top:10px;
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:nowrap;
+    overflow:visible;
+  }
 
-/* ✅ モバイルは折り返し許可（selectが潰れたり被るのを防ぐ） */
-@media (max-width: 520px){
-  .controls{ flex-wrap:wrap; }
+  /* ✅ モバイルは折り返し許可（selectが潰れたり被るのを防ぐ） */
+  @media (max-width: 520px){
+    .controls{ flex-wrap:wrap; }
 
-  .controls .stepper{
+    .controls .stepper{
+      flex:1 1 calc(50% - 5px);
+      min-width:140px;
+    }
+
+    .controls .type{
+      flex:1 1 100%;
+      width:100%;
+    }
+
+    /* 複製ボタンがあるカードは下段に落として崩れ防止 */
+    .controls .dupBtn{
+      flex:1 1 100%;
+    }
+  }
+
+  /* ✅ 特殊＋オスメス用：折り返しを許可して崩れを防ぐ */
+  .controls.controlsWrap{
+    flex-wrap:wrap;
+  }
+
+  /* ✅ wrap時：stepperは2列、selectは下段100% */
+  .controls.controlsWrap .stepper{
     flex:1 1 calc(50% - 5px);
     min-width:140px;
   }
-
-  .controls .type{
+  .controls.controlsWrap .type{
     flex:1 1 100%;
     width:100%;
+    height:44px;
   }
 
-  /* 複製ボタンがあるカードは下段に落として崩れ防止 */
-  .controls .dupBtn{
-    flex:1 1 100%;
+  .stepper{
+    flex:1;
+    min-width:0;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:8px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.04);
   }
-}
-
-/* ✅ 特殊＋オスメス用：折り返しを許可して崩れを防ぐ */
-.controls.controlsWrap{
-  flex-wrap:wrap;
-}
-
-/* ✅ wrap時：stepperは2列、selectは下段100% */
-.controls.controlsWrap .stepper{
-  flex:1 1 calc(50% - 5px);
-  min-width:140px;
-}
-.controls.controlsWrap .type{
-  flex:1 1 100%;
-  width:100%;
-  height:44px;
-}
-
-.stepper{
-  flex:1;
-  min-width:0;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:8px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.04);
-}
-.stepper.male{
-  border-color:color-mix(in srgb, var(--male) 55%, rgba(255,255,255,.12));
-  box-shadow:0 0 0 1px color-mix(in srgb, var(--male) 30%, transparent) inset;
-}
-.stepper.female{
-  border-color:color-mix(in srgb, var(--female) 55%, rgba(255,255,255,.12));
-  box-shadow:0 0 0 1px color-mix(in srgb, var(--female) 30%, transparent) inset;
-}
-
-.btn{
-  width:44px;
-  height:32px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.10);
-  color:#fff;
-  font-size:18px;
-  font-weight:950;
-  line-height:1;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-}
-.val{
-  flex:1;
-  text-align:center;
-  font-weight:950;
-  font-size:16px;
-  min-width:28px;
-}
-
-.dupBtn{
-  flex:0 0 auto;
-  height:40px;
-  padding:0 14px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.10);
-  color:#fff;
-  font-weight:950;
-  white-space:nowrap;
-}
-
-.card.isCollapsed .controls{display:none}
-
-/* ✅ 折りたたみ時：メモ欄は非表示 */
-.card.isCollapsed .memo,
-.card.isCollapsed .js-memo{display:none !important}
-
-/* ✅ special UI を閉じる（JS側class名に合わせるならここも調整可）
-   今のJSでは gWrap/gGrid を使っているので gachaWrap では閉じない。
-   ただし controls 自体を block にしてる special では折りたたみ時に隠す必要がある。
-*/
-.card.isCollapsed .gWrap{display:none}
-
-/* ================= Modal ================= */
-
-.modalOverlay{
-  position:fixed;
-  inset:0;
-  z-index:20000;
-  background:rgba(0,0,0,.55);
-  backdrop-filter:blur(8px);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:14px;
-}
-.modalOverlay.isHidden{display:none}
-
-.modal{
-  width:min(720px, 100%);
-  max-height:min(86vh, 900px);
-  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
-  border:1px solid rgba(255,255,255,.14);
-  border-radius:22px;
-  overflow:hidden;
-  display:flex;
-  flex-direction:column;
-}
-.modalHead{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:14px 14px 10px;
-}
-.modalTitle{font-weight:950;font-size:18px}
-.versionText{
-  margin-top:4px;
-  font-size:12px;
-  font-weight:900;
-  color:rgba(255,255,255,.55);
-  line-height:1.2;
-}
-.iconBtn{
-  width:44px;height:44px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-size:22px;
-  line-height:1;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.modalTabs{
-  display:flex;
-  gap:10px;
-  padding:0 14px 12px;
-}
-.mTab{
-  flex:1;
-  height:40px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.06);
-  color:#fff;
-  font-weight:900;
-}
-.mTab.isActive{
-  background:rgba(255,255,255,.10);
-  border-color:rgba(255,255,255,.18);
-}
-
-.modalBody{
-  flex:1 1 auto;
-  min-height:0;
-  padding:14px;
-  overflow:auto;
-  -webkit-overflow-scrolling:touch;
-}
-.modalBody.isManageImages{
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-}
-.modal.isManageImages{
-  overscroll-behavior:contain;
-}
-
-/* Manage top bar */
-.mTopBar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
-.mTopBar .pill{min-width:0;}
-
-/* Manage rows */
-.mRow{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  padding:10px;
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.18);
-  margin-bottom:10px;
-}
-
-.roomBtns{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap:6px;
-  align-items:center;
-  flex:0 0 140px; /* ✅ 左側（ROOM名/入力欄）を見切れさせない */
-}
-.roomBtns .pill[data-act="done"]{ grid-column:1 / -1; }
-
-
-/* ✅ テンプレ用：ボタンを横一列 */
-.templateBtns{
-  display:flex;
-  gap:6px;
-  align-items:center;
-  flex:0 0 auto;
-}
-.templateBtns .pill{
-  height:34px;
-  min-width:0;
-  padding:0 10px;
-  font-size:11px;
-  white-space:nowrap;
-}
-
-/* ✅ ルーム画面のボタンを小さくして見切れ防止 */
-.roomBtns .pill{
-  height:34px;
-  min-width:0;
-  padding:0 8px;
-  font-size:11px;
-  border-radius:14px;
-  font-weight:900;
-  white-space:nowrap;
-}
-
-
-/* ✅ ルーム共通設定（コピー） */
-.roomCfgRow{
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-  align-items:center;
-}
-.roomCfgToggle{
-  display:flex;
-  gap:8px;
-  align-items:center;
-  font-weight:900;
-  font-size:12px;
-  opacity:.92;
-}
-.roomCfgToggle input{ transform:scale(1.05); }
-.roomCfgMin{
-  display:flex;
-  gap:8px;
-  align-items:center;
-}
-.roomCfgMin input{
-  width:110px;
-  height:34px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(0,0,0,.18);
-  color:#fff;
-  padding:0 10px;
-  font-weight:950;
-  font-size:12px;
-}
-
-
-/* ✅ 「入口パスワード」の保存ボタンも小さく（app.js側のinlineを上書き） */
-#roomBody #saveEntry{
-  height:38px !important;
-  padding:0 10px !important;
-  font-size:12px !important;
-  border-radius:14px !important;
-}
-/* ✅ 後勝ちで上書きしていた大きいボタン定義を、最終的に"小さめ"へ統一 */
-.roomBtns .pill{
-  height:34px;
-  min-width:0;
-  padding:0 8px;
-  font-size:11px;
-  border-radius:14px;
-  font-weight:900;
-  white-space:nowrap;
-}
-
-/* ✅ 名前入力欄の高さを「受け取り完了」ボタンと同じに */
-.roomUserInput{
-  width:100%;
-  height:34px !important;
-  line-height:34px;
-  border-radius:14px !important;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(0,0,0,.18);
-  color:#fff;
-  padding:0 12px;
-  font-weight:900;
-}
-.roomActions{
-  display:flex;
-  gap:8px;
-  align-items:center;
-  flex:0 0 auto;
-  flex-wrap:wrap;
-  justify-content:flex-end;
-  max-width:52%;
-}
-.roomAct{
-  height:40px;
-  padding:0 10px;
-  border-radius:16px;
-  font-size:14px;
-  font-weight:900;
-  white-space:nowrap;
-}
-.roomActDone{
-  padding:0 12px;
-}
-.mName{
-  flex:1;
-  min-width:0;
-  font-weight:900;
-  font-size:16px;
-  line-height:1.2;
-  white-space:normal;
-  overflow:visible;
-  text-overflow:clip;
-  word-break:break-word;
-}
-.sBtn{
-  width:44px;height:38px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-weight:950;
-}
-.sBtn.danger{
-  background:rgba(185,74,85,.22);
-  border-color:rgba(185,74,85,.35);
-}
-
-/* Prices */
-.priceGrid{
-  display:grid;
-  grid-template-columns:1fr 140px;
-  gap:10px;
-}
-.pKey{
-  padding:12px 10px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(0,0,0,.16);
-  font-weight:900;
-}
-.pVal input{
-  width:100%;
-  padding:12px 10px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.18);
-  color:#fff;
-  outline:none;
-  text-align:right;
-  font-weight:950;
-}
-
-/* ✅ Edit/Add */
-.edit{
-  width:min(560px, 100%);
-  max-height:min(86vh, 900px);
-  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
-  border:1px solid rgba(255,255,255,.14);
-  border-radius:22px;
-  overflow:hidden;
-  display:flex;
-  flex-direction:column;
-}
-.editHead{
-  padding:14px 14px 8px;
-}
-.editTitle{
-  font-weight:950;
-  font-size:18px;
-}
-.editBody{
-  padding:14px;
-  overflow:auto;
-}
-.editForm{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.editLabel{
-  font-weight:900;
-  color:rgba(255,255,255,.78);
-  margin:2px 2px 0;
-}
-.editInput, .editSelect{
-  width:100%;
-  height:46px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(0,0,0,.18);
-  color:#fff;
-  outline:none;
-  padding:0 12px;
-  font-weight:900;
-}
-.editSelect{
-  padding-right:34px;
-  background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
-                   linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
-  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
-  background-size: 6px 6px, 6px 6px;
-  background-repeat:no-repeat;
-}
-
-.editTextarea{
-  width:100%;
-  min-height:92px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(0,0,0,.18);
-  color:#fff;
-  outline:none;
-  padding:10px 12px;
-  font-weight:900;
-  resize:vertical;
-}
-
-.memo{
-  margin-top:10px;
-  padding:10px 12px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(0,0,0,.14);
-  color:rgba(255,255,255,.86);
-  font-weight:900;
-  font-size:12px;
-  line-height:1.35;
-  white-space:pre-wrap;
-  word-break:break-word;
-}
-
-.editBtns{
-  display:flex;
-  gap:10px;
-  justify-content:flex-end;
-  margin-top:4px;
-}
-
-/* Confirm */
-.confirm{
-  width:min(520px, 96vw);
-  border-radius:22px;
-  overflow:hidden;
-  border:1px solid rgba(255,255,255,.14);
-  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
-  padding:14px;
-}
-.confirmTitle{font-weight:950;font-size:18px;margin-bottom:6px}
-.confirmText{color:rgba(255,255,255,.85);font-weight:800;margin-bottom:10px;white-space:pre-line;line-height:1.35}
-.confirmBtns{display:flex;gap:10px;justify-content:flex-end}
-
-/* ================= Image Manager ================= */
-
-.imgRow{
-  display:grid;
-  grid-template-columns:140px minmax(0,1fr);
-  gap:10px 12px;
-  align-items:center;
-  padding:12px;
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.18);
-  margin-bottom:10px;
-}
-.thumb{
-  width:140px;
-  aspect-ratio:2 / 1;
-  border-radius:14px;
-  overflow:hidden;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.06);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:rgba(255,255,255,.45);
-  font-weight:900;
-}
-.thumb img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:block;
-}
-.imgMid{
-  min-width:0;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.imgName{
-  min-width:0;
-  font-weight:950;
-  font-size:16px;
-  line-height:1.2;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.imgBtns{
-  display:flex;
-  gap:10px;
-  align-items:center;
-}
-
-/* ✅ 画像タブ：上部ボタン行 */
-.imgTopBar{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  justify-content:flex-end;
-  margin-bottom:12px;
-}
-/* ✅ 画像出力ボタンの幅 */
-#imgExport{ min-width:120px; }
-
-.pill{
-  height:40px;
-  padding:0 14px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.10);
-  color:#fff;
-  font-weight:950;
-  white-space:nowrap;
-}
-.pill.danger{
-  border-color:rgba(185,74,85,.35);
-  background:rgba(185,74,85,.22);
-}
-
-/* Image viewer */
-.imgViewer{
-  width:min(960px, 96vw);
-  max-height:min(86vh, 900px);
-  border-radius:22px;
-  overflow:hidden;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(0,0,0,.55);
-  display:flex;
-  flex-direction:column;
-}
-.imgClose{align-self:flex-end;margin:12px}
-#imgViewerImg{
-  width:100%;
-  height:auto;
-  display:block;
-  padding:12px;
-  border-radius:18px;
-}
-
-/* ✅ モーダル/オーバーレイ内でスクロールを閉じ込める（背面へ抜けない） */
-#modalOverlay, #roomOverlay, #editOverlay, #imgOverlay {
-  overscroll-behavior: contain;
-  touch-action: none; /* 背面へのスクロール伝播を抑える */
-}
-
-#modalBody, #roomBody, #editBody {
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
-}
-
-/* ===== v2 tweaks: dup + price lines + soft sex colors + special panel clipping fix ===== */
-:root{
-  --maleSoft: rgba(120, 200, 255, .85);
-  --femaleSoft: rgba(255, 150, 210, .85);
-}
-.stepper.male{border-color: var(--maleSoft); box-shadow: 0 0 0 2px rgba(120,200,255,.18);}
-.stepper.female{border-color: var(--femaleSoft); box-shadow: 0 0 0 2px rgba(255,150,210,.18);}
-.stepper.male .val{color: var(--maleSoft);}
-.stepper.female .val{color: var(--femaleSoft);}
-
-.right .typeRow,
-.right .subActionRow{
-  display:grid;
-  grid-template-columns:minmax(0, 54px) minmax(0, 1fr);
-  gap:8px;
-  align-items:stretch;
-  width:100%;
-}
-.right .typeRow{ margin-top:-4px; }
-.dupMini,
-/* removed checkMini */ .checkMini_removed,
-.typePlaceholder,
-.unitSolo{
-  height:40px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-}
-.dupMini,
-/* removed checkMini */ .checkMini_removed{
-  min-width:54px;
-  padding:0 8px;
-  color:#fff;
-  font-size:12px;
-  font-weight:900;
-  line-height:1;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  white-space:nowrap;
-}
-/* removed checkMini */ .checkMini_removed.isDisabled,
-/* removed checkMini */ .checkMini_removed:disabled{
-  opacity:.45;
-}
-.type{
-  width:100%;
-  min-width: 100px; /* 「受精卵(指定)」が見切れない現実的な下限（少しだけ縮小） */
-  height:40px;
-  font-size:11px;
-  padding:0 9px;
-}
-.typePlaceholder{
-  opacity:0;
-  pointer-events:none;
-}
-
-.unit{
-  white-space: normal;
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-}
-.unitSolo{
-  display:flex;
-  align-items:center;
-  justify-content:flex-end;
-  padding:0 10px;
-}
-.unitLine,
-.dispLine{
-  font-size: 10px;
-  line-height: 1.2;
-  color: rgba(255,255,255,.62);
-  font-weight: 700;
-}
-.dispLine{
-  min-height:12px;
-  text-align:right;
-  white-space:nowrap;
-}
-.sex-m{color: var(--maleSoft);}
-.sex-f{color: var(--femaleSoft);}
-.maleTxt{color: var(--maleSoft); font-weight:800;}
-.femaleTxt{color: var(--femaleSoft); font-weight:800;}
-.maleTxt{color: var(--maleSoft);}
-.femaleTxt{color: var(--femaleSoft);}
-
-/* special numeric panel: prevent bottom text clipping */
-.gachaWrap{padding-bottom: 12px;}
-.gInfo{padding-bottom: 14px;}
-
-/* ===== Image Export (grid collage) ===== */
-.exportGalleryPanel{ width:min(720px, 100%); max-height:min(86vh, 900px); overflow:hidden; border-radius:18px; border:1px solid rgba(255,255,255,.14); background:rgba(20,20,20,.78); backdrop-filter: blur(14px); }
-.exportGalleryHead{ display:flex; align-items:center; justify-content:space-between; padding:14px 14px 10px; }
-.exportGalleryTitle{ font-weight:950; font-size:18px; }
-.exportGalleryBody{ padding:12px 14px 14px; overflow:auto; max-height:calc(86vh - 70px); }
-.exportGalleryHint{ font-size:12px; color:rgba(255,255,255,.70); margin-bottom:10px; }
-
-.exportGridCtrl{ display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.05); margin-bottom:12px; }
-.exportGridInputs{ display:flex; align-items:center; gap:10px; }
-.exportGridLabel{ font-weight:900; color:rgba(255,255,255,.75); }
-.exportGridInput{ width:70px; height:40px; border-radius:14px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.08); color:#fff; text-align:center; font-weight:950; }
-.exportGridExample{ font-size:12px; color:rgba(255,255,255,.60); }
-
-.exportGridImgs{ display:flex; flex-direction:column; gap:14px; }
-.exportGridImgWrap{ display:flex; flex-direction:column; gap:8px; }
-.exportGridImgCap{ font-size:12px; font-weight:950; color:rgba(255,255,255,.75); }
-.exportGridImg{ width:100%; height:auto; border-radius:16px; border:1px solid rgba(255,255,255,.12); background:#111; }
-
-
-/* ===== 画像出力：横スクロール（スナップ） ===== */
-#imgOverlay{ touch-action: pan-y; } /* touch-action:none を上書き */
-#imgOverlay.modalOverlay{ background: rgba(0,0,0,.78); } /* 透過しすぎ対策 */
-
-.exportPages{
-  display:flex;
-  gap:16px;
-  overflow-x:auto;
-  overflow-y:hidden;
-  padding:10px 4px 14px;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-x pan-y;
-}
-.exportPage{
-  flex:0 0 92%;
-  scroll-snap-align: start;
-  background: rgba(0,0,0,.55);
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 16px;
-  padding: 10px;
-}
-.exportPageNo{
-  font-weight: 950;
-  margin-bottom: 8px;
-  user-select:none;
-  -webkit-user-select:none;
-}
-.exportPageImg{
-  width:100%;
-  height:auto;
-  display:block;
-  border-radius: 12px;
-  user-select:none;
-  -webkit-user-select:none;
-}
-
-/* 画像出力モーダル内は文字選択を抑える（入力欄は除外） */
-#imgOverlay *{
-  -webkit-user-select:none;
-  user-select:none;
-}
-#imgOverlay input, #imgOverlay textarea{
-  -webkit-user-select:text;
-  user-select:text;
-}
-
-
-/* ===== 画像出力：縦横入力の下に生成ボタン（中央） ===== */
-.exportGridCtrl{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:12px;
-}
-.exportGridInputs{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:10px;
-}
-.exportGridBtn{
-  align-self:center;
-  margin-left:0;
-}
-
-
-/* POS tables */
-.tabularNums{font-variant-numeric:tabular-nums;}
-.posT{table-layout:fixed;width:100%;border-collapse:collapse;}
-.posT th,.posT td{padding:7px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:900;font-size:12px;}
-.posT thead tr{background:rgba(255,255,255,.06)}
-.posT thead th{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.05;font-size:11px;font-weight:950;padding:8px 6px;height:44px;display:flex;align-items:center;justify-content:center;text-align:center;}
-.posT th{text-align:left;}
-.posT .c{text-align:center;}
-.posT .l{text-align:left;}
-.posT .r{text-align:right;}
-.posBox{overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;}
-.posGroupRow td{background:rgba(255,255,255,.04);font-weight:950;}
-.posAmtBtn{cursor:pointer;}
-
-
-/* ===== POS: report history (output-like) ===== */
-.posHistory{ display:flex; flex-direction:column; gap:10px; font-size:12px; }
-.posHistGroup{ border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.04); border-radius:14px; overflow:hidden; }
-.posHistHead{ display:flex; align-items:center; gap:10px; padding:10px 10px 8px; border-bottom:1px solid rgba(255,255,255,.08); }
-.posHistHeadL{ font-weight:950; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.posHistHeadR{ margin-left:auto; font-weight:950; color:rgba(120,255,179,.95); white-space:nowrap; }
-.posHistLine{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-top:1px solid rgba(255,255,255,.06); }
-.posHistL{ flex:1; min-width:0; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:850; }
-.posHistAmt{
-  flex:0 0 auto;
-  min-width:92px;
-  text-align:right;
-  white-space:nowrap;
-  font-weight:950;
-  border:none;
-  background:transparent;
-  color:rgba(255,255,255,.92);
-  padding:2px 0;
-}
-.posHistAmt:active{ opacity:.7; }
-.posColTotal{ min-width:9ch; }
-.posT th.posColStock,.posT td.posColStock{padding-right:4px;}
-.posT th.posColTotal,.posT td.posColTotal{padding-left:6px;padding-right:6px;}
-.posT th.posColNum,.posT td.posColNum{padding-left:6px;padding-right:6px;}
-/* POS: entry preview */
-.posEntryPreview{ display:flex; flex-direction:column; }
-.posEntryLine{ border-top:none; }
-.posEntryAmt{
-  flex:0 0 auto;
-  min-width:96px;
-  text-align:right;
-  white-space:nowrap;
-  font-weight:950;
-  color:rgba(255,255,255,.92);
-}
-
-/* POS: output-like two-line label */
-.posHistL{ white-space:normal; }
-.posHistTitle{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.posHistSub{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:.82; font-weight:850; font-size:11px; margin-top:1px; }
-
-/* POS: dino table column sizing */
-.posColNum{ width:3.2ch; }
-.posColStock{ width:4.6ch; }
-.posT .posColTotal{ width:9.5ch; }
-.posT .posColName{ width:42%; }
-.posSortTh{ cursor:pointer; user-select:none; }
-.posSortTh:active{ opacity:.75; }
-
-/* POS: stock colors */
-.posStockBtn{
-  pointer-events:auto;
-  border:none;
-  background:transparent;
-  color:rgba(255,255,255,.92);
-  font-weight:950;
-  padding:4px 0;
-  cursor:pointer;
-  width:100%;
-  display:inline-flex;
-  justify-content:flex-end;
-  align-items:center;
-  gap:2px;
-  -webkit-tap-highlight-color: transparent;
-}
-.posStockDash{ opacity:.7; }
-.posStockM{ color:rgba(160,210,255,.92); }
-.posStockF{ color:rgba(255,170,210,.92); }
-.posStockSep{ opacity:.65; padding:0 1px; }
-
-
-/* POS tables: avoid wrapping */
-.posT th, .posT td{ white-space:nowrap; }
-
-.posT .posColNum, .posT .posColStock{ padding-left:6px; padding-right:6px; }
-
-
-/* ===== POS stock inputs ===== */
-.posStockWrap{
-  display:flex;
-  flex-direction:row;
-  gap:8px;
-  align-items:center;
-  justify-content:center;
-}
-.posStockIn{
-  width:46px;
-  height:30px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.06);
-  color:#fff;
-  font-weight:950;
-  text-align:center;
-  font-size:12px;
-  line-height:1;
-  padding:0 6px;
-}
-.posDash{ opacity:.75; }
-
-
-/* ===== POS Report UI (帳簿 売上) ===== */
-.posTabViewport{
-  flex:1 1 auto;
-  min-height:0; /* ✅ flex内スクロールのため */
-}
-.posTabPanel{
-  height:100%;
-  display:flex;
-  flex-direction:column;
-  min-height:0;
-}
-.posPanelTitle{
-  font-weight:950;
-  margin:14px 0 6px;
-}
-.posScrollArea{
-  flex:1 1 auto;
-  min-height:0;
-  overflow:auto;
-  -webkit-overflow-scrolling:touch;
-  overscroll-behavior:contain;
-}
-.posHint{
-  margin-top:10px;
-  opacity:.65;
-  font-size:11px;
-  line-height:1.35;
-}
-.posTopRow{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  margin-bottom:10px;
-  flex-wrap:wrap; /* ✅ 画面が狭い時に合計が見切れない */
-}
-.posPeriod{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  flex:1 1 auto;
-  min-width:0;
-}
-.posSel{
-  height:36px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font-weight:900;
-  padding:0 34px 0 10px;
-  min-width:86px;
-  position:relative;
-  background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
-                   linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
-  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
-  background-size: 6px 6px, 6px 6px;
-  background-repeat:no-repeat;
-  appearance:none;
-  -webkit-appearance:none;
-}
-.posSel:focus{ outline:none; box-shadow:0 0 0 2px rgba(120,255,179,.18); }
-
-.posTotal{
-  font-weight:950;
-  color:var(--ok);
-  white-space:nowrap;
-  font-size:clamp(12px, 3.6vw, 14px);
-  flex:0 0 auto;
-  text-align:right;
-}
-
-.posTabsWrap{
-  display:flex;
-  gap:10px;
-  margin:10px 0 12px;
-}
-.posTabBtn{
-  flex:1;
-  height:40px;
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.06);
-  color:rgba(255,255,255,.78);
-  font-weight:950;
-}
-.posTabBtn.isActive{
-  background:rgba(255,255,255,.12);
-  color:#fff;
-  box-shadow:0 10px 24px rgba(0,0,0,.22);
-}
-
-.posTabsWrap3{
-  display:grid;
-  grid-template-columns:repeat(3, minmax(0, 1fr));
-}
-
-.posTabsWrap3 .posTabBtn{
-  min-width:0;
-  padding:0 6px;
-  font-size:13px;
-}
-
-.posTabPanel.isHidden{ display:none; }
-
-.posBox{
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.18);
-  overflow:hidden;
-}
-
-.posT{
-  width:100%;
-  border-collapse:separate;
-  border-spacing:0;
-}
-.posT thead th{
-  background:rgba(255,255,255,.06);
-  border-bottom:1px solid rgba(255,255,255,.10);
-  /* ✅ 種別売上：列名(ヘッダ)は常時表示（tbodyのみスクロール） */
-  position:sticky;
-  top:0;
-  z-index:5;
-}
-.posT tbody td{
-  border-bottom:1px solid rgba(255,255,255,.06);
-  padding:10px 10px;
-  vertical-align:middle;
-}
-.posT tbody tr:last-child td{ border-bottom:0; }
-
-.posColName{ padding-left:12px; }
-.posColTotal{ padding-right:12px; }
-
-.posHistBox{
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(0,0,0,.14);
-  overflow:hidden;
-  margin-bottom:10px;
-}
-.posHistHead{
-  display:flex;
-  justify-content:space-between;
-  gap:10px;
-  padding:10px 12px;
-  background:rgba(255,255,255,.06);
-  border-bottom:1px solid rgba(255,255,255,.10);
-  font-weight:950;
-}
-.posHistBody{ padding:8px 10px; display:flex; flex-direction:column; gap:8px; }
-.posHistLine{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
-.posHistTitle{ font-weight:950; }
-.posHistSub{ opacity:.75; font-weight:800; font-size:12px; margin-top:2px; }
-.posAmtBtn{
-  border:0;
-  background:transparent;
-  color:#fff;
-  font-weight:950;
-  padding:6px 8px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(255,255,255,.06);
-  white-space:nowrap;
-}
-.posAmtBtn:active{ transform:translateY(1px); }
-
-.posStockIn{
-  appearance:none;
-  -webkit-appearance:none;
-}
-.posStockIn::-webkit-outer-spin-button,
-.posStockIn::-webkit-inner-spin-button{
-  -webkit-appearance:none;
-  margin:0;
-}
-
-
-.posStockIn::placeholder{color:rgba(255,255,255,.55);font-weight:900;}
-
-/* ===== POS report fixes (2026-03) ===== */
-.posStockBtns{
-  width:100%;
-  display:inline-flex;
-  justify-content:flex-end;
-  align-items:center;
-  gap:2px;
-}
-.posStockBtns .posStockBtn{
-  width:auto;
-  padding:4px 0;
-}
-.posStockBtn{
-  -webkit-appearance:none;
-  appearance:none;
-}
-.posHistAmt{
-  -webkit-appearance:none;
-  appearance:none;
-  border-radius:0;
-}
-.posOrderDel{
-  -webkit-appearance:none;
-  appearance:none;
-  border:none;
-  background:transparent;
-  padding:0;
-  cursor:pointer;
-  color:rgba(120,255,179,.95);
-  font-weight:950;
-}
-.posOrderDel:active{ opacity:.7; }
-
-/* 種別列を広めに */
-.posT th.posColName, .posT td.posColName{
-  min-width:12ch;
-}
-.posT th.posColEgg, .posT td.posColEgg{ min-width:4ch; }
-.posT th.posColAdult, .posT td.posColAdult{ min-width:4ch; }
-.posT th.posColStock, .posT td.posColStock{ min-width:7ch; }
-.posT th.posColTotal, .posT td.posColTotal{ min-width:8ch; }
-
-/* ヘッダの背景が文字高さに追随 */
-.posT thead th{
-  background:rgba(255,255,255,.06);
-}
-
-
-/* ===== POS 種別売上: ヘッダ縦表示と列幅（fix） ===== */
-.posT thead th{writing-mode:horizontal-tb;text-orientation:mixed;}
-.posT thead th.l{justify-content:flex-start;text-align:left;}
-.posT thead th.c{justify-content:center;text-align:center;}
-.posT thead th.r{justify-content:flex-end;text-align:right;}
-/* 列幅：種別は約1/3、卵/成体/在庫は2文字（2桁）想定 */
-.posT th.posColName, .posT td.posColName{width:34%;}
-.posT th.posColEgg, .posT td.posColEgg{width:3.2ch;min-width:3.2ch;}
-.posT th.posColAdult, .posT td.posColAdult{width:3.2ch;min-width:3.2ch;}
-.posT th.posColStock, .posT td.posColStock{width:3.2ch;min-width:3.2ch;}
-.posT th.posColTotal, .posT td.posColTotal{min-width:9ch;}
-/* 在庫（♂/♀）は中央揃えでガタつきを抑える */
-.posStockBtns{justify-content:center;}
-.posStockBtn{justify-content:center;}
-.posStockBtns .posStockBtn{min-width:2.2ch;}
-
-
-/* ===== POS 種別売上: 最終fix（見切れ/縦折返し防止 & 種別列を広めに） ===== */
-.posT{ table-layout:auto; }
-
-/* th が flex になると幅計算が崩れて1文字ずつ改行しやすいので、セル表示に固定 */
-.posT thead th{
-  display:table-cell !important;
-  white-space:nowrap !important;
-  word-break:keep-all !important;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  padding:10px 8px;
-  vertical-align:middle;
-}
-
-/* 列幅：数値列は固定、種別(名称)は残りを優先して確保 */
-.posT th.posColEgg,  .posT td.posColEgg { width:3.2ch !important; min-width:3.2ch !important; }
-.posT th.posColAdult,.posT td.posColAdult{ width:3.2ch !important; min-width:3.2ch !important; }
-
-/* 在庫は「♂ / ♀」表示で最低限の幅が必要 */
-.posT th.posColStock,.posT td.posColStock{ width:6.2ch !important; min-width:6.2ch !important; }
-
-/* 合計は金額が入るので少し広め */
-.posT th.posColTotal,.posT td.posColTotal{
-  width:auto !important;
-  min-width:9ch !important;
-}
-
-/* 種別(名称)列：見切れないように最優先で広く */
-.posT th.posColName,.posT td.posColName{
-  width:auto !important;
-  min-width:18ch !important;
-}
-
-/* ヘッダ背景(グレー)は行全体にかかるように */
-.posT thead tr{ background:rgba(255,255,255,.06); }
-.posT thead th{ background:transparent; }
-
-
-
-/* ===== POS 売上テーブル安定レイアウト ===== */
-.salesTable{
-  width:100%;
-  table-layout:fixed;
-  border-collapse:collapse;
-}
-.salesTable th,.salesTable td{
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  padding:6px 8px;
-}
-.salesTable th:first-child,.salesTable td:first-child{width:48%;text-align:left;}
-.salesTable th:nth-child(2),.salesTable td:nth-child(2){width:42px;text-align:center;}
-.salesTable th:nth-child(3),.salesTable td:nth-child(3){width:42px;text-align:center;}
-.salesTable th:nth-child(4),.salesTable td:nth-child(4){width:80px;text-align:center;}
-.salesTable th:last-child,.salesTable td:last-child{width:90px;text-align:right;} 
-
-
-/* ===== POS 種別売上: iPhone幅で「卵/成体/在庫/合計」見切れ防止 最終上書き（2026-03-05） =====
-   目的：列ヘッダ「卵/成体」と合計金額が省略表示(…や..)にならないよう、幅配分を固定する
-*/
-.posT{
-  width:100% !important;
-  table-layout:fixed !important;
-}
-/* th が flex になると幅計算が崩れるので table-cell に固定 */
-.posT thead th{
-  display:table-cell !important;
-  vertical-align:middle !important;
-  white-space:nowrap !important;
-  overflow:hidden !important;
-  text-overflow:ellipsis !important;
-  padding:8px 6px !important;
-}
-.posT th, .posT td{
-  padding:7px 6px !important;
-}
-/* 幅配分（合計を在庫の右隣で必ず表示） */
-.posT th.posColName,  .posT td.posColName { width:38% !important; }
-.posT th.posColEgg,   .posT td.posColEgg  { width:11% !important; min-width:4ch !important; }
-.posT th.posColAdult, .posT td.posColAdult{ width:11% !important; min-width:4ch !important; }
-.posT th.posColStock, .posT td.posColStock{ width:14% !important; min-width:7ch !important; }
-.posT th.posColTotal, .posT td.posColTotal{ width:26% !important; min-width:9ch !important; }
-
-/* 種別(名称)は省略表示でOK。数値は必ず見えるように */
-.posT td.posColName{ white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
-.posT td.posColEgg,.posT td.posColAdult,.posT td.posColStock,.posT td.posColTotal{ white-space:nowrap !important; }
-
-/* ===== POS 種別売上: 最終上書き（割合 38/11/11/14/26） =====
-   目的：卵/成体/在庫/合計が iPhone でも「..」にならないようにする
-*/
-.posT{
-  width:100% !important;
-  table-layout:fixed !important;
-}
-
-/* ヘッダは省略させない（卵/成体 が .. になるのを止める） */
-.posT thead th{
-  display:table-cell !important;
-  white-space:nowrap !important;
-  overflow:visible !important;
-  text-overflow:clip !important;
-  padding:8px 6px !important;
-  vertical-align:middle !important;
-}
-
-/* セル側：数値は絶対に省略しない（0.. を止める） */
-.posT td.posColEgg,
-.posT td.posColAdult,
-.posT td.posColStock,
-.posT td.posColTotal{
-  overflow:visible !important;
-  text-overflow:clip !important;
-}
-
-/* 列割合（種別/卵/成体/在庫/合計 = 38/11/11/14/26） */
-.posT th.posColName,  .posT td.posColName  { width:38% !important; }
-.posT th.posColEgg,   .posT td.posColEgg   { width:11% !important; }
-.posT th.posColAdult, .posT td.posColAdult { width:11% !important; }
-.posT th.posColStock, .posT td.posColStock { width:14% !important; }
-.posT th.posColTotal, .posT td.posColTotal { width:26% !important; }
-
-/* 種別(名称)は省略OK */
-.posT td.posColName{
-  white-space:nowrap !important;
-  overflow:hidden !important;
-  text-overflow:ellipsis !important;
-}
-
-/* 余白を詰めて横幅を稼ぐ */
-.posT th, .posT td{ padding-left:6px !important; padding-right:6px !important; }
-
-/* ✅ Confirm overlay always top (削除確認など) */
-#confirmOverlay{ z-index:21000 !important; }
-
-
-
-/* ✅ JS生成オーバーレイも常に最前面（背面回り込み防止） */
-#posMenuOverlay,
-#posEntryOverlay,
-#posReportOverlay,
-#roomCopyPreviewOverlay{
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 20000 !important;
-}
-
-
-/* ✅ 既存HTML側のオーバーレイも最前面 */
-#modalOverlay, #roomOverlay, #editOverlay, #imgOverlay{
-  z-index: 20000 !important;
-}
-
-/* ===== POS scroll fix (2026-03-06) =====
-   種別売上: 列名固定で中身のみスクロール
-   取引履歴: タイトルより下のみスクロール
-*/
-#posReportBody{
-  display:flex;
-  flex-direction:column;
-  min-height:0;
-  height:min(72vh, 100%);
-}
-
-.posTabViewport{
-  flex:1 1 auto;
-  min-height:0;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-}
-
-.posTabPanel{
-  flex:1 1 auto;
-  min-height:0;
-  overflow:hidden;
-}
-
-.posPanelTitle{
-  flex:0 0 auto;
-}
-
-.posTypeScroll,
-.posHistScroll{
-  flex:1 1 auto;
-  min-height:0;
-  overflow:hidden;
-}
-
-.posTypeBox,
-.posHistBoxWrap{
-  height:100%;
-  min-height:0;
-  overflow:auto;
-  -webkit-overflow-scrolling:touch;
-  overscroll-behavior:contain;
-}
-
-/* 種別売上はテーブルヘッダ固定 */
-.posTypeBox .posT thead th{
-  position:sticky;
-  top:0;
-  z-index:6;
-  background:rgba(30,34,42,.96) !important;
-  backdrop-filter:blur(6px);
-}
-
-/* 取引履歴はタイトルの下だけをスクロール */
-.posHistScroll .posBox{
-  margin-bottom:0;
-}
-
-.posHistory{
-  min-height:0;
-}
-
-
-/* ===== POS scroll hard-fix (2026-03-06 v2) ===== */
-#posReportOverlay > div{
-  height:min(84vh, calc(100dvh - 32px)) !important;
-  min-height:0 !important;
-}
-
-#posReportBody{
-  flex:1 1 auto !important;
-  min-height:0 !important;
-  height:auto !important;
-  overflow:hidden !important;
-}
-
-.posTabViewport{
-  flex:1 1 auto !important;
-  min-height:0 !important;
-  overflow:hidden !important;
-}
-
-.posTabPanel{
-  display:flex !important;
-  flex-direction:column !important;
-  flex:1 1 auto !important;
-  min-height:0 !important;
-  overflow:hidden !important;
-}
-
-/* ✅ タブ非表示時は hard-fix の display:flex を必ず打ち消す */
-.posTabPanel.isHidden{
-  display:none !important;
-}
-
-.posScrollArea,
-.posTypeScroll,
-.posHistScroll{
-  display:flex !important;
-  flex-direction:column !important;
-  flex:1 1 auto !important;
-  min-height:0 !important;
-  overflow:hidden !important;
-}
-
-.posTypeBox,
-.posHistBoxWrap,
-.posHistory{
-  flex:1 1 auto !important;
-  min-height:0 !important;
-}
-
-.posTypeBox,
-.posHistBoxWrap{
-  overflow:auto !important;
-  -webkit-overflow-scrolling:touch !important;
-  overscroll-behavior:contain !important;
-  touch-action:pan-y !important;
-}
-
-.posTypeBox .posT{
-  margin-bottom:0 !important;
-}
-
-.posHint{
-  flex:0 0 auto !important;
-}
-
-/* ===== Manage images fixed export bar ===== */
-.manageImagesWrap{
-  display:flex;
-  flex:1 1 auto;
-  flex-direction:column;
-  height:100%;
-  min-height:0;
-  gap:12px;
-}
-.manageImagesTopBar{
-  flex:0 0 auto;
-  display:flex;
-  align-items:center;
-  justify-content:flex-end;
-  padding:0;
-  margin:0;
-  background:transparent;
-  position:relative;
-  z-index:1;
-}
-.manageImagesExportBtn{
-  flex:0 0 calc((100% - 20px) / 3);
-  width:calc((100% - 20px) / 3);
-  max-width:calc((100% - 20px) / 3);
-  min-width:0;
-  height:40px;
-}
-.manageImagesList{
-  flex:1 1 auto;
-  min-height:0;
-  overflow:auto;
-  -webkit-overflow-scrolling:touch;
-  overscroll-behavior:contain;
-}
-#modalBody{
-  min-height:0;
-}
-/* ===== POS 日別売上タブ ===== */
-.posTabsWrap3{
-  display:grid;
-  grid-template-columns:repeat(3, minmax(0, 1fr));
-}
-
-.posDailyScroll{
-  display:flex !important;
-  flex-direction:column !important;
-  flex:1 1 auto !important;
-  min-height:0 !important;
-  overflow:hidden !important;
-}
-
-.posDailyBox{
-  flex:1 1 auto;
-  min-height:0;
-  overflow:auto;
-  -webkit-overflow-scrolling:touch;
-  overscroll-behavior:contain;
-}
-
-.posDailyT{
-  width:100%;
-  table-layout:fixed;
-  border-collapse:collapse;
-}
-
-.posDailyT thead th{
-  position:sticky;
-  top:0;
-  z-index:6;
-  background:rgba(30,34,42,.96) !important;
-  backdrop-filter:blur(6px);
-  white-space:nowrap;
-}
-
-.posDailyT th,
-.posDailyT td{
-  padding:10px 8px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-.posDailyColDate{ width:40%; }
-.posDailyColCount{ width:18%; }
-.posDailyColTotal{ width:42%; }
-
-
-
-
-/* ===== メイン画面：確認ボタン / 画像 / 入力表示 ===== */
-.right .typeRow,
-.right .subActionRow{
-  display:grid;
-  grid-template-columns:minmax(0, 54px) minmax(0, 1fr);
-  gap:8px;
-  align-items:stretch;
-  width:100%;
-}
-.right .typeRow{ margin-top:-4px; }
-
-.dupMini,
-/* removed checkMini */ .checkMini_removed,
-.typePlaceholder,
-.unitSolo{
-  height:40px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.08);
-}
-
-.dupMini,
-/* removed checkMini */ .checkMini_removed{
-  min-width:54px;
-  width:54px;
-  padding:0 8px;
-  color:#fff;
-  font-size:12px;
-  font-weight:900;
-  line-height:1;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  white-space:nowrap;
-}
-
-/* removed checkMini */ .checkMini_removed.isDisabled,
-/* removed checkMini */ .checkMini_removed:disabled{
-  opacity:.45;
-}
-
-.type{
-  width:100%;
-  min-width:100px;
-  height:40px;
-  font-size:11px;
-  padding:0 9px;
-}
-
-.typePlaceholder{
-  opacity:0;
-  pointer-events:none;
-}
-
-.unit{
-  white-space:normal;
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-  align-items:flex-end;
-  justify-content:flex-start;
-}
-
-.unitSolo{
-  display:flex;
-  align-items:center;
-  justify-content:flex-end;
-  padding:0 10px;
-}
-
-.unitLine,
-.dispLine{
-  width:100%;
-  font-size:10px;
-  line-height:1.2;
-  color:rgba(255,255,255,.62);
-  font-weight:700;
-  text-align:right;
-}
-
-.dispLine{
-  min-height:12px;
-  white-space:nowrap;
-}
-
-.miniThumb{
-  display:block !important;
-}
-
-
-/* 単価クリック用 */
-.js-unit-click{
-  cursor:pointer;
-}
-
-
-/* ===== 単価/入力表示エリアを隠し画像確認ボタン化 ===== */
-.unit,
-.unit.js-unit-click{
-  width:100%;
-  min-width:0;
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-  align-items:flex-end;
-  justify-content:flex-start;
-  text-align:right;
-}
-
-.unitLine,
-.dispLine{
-  width:100%;
-  text-align:right;
-}
-
-.unit.js-unit-click{
-  cursor:pointer;
-  user-select:none;
-  -webkit-tap-highlight-color:transparent;
-}
-
-.unit.js-unit-click:active{
-  opacity:.82;
-}
-
-
-
-/* ===== カード右端に完全寄せ（最終修正） ===== */
-
-/* 右カラムをカード全体に広げる */
-.cardHead{
-  grid-template-columns: 1fr !important;
-}
-
-/* 右ブロックを絶対配置で右端固定 */
-.right{
-  position:absolute !important;
-  top:12px !important;
-  right:12px !important;
-
-  width:auto !important;
-  max-width:50% !important;
-
-  align-items:flex-end !important;
-}
-
-/* 単価・入力表示 */
-.unit,
-.unit.js-unit-click{
-  display:flex !important;
-  flex-direction:column !important;
-  align-items:flex-end !important;
-  text-align:right !important;
-}
-
-/* 各行 */
-.unitLine,
-.dispLine{
-  text-align:right !important;
-}
-
-/* 改行 */
-.dispLine{
-  white-space:normal !important;
-  word-break:break-word !important;
-  overflow-wrap:anywhere !important;
-}
-
-/* 名前エリアに右余白を確保（被り防止） */
-.nameWrap{
-  padding-right:140px !important;
-}
-
-
-/* ===== 単価・入力表示：カード右端固定 + 1行表示 + 高さ確保（2026-03-22） ===== */
-.cardHead{
-  position:relative !important;
-  display:grid !important;
-  grid-template-columns:minmax(0,1fr) !important;
-  gap:10px !important;
-  align-items:flex-start !important;
-  min-height:132px !important; /* 画像なしカードでも右側情報が見切れない高さを確保 */
-}
-
-.nameWrap{
-  padding-right:176px !important; /* 右操作エリア分を最初から確保 */
-  min-height:108px !important;    /* 画像なしでも同等の高さを確保 */
-}
-
-.right{
-  position:absolute !important;
-  top:12px !important;
-  right:12px !important;
-  width:164px !important;
-  max-width:164px !important;
-  display:flex !important;
-  flex-direction:column !important;
-  gap:8px !important;
-  align-items:stretch !important;
-  justify-content:flex-start !important;
-  z-index:10 !important;
-  margin-top:0 !important;
-}
-
-.right .typeRow,
-.right .subActionRow{
-  width:100% !important;
-  display:grid !important;
-  grid-template-columns:54px minmax(0,1fr) !important;
-  gap:8px !important;
-  align-items:start !important;
-}
-
-.unit,
-.unit.js-unit-click{
-  width:100% !important;
-  min-width:0 !important;
-  display:flex !important;
-  flex-direction:column !important;
-  gap:2px !important;
-  align-items:flex-end !important;
-  justify-content:flex-start !important;
-  text-align:right !important;
-  cursor:pointer !important;
-}
-
-.unitLine,
-.dispLine{
-  width:100% !important;
-  text-align:right !important;
-  margin-left:auto !important;
-}
-
-.unitLine{
-  white-space:nowrap !important;
-}
-
-.dispLine{
-  white-space:nowrap !important;   /* 必ず1行 */
-  overflow:hidden !important;
-  text-overflow:ellipsis !important;
-  word-break:normal !important;
-  overflow-wrap:normal !important;
-  min-height:14px !important;
-}
-
-.miniThumb{
-  display:block !important;
-}
-
-/* 画像なしカードでも左側の高さが潰れないようにする */
-.nameWrap:has(.miniThumb){
-  min-height:unset !important;
-}
-
-@supports not selector(:has(*)) {
-  .nameWrap{
-    min-height:108px !important;
+  .stepper.male{
+    border-color:color-mix(in srgb, var(--male) 55%, rgba(255,255,255,.12));
+    box-shadow:0 0 0 1px color-mix(in srgb, var(--male) 30%, transparent) inset;
   }
-}
+  .stepper.female{
+    border-color:color-mix(in srgb, var(--female) 55%, rgba(255,255,255,.12));
+    box-shadow:0 0 0 1px color-mix(in srgb, var(--female) 30%, transparent) inset;
+  }
 
+  .btn{
+    width:44px;
+    height:32px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.10);
+    color:#fff;
+    font-size:18px;
+    font-weight:950;
+    line-height:1;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .val{
+    flex:1;
+    text-align:center;
+    font-weight:950;
+    font-size:16px;
+    min-width:28px;
+  }
+
+  .dupBtn{
+    flex:0 0 auto;
+    height:40px;
+    padding:0 14px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.10);
+    color:#fff;
+    font-weight:950;
+    white-space:nowrap;
+  }
+
+  .card.isCollapsed .controls{display:none}
+
+  /* ✅ 折りたたみ時：メモ欄は非表示 */
+  .card.isCollapsed .memo,
+  .card.isCollapsed .js-memo{display:none !important}
+
+  /* ✅ special UI を閉じる（JS側class名に合わせるならここも調整可）
+     今のJSでは gWrap/gGrid を使っているので gachaWrap では閉じない。
+     ただし controls 自体を block にしてる special では折りたたみ時に隠す必要がある。
+  */
+  .card.isCollapsed .gWrap{display:none}
+
+  /* ================= Modal ================= */
+
+  .modalOverlay{
+    position:fixed;
+    inset:0;
+    z-index:20000;
+    background:rgba(0,0,0,.55);
+    backdrop-filter:blur(8px);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:14px;
+  }
+  .modalOverlay.isHidden{display:none}
+
+  .modal{
+    width:min(720px, 100%);
+    max-height:min(86vh, 900px);
+    background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:22px;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  .modalHead{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 14px 10px;
+  }
+  .modalTitle{font-weight:950;font-size:18px}
+  .versionText{
+    margin-top:4px;
+    font-size:12px;
+    font-weight:900;
+    color:rgba(255,255,255,.55);
+    line-height:1.2;
+  }
+  .iconBtn{
+    width:44px;height:44px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    font-size:22px;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .modalTabs{
+    display:flex;
+    gap:10px;
+    padding:0 14px 12px;
+  }
+  .mTab{
+    flex:1;
+    height:40px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.06);
+    color:#fff;
+    font-weight:900;
+  }
+  .mTab.isActive{
+    background:rgba(255,255,255,.10);
+    border-color:rgba(255,255,255,.18);
+  }
+
+  .modalBody{
+    flex:1 1 auto;
+    min-height:0;
+    padding:14px;
+    overflow:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .modalBody.isManageImages{
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .modal.isManageImages{
+    overscroll-behavior:contain;
+  }
+
+  /* Manage top bar */
+  .mTopBar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+  .mTopBar .pill{min-width:0;}
+
+  /* Manage rows */
+  .mRow{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    padding:10px;
+    border-radius:18px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.18);
+    margin-bottom:10px;
+  }
+
+  .roomBtns{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:6px;
+    align-items:center;
+    flex:0 0 140px; /* ✅ 左側（ROOM名/入力欄）を見切れさせない */
+  }
+  .roomBtns .pill[data-act="done"]{ grid-column:1 / -1; }
+
+
+  /* ✅ テンプレ用：ボタンを横一列 */
+  .templateBtns{
+    display:flex;
+    gap:6px;
+    align-items:center;
+    flex:0 0 auto;
+  }
+  .templateBtns .pill{
+    height:34px;
+    min-width:0;
+    padding:0 10px;
+    font-size:11px;
+    white-space:nowrap;
+  }
+
+  /* ✅ ルーム画面のボタンを小さくして見切れ防止 */
+  .roomBtns .pill{
+    height:34px;
+    min-width:0;
+    padding:0 8px;
+    font-size:11px;
+    border-radius:14px;
+    font-weight:900;
+    white-space:nowrap;
+  }
+
+
+  /* ✅ ルーム共通設定（コピー） */
+  .roomCfgRow{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+  }
+  .roomCfgToggle{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    font-weight:900;
+    font-size:12px;
+    opacity:.92;
+  }
+  .roomCfgToggle input{ transform:scale(1.05); }
+  .roomCfgMin{
+    display:flex;
+    gap:8px;
+    align-items:center;
+  }
+  .roomCfgMin input{
+    width:110px;
+    height:34px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(0,0,0,.18);
+    color:#fff;
+    padding:0 10px;
+    font-weight:950;
+    font-size:12px;
+  }
+
+
+  /* ✅ 「入口パスワード」の保存ボタンも小さく（app.js側のinlineを上書き） */
+  #roomBody #saveEntry{
+    height:38px !important;
+    padding:0 10px !important;
+    font-size:12px !important;
+    border-radius:14px !important;
+  }
+  /* ✅ 後勝ちで上書きしていた大きいボタン定義を、最終的に"小さめ"へ統一 */
+  .roomBtns .pill{
+    height:34px;
+    min-width:0;
+    padding:0 8px;
+    font-size:11px;
+    border-radius:14px;
+    font-weight:900;
+    white-space:nowrap;
+  }
+
+  /* ✅ 名前入力欄の高さを「受け取り完了」ボタンと同じに */
+  .roomUserInput{
+    width:100%;
+    height:34px !important;
+    line-height:34px;
+    border-radius:14px !important;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(0,0,0,.18);
+    color:#fff;
+    padding:0 12px;
+    font-weight:900;
+  }
+  .roomActions{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex:0 0 auto;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+    max-width:52%;
+  }
+  .roomAct{
+    height:40px;
+    padding:0 10px;
+    border-radius:16px;
+    font-size:14px;
+    font-weight:900;
+    white-space:nowrap;
+  }
+  .roomActDone{
+    padding:0 12px;
+  }
+  .mName{
+    flex:1;
+    min-width:0;
+    font-weight:900;
+    font-size:16px;
+    line-height:1.2;
+    white-space:normal;
+    overflow:visible;
+    text-overflow:clip;
+    word-break:break-word;
+  }
+  .sBtn{
+    width:44px;height:38px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    font-weight:950;
+  }
+  .sBtn.danger{
+    background:rgba(185,74,85,.22);
+    border-color:rgba(185,74,85,.35);
+  }
+
+  /* Prices */
+  .priceGrid{
+    display:grid;
+    grid-template-columns:1fr 140px;
+    gap:10px;
+  }
+  .pKey{
+    padding:12px 10px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(0,0,0,.16);
+    font-weight:900;
+  }
+  .pVal input{
+    width:100%;
+    padding:12px 10px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.18);
+    color:#fff;
+    outline:none;
+    text-align:right;
+    font-weight:950;
+  }
+
+  /* ✅ Edit/Add */
+  .edit{
+    width:min(560px, 100%);
+    max-height:min(86vh, 900px);
+    background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:22px;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  .editHead{
+    padding:14px 14px 8px;
+  }
+  .editTitle{
+    font-weight:950;
+    font-size:18px;
+  }
+  .editBody{
+    padding:14px;
+    overflow:auto;
+  }
+  .editForm{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .editLabel{
+    font-weight:900;
+    color:rgba(255,255,255,.78);
+    margin:2px 2px 0;
+  }
+  .editInput, .editSelect{
+    width:100%;
+    height:46px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(0,0,0,.18);
+    color:#fff;
+    outline:none;
+    padding:0 12px;
+    font-weight:900;
+  }
+  .editSelect{
+    padding-right:34px;
+    background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
+                     linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+    background-size: 6px 6px, 6px 6px;
+    background-repeat:no-repeat;
+  }
+
+  .editTextarea{
+    width:100%;
+    min-height:92px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(0,0,0,.18);
+    color:#fff;
+    outline:none;
+    padding:10px 12px;
+    font-weight:900;
+    resize:vertical;
+  }
+
+  .memo{
+    margin-top:10px;
+    padding:10px 12px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(0,0,0,.14);
+    color:rgba(255,255,255,.86);
+    font-weight:900;
+    font-size:12px;
+    line-height:1.35;
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
+
+  .editBtns{
+    display:flex;
+    gap:10px;
+    justify-content:flex-end;
+    margin-top:4px;
+  }
+
+  /* Confirm */
+  .confirm{
+    width:min(520px, 96vw);
+    border-radius:22px;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,.14);
+    background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+    padding:14px;
+  }
+  .confirmTitle{font-weight:950;font-size:18px;margin-bottom:6px}
+  .confirmText{color:rgba(255,255,255,.85);font-weight:800;margin-bottom:10px;white-space:pre-line;line-height:1.35}
+  .confirmBtns{display:flex;gap:10px;justify-content:flex-end}
+
+  /* ================= Image Manager ================= */
+
+  .imgRow{
+    display:grid;
+    grid-template-columns:140px minmax(0,1fr);
+    gap:10px 12px;
+    align-items:center;
+    padding:12px;
+    border-radius:18px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.18);
+    margin-bottom:10px;
+  }
+  .thumb{
+    width:140px;
+    aspect-ratio:2 / 1;
+    border-radius:14px;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.06);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:rgba(255,255,255,.45);
+    font-weight:900;
+  }
+  .thumb img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .imgMid{
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .imgName{
+    min-width:0;
+    font-weight:950;
+    font-size:16px;
+    line-height:1.2;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .imgBtns{
+    display:flex;
+    gap:10px;
+    align-items:center;
+  }
+
+  /* ✅ 画像タブ：上部ボタン行 */
+  .imgTopBar{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:flex-end;
+    margin-bottom:12px;
+  }
+  /* ✅ 画像出力ボタンの幅 */
+  #imgExport{ min-width:120px; }
+
+  .pill{
+    height:40px;
+    padding:0 14px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.10);
+    color:#fff;
+    font-weight:950;
+    white-space:nowrap;
+  }
+  .pill.danger{
+    border-color:rgba(185,74,85,.35);
+    background:rgba(185,74,85,.22);
+  }
+
+  /* Image viewer */
+  .imgViewer{
+    width:min(960px, 96vw);
+    max-height:min(86vh, 900px);
+    border-radius:22px;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(0,0,0,.55);
+    display:flex;
+    flex-direction:column;
+  }
+  .imgClose{align-self:flex-end;margin:12px}
+  #imgViewerImg{
+    width:100%;
+    height:auto;
+    display:block;
+    padding:12px;
+    border-radius:18px;
+  }
+
+  /* ✅ モーダル/オーバーレイ内でスクロールを閉じ込める（背面へ抜けない） */
+  #modalOverlay, #roomOverlay, #editOverlay, #imgOverlay {
+    overscroll-behavior: contain;
+    touch-action: none; /* 背面へのスクロール伝播を抑える */
+  }
+
+  #modalBody, #roomBody, #editBody {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
+  /* ===== v2 tweaks: dup + price lines + soft sex colors + special panel clipping fix ===== */
+  :root{
+    --maleSoft: rgba(120, 200, 255, .85);
+    --femaleSoft: rgba(255, 150, 210, .85);
+  }
+  .stepper.male{border-color: var(--maleSoft); box-shadow: 0 0 0 2px rgba(120,200,255,.18);}
+  .stepper.female{border-color: var(--femaleSoft); box-shadow: 0 0 0 2px rgba(255,150,210,.18);}
+  .stepper.male .val{color: var(--maleSoft);}
+  .stepper.female .val{color: var(--femaleSoft);}
+
+  .right .typeRow,
+  .right .subActionRow{
+    display:grid;
+    grid-template-columns:minmax(0, 54px) minmax(0, 1fr);
+    gap:8px;
+    align-items:stretch;
+    width:100%;
+  }
+  .right .typeRow{ margin-top:-4px; }
+  .dupMini,
+  .checkMini,
+  .typePlaceholder,
+  .unitSolo{
+    height:40px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.08);
+  }
+  .dupMini,
+  .checkMini{
+    min-width:54px;
+    padding:0 8px;
+    color:#fff;
+    font-size:12px;
+    font-weight:900;
+    line-height:1;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    white-space:nowrap;
+  }
+  .checkMini.isDisabled,
+  .checkMini:disabled{
+    opacity:.45;
+  }
+  .type{
+    width:100%;
+    min-width: 100px; /* 「受精卵(指定)」が見切れない現実的な下限（少しだけ縮小） */
+    height:40px;
+    font-size:11px;
+    padding:0 9px;
+  }
+  .typePlaceholder{
+    opacity:0;
+    pointer-events:none;
+  }
+
+  .unit{
+    white-space: normal;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .unitSolo{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    padding:0 10px;
+  }
+  .unitLine,
+  .dispLine{
+    font-size: 10px;
+    line-height: 1.2;
+    color: rgba(255,255,255,.62);
+    font-weight: 700;
+  }
+  .dispLine{
+    min-height:12px;
+    text-align:right;
+    white-space:nowrap;
+  }
+  .sex-m{color: var(--maleSoft);}
+  .sex-f{color: var(--femaleSoft);}
+  .maleTxt{color: var(--maleSoft); font-weight:800;}
+  .femaleTxt{color: var(--femaleSoft); font-weight:800;}
+  .maleTxt{color: var(--maleSoft);}
+  .femaleTxt{color: var(--femaleSoft);}
+
+  /* special numeric panel: prevent bottom text clipping */
+  .gachaWrap{padding-bottom: 12px;}
+  .gInfo{padding-bottom: 14px;}
+
+  /* ===== Image Export (grid collage) ===== */
+  .exportGalleryPanel{ width:min(720px, 100%); max-height:min(86vh, 900px); overflow:hidden; border-radius:18px; border:1px solid rgba(255,255,255,.14); background:rgba(20,20,20,.78); backdrop-filter: blur(14px); }
+  .exportGalleryHead{ display:flex; align-items:center; justify-content:space-between; padding:14px 14px 10px; }
+  .exportGalleryTitle{ font-weight:950; font-size:18px; }
+  .exportGalleryBody{ padding:12px 14px 14px; overflow:auto; max-height:calc(86vh - 70px); }
+  .exportGalleryHint{ font-size:12px; color:rgba(255,255,255,.70); margin-bottom:10px; }
+
+  .exportGridCtrl{ display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.05); margin-bottom:12px; }
+  .exportGridInputs{ display:flex; align-items:center; gap:10px; }
+  .exportGridLabel{ font-weight:900; color:rgba(255,255,255,.75); }
+  .exportGridInput{ width:70px; height:40px; border-radius:14px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.08); color:#fff; text-align:center; font-weight:950; }
+  .exportGridExample{ font-size:12px; color:rgba(255,255,255,.60); }
+
+  .exportGridImgs{ display:flex; flex-direction:column; gap:14px; }
+  .exportGridImgWrap{ display:flex; flex-direction:column; gap:8px; }
+  .exportGridImgCap{ font-size:12px; font-weight:950; color:rgba(255,255,255,.75); }
+  .exportGridImg{ width:100%; height:auto; border-radius:16px; border:1px solid rgba(255,255,255,.12); background:#111; }
+
+
+  /* ===== 画像出力：横スクロール（スナップ） ===== */
+  #imgOverlay{ touch-action: pan-y; } /* touch-action:none を上書き */
+  #imgOverlay.modalOverlay{ background: rgba(0,0,0,.78); } /* 透過しすぎ対策 */
+
+  .exportPages{
+    display:flex;
+    gap:16px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    padding:10px 4px 14px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+  }
+  .exportPage{
+    flex:0 0 92%;
+    scroll-snap-align: start;
+    background: rgba(0,0,0,.55);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 16px;
+    padding: 10px;
+  }
+  .exportPageNo{
+    font-weight: 950;
+    margin-bottom: 8px;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  .exportPageImg{
+    width:100%;
+    height:auto;
+    display:block;
+    border-radius: 12px;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+
+  /* 画像出力モーダル内は文字選択を抑える（入力欄は除外） */
+  #imgOverlay *{
+    -webkit-user-select:none;
+    user-select:none;
+  }
+  #imgOverlay input, #imgOverlay textarea{
+    -webkit-user-select:text;
+    user-select:text;
+  }
+
+
+  /* ===== 画像出力：縦横入力の下に生成ボタン（中央） ===== */
+  .exportGridCtrl{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:12px;
+  }
+  .exportGridInputs{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+  }
+  .exportGridBtn{
+    align-self:center;
+    margin-left:0;
+  }
+
+
+  /* POS tables */
+  .tabularNums{font-variant-numeric:tabular-nums;}
+  .posT{table-layout:fixed;width:100%;border-collapse:collapse;}
+  .posT th,.posT td{padding:7px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:900;font-size:12px;}
+  .posT thead tr{background:rgba(255,255,255,.06)}
+  .posT thead th{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.05;font-size:11px;font-weight:950;padding:8px 6px;height:44px;display:flex;align-items:center;justify-content:center;text-align:center;}
+  .posT th{text-align:left;}
+  .posT .c{text-align:center;}
+  .posT .l{text-align:left;}
+  .posT .r{text-align:right;}
+  .posBox{overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;}
+  .posGroupRow td{background:rgba(255,255,255,.04);font-weight:950;}
+  .posAmtBtn{cursor:pointer;}
+
+
+  /* ===== POS: report history (output-like) ===== */
+  .posHistory{ display:flex; flex-direction:column; gap:10px; font-size:12px; }
+  .posHistGroup{ border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.04); border-radius:14px; overflow:hidden; }
+  .posHistHead{ display:flex; align-items:center; gap:10px; padding:10px 10px 8px; border-bottom:1px solid rgba(255,255,255,.08); }
+  .posHistHeadL{ font-weight:950; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .posHistHeadR{ margin-left:auto; font-weight:950; color:rgba(120,255,179,.95); white-space:nowrap; }
+  .posHistLine{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-top:1px solid rgba(255,255,255,.06); }
+  .posHistL{ flex:1; min-width:0; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:850; }
+  .posHistAmt{
+    flex:0 0 auto;
+    min-width:92px;
+    text-align:right;
+    white-space:nowrap;
+    font-weight:950;
+    border:none;
+    background:transparent;
+    color:rgba(255,255,255,.92);
+    padding:2px 0;
+  }
+  .posHistAmt:active{ opacity:.7; }
+  .posColTotal{ min-width:9ch; }
+  .posT th.posColStock,.posT td.posColStock{padding-right:4px;}
+  .posT th.posColTotal,.posT td.posColTotal{padding-left:6px;padding-right:6px;}
+  .posT th.posColNum,.posT td.posColNum{padding-left:6px;padding-right:6px;}
+  /* POS: entry preview */
+  .posEntryPreview{ display:flex; flex-direction:column; }
+  .posEntryLine{ border-top:none; }
+  .posEntryAmt{
+    flex:0 0 auto;
+    min-width:96px;
+    text-align:right;
+    white-space:nowrap;
+    font-weight:950;
+    color:rgba(255,255,255,.92);
+  }
+
+  /* POS: output-like two-line label */
+  .posHistL{ white-space:normal; }
+  .posHistTitle{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .posHistSub{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:.82; font-weight:850; font-size:11px; margin-top:1px; }
+
+  /* POS: dino table column sizing */
+  .posColNum{ width:3.2ch; }
+  .posColStock{ width:4.6ch; }
+  .posT .posColTotal{ width:9.5ch; }
+  .posT .posColName{ width:42%; }
+  .posSortTh{ cursor:pointer; user-select:none; }
+  .posSortTh:active{ opacity:.75; }
+
+  /* POS: stock colors */
+  .posStockBtn{
+    pointer-events:auto;
+    border:none;
+    background:transparent;
+    color:rgba(255,255,255,.92);
+    font-weight:950;
+    padding:4px 0;
+    cursor:pointer;
+    width:100%;
+    display:inline-flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap:2px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .posStockDash{ opacity:.7; }
+  .posStockM{ color:rgba(160,210,255,.92); }
+  .posStockF{ color:rgba(255,170,210,.92); }
+  .posStockSep{ opacity:.65; padding:0 1px; }
+
+
+  /* POS tables: avoid wrapping */
+  .posT th, .posT td{ white-space:nowrap; }
+
+  .posT .posColNum, .posT .posColStock{ padding-left:6px; padding-right:6px; }
+
+
+  /* ===== POS stock inputs ===== */
+  .posStockWrap{
+    display:flex;
+    flex-direction:row;
+    gap:8px;
+    align-items:center;
+    justify-content:center;
+  }
+  .posStockIn{
+    width:46px;
+    height:30px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.06);
+    color:#fff;
+    font-weight:950;
+    text-align:center;
+    font-size:12px;
+    line-height:1;
+    padding:0 6px;
+  }
+  .posDash{ opacity:.75; }
+
+
+  /* ===== POS Report UI (帳簿 売上) ===== */
+  .posTabViewport{
+    flex:1 1 auto;
+    min-height:0; /* ✅ flex内スクロールのため */
+  }
+  .posTabPanel{
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  .posPanelTitle{
+    font-weight:950;
+    margin:14px 0 6px;
+  }
+  .posScrollArea{
+    flex:1 1 auto;
+    min-height:0;
+    overflow:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+  }
+  .posHint{
+    margin-top:10px;
+    opacity:.65;
+    font-size:11px;
+    line-height:1.35;
+  }
+  .posTopRow{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:10px;
+    flex-wrap:wrap; /* ✅ 画面が狭い時に合計が見切れない */
+  }
+  .posPeriod{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex:1 1 auto;
+    min-width:0;
+  }
+  .posSel{
+    height:36px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    font-weight:900;
+    padding:0 34px 0 10px;
+    min-width:86px;
+    position:relative;
+    background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
+                     linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+    background-size: 6px 6px, 6px 6px;
+    background-repeat:no-repeat;
+    appearance:none;
+    -webkit-appearance:none;
+  }
+  .posSel:focus{ outline:none; box-shadow:0 0 0 2px rgba(120,255,179,.18); }
+
+  .posTotal{
+    font-weight:950;
+    color:var(--ok);
+    white-space:nowrap;
+    font-size:clamp(12px, 3.6vw, 14px);
+    flex:0 0 auto;
+    text-align:right;
+  }
+
+  .posTabsWrap{
+    display:flex;
+    gap:10px;
+    margin:10px 0 12px;
+  }
+  .posTabBtn{
+    flex:1;
+    height:40px;
+    border-radius:18px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.06);
+    color:rgba(255,255,255,.78);
+    font-weight:950;
+  }
+  .posTabBtn.isActive{
+    background:rgba(255,255,255,.12);
+    color:#fff;
+    box-shadow:0 10px 24px rgba(0,0,0,.22);
+  }
+
+  .posTabsWrap3{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+  }
+
+  .posTabsWrap3 .posTabBtn{
+    min-width:0;
+    padding:0 6px;
+    font-size:13px;
+  }
+
+  .posTabPanel.isHidden{ display:none; }
+
+  .posBox{
+    border-radius:18px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.18);
+    overflow:hidden;
+  }
+
+  .posT{
+    width:100%;
+    border-collapse:separate;
+    border-spacing:0;
+  }
+  .posT thead th{
+    background:rgba(255,255,255,.06);
+    border-bottom:1px solid rgba(255,255,255,.10);
+    /* ✅ 種別売上：列名(ヘッダ)は常時表示（tbodyのみスクロール） */
+    position:sticky;
+    top:0;
+    z-index:5;
+  }
+  .posT tbody td{
+    border-bottom:1px solid rgba(255,255,255,.06);
+    padding:10px 10px;
+    vertical-align:middle;
+  }
+  .posT tbody tr:last-child td{ border-bottom:0; }
+
+  .posColName{ padding-left:12px; }
+  .posColTotal{ padding-right:12px; }
+
+  .posHistBox{
+    border-radius:18px;
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(0,0,0,.14);
+    overflow:hidden;
+    margin-bottom:10px;
+  }
+  .posHistHead{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    padding:10px 12px;
+    background:rgba(255,255,255,.06);
+    border-bottom:1px solid rgba(255,255,255,.10);
+    font-weight:950;
+  }
+  .posHistBody{ padding:8px 10px; display:flex; flex-direction:column; gap:8px; }
+  .posHistLine{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+  .posHistTitle{ font-weight:950; }
+  .posHistSub{ opacity:.75; font-weight:800; font-size:12px; margin-top:2px; }
+  .posAmtBtn{
+    border:0;
+    background:transparent;
+    color:#fff;
+    font-weight:950;
+    padding:6px 8px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(255,255,255,.06);
+    white-space:nowrap;
+  }
+  .posAmtBtn:active{ transform:translateY(1px); }
+
+  .posStockIn{
+    appearance:none;
+    -webkit-appearance:none;
+  }
+  .posStockIn::-webkit-outer-spin-button,
+  .posStockIn::-webkit-inner-spin-button{
+    -webkit-appearance:none;
+    margin:0;
+  }
+
+
+  .posStockIn::placeholder{color:rgba(255,255,255,.55);font-weight:900;}
+
+  /* ===== POS report fixes (2026-03) ===== */
+  .posStockBtns{
+    width:100%;
+    display:inline-flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap:2px;
+  }
+  .posStockBtns .posStockBtn{
+    width:auto;
+    padding:4px 0;
+  }
+  .posStockBtn{
+    -webkit-appearance:none;
+    appearance:none;
+  }
+  .posHistAmt{
+    -webkit-appearance:none;
+    appearance:none;
+    border-radius:0;
+  }
+  .posOrderDel{
+    -webkit-appearance:none;
+    appearance:none;
+    border:none;
+    background:transparent;
+    padding:0;
+    cursor:pointer;
+    color:rgba(120,255,179,.95);
+    font-weight:950;
+  }
+  .posOrderDel:active{ opacity:.7; }
+
+  /* 種別列を広めに */
+  .posT th.posColName, .posT td.posColName{
+    min-width:12ch;
+  }
+  .posT th.posColEgg, .posT td.posColEgg{ min-width:4ch; }
+  .posT th.posColAdult, .posT td.posColAdult{ min-width:4ch; }
+  .posT th.posColStock, .posT td.posColStock{ min-width:7ch; }
+  .posT th.posColTotal, .posT td.posColTotal{ min-width:8ch; }
+
+  /* ヘッダの背景が文字高さに追随 */
+  .posT thead th{
+    background:rgba(255,255,255,.06);
+  }
+
+
+  /* ===== POS 種別売上: ヘッダ縦表示と列幅（fix） ===== */
+  .posT thead th{writing-mode:horizontal-tb;text-orientation:mixed;}
+  .posT thead th.l{justify-content:flex-start;text-align:left;}
+  .posT thead th.c{justify-content:center;text-align:center;}
+  .posT thead th.r{justify-content:flex-end;text-align:right;}
+  /* 列幅：種別は約1/3、卵/成体/在庫は2文字（2桁）想定 */
+  .posT th.posColName, .posT td.posColName{width:34%;}
+  .posT th.posColEgg, .posT td.posColEgg{width:3.2ch;min-width:3.2ch;}
+  .posT th.posColAdult, .posT td.posColAdult{width:3.2ch;min-width:3.2ch;}
+  .posT th.posColStock, .posT td.posColStock{width:3.2ch;min-width:3.2ch;}
+  .posT th.posColTotal, .posT td.posColTotal{min-width:9ch;}
+  /* 在庫（♂/♀）は中央揃えでガタつきを抑える */
+  .posStockBtns{justify-content:center;}
+  .posStockBtn{justify-content:center;}
+  .posStockBtns .posStockBtn{min-width:2.2ch;}
+
+
+  /* ===== POS 種別売上: 最終fix（見切れ/縦折返し防止 & 種別列を広めに） ===== */
+  .posT{ table-layout:auto; }
+
+  /* th が flex になると幅計算が崩れて1文字ずつ改行しやすいので、セル表示に固定 */
+  .posT thead th{
+    display:table-cell !important;
+    white-space:nowrap !important;
+    word-break:keep-all !important;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    padding:10px 8px;
+    vertical-align:middle;
+  }
+
+  /* 列幅：数値列は固定、種別(名称)は残りを優先して確保 */
+  .posT th.posColEgg,  .posT td.posColEgg { width:3.2ch !important; min-width:3.2ch !important; }
+  .posT th.posColAdult,.posT td.posColAdult{ width:3.2ch !important; min-width:3.2ch !important; }
+
+  /* 在庫は「♂ / ♀」表示で最低限の幅が必要 */
+  .posT th.posColStock,.posT td.posColStock{ width:6.2ch !important; min-width:6.2ch !important; }
+
+  /* 合計は金額が入るので少し広め */
+  .posT th.posColTotal,.posT td.posColTotal{
+    width:auto !important;
+    min-width:9ch !important;
+  }
+
+  /* 種別(名称)列：見切れないように最優先で広く */
+  .posT th.posColName,.posT td.posColName{
+    width:auto !important;
+    min-width:18ch !important;
+  }
+
+  /* ヘッダ背景(グレー)は行全体にかかるように */
+  .posT thead tr{ background:rgba(255,255,255,.06); }
+  .posT thead th{ background:transparent; }
+
+
+
+  /* ===== POS 売上テーブル安定レイアウト ===== */
+  .salesTable{
+    width:100%;
+    table-layout:fixed;
+    border-collapse:collapse;
+  }
+  .salesTable th,.salesTable td{
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    padding:6px 8px;
+  }
+  .salesTable th:first-child,.salesTable td:first-child{width:48%;text-align:left;}
+  .salesTable th:nth-child(2),.salesTable td:nth-child(2){width:42px;text-align:center;}
+  .salesTable th:nth-child(3),.salesTable td:nth-child(3){width:42px;text-align:center;}
+  .salesTable th:nth-child(4),.salesTable td:nth-child(4){width:80px;text-align:center;}
+  .salesTable th:last-child,.salesTable td:last-child{width:90px;text-align:right;} 
+
+
+  /* ===== POS 種別売上: iPhone幅で「卵/成体/在庫/合計」見切れ防止 最終上書き（2026-03-05） =====
+     目的：列ヘッダ「卵/成体」と合計金額が省略表示(…や..)にならないよう、幅配分を固定する
+  */
+  .posT{
+    width:100% !important;
+    table-layout:fixed !important;
+  }
+  /* th が flex になると幅計算が崩れるので table-cell に固定 */
+  .posT thead th{
+    display:table-cell !important;
+    vertical-align:middle !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    padding:8px 6px !important;
+  }
+  .posT th, .posT td{
+    padding:7px 6px !important;
+  }
+  /* 幅配分（合計を在庫の右隣で必ず表示） */
+  .posT th.posColName,  .posT td.posColName { width:38% !important; }
+  .posT th.posColEgg,   .posT td.posColEgg  { width:11% !important; min-width:4ch !important; }
+  .posT th.posColAdult, .posT td.posColAdult{ width:11% !important; min-width:4ch !important; }
+  .posT th.posColStock, .posT td.posColStock{ width:14% !important; min-width:7ch !important; }
+  .posT th.posColTotal, .posT td.posColTotal{ width:26% !important; min-width:9ch !important; }
+
+  /* 種別(名称)は省略表示でOK。数値は必ず見えるように */
+  .posT td.posColName{ white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
+  .posT td.posColEgg,.posT td.posColAdult,.posT td.posColStock,.posT td.posColTotal{ white-space:nowrap !important; }
+
+  /* ===== POS 種別売上: 最終上書き（割合 38/11/11/14/26） =====
+     目的：卵/成体/在庫/合計が iPhone でも「..」にならないようにする
+  */
+  .posT{
+    width:100% !important;
+    table-layout:fixed !important;
+  }
+
+  /* ヘッダは省略させない（卵/成体 が .. になるのを止める） */
+  .posT thead th{
+    display:table-cell !important;
+    white-space:nowrap !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+    padding:8px 6px !important;
+    vertical-align:middle !important;
+  }
+
+  /* セル側：数値は絶対に省略しない（0.. を止める） */
+  .posT td.posColEgg,
+  .posT td.posColAdult,
+  .posT td.posColStock,
+  .posT td.posColTotal{
+    overflow:visible !important;
+    text-overflow:clip !important;
+  }
+
+  /* 列割合（種別/卵/成体/在庫/合計 = 38/11/11/14/26） */
+  .posT th.posColName,  .posT td.posColName  { width:38% !important; }
+  .posT th.posColEgg,   .posT td.posColEgg   { width:11% !important; }
+  .posT th.posColAdult, .posT td.posColAdult { width:11% !important; }
+  .posT th.posColStock, .posT td.posColStock { width:14% !important; }
+  .posT th.posColTotal, .posT td.posColTotal { width:26% !important; }
+
+  /* 種別(名称)は省略OK */
+  .posT td.posColName{
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+
+  /* 余白を詰めて横幅を稼ぐ */
+  .posT th, .posT td{ padding-left:6px !important; padding-right:6px !important; }
+
+  /* ✅ Confirm overlay always top (削除確認など) */
+  #confirmOverlay{ z-index:21000 !important; }
+
+
+
+  /* ✅ JS生成オーバーレイも常に最前面（背面回り込み防止） */
+  #posMenuOverlay,
+  #posEntryOverlay,
+  #posReportOverlay,
+  #roomCopyPreviewOverlay{
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 20000 !important;
+  }
+
+
+  /* ✅ 既存HTML側のオーバーレイも最前面 */
+  #modalOverlay, #roomOverlay, #editOverlay, #imgOverlay{
+    z-index: 20000 !important;
+  }
+
+  /* ===== POS scroll fix (2026-03-06) =====
+     種別売上: 列名固定で中身のみスクロール
+     取引履歴: タイトルより下のみスクロール
+  */
+  #posReportBody{
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    height:min(72vh, 100%);
+  }
+
+  .posTabViewport{
+    flex:1 1 auto;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  .posTabPanel{
+    flex:1 1 auto;
+    min-height:0;
+    overflow:hidden;
+  }
+
+  .posPanelTitle{
+    flex:0 0 auto;
+  }
+
+  .posTypeScroll,
+  .posHistScroll{
+    flex:1 1 auto;
+    min-height:0;
+    overflow:hidden;
+  }
+
+  .posTypeBox,
+  .posHistBoxWrap{
+    height:100%;
+    min-height:0;
+    overflow:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+  }
+
+  /* 種別売上はテーブルヘッダ固定 */
+  .posTypeBox .posT{
+    border-collapse:separate;
+    border-spacing:0;
+  }
+  .posTypeBox .posT thead th{
+    position:sticky;
+    top:0;
+    z-index:8;
+    background:#1b2230 !important;
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+    box-shadow:0 1px 0 rgba(255,255,255,.08);
+  }
+
+  /* 取引履歴はタイトルの下だけをスクロール */
+  .posHistScroll .posBox{
+    margin-bottom:0;
+  }
+
+  .posHistory{
+    min-height:0;
+  }
+
+
+  /* ===== POS scroll hard-fix (2026-03-06 v2) ===== */
+  #posReportOverlay > div{
+    height:min(84vh, calc(100dvh - 32px)) !important;
+    min-height:0 !important;
+  }
+
+  #posReportBody{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    height:auto !important;
+    overflow:hidden !important;
+  }
+
+  .posTabViewport{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+
+  .posTabPanel{
+    display:flex !important;
+    flex-direction:column !important;
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+
+  /* ✅ タブ非表示時は hard-fix の display:flex を必ず打ち消す */
+  .posTabPanel.isHidden{
+    display:none !important;
+  }
+
+  .posScrollArea,
+  .posTypeScroll,
+  .posHistScroll{
+    display:flex !important;
+    flex-direction:column !important;
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+
+  .posTypeBox,
+  .posHistBoxWrap,
+  .posHistory{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+  }
+
+  .posTypeBox,
+  .posHistBoxWrap{
+    overflow:auto !important;
+    -webkit-overflow-scrolling:touch !important;
+    overscroll-behavior:contain !important;
+    touch-action:pan-y !important;
+  }
+
+  .posTypeBox .posT{
+    margin-bottom:0 !important;
+  }
+
+  .posHint{
+    flex:0 0 auto !important;
+  }
+
+  /* ===== Manage images fixed export bar ===== */
+  .manageImagesWrap{
+    display:flex;
+    flex:1 1 auto;
+    flex-direction:column;
+    height:100%;
+    min-height:0;
+    gap:12px;
+  }
+  .manageImagesTopBar{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    padding:0;
+    margin:0;
+    background:transparent;
+    position:relative;
+    z-index:1;
+  }
+  .manageImagesExportBtn{
+    flex:0 0 calc((100% - 20px) / 3);
+    width:calc((100% - 20px) / 3);
+    max-width:calc((100% - 20px) / 3);
+    min-width:0;
+    height:40px;
+  }
+  .manageImagesList{
+    flex:1 1 auto;
+    min-height:0;
+    overflow:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+  }
+  #modalBody{
+    min-height:0;
+  }
+  /* ===== POS 日別売上タブ ===== */
+  .posTabsWrap3{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+  }
+
+  .posDailyScroll{
+    display:flex !important;
+    flex-direction:column !important;
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+
+  .posDailyBox{
+    flex:1 1 auto;
+    min-height:0;
+    overflow:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+  }
+
+  .posDailyT{
+    width:100%;
+    table-layout:fixed;
+    border-collapse:collapse;
+  }
+
+  .posDailyT thead th{
+    position:sticky;
+    top:0;
+    z-index:6;
+    background:#1e222a !important;
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+    white-space:nowrap;
+
+  }
+
+  .posDailyT th,
+  .posDailyT td{
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .posDailyColRank{ width:14%; }
+  .posDailyColDate{ width:38%; }
+  .posDailyColCount{ width:16%; }
+  .posDailyColTotal{ width:32%; }
+
+  .posDailyT th.posDailyColTotal,
+  .posDailyT td.posDailyColTotal{
+    text-align:right;
+  }
+
+
+  /* 日別売上も種別売上と同じ文字感に寄せる */
+  .posDailyT th,
+  .posDailyT td{
+    font-weight:900;
+    font-size:12px;
+  }
+
+  .posDailyT th.posDailyColRank,  .posDailyT td.posDailyColRank  { width:4.2ch !important; min-width:4.2ch !important; }
+  .posDailyT th.posDailyColDate,  .posDailyT td.posDailyColDate  { width:40% !important; }
+  .posDailyT th.posDailyColCount, .posDailyT td.posDailyColCount { width:4.5ch !important; min-width:4.5ch !important; }
+  .posDailyT th.posDailyColTotal, .posDailyT td.posDailyColTotal { width:auto !important; min-width:9ch !important; }
+
+  .posDailyScroll{
+    flex:1 1 auto;
+    min-height:0;
+    overflow:hidden;
+  }
+
+  .posDailyBox{
+    height:100%;
+    min-height:0;
+  }
+
+
+  /* 先頭行のにじみ/ぼやけ防止 */
+  .posTypeBox,
+  .posDailyBox{
+    isolation:isolate;
+  }
+  .posTypeBox .posT tbody tr:first-child td,
+  .posDailyBox .posDailyT tbody tr:first-child td{
+    background-clip:padding-box;
+  }
+
+
+  /* ===== POS sticky header safe override (2026-03-22) =====
+     グレーの被さり防止:
+     - blur を切る
+     - 疑似要素マスクを使わない
+     - 大きい box-shadow を使わない
+  */
+  .posTypeBox,
+  .posDailyBox{
+    position:relative;
+    isolation:auto !important;
+  }
+
+  .posTypeBox .posT,
+  .posDailyBox .posDailyT{
+    border-collapse:separate !important;
+    border-spacing:0 !important;
+  }
+
+  .posTypeBox .posT thead,
+  .posDailyBox .posDailyT thead{
+    position:static !important;
+  }
+
+  .posTypeBox .posT thead::before,
+  .posDailyBox .posDailyT thead::before,
+  .posTypeBox .posT thead::after,
+  .posDailyBox .posDailyT thead::after{
+    content:none !important;
+    display:none !important;
+  }
+
+  .posTypeBox .posT thead th,
+  .posDailyBox .posDailyT thead th{
+    position:sticky !important;
+    top:0 !important;
+    z-index:7 !important;
+    background:#1e222a !important;
+    background-image:none !important;
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+    box-shadow:inset 0 -1px 0 rgba(255,255,255,.08) !important;
+    opacity:1 !important;
+  }
+
+  .posTypeBox .posT tbody,
+  .posDailyBox .posDailyT tbody,
+  .posTypeBox .posT tbody tr,
+  .posDailyBox .posDailyT tbody tr,
+  .posTypeBox .posT tbody td,
+  .posDailyBox .posDailyT tbody td{
+    position:relative;
+    z-index:1 !important;
+    background-clip:padding-box;
+  }
+
+  /* Safari で先頭行がヘッダの下ににじむのを抑える */
+  .posTypeBox .posT tbody tr:first-child td,
+  .posDailyBox .posDailyT tbody tr:first-child td{
+    border-top:0 !important;
+  }
+
+  /* 日別売上の文字感を種別売上に合わせる */
+  .posDailyT th,
+  .posDailyT td{
+    font-size:12px;
+    font-weight:900;
+  }
+
+  /* 合計は右寄せ維持 */
+  .posDailyT th.posDailyColTotal,
+  .posDailyT td.posDailyColTotal{
+    text-align:right;
+  }
