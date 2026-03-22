@@ -1968,40 +1968,93 @@ button{cursor:pointer}
 .posDailyColTotal{ width:42%; }
 
 
-/* ===== メイン画面：確認ボタン ===== */
-.typeRow{
-  display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-  gap:8px;
-  align-items:center;
-}
 
-.metaRow{
-  display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-  gap:8px;
-  align-items:center;
-}
 
-.checkMini{
-  height:40px;
+/* ===== メイン画面：確認ボタン / 画像 / 入力表示 ===== */
+.right .typeRow,
+.right .subActionRow{
+  display:grid;
+  grid-template-columns:minmax(0, 54px) minmax(0, 1fr);
+  gap:8px;
+  align-items:stretch;
   width:100%;
-  padding:0 12px;
+}
+.right .typeRow{ margin-top:-4px; }
+
+.dupMini,
+.checkMini,
+.typePlaceholder,
+.unitSolo{
+  height:40px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.10);
+  background:rgba(255,255,255,.08);
+}
+
+.dupMini,
+.checkMini{
+  min-width:54px;
+  width:54px;
+  padding:0 8px;
   color:#fff;
-  font-weight:950;
+  font-size:12px;
+  font-weight:900;
+  line-height:1;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
   white-space:nowrap;
 }
 
-.metaRow .unit{
-  min-width:0;
+.checkMini.isDisabled,
+.checkMini:disabled{
+  opacity:.45;
+}
+
+.type{
   width:100%;
+  min-width:100px;
+  height:40px;
+  font-size:11px;
+  padding:0 9px;
+}
+
+.typePlaceholder{
+  opacity:0;
+  pointer-events:none;
+}
+
+.unit{
+  white-space:normal;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  align-items:flex-end;
+  justify-content:flex-start;
+}
+
+.unitSolo{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  padding:0 10px;
+}
+
+.unitLine,
+.dispLine{
+  width:100%;
+  font-size:10px;
+  line-height:1.2;
+  color:rgba(255,255,255,.62);
+  font-weight:700;
   text-align:right;
-  align-self:center;
+}
+
+.dispLine{
+  min-height:12px;
+  white-space:nowrap;
 }
 
 .miniThumb{
-  display:none !important;
+  display:block !important;
 }
