@@ -3735,14 +3735,6 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
     return `${y}-${m}`;
   }
 
-  function dayKeyFromTs(ts) {
-    const d = new Date(Number(ts) || Date.now());
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const da = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${da}`;
-  }
-
   function posSave() {
     saveJSON(LS.POS_SALES, pos.sales || []);
     saveJSON(LS.POS_STOCK, pos.stock || {});
@@ -4474,22 +4466,6 @@ if (stockBtn) {
           try { (ov.__renderPosReport || (()=>{}))(); } catch {}
           return;
         }
-
-        // 日別売上：ヘッダタップで並び替え
-        const dailySortTh = e.target && e.target.closest ? e.target.closest('[data-pos-daily-sort]') : null;
-        if (dailySortTh) {
-          const key = String(dailySortTh.getAttribute('data-pos-daily-sort') || '');
-          if (!key) return;
-
-          const cur = (ov.__dailySort) ? ov.__dailySort : { key: 'totalAmt', dir: 'desc' };
-          let dir = cur.dir || 'desc';
-          if (cur.key === key) dir = (dir === 'asc') ? 'desc' : 'asc';
-          else dir = 'desc';
-
-          ov.__dailySort = { key, dir };
-          try { (ov.__renderPosReport || (()=>{}))(); } catch {}
-          return;
-        }
       });
 
       // ✅ 変更：期間モード / 期間キー / 在庫入力
@@ -4560,7 +4536,6 @@ if (stockBtn) {
       );
       if (!ov.__posTab) ov.__posTab = 'types';
       if (!ov.__typeSort) ov.__typeSort = { key: 'totalAmt', dir: 'desc' };
-      if (!ov.__dailySort) ov.__dailySort = { key: 'totalAmt', dir: 'desc' };
 
       // キーが存在しない場合は先頭へ
       if (ov.__periodMode === 'year') {
@@ -4677,36 +4652,6 @@ if (stockBtn) {
         `;
       }).join('');
 
-      const byDay = new Map();
-      for (const s of mSales) {
-        const ts = Number(s.ts) || 0;
-        const dayKey = dayKeyFromTs(ts);
-        if (!byDay.has(dayKey)) byDay.set(dayKey, { date: dayKey, totalAmt: 0, count: 0, latestTs: 0 });
-        const cur = byDay.get(dayKey);
-        cur.totalAmt += Number(s.amount || 0);
-        cur.count += 1;
-        cur.latestTs = Math.max(cur.latestTs, ts);
-      }
-
-      const dailySortCfg = ov.__dailySort || { key: 'totalAmt', dir: 'desc' };
-      const dailyList = Array.from(byDay.values()).sort((a, b) => {
-        const dir = (dailySortCfg.dir === 'asc') ? 1 : -1;
-        const k = String(dailySortCfg.key || 'totalAmt');
-        if (k === 'date') return dir * a.date.localeCompare(b.date, 'ja');
-        if (k === 'count') return dir * ((a.count - b.count) || b.date.localeCompare(a.date, 'ja'));
-        return dir * ((a.totalAmt - b.totalAmt) || b.date.localeCompare(a.date, 'ja'));
-      });
-
-      const dailyRows = dailyList.slice(0, 366).map((d) => {
-        return `
-          <tr>
-            <td class="l posDailyColDate tabularNums">${escapeHtml(d.date)}</td>
-            <td class="c posDailyColCount tabularNums">${escapeHtml(String(d.count || 0))}</td>
-            <td class="r posDailyColTotal tabularNums">${escapeHtml(yen(d.totalAmt || 0))}</td>
-          </tr>
-        `;
-      }).join('');
-
       // 取引履歴：注文ごと（orderId優先）
       // - orderId がある → orderId で必ずまとめる
       // - orderId がない古いデータ → 従来通り「同時刻近似（30秒窓）」でまとめる
@@ -4775,6 +4720,36 @@ const head = `
         return `<div class="posHistBox">${head}<div class="posHistBody">${rows}</div></div>`;
       }).join('');
 
+      const dayBuckets = new Map();
+      for (const g of groups) {
+        const ts = Number(g.ts) || 0;
+        const d = new Date(ts);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const dayKey = `${y}-${m}-${day}`;
+        if (!dayBuckets.has(dayKey)) dayBuckets.set(dayKey, { dayKey, count: 0, totalAmt: 0, latestTs: 0 });
+        const cur = dayBuckets.get(dayKey);
+        const gTotal = (g.list || []).reduce((a, x) => a + (Number(x.amount) || 0), 0);
+        cur.count += 1;
+        cur.totalAmt += gTotal;
+        cur.latestTs = Math.max(cur.latestTs, ts);
+      }
+
+      const dailyList = Array.from(dayBuckets.values()).sort((a, b) => {
+        if (b.totalAmt !== a.totalAmt) return b.totalAmt - a.totalAmt;
+        return b.latestTs - a.latestTs;
+      });
+
+      const dailyRows = dailyList.slice(0, 366).map((d, i) => `
+        <tr>
+          <td class="c posDailyColRank tabularNums">${escapeHtml(String(i + 1))}</td>
+          <td class="l posDailyColDate tabularNums">${escapeHtml(d.dayKey)}</td>
+          <td class="c posDailyColCount tabularNums">${escapeHtml(String(d.count))}</td>
+          <td class="r posDailyColTotal tabularNums">${escapeHtml(yen(d.totalAmt))}</td>
+        </tr>
+      `).join('');
+
       const monthOpts = monthsNow.map(m => `<option value="${escapeHtml(m)}"${String(m)===String(key)&&mode==='month'?' selected':''}>${escapeHtml(m)}</option>`).join('');
       const yearOpts = yearsNow.map(y => `<option value="${escapeHtml(y)}"${String(y)===String(key)&&mode==='year'?' selected':''}>${escapeHtml(y)}</option>`).join('');
 
@@ -4825,16 +4800,17 @@ const head = `
             <div class="posPanelTitle">日別売上</div>
             <div class="posScrollArea posDailyScroll">
               <div class="posBox posDailyBox">
-                <table class="posDailyT tabularNums">
+                <table class="posT posDailyT tabularNums">
                   <thead>
                     <tr>
-                      <th class="l posDailySortTh posDailyColDate" data-pos-daily-sort="date">日付</th>
-                      <th class="c posDailySortTh posDailyColCount" data-pos-daily-sort="count">件数</th>
-                      <th class="r posDailySortTh posDailyColTotal" data-pos-daily-sort="totalAmt">合計</th>
+                      <th class="c posDailyColRank">順位</th>
+                      <th class="l posDailyColDate">日付</th>
+                      <th class="c posDailyColCount">件数</th>
+                      <th class="r posDailyColTotal">合計</th>
                     </tr>
                   </thead>
                   <tbody>
-                    ${dailyRows || `<tr><td colspan="3" style="padding:10px;opacity:.8;">データなし</td></tr>`}
+                    ${dailyRows || `<tr><td colspan="4" style="padding:10px;opacity:.8;">データなし</td></tr>`}
                   </tbody>
                 </table>
               </div>
