@@ -1122,6 +1122,16 @@
     flex-direction:column;
     gap:4px;
   }
+  .unitHit{
+    appearance:none;
+    width:100%;
+    padding:0;
+    text-align:right;
+    cursor:default;
+  }
+  .unitHit.hasImage{
+    cursor:zoom-in;
+  }
   .unitSolo{
     display:flex;
     align-items:center;
