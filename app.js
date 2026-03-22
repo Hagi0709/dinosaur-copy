@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-03-22 21:58';
+const BUILD_VERSION = '2026-03-06 23:58';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -1541,15 +1541,12 @@ card.innerHTML = `
           <button class="dupMini" type="button" data-act="dup">複製</button>
           ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
         </div>
-        ${imgUrl
-          ? `<button class="unit unitHit hasImage" type="button" data-act="imgview" aria-label="画像を拡大表示">
-              <div class="unitLine">1体=${unitPrice}円</div>
-              <div class="dispLine js-price"></div>
-            </button>`
-          : `<div class="unit">
-              <div class="unitLine">1体=${unitPrice}円</div>
-              <div class="dispLine js-price"></div>
-            </div>`}
+        <div class="unit">
+              <button class="priceHitArea" type="button">
+                <div class="unitLine">1体=${unitPrice}円</div>
+                <div class="dispLine js-price"></div>
+              </button>
+            </div>
             
       </div>
     </div>
@@ -1598,6 +1595,7 @@ if (!nameWrap) {
 
 const nameEl = $('.name', card);
 if (nameEl) nameEl.textContent = displayName(d.name);
+bindPricePreview(card, imgUrl);
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -1753,10 +1751,10 @@ if (act === 'dup') {
   return;
 }
 
-        if (act === 'imgview') {
-          if (imgUrl) openImgViewer(imgUrl);
-          return;
-        }
+if (act === 'preview') {
+  if (imgUrl) openImgViewer(imgUrl);
+  return;
+}
 
         if (act === 'm-') return step('m', -1);
         if (act === 'm+') return step('m', +1);
@@ -1828,9 +1826,9 @@ if (act === 'dup') {
     <button class="dupMini" type="button" data-act="dup">複製</button>
     <select class="type" aria-label="種類"></select>
   </div>
-  ${imgUrl
-    ? `<button class="unit unitHit hasImage" type="button" data-act="imgview" aria-label="画像を拡大表示"></button>`
-    : `<div class="unit"></div>`}
+  <div class="unit">
+    <button class="priceHitArea" type="button"></button>
+  </div>
 </div>
 </div>
 
@@ -1876,6 +1874,7 @@ if (!nameWrap) {
 
 const nameEl = $('.name', card);
 if (nameEl) nameEl.textContent = displayName(d.name);
+bindPricePreview(card, imgUrl);
     applyMemoToCard(card, d.id);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -1887,28 +1886,15 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     sel.value = s.type;
 
     const unit = $('.unit', card);
-    const hasZoomImage = !!imgUrl;
-    // 単価エリアだけを隠しボタン化
-    unit.innerHTML = `
-      <button class="unitHit${hasZoomImage ? ' hasImage' : ''}" type="button" ${hasZoomImage ? 'aria-label="画像を拡大表示"' : 'aria-hidden="true" tabindex="-1"'} ${hasZoomImage ? '' : 'disabled'}>
-        <div class="unitLine">単価${prices[s.type] || 0}円</div>
-      </button>
-    `;
-    const unitHit = $('.unitHit', unit);
-    if (hasZoomImage && unitHit) {
-      unitHit.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openImgViewer(imgUrl);
-      });
-    }
-
-    let priceEl = $('.js-price', unit);
-    if (!priceEl) {
-      priceEl = document.createElement('div');
-      priceEl.className = 'dispLine js-price';
-      unit.appendChild(priceEl);
-    }
+    // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
+      unit.innerHTML = `<button class="priceHitArea" type="button"><div class="unitLine">単価${prices[s.type] || 0}円</div></button>`;
+      bindPricePreview(card, imgUrl);
+      let priceEl = $('.js-price', unit);
+      if (!priceEl) {
+        priceEl = document.createElement('div');
+        priceEl.className = 'dispLine js-price';
+        $('.priceHitArea', unit)?.appendChild(priceEl);
+      }
 
       const type = s.type || d.defType || '受精卵';
       const m = Number(s.m || 0);
@@ -1958,12 +1944,13 @@ const tOut = String(type).replace('(指定)', '');
       if (!typeList.includes(s.type)) s.type = d.defType || '受精卵';
       sel.value = s.type;
       // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
-      unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
+      unit.innerHTML = `<button class="priceHitArea" type="button"><div class="unitLine">単価${prices[s.type] || 0}円</div></button>`;
+      bindPricePreview(card, imgUrl);
       let priceEl = $('.js-price', unit);
       if (!priceEl) {
         priceEl = document.createElement('div');
         priceEl.className = 'dispLine js-price';
-        unit.appendChild(priceEl);
+        $('.priceHitArea', unit)?.appendChild(priceEl);
       }
 
       const type = s.type || d.defType || '受精卵';
@@ -2042,11 +2029,6 @@ const tOut = String(type).replace('(指定)', '');
         ev.stopPropagation();
         const act = btn.dataset.act;
 
-        if (act === 'imgview') {
-          if (imgUrl) openImgViewer(imgUrl);
-          return;
-        }
-
         if (act === 'm-') step('m', -1);
         if (act === 'm+') step('m', +1);
         if (act === 'f-') step('f', -1);
@@ -2061,6 +2043,12 @@ const tOut = String(type).replace('(指定)', '');
           card.after(dupCard);
           rebuildOutput();
           applyCollapseAndSearch();
+          return;
+        }
+
+        if (act === 'preview') {
+          if (imgUrl) openImgViewer(imgUrl);
+          return;
         }
       });
     });
@@ -3001,10 +2989,39 @@ if (act === 'gojuon') {
   }
 
   function openImgViewer(url) {
-    if (!el.imgOverlay || !el.imgViewerImg) return;
+    if (!url || !el.imgOverlay || !el.imgViewerImg) return;
     ScrollLock.lock(); // ✅
     el.imgViewerImg.src = url;
     el.imgOverlay.classList.remove('isHidden');
+  }
+
+  function bindPricePreview(card, url) {
+    const hit = $('.priceHitArea', card);
+    if (!hit) return;
+
+    if (url) {
+      hit.dataset.imageUrl = url;
+      hit.classList.add('hasImage');
+      hit.setAttribute('data-act', 'preview');
+      hit.setAttribute('aria-label', '画像確認');
+      hit.title = '';
+    } else {
+      delete hit.dataset.imageUrl;
+      hit.classList.remove('hasImage');
+      hit.removeAttribute('data-act');
+      hit.removeAttribute('aria-label');
+      hit.title = '';
+    }
+
+    if (hit.dataset.bound === '1') return;
+    hit.dataset.bound = '1';
+    hit.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const imageUrl = String(hit.dataset.imageUrl || '').trim();
+      if (imageUrl) openImgViewer(imageUrl);
+    });
+    hit.addEventListener('pointerdown', (ev) => ev.stopPropagation());
   }
   function closeImgViewer() {
     if (!el.imgOverlay) return;
