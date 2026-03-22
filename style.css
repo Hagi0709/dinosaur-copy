@@ -2064,3 +2064,33 @@ button{cursor:pointer}
 .js-unit-click{
   cursor:pointer;
 }
+
+
+/* ===== 単価/入力表示エリアを隠し画像確認ボタン化 ===== */
+.unit,
+.unit.js-unit-click{
+  width:100%;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  align-items:flex-end;
+  justify-content:flex-start;
+  text-align:right;
+}
+
+.unitLine,
+.dispLine{
+  width:100%;
+  text-align:right;
+}
+
+.unit.js-unit-click{
+  cursor:pointer;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+
+.unit.js-unit-click:active{
+  opacity:.82;
+}
