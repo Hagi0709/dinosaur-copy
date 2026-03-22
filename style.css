@@ -1079,7 +1079,7 @@ button{cursor:pointer}
 }
 .right .typeRow{ margin-top:-4px; }
 .dupMini,
-.checkMini,
+/* removed checkMini */ .checkMini_removed,
 .typePlaceholder,
 .unitSolo{
   height:40px;
@@ -1088,7 +1088,7 @@ button{cursor:pointer}
   background:rgba(255,255,255,.08);
 }
 .dupMini,
-.checkMini{
+/* removed checkMini */ .checkMini_removed{
   min-width:54px;
   padding:0 8px;
   color:#fff;
@@ -1100,8 +1100,8 @@ button{cursor:pointer}
   justify-content:center;
   white-space:nowrap;
 }
-.checkMini.isDisabled,
-.checkMini:disabled{
+/* removed checkMini */ .checkMini_removed.isDisabled,
+/* removed checkMini */ .checkMini_removed:disabled{
   opacity:.45;
 }
 .type{
@@ -1982,7 +1982,7 @@ button{cursor:pointer}
 .right .typeRow{ margin-top:-4px; }
 
 .dupMini,
-.checkMini,
+/* removed checkMini */ .checkMini_removed,
 .typePlaceholder,
 .unitSolo{
   height:40px;
@@ -1992,7 +1992,7 @@ button{cursor:pointer}
 }
 
 .dupMini,
-.checkMini{
+/* removed checkMini */ .checkMini_removed{
   min-width:54px;
   width:54px;
   padding:0 8px;
@@ -2006,8 +2006,8 @@ button{cursor:pointer}
   white-space:nowrap;
 }
 
-.checkMini.isDisabled,
-.checkMini:disabled{
+/* removed checkMini */ .checkMini_removed.isDisabled,
+/* removed checkMini */ .checkMini_removed:disabled{
   opacity:.45;
 }
 
@@ -2057,4 +2057,10 @@ button{cursor:pointer}
 
 .miniThumb{
   display:block !important;
+}
+
+
+/* 単価クリック用 */
+.js-unit-click{
+  cursor:pointer;
 }
