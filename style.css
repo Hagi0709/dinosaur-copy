@@ -408,12 +408,13 @@
   .sexFemale{ color: var(--femaleSoft); }
 
   .cardPrice{
-    margin-top:2px;
-    font-size:13px;
-    font-weight:950;
-    text-align:right;
-    white-space:nowrap;
-  }
+  margin-top:2px;
+  font-size:14px;
+  font-weight:900;
+  line-height:1;
+  text-align:right;
+  white-space:nowrap;
+}
 
 
   /* 単価エリアを完全に見えない画像確認ボタン化 */
@@ -2126,8 +2127,8 @@
   }
 
 
- .inputDisplay{
-  font-size:13px;
+.inputDisplay{
+  font-size:14px;
   font-weight:900;
   line-height:1;
   text-align:right;
