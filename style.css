@@ -1956,9 +1956,11 @@ button{cursor:pointer}
   position:sticky;
   top:0;
   z-index:6;
-  background:rgba(30,34,42,.96) !important;
-  backdrop-filter:blur(6px);
+  background:#1e222a !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
   white-space:nowrap;
+
 }
 
 .posDailyT th,
@@ -1978,56 +1980,6 @@ button{cursor:pointer}
   text-align:right;
 }
 
-
-/* ===== POS header mask fix + daily zero-day support companion ===== */
-.posTypeBox,
-.posDailyBox{
-  position:relative;
-  isolation:isolate;
-  overflow:auto !important;
-  -webkit-overflow-scrolling:touch !important;
-  overscroll-behavior:contain !important;
-  touch-action:pan-y !important;
-}
-
-.posTypeBox .posStickyT,
-.posDailyBox .posStickyT{
-  border-collapse:separate !important;
-  border-spacing:0 !important;
-}
-
-.posTypeBox .posStickyT thead,
-.posDailyBox .posStickyT thead{
-  position:sticky;
-  top:0;
-  z-index:12;
-}
-
-.posTypeBox .posStickyT thead::before,
-.posDailyBox .posStickyT thead::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:rgba(30,34,42,.98);
-  border-bottom:1px solid rgba(255,255,255,.10);
-  pointer-events:none;
-  z-index:0;
-}
-
-.posTypeBox .posStickyT thead th,
-.posDailyBox .posStickyT thead th{
-  position:relative !important;
-  top:auto !important;
-  z-index:1 !important;
-  background:transparent !important;
-  background-clip:padding-box;
-}
-
-.posTypeBox .posStickyT tbody,
-.posDailyBox .posStickyT tbody{
-  position:relative;
-  z-index:1;
-}
 
 /* 日別売上も種別売上と同じ文字感に寄せる */
 .posDailyT th,
@@ -2053,17 +2005,6 @@ button{cursor:pointer}
 }
 
 
-/* 日別売上ヘッダ固定 */
-.posDailyBox .posDailyT thead th{
-  position:sticky;
-  top:0;
-  z-index:8;
-  background:#1b2230 !important;
-  backdrop-filter:none !important;
-  -webkit-backdrop-filter:none !important;
-  box-shadow:0 1px 0 rgba(255,255,255,.08);
-}
-
 /* 先頭行のにじみ/ぼやけ防止 */
 .posTypeBox,
 .posDailyBox{
@@ -2072,4 +2013,79 @@ button{cursor:pointer}
 .posTypeBox .posT tbody tr:first-child td,
 .posDailyBox .posDailyT tbody tr:first-child td{
   background-clip:padding-box;
+}
+
+
+/* ===== POS sticky header safe override (2026-03-22) =====
+   グレーの被さり防止:
+   - blur を切る
+   - 疑似要素マスクを使わない
+   - 大きい box-shadow を使わない
+*/
+.posTypeBox,
+.posDailyBox{
+  position:relative;
+  isolation:auto !important;
+}
+
+.posTypeBox .posT,
+.posDailyBox .posDailyT{
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+}
+
+.posTypeBox .posT thead,
+.posDailyBox .posDailyT thead{
+  position:static !important;
+}
+
+.posTypeBox .posT thead::before,
+.posDailyBox .posDailyT thead::before,
+.posTypeBox .posT thead::after,
+.posDailyBox .posDailyT thead::after{
+  content:none !important;
+  display:none !important;
+}
+
+.posTypeBox .posT thead th,
+.posDailyBox .posDailyT thead th{
+  position:sticky !important;
+  top:0 !important;
+  z-index:7 !important;
+  background:#1e222a !important;
+  background-image:none !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+  box-shadow:inset 0 -1px 0 rgba(255,255,255,.08) !important;
+  opacity:1 !important;
+}
+
+.posTypeBox .posT tbody,
+.posDailyBox .posDailyT tbody,
+.posTypeBox .posT tbody tr,
+.posDailyBox .posDailyT tbody tr,
+.posTypeBox .posT tbody td,
+.posDailyBox .posDailyT tbody td{
+  position:relative;
+  z-index:1 !important;
+  background-clip:padding-box;
+}
+
+/* Safari で先頭行がヘッダの下ににじむのを抑える */
+.posTypeBox .posT tbody tr:first-child td,
+.posDailyBox .posDailyT tbody tr:first-child td{
+  border-top:0 !important;
+}
+
+/* 日別売上の文字感を種別売上に合わせる */
+.posDailyT th,
+.posDailyT td{
+  font-size:12px;
+  font-weight:900;
+}
+
+/* 合計は右寄せ維持 */
+.posDailyT th.posDailyColTotal,
+.posDailyT td.posDailyColTotal{
+  text-align:right;
 }
