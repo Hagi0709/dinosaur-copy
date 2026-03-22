@@ -4736,9 +4736,51 @@ const head = `
         cur.latestTs = Math.max(cur.latestTs, ts);
       }
 
+      // 0円の日も表示する。
+      // - 月表示: 選択月が当月なら今日まで、過去月なら月末まで
+      // - 年表示: 選択年が今年なら今日まで、過去年なら12/31まで
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      const fillZeroDays = (startDate, endDate) => {
+        const cur = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const last = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+        while (cur <= last) {
+          const y = cur.getFullYear();
+          const m = String(cur.getMonth() + 1).padStart(2, '0');
+          const day = String(cur.getDate()).padStart(2, '0');
+          const dayKey = `${y}-${m}-${day}`;
+          if (!dayBuckets.has(dayKey)) {
+            dayBuckets.set(dayKey, { dayKey, count: 0, totalAmt: 0, latestTs: 0 });
+          }
+          cur.setDate(cur.getDate() + 1);
+        }
+      };
+
+      if (mode === 'month') {
+        const [yy, mm] = String(key).split('-').map(Number);
+        if (Number.isFinite(yy) && Number.isFinite(mm)) {
+          const startDate = new Date(yy, mm - 1, 1);
+          const monthEnd = new Date(yy, mm, 0);
+          const isCurrentMonth = (yy === today.getFullYear() && mm === (today.getMonth() + 1));
+          const endDate = isCurrentMonth ? today : monthEnd;
+          fillZeroDays(startDate, endDate);
+        }
+      } else if (mode === 'year') {
+        const yy = Number(key);
+        if (Number.isFinite(yy)) {
+          const startDate = new Date(yy, 0, 1);
+          const yearEnd = new Date(yy, 11, 31);
+          const isCurrentYear = (yy === today.getFullYear());
+          const endDate = isCurrentYear ? today : yearEnd;
+          fillZeroDays(startDate, endDate);
+        }
+      }
+
       const dailyList = Array.from(dayBuckets.values()).sort((a, b) => {
         if (b.totalAmt !== a.totalAmt) return b.totalAmt - a.totalAmt;
-        return b.latestTs - a.latestTs;
+        if (b.count !== a.count) return b.count - a.count;
+        return b.dayKey.localeCompare(a.dayKey, 'ja');
       });
 
       const dailyRows = dailyList.slice(0, 366).map((d, i) => `
@@ -4778,7 +4820,7 @@ const head = `
             <div class="posPanelTitle">種別売上 在庫</div>
             <div class="posScrollArea posTypeScroll">
               <div class="posBox posTypeBox">
-                <table class="posT tabularNums">
+                <table class="posT posStickyT tabularNums">
                   <thead>
                     <tr>
                       <th class="l posSortTh posColName" data-pos-sort="name">種別</th>
@@ -4800,7 +4842,7 @@ const head = `
             <div class="posPanelTitle">日別売上</div>
             <div class="posScrollArea posDailyScroll">
               <div class="posBox posDailyBox">
-                <table class="posT posDailyT tabularNums">
+                <table class="posT posDailyT posStickyT tabularNums">
                   <thead>
                     <tr>
                       <th class="c posDailyColRank">順位</th>
