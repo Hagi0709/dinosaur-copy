@@ -1012,6 +1012,19 @@ window.addEventListener('resize', () => requestAnimationFrame(fitTopRow));
     item: loadJSON(LS.ITEM_CUSTOM, []),
   };
 
+  // custom.item が過去不具合で重複保存されていても、起動時に id 単位で正規化する
+  function dedupeByIdKeepLast(list) {
+    const map = new Map();
+    for (const row of (Array.isArray(list) ? list : [])) {
+      if (!row || !row.id) continue;
+      map.set(String(row.id), row);
+    }
+    return Array.from(map.values());
+  }
+
+  custom.item = dedupeByIdKeepLast(custom.item);
+  saveJSON(LS.ITEM_CUSTOM, custom.item);
+
   let dinos = [];
   let items = [];
   let activeTab = 'dino';
@@ -2703,6 +2716,7 @@ if (act === 'gojuon') {
         const rec = { id, name, unit, price, memo, memoImg: String(memoImgData || '') };
         if (existIdx >= 0) custom.item[existIdx] = rec;
         else custom.item.push(rec);
+        custom.item = dedupeByIdKeepLast(custom.item);
         if (!saveJSON(LS.ITEM_CUSTOM, custom.item)) return;
 
         hidden.item.delete(id);
@@ -4944,7 +4958,20 @@ const head = `
       _baseName: x._baseName || x.name,
     })));
 
-    items = baseI.concat(custom.item.map(x => ({ id: x.id, name: x.name, unit: x.unit, price: x.price, kind: 'item' })));
+    // built-in item と custom item を id 単位で統合する
+    // 後勝ちにして、custom 側が base を上書きする
+    const mergedItems = new Map();
+    baseI.forEach(x => mergedItems.set(String(x.id), x));
+    custom.item.forEach(x => {
+      mergedItems.set(String(x.id), {
+        id: x.id,
+        name: x.name,
+        unit: x.unit,
+        price: x.price,
+        kind: 'item'
+      });
+    });
+    items = Array.from(mergedItems.values());
 
     ensureOrderList(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
     ensureOrderList(items.filter(i => !hidden.item.has(i.id)), 'item');
@@ -5069,6 +5096,7 @@ const head = `
         const rec = { id, name, unit, price, memo, memoImg: String(memoImgData || '') };
         if (existIdx >= 0) custom.item[existIdx] = rec;
         else custom.item.push(rec);
+        custom.item = dedupeByIdKeepLast(custom.item);
         saveJSON(LS.ITEM_CUSTOM, custom.item);
 
         const ii = items.findIndex(x => x.id === id);
