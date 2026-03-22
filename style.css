@@ -1957,12 +1957,17 @@ button{cursor:pointer}
 
 .posDailyT th,
 .posDailyT td{
-  padding:10px 8px;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
 }
 
-.posDailyColDate{ width:40%; }
-.posDailyColCount{ width:18%; }
-.posDailyColTotal{ width:42%; }
+.posDailyColRank{ width:14%; }
+.posDailyColDate{ width:38%; }
+.posDailyColCount{ width:16%; }
+.posDailyColTotal{ width:32%; }
+
+.posDailyT th.posDailyColTotal,
+.posDailyT td.posDailyColTotal{
+  text-align:right;
+}
