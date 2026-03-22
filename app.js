@@ -1530,7 +1530,7 @@ card.innerHTML = `
         </div>
         <div class="subActionRow">
           
-          <div class="unit js-unit-click">
+          <div class="unit js-unit-click" data-act="unitcheck">
                 <div class="unitLine">1体=${unitPrice}円</div>
                 <div class="dispLine js-price"></div>
               </div>
@@ -1809,7 +1809,7 @@ if (act === 'dup') {
   </div>
   <div class="subActionRow">
     
-    <div class="unit js-unit-click"></div>
+    <div class="unit js-unit-click" data-act="unitcheck"></div>
   </div>
 </div>
 </div>
@@ -2125,7 +2125,7 @@ const tOut = String(type).replace('(指定)', '');
           </div>
 
           <div class="right">
-            <div class="unit js-unit-click"></div>
+            <div class="unit js-unit-click" data-act="unitcheck"></div>
           </div>
         </div>
 
@@ -5089,5 +5089,24 @@ const head = `
       }
     });
   }
+
+
+
+// 単価・入力表示エリアを画像確認の隠しボタンにする
+document.addEventListener('click', (e) => {
+  const unitBtn = e.target.closest('[data-act="unitcheck"]');
+  if (!unitBtn) return;
+
+  const card = unitBtn.closest('[data-card="1"], .card');
+  if (!card) return;
+
+  const img = card.querySelector('.miniThumb img');
+  const src = String(img?.getAttribute('src') || '').trim();
+  if (!src) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+  openImgViewer(src);
+});
 
 })();
