@@ -1887,14 +1887,28 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     sel.value = s.type;
 
     const unit = $('.unit', card);
-    // 単価 + カード内の価格表示（単価の直下）を同じ枠内にまとめる
-      unit.innerHTML = `<div class="unitLine">単価${prices[s.type] || 0}円</div>`;
-      let priceEl = $('.js-price', unit);
-      if (!priceEl) {
-        priceEl = document.createElement('div');
-        priceEl.className = 'dispLine js-price';
-        unit.appendChild(priceEl);
-      }
+    const hasZoomImage = !!imgUrl;
+    // 単価エリアだけを隠しボタン化
+    unit.innerHTML = `
+      <button class="unitHit${hasZoomImage ? ' hasImage' : ''}" type="button" ${hasZoomImage ? 'aria-label="画像を拡大表示"' : 'aria-hidden="true" tabindex="-1"'} ${hasZoomImage ? '' : 'disabled'}>
+        <div class="unitLine">単価${prices[s.type] || 0}円</div>
+      </button>
+    `;
+    const unitHit = $('.unitHit', unit);
+    if (hasZoomImage && unitHit) {
+      unitHit.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openImgViewer(imgUrl);
+      });
+    }
+
+    let priceEl = $('.js-price', unit);
+    if (!priceEl) {
+      priceEl = document.createElement('div');
+      priceEl.className = 'dispLine js-price';
+      unit.appendChild(priceEl);
+    }
 
       const type = s.type || d.defType || '受精卵';
       const m = Number(s.m || 0);
