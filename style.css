@@ -2094,3 +2094,37 @@ button{cursor:pointer}
 .unit.js-unit-click:active{
   opacity:.82;
 }
+
+
+/* ===== 単価・入力表示：カード右端に完全寄せ（2026-03-22） ===== */
+.right{
+  align-items:flex-end !important;
+  justify-content:flex-start !important;
+  width:100% !important;
+}
+
+.unit,
+.unit.js-unit-click{
+  width:100% !important;
+  max-width:100% !important;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:4px !important;
+  align-items:flex-end !important;
+  justify-content:flex-start !important;
+  text-align:right !important;
+}
+
+.unitLine,
+.dispLine{
+  width:100% !important;
+  text-align:right !important;
+  margin-left:auto !important;
+}
+
+.dispLine{
+  white-space:normal !important;
+  word-break:break-word !important;
+  overflow-wrap:anywhere !important;
+}
+
