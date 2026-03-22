@@ -1532,7 +1532,7 @@ card.innerHTML = `
           <button class="dupMini" type="button" data-act="dup">複製</button>
           ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
         </div>
-        <div class="metaRow">
+        <div class="subActionRow">
           ${buildCheckBtn(imgUrl)}
           <div class="unit">
                 <div class="unitLine">1体=${unitPrice}円</div>
@@ -1816,7 +1816,7 @@ if (act === 'dup') {
     <button class="dupMini" type="button" data-act="dup">複製</button>
     <select class="type" aria-label="種類"></select>
   </div>
-  <div class="metaRow">
+  <div class="subActionRow">
     ${buildCheckBtn(imgUrl)}
     <div class="unit"></div>
   </div>
