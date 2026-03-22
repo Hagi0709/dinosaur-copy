@@ -1992,35 +1992,30 @@ button{cursor:pointer}
 
 .posTypeBox .posStickyT thead,
 .posDailyBox .posStickyT thead{
-  position:sticky;
-  top:0;
-  z-index:12;
+  position:static !important;
 }
 
+/* ✅ 疑似要素マスクは iPhone/Safari で tbody 全体に被ってしまうことがあるので使わない */
 .posTypeBox .posStickyT thead::before,
 .posDailyBox .posStickyT thead::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:rgba(30,34,42,.98);
-  border-bottom:1px solid rgba(255,255,255,.10);
-  pointer-events:none;
-  z-index:0;
+  content:none !important;
+  display:none !important;
 }
 
 .posTypeBox .posStickyT thead th,
 .posDailyBox .posStickyT thead th{
-  position:relative !important;
-  top:auto !important;
-  z-index:1 !important;
-  background:transparent !important;
-  background-clip:padding-box;
+  position:sticky !important;
+  top:0 !important;
+  z-index:8 !important;
+  background:rgba(30,34,42,.98) !important;
+  background-clip:padding-box !important;
+  box-shadow:0 1px 0 rgba(255,255,255,.10), 0 10px 18px rgba(30,34,42,.98);
 }
 
 .posTypeBox .posStickyT tbody,
 .posDailyBox .posStickyT tbody{
   position:relative;
-  z-index:1;
+  z-index:0;
 }
 
 /* 日別売上も種別売上と同じ文字感に寄せる */
@@ -2044,4 +2039,16 @@ button{cursor:pointer}
 .posDailyBox{
   height:100%;
   min-height:0;
+}
+
+
+/* ===== POS sticky header safety patch (2026-03-22) ===== */
+.posTypeBox,
+.posDailyBox{
+  background:rgba(0,0,0,.18);
+}
+.posTypeBox .posStickyT,
+.posDailyBox .posStickyT{
+  position:relative;
+  z-index:0;
 }
