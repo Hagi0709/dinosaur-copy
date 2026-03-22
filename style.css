@@ -1971,3 +1971,77 @@ button{cursor:pointer}
 .posDailyT td.posDailyColTotal{
   text-align:right;
 }
+
+
+/* ===== POS header mask fix + daily zero-day support companion ===== */
+.posTypeBox,
+.posDailyBox{
+  position:relative;
+  isolation:isolate;
+  overflow:auto !important;
+  -webkit-overflow-scrolling:touch !important;
+  overscroll-behavior:contain !important;
+  touch-action:pan-y !important;
+}
+
+.posTypeBox .posStickyT,
+.posDailyBox .posStickyT{
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+}
+
+.posTypeBox .posStickyT thead,
+.posDailyBox .posStickyT thead{
+  position:sticky;
+  top:0;
+  z-index:12;
+}
+
+.posTypeBox .posStickyT thead::before,
+.posDailyBox .posStickyT thead::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:rgba(30,34,42,.98);
+  border-bottom:1px solid rgba(255,255,255,.10);
+  pointer-events:none;
+  z-index:0;
+}
+
+.posTypeBox .posStickyT thead th,
+.posDailyBox .posStickyT thead th{
+  position:relative !important;
+  top:auto !important;
+  z-index:1 !important;
+  background:transparent !important;
+  background-clip:padding-box;
+}
+
+.posTypeBox .posStickyT tbody,
+.posDailyBox .posStickyT tbody{
+  position:relative;
+  z-index:1;
+}
+
+/* 日別売上も種別売上と同じ文字感に寄せる */
+.posDailyT th,
+.posDailyT td{
+  font-weight:900;
+  font-size:12px;
+}
+
+.posDailyT th.posDailyColRank,  .posDailyT td.posDailyColRank  { width:4.2ch !important; min-width:4.2ch !important; }
+.posDailyT th.posDailyColDate,  .posDailyT td.posDailyColDate  { width:40% !important; }
+.posDailyT th.posDailyColCount, .posDailyT td.posDailyColCount { width:4.5ch !important; min-width:4.5ch !important; }
+.posDailyT th.posDailyColTotal, .posDailyT td.posDailyColTotal { width:auto !important; min-width:9ch !important; }
+
+.posDailyScroll{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden;
+}
+
+.posDailyBox{
+  height:100%;
+  min-height:0;
+}
