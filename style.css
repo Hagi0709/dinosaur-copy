@@ -2124,3 +2124,12 @@
   .posDailyT td.posDailyColTotal{
     text-align:right;
   }
+
+
+ .inputDisplay{
+  font-size:13px;
+  font-weight:900;
+  line-height:1;
+  text-align:right;
+  white-space:nowrap;
+}
