@@ -2128,3 +2128,48 @@ button{cursor:pointer}
   overflow-wrap:anywhere !important;
 }
 
+/* ===== カード右端に完全寄せ（最終修正） ===== */
+
+/* 右カラムをカード全体に広げる */
+.cardHead{
+  grid-template-columns: 1fr !important;
+}
+
+/* 右ブロックを絶対配置で右端固定 */
+.right{
+  position:absolute !important;
+  top:12px !important;
+  right:12px !important;
+
+  width:auto !important;
+  max-width:50% !important;
+
+  align-items:flex-end !important;
+}
+
+/* 単価・入力表示 */
+.unit,
+.unit.js-unit-click{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:flex-end !important;
+  text-align:right !important;
+}
+
+/* 各行 */
+.unitLine,
+.dispLine{
+  text-align:right !important;
+}
+
+/* 改行 */
+.dispLine{
+  white-space:normal !important;
+  word-break:break-word !important;
+  overflow-wrap:anywhere !important;
+}
+
+/* 名前エリアに右余白を確保（被り防止） */
+.nameWrap{
+  padding-right:140px !important;
+}
