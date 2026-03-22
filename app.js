@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-03-06 23:58';
+const BUILD_VERSION = '2026-03-22 21:58';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -1541,10 +1541,15 @@ card.innerHTML = `
           <button class="dupMini" type="button" data-act="dup">複製</button>
           ${allowSex ? `<select class="type" aria-label="種類"></select>` : ``}
         </div>
-        <div class="unit">
+        ${imgUrl
+          ? `<button class="unit unitHit hasImage" type="button" data-act="imgview" aria-label="画像を拡大表示">
               <div class="unitLine">1体=${unitPrice}円</div>
               <div class="dispLine js-price"></div>
-            </div>
+            </button>`
+          : `<div class="unit">
+              <div class="unitLine">1体=${unitPrice}円</div>
+              <div class="dispLine js-price"></div>
+            </div>`}
             
       </div>
     </div>
@@ -1748,6 +1753,11 @@ if (act === 'dup') {
   return;
 }
 
+        if (act === 'imgview') {
+          if (imgUrl) openImgViewer(imgUrl);
+          return;
+        }
+
         if (act === 'm-') return step('m', -1);
         if (act === 'm+') return step('m', +1);
         if (act === 'f-') return step('f', -1);
@@ -1818,7 +1828,9 @@ if (act === 'dup') {
     <button class="dupMini" type="button" data-act="dup">複製</button>
     <select class="type" aria-label="種類"></select>
   </div>
-  <div class="unit"></div>
+  ${imgUrl
+    ? `<button class="unit unitHit hasImage" type="button" data-act="imgview" aria-label="画像を拡大表示"></button>`
+    : `<div class="unit"></div>`}
 </div>
 </div>
 
@@ -2015,6 +2027,11 @@ const tOut = String(type).replace('(指定)', '');
       btn.addEventListener('click', (ev) => {
         ev.stopPropagation();
         const act = btn.dataset.act;
+
+        if (act === 'imgview') {
+          if (imgUrl) openImgViewer(imgUrl);
+          return;
+        }
 
         if (act === 'm-') step('m', -1);
         if (act === 'm+') step('m', +1);
