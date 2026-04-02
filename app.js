@@ -3709,18 +3709,18 @@ const prev = btn.textContent;
   el.q?.addEventListener('input', applyCollapseAndSearch);
   el.qClear?.addEventListener('click', () => { el.q.value = ''; applyCollapseAndSearch(); });
 
-  function getDefaultDeliveryByCurrentTime() {
-    const now = new Date();
+  function getAutoDefaultDelivery(now = new Date()) {
     const day = now.getDay();
     const hour = now.getHours();
     const isWeekday = day >= 1 && day <= 5;
-    const isNightDefaultWindow = isWeekday && hour >= 8 && hour < 18;
-    return isNightDefaultWindow ? '本日夜' : '即納品可能';
+    const isBusinessHours = hour >= 8 && hour < 18;
+    return (isWeekday && isBusinessHours) ? '本日夜' : '即納品可能';
   }
 
-  const savedDelivery = localStorage.getItem(LS.DELIVERY);
   if (el.delivery) {
-    el.delivery.value = savedDelivery || getDefaultDeliveryByCurrentTime();
+    const autoDelivery = getAutoDefaultDelivery();
+    el.delivery.value = autoDelivery;
+    localStorage.setItem(LS.DELIVERY, autoDelivery);
   }
 
   el.delivery?.addEventListener('change', () => {
