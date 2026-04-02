@@ -3709,8 +3709,19 @@ const prev = btn.textContent;
   el.q?.addEventListener('input', applyCollapseAndSearch);
   el.qClear?.addEventListener('click', () => { el.q.value = ''; applyCollapseAndSearch(); });
 
+  function getDefaultDeliveryByCurrentTime() {
+    const now = new Date();
+    const day = now.getDay();
+    const hour = now.getHours();
+    const isWeekday = day >= 1 && day <= 5;
+    const isNightDefaultWindow = isWeekday && hour >= 8 && hour < 18;
+    return isNightDefaultWindow ? '本日夜' : '即納品可能';
+  }
+
   const savedDelivery = localStorage.getItem(LS.DELIVERY);
-  if (savedDelivery && el.delivery) el.delivery.value = savedDelivery;
+  if (el.delivery) {
+    el.delivery.value = savedDelivery || getDefaultDeliveryByCurrentTime();
+  }
 
   el.delivery?.addEventListener('change', () => {
     localStorage.setItem(LS.DELIVERY, el.delivery.value);
