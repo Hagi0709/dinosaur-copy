@@ -1162,6 +1162,8 @@ function sortByOrder(list, kind) {
   }
   function syncThumbInMainListByDino(d, dataUrl) {
     const cards = $$(`[data-kind="dino"][data-did="${CSS.escape(d.id)}"]`, el.list);
+    const imageKey = imageKeyFromBaseName(d._baseName || d.name);
+
     cards.forEach(card => {
       let wrap = $('.miniThumb', card);
       if (!wrap && dataUrl) {
@@ -1171,14 +1173,23 @@ function sortByOrder(list, kind) {
         $('.nameWrap', card)?.appendChild(nw);
         wrap = nw;
       }
-      if (!wrap) return;
 
-      const im = $('img', wrap);
-      if (im) {
-        if (dataUrl) im.src = dataUrl;
-        else im.removeAttribute('src');
+      if (wrap) {
+        const im = $('img', wrap);
+        if (im) {
+          if (dataUrl) im.src = dataUrl;
+          else im.removeAttribute('src');
+        }
+        if (!dataUrl) wrap.remove();
       }
-      if (!dataUrl) wrap.remove();
+
+      const btn = $('.priceHitArea', card);
+      if (!btn) return;
+
+      btn.dataset.imgKey = imageKey;
+      if (dataUrl) btn.dataset.imgUrl = dataUrl;
+      else delete btn.dataset.imgUrl;
+      btn.classList.toggle('hasImage', !!dataUrl);
     });
   }
 
@@ -1599,7 +1610,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
       const undoBtn = $('button[data-act="undo"]', card);
       const unit = $('.unit', card);
       bindUnitImageViewer(unit);
-      setUnitArea(unit, `<div class="unitLine">1体=${unitPrice}円</div>`, ' ', imgUrl);
+      setUnitArea(unit, `<div class="unitLine">1体=${unitPrice}円</div>`, ' ', imgUrl, imageKeyFromBaseName(d._baseName || d.name));
 
       const mEl = $('.js-m', card);
       const fEl = $('.js-f', card);
@@ -1876,7 +1887,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     const unit = $('.unit', card);
     bindUnitImageViewer(unit);
     const type = s.type || d.defType || '受精卵';
-    setUnitArea(unit, `<div class="unitLine">単価${prices[s.type] || 0}円</div>`, ' ', imgUrl);
+    setUnitArea(unit, `<div class="unitLine">単価${prices[s.type] || 0}円</div>`, ' ', imgUrl, imageKeyFromBaseName(d._baseName || d.name));
 
       const m = Number(s.m || 0);
       const f = Number(s.f || 0);
@@ -2983,14 +2994,15 @@ if (act === 'gojuon') {
     if (e.target === el.imgOverlay) closeImgViewer();
   });
 
-  function setUnitArea(unitEl, unitLineHtml, priceLineHtml, imageUrl) {
+  function setUnitArea(unitEl, unitLineHtml, priceLineHtml, imageUrl, imageKey = '') {
     if (!unitEl) return;
     const safeUnit = String(unitLineHtml || '');
     const safePrice = String(priceLineHtml || ' ');
     const safeUrl = String(imageUrl || '').trim();
+    const safeKey = String(imageKey || '').trim();
 
     unitEl.innerHTML = `
-      <button class="priceHitArea${safeUrl ? ' hasImage' : ''}" type="button" ${safeUrl ? `data-img-url="${escapeHtml(safeUrl)}"` : ''} aria-label="画像を拡大">
+      <button class="priceHitArea${safeUrl ? ' hasImage' : ''}" type="button" ${safeUrl ? `data-img-url="${escapeHtml(safeUrl)}"` : ''} ${safeKey ? `data-img-key="${escapeHtml(safeKey)}"` : ''} aria-label="画像を拡大">
         ${safeUnit}
         <div class="dispLine js-price">${safePrice}</div>
       </button>
@@ -3005,7 +3017,12 @@ if (act === 'gojuon') {
       if (!btn || !unitEl.contains(btn)) return;
       ev.preventDefault();
       ev.stopPropagation();
-      const url = String(btn.dataset.imgUrl || '').trim();
+
+      const key = String(btn.dataset.imgKey || '').trim();
+      const currentUrl = key ? String(imageCache[key] || '').trim() : '';
+      const fallbackUrl = String(btn.dataset.imgUrl || '').trim();
+      const url = currentUrl || fallbackUrl;
+
       if (url) openImgViewer(url);
     });
   }
