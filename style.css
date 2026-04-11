@@ -1020,7 +1020,6 @@
   }
   .imgMid{
     min-width:0;
-    width:100%;
     display:flex;
     flex-direction:column;
     gap:10px;
@@ -1977,113 +1976,6 @@
     -webkit-overflow-scrolling:touch;
     overscroll-behavior:contain;
   }
-
-  .rhynioRow{
-    align-items:flex-start;
-  }
-  .rhynioRow .imgMid{
-    width:100%;
-  }
-  .rhynioMetaGrid{
-    display:grid;
-    grid-template-columns:minmax(0, .9fr) minmax(0, 1fr) minmax(0, 1.2fr);
-    gap:8px;
-    margin-top:10px;
-    width:100%;
-    align-items:end;
-  }
-  .rhynioField{
-    min-width:0;
-    display:flex;
-    flex-direction:column;
-    gap:6px;
-  }
-  .rhynioField span{
-    font-size:12px;
-    font-weight:900;
-    color:rgba(255,255,255,.78);
-  }
-  .rhynioInput,
-  .rhynioSelect,
-  .rhynioSoldBtn{
-    width:100%;
-    height:40px;
-    border-radius:14px;
-    border:1px solid rgba(255,255,255,.14);
-    background:rgba(255,255,255,.08);
-    color:#fff;
-    padding:0 12px;
-    font-weight:900;
-  }
-  .rhynioSelect{
-    padding-right:34px;
-    background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
-                     linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
-    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
-    background-size: 6px 6px, 6px 6px;
-    background-repeat:no-repeat;
-    appearance:none;
-    -webkit-appearance:none;
-  }
-  .rhynioSoldBtn{
-    align-self:end;
-    background:rgba(185,74,85,.16);
-    border-color:rgba(185,74,85,.34);
-  }
-  .rhynioSoldBtn.isOn{
-    background:rgba(185,74,85,.28);
-    border-color:rgba(255,120,120,.42);
-    color:#fff;
-  }
-  .rhynioCopyWrap{
-    margin-top:12px;
-    border:1px solid rgba(255,255,255,.12);
-    border-radius:18px;
-    background:rgba(0,0,0,.18);
-    padding:12px;
-  }
-  .rhynioCopyHead{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    margin-bottom:10px;
-  }
-  .rhynioCopyTitle{
-    font-size:14px;
-    font-weight:950;
-  }
-  .rhynioCopyText{
-    width:100%;
-    min-height:120px;
-    border-radius:14px;
-    border:1px solid rgba(255,255,255,.12);
-    background:rgba(255,255,255,.05);
-    color:#fff;
-    padding:10px 12px;
-    font-size:12px;
-    line-height:1.5;
-    resize:vertical;
-  }
-  @media (max-width: 720px){
-    .rhynioMetaGrid{
-      grid-template-columns:minmax(0, .85fr) minmax(0, 1fr) minmax(0, 1.15fr);
-      gap:6px;
-    }
-  }
-  @media (max-width: 520px){
-    .rhynioMetaGrid{
-      grid-template-columns:minmax(0, .8fr) minmax(0, .95fr) minmax(0, 1.1fr);
-      gap:6px;
-    }
-    .rhynioInput,
-    .rhynioSelect,
-    .rhynioSoldBtn{
-      font-size:12px;
-      padding:0 10px;
-    }
-  }
-
   #modalBody{
     min-height:0;
   }
@@ -2254,4 +2146,126 @@
   }
 
 
-.inputDisplay{font-size:16px;font-weight:900;line-height:1;text-align:right;white-space:nowrap;}
+.inputDisplay{font-size:16px;font-weight:900;line-height:1;text-align:right;white-space:nowrap;.rhynioRow{
+    grid-template-columns:140px minmax(0,1fr);
+    gap:10px 12px;
+    align-items:start;
+  }
+  .rhynioMetaGrid{
+    grid-column:1 / -1;
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:10px;
+    margin-top:2px;
+    width:100%;
+  }
+  .rhynioField{
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .rhynioField span{
+    font-size:12px;
+    font-weight:900;
+    color:rgba(255,255,255,.78);
+  }
+  .rhynioField > *{
+    width:100%;
+    min-width:0;
+  }
+  .rhynioInput,
+  .rhynioSelect,
+  .rhynioSoldBtn{
+    width:100%;
+    min-width:0;
+    height:44px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    padding:0 12px;
+    font-weight:900;
+    font-size:15px;
+  }
+  .rhynioSelect{
+    padding-right:34px;
+    background-image:linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
+                     linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+    background-size: 6px 6px, 6px 6px;
+    background-repeat:no-repeat;
+    appearance:none;
+    -webkit-appearance:none;
+  }
+  .rhynioSoldBtn{
+    align-self:end;
+    white-space:nowrap;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+  }
+  .rhynioSoldBtn.isOn{
+    border-color:rgba(185,74,85,.45);
+    background:rgba(185,74,85,.32);
+  }
+  .rhynioCopyWrap{
+    margin-top:12px;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:18px;
+    background:rgba(0,0,0,.18);
+    padding:12px;
+  }
+  .rhynioCopyHead{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:10px;
+  }
+  .rhynioCopyTitle{
+    font-size:14px;
+    font-weight:950;
+  }
+  .rhynioCopyText{
+    width:100%;
+    min-height:120px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.05);
+    color:#fff;
+    padding:10px 12px;
+    font-size:12px;
+    line-height:1.5;
+    resize:vertical;
+  }
+  @media (max-width: 720px){
+    .rhynioMetaGrid{
+      grid-template-columns:repeat(3, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 480px){
+    .rhynioRow{
+      grid-template-columns:1fr;
+    }
+    .thumb{
+      width:100%;
+      max-width:320px;
+    }
+    .rhynioMetaGrid{
+      grid-template-columns:repeat(3, minmax(0, 1fr));
+      gap:8px;
+    }
+    .rhynioInput,
+    .rhynioSelect,
+    .rhynioSoldBtn{
+      font-size:14px;
+      padding:0 10px;
+    }
+    .rhynioSoldBtn{
+      letter-spacing:-.02em;
+    }
+  }
+
+  }
