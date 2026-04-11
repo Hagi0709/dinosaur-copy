@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-03-06 23:58';
+const BUILD_VERSION = '2026-04-11 20:32';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -109,6 +109,8 @@ function formatSpecialLabel(name) {
     POS_SALES: 'pos_sales_v1',
     POS_STOCK: 'pos_stock_v1',
 
+    RHYNIO_SLOTS: 'rhynio_slots_v1',
+    RHYNIO_SLOT_SEQ: 'rhynio_slot_seq_v1',
   };
 
   const loadJSON = (k, fb) => {
@@ -904,8 +906,37 @@ for (let p = 0; p < pages; p++) {
   /* ========= images ========= */
   const imageCache = {};
   const dinoOverride = Object.assign({}, loadJSON(LS.DINO_OVERRIDE, {}));
+  const rhynioSlots = loadJSON(LS.RHYNIO_SLOTS, []);
+  let rhynioSlotSeq = Number(localStorage.getItem(LS.RHYNIO_SLOT_SEQ) || 0) || 0;
+
   function imageKeyFromBaseName(baseName) {
     return `img_${stableHash(norm(baseName))}`;
+  }
+  function rhynioImageKey(slotId) {
+    return `rhynio_${String(slotId)}`;
+  }
+  function saveRhynioSlots() {
+    return saveJSON(LS.RHYNIO_SLOTS, rhynioSlots);
+  }
+  function nextRhynioSlotNo() {
+    rhynioSlotSeq += 1;
+    try { localStorage.setItem(LS.RHYNIO_SLOT_SEQ, String(rhynioSlotSeq)); } catch {}
+    return rhynioSlotSeq;
+  }
+  function ensureRhynioSlots() {
+    if (rhynioSlots.length) return;
+    for (let i = 1; i <= 12; i++) {
+      rhynioSlots.push({ id: i, no: i });
+    }
+    rhynioSlotSeq = Math.max(rhynioSlotSeq, 12);
+    try { localStorage.setItem(LS.RHYNIO_SLOT_SEQ, String(rhynioSlotSeq)); } catch {}
+    saveRhynioSlots();
+  }
+  function getRhynioFilledSlots() {
+    return rhynioSlots.filter(slot => {
+      const k = rhynioImageKey(slot.id);
+      return !!String(imageCache[k] || '').trim();
+    });
   }
 
   /* ========= DOM ========= */
@@ -963,6 +994,7 @@ for (let p = 0; p < pages; p++) {
     bump('imgOverlay', 20000);
   })();
   if (el.versionText) el.versionText.textContent = `Version: ${BUILD_VERSION}`;
+  ensureRhynioSlots();
 
 /* ========= top bar auto-fit ========= */
 const topEl = document.querySelector('header.top');
@@ -3027,101 +3059,412 @@ if (act === 'gojuon') {
     });
   }
 
+
+  function drawRhynioBadge(ctx, x, y, size, label) {
+    const r = size / 2;
+    const cx = x + r;
+    const cy = y + r;
+
+    const grad = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.35, r * 0.15, cx, cy, r);
+    grad.addColorStop(0, '#ffe89a');
+    grad.addColorStop(0.55, '#ffc928');
+    grad.addColorStop(1, '#8f5d00');
+
+    ctx.save();
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.lineWidth = Math.max(3, size * 0.06);
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `900 ${Math.max(22, size * 0.56)}px system-ui, -apple-system, BlinkMacSystemFont, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(0,0,0,.40)';
+    ctx.lineWidth = Math.max(2, size * 0.08);
+    ctx.strokeText(String(label), cx, cy + size * 0.03);
+    ctx.fillText(String(label), cx, cy + size * 0.03);
+    ctx.restore();
+  }
+
+  function openRhynioExportPreview(pageUrls) {
+    const id = 'rhynioExportOverlay';
+    let ov = document.getElementById(id);
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = id;
+      ov.style.position = 'fixed';
+      ov.style.inset = '0';
+      ov.style.zIndex = '20000';
+      ov.style.display = 'none';
+      ov.style.alignItems = 'center';
+      ov.style.justifyContent = 'center';
+      ov.style.padding = '16px';
+      ov.style.background = 'rgba(0,0,0,.35)';
+      ov.style.backdropFilter = 'blur(6px)';
+
+      const panel = document.createElement('div');
+      panel.className = 'exportGalleryPanel';
+
+      const head = document.createElement('div');
+      head.className = 'exportGalleryHead';
+
+      const title = document.createElement('div');
+      title.className = 'exportGalleryTitle';
+      title.textContent = 'リニオ画像出力';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.textContent = '×';
+      closeBtn.setAttribute('aria-label', '閉じる');
+      closeBtn.className = 'iconBtn';
+
+      const body = document.createElement('div');
+      body.className = 'exportGalleryBody';
+
+      head.appendChild(title);
+      head.appendChild(closeBtn);
+      panel.appendChild(head);
+      panel.appendChild(body);
+      ov.appendChild(panel);
+      document.body.appendChild(ov);
+
+      const hide = () => {
+        ov.style.display = 'none';
+        try { ScrollLock.unlock(); } catch {}
+      };
+      closeBtn.addEventListener('click', hide);
+      ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
+      installOverlayScrollGuard(ov, body);
+    }
+
+    const body = ov.querySelector('.exportGalleryBody');
+    if (body) {
+      body.innerHTML = '';
+      (pageUrls || []).forEach((src, idx) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'exportPage';
+
+        const capEl = document.createElement('div');
+        capEl.className = 'exportPageNo';
+        capEl.textContent = circled(idx + 1);
+
+        const out = document.createElement('img');
+        out.className = 'exportPageImg';
+        out.alt = `リニオ画像 ${idx + 1}/${pageUrls.length}`;
+        out.src = src;
+
+        wrap.appendChild(capEl);
+        wrap.appendChild(out);
+        body.appendChild(wrap);
+      });
+    }
+
+    try { ScrollLock.lock(); } catch {}
+    ov.style.display = 'flex';
+  }
+
+  async function exportRhynioSheets() {
+    const filled = getRhynioFilledSlots().slice().sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
+    if (!filled.length) {
+      openToast('リニオ画像がありません');
+      return;
+    }
+
+    const loadImg = (src) => new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = () => reject(new Error('img load failed'));
+      im.src = src;
+    });
+
+    let entries = [];
+    try {
+      entries = await Promise.all(filled.map(async (slot) => {
+        const src = String(imageCache[rhynioImageKey(slot.id)] || '').trim();
+        const img = await loadImg(src);
+        return { slot, img };
+      }));
+    } catch (e) {
+      console.error(e);
+      openToast('画像の読み込みに失敗しました');
+      return;
+    }
+
+    const cols = 3;
+    const rows = 4;
+    const perPage = cols * rows;
+    const gap = 12;
+    const pad = 12;
+    const bg = '#f3e8da';
+
+    const cellW = Math.max(...entries.map(x => x.img.naturalWidth || x.img.width || 0), 1);
+    const cellH = Math.max(...entries.map(x => x.img.naturalHeight || x.img.height || 0), 1);
+
+    const pageUrls = [];
+    for (let p = 0; p < entries.length; p += perPage) {
+      const slice = entries.slice(p, p + perPage);
+      const canvas = document.createElement('canvas');
+      canvas.width = cellW * cols + gap * (cols - 1) + pad * 2;
+      canvas.height = cellH * rows + gap * (rows - 1) + pad * 2;
+
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      slice.forEach((entry, idx) => {
+        const r = Math.floor(idx / cols);
+        const c = idx % cols;
+        const x = pad + c * (cellW + gap);
+        const y = pad + r * (cellH + gap);
+
+        const im = entry.img;
+        const iw = im.naturalWidth || im.width;
+        const ih = im.naturalHeight || im.height;
+        const s = Math.min(cellW / iw, cellH / ih);
+        const dw = iw * s;
+        const dh = ih * s;
+        const dx = x + (cellW - dw) / 2;
+        const dy = y + (cellH - dh) / 2;
+
+        ctx.drawImage(im, dx, dy, dw, dh);
+
+        const badgeSize = Math.max(54, Math.round(Math.min(cellW, cellH) * 0.19));
+        drawRhynioBadge(
+          ctx,
+          x + cellW - badgeSize - 10,
+          y + 10,
+          badgeSize,
+          Number(entry.slot.no) || (p + idx + 1)
+        );
+      });
+
+      pageUrls.push(canvas.toDataURL('image/png', 1.0));
+    }
+
+    openRhynioExportPreview(pageUrls);
+  }
+
+  function openRhynioManager() {
+    ensureRhynioSlots();
+
+    const id = 'rhynioManageOverlay';
+    let ov = document.getElementById(id);
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = id;
+      ov.style.position = 'fixed';
+      ov.style.inset = '0';
+      ov.style.zIndex = '20000';
+      ov.style.display = 'none';
+      ov.style.alignItems = 'center';
+      ov.style.justifyContent = 'center';
+      ov.style.padding = '16px';
+      ov.style.background = 'rgba(0,0,0,.35)';
+      ov.style.backdropFilter = 'blur(6px)';
+
+      const panel = document.createElement('div');
+      panel.className = 'exportGalleryPanel';
+
+      const head = document.createElement('div');
+      head.className = 'exportGalleryHead';
+
+      const title = document.createElement('div');
+      title.className = 'exportGalleryTitle';
+      title.textContent = 'リニオ管理';
+
+      const headBtns = document.createElement('div');
+      headBtns.className = 'rhynioHeadBtns';
+
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'pill';
+      addBtn.id = 'rhynioAddSlot';
+      addBtn.textContent = '追加';
+
+      const exportBtn = document.createElement('button');
+      exportBtn.type = 'button';
+      exportBtn.className = 'pill';
+      exportBtn.id = 'rhynioExportBtn';
+      exportBtn.textContent = '画像出力';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.textContent = '×';
+      closeBtn.setAttribute('aria-label', '閉じる');
+      closeBtn.className = 'iconBtn';
+
+      const body = document.createElement('div');
+      body.className = 'exportGalleryBody';
+
+      headBtns.appendChild(addBtn);
+      headBtns.appendChild(exportBtn);
+      head.appendChild(title);
+      head.appendChild(headBtns);
+      head.appendChild(closeBtn);
+      panel.appendChild(head);
+      panel.appendChild(body);
+      ov.appendChild(panel);
+      document.body.appendChild(ov);
+
+      const hide = () => {
+        ov.style.display = 'none';
+        try { ScrollLock.unlock(); } catch {}
+      };
+      closeBtn.addEventListener('click', hide);
+      ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
+      installOverlayScrollGuard(ov, body);
+
+      addBtn.addEventListener('click', () => {
+        const next = nextRhynioSlotNo();
+        rhynioSlots.push({ id: next, no: next });
+        saveRhynioSlots();
+        renderRhynioManagerList();
+      });
+      exportBtn.addEventListener('click', () => exportRhynioSheets());
+    }
+
+    function renderRhynioManagerList() {
+      const body = ov.querySelector('.exportGalleryBody');
+      if (!body) return;
+
+      body.innerHTML = '';
+      const listBox = document.createElement('div');
+      listBox.className = 'manageImagesList';
+
+      rhynioSlots
+        .slice()
+        .sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0))
+        .forEach((slot) => {
+          const row = document.createElement('div');
+          row.className = 'imgRow';
+
+          const thumb = document.createElement('div');
+          thumb.className = 'thumb';
+
+          const key = rhynioImageKey(slot.id);
+          const url = imageCache[key];
+
+          if (url) thumb.innerHTML = `<img src="${url}" alt="">`;
+          else thumb.textContent = 'No Image';
+
+          const mid = document.createElement('div');
+          mid.className = 'imgMid';
+
+          const name = document.createElement('div');
+          name.className = 'imgName';
+          name.textContent = `リニオ${circled(slot.no)}`;
+
+          const btns = document.createElement('div');
+          btns.className = 'imgBtns';
+
+          const pick = document.createElement('button');
+          pick.className = 'pill';
+          pick.type = 'button';
+          pick.textContent = '選択';
+
+          const del = document.createElement('button');
+          del.className = 'pill danger';
+          del.type = 'button';
+          del.textContent = '削除';
+
+          const file = document.createElement('input');
+          file.type = 'file';
+          file.accept = 'image/*';
+          file.style.display = 'none';
+
+          pick.addEventListener('click', () => file.click());
+
+          file.addEventListener('change', async () => {
+            const f = file.files && file.files[0];
+            if (!f) return;
+
+            try {
+              const dataUrl = await fileToDataURLCompressed(f, 1200, 0.9);
+              await idbPutImage(key, dataUrl);
+              imageCache[key] = dataUrl;
+              thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
+              openToast('画像を保存しました');
+            } catch (e) {
+              console.error(e);
+              openToast('画像の保存に失敗しました');
+            } finally {
+              try { file.value = ''; } catch {}
+            }
+          });
+
+          del.addEventListener('click', async () => {
+            const hasImg = !!String(imageCache[key] || '').trim();
+            if (!hasImg) {
+              openToast('画像がありません');
+              return;
+            }
+
+            const ok = await confirmAsk(`リニオ${circled(slot.no)} の画像を削除しますか？`);
+            if (!ok) return;
+
+            try {
+              await idbDelImage(key);
+              delete imageCache[key];
+              thumb.textContent = 'No Image';
+              openToast('画像を削除しました');
+            } catch (e) {
+              console.error(e);
+              openToast('削除に失敗しました');
+            }
+          });
+
+          thumb.addEventListener('click', () => {
+            const u = imageCache[key];
+            if (!u) return;
+            openImgViewer(u);
+          });
+
+          btns.appendChild(pick);
+          btns.appendChild(del);
+
+          mid.appendChild(name);
+          mid.appendChild(btns);
+
+          row.appendChild(thumb);
+          row.appendChild(mid);
+          row.appendChild(file);
+
+          listBox.appendChild(row);
+        });
+
+      body.appendChild(listBox);
+    }
+
+    renderRhynioManagerList();
+    try { ScrollLock.lock(); } catch {}
+    ov.style.display = 'flex';
+  }
+
   function renderManageImages() {
     const wrap = document.createElement('div');
     wrap.className = 'manageImagesWrap';
 
     const topBar = document.createElement('div');
     topBar.className = 'manageImagesTopBar';
-    topBar.innerHTML = `<button id="imgExport" class="mTab manageImagesExportBtn" type="button">画像出力</button>`;
+    topBar.innerHTML = `
+      <button id="rhynioManage" class="mTab manageImagesExportBtn" type="button">リニオ管理</button>
+      <button id="imgExport" class="mTab manageImagesExportBtn" type="button">画像出力</button>
+    `;
     wrap.appendChild(topBar);
 
     const list = sortByOrder(dinos.filter(x => !hidden.dino.has(x.id)), 'dino');
     const listBox = document.createElement('div');
     listBox.className = 'manageImagesList';
 
-    function loadImg(src) {
-      return new Promise((resolve) => {
-        const im = new Image();
-        im.onload = () => resolve(im);
-        im.onerror = () => resolve(null);
-        im.src = src;
-      });
-    }
-
-    async function exportGrid(rows, cols) {
-      const maxCells = rows * cols;
-
-      const srcs = [];
-      for (const d of list) {
-        const k = imageKeyFromBaseName(d._baseName || d.name);
-        const u = imageCache[k];
-        if (u) srcs.push(u);
-        if (srcs.length >= maxCells) break;
-      }
-
-      if (!srcs.length) {
-        alert('画像が1枚も設定されていません。');
-        return;
-      }
-
-      const ims = [];
-      for (const s of srcs) {
-        const im = await loadImg(s);
-        if (im) ims.push(im);
-        if (ims.length >= maxCells) break;
-      }
-      if (!ims.length) {
-        alert('読み込める画像がありませんでした。');
-        return;
-      }
-
-      const cellW = 640;
-      const cellH = 320;
-      const gap = 8;
-      const pad = 8;
-
-      const outW = cols * cellW + (cols - 1) * gap + pad * 2;
-      const outH = rows * cellH + (rows - 1) * gap + pad * 2;
-
-      const canvas = document.createElement('canvas');
-      canvas.width = outW;
-      canvas.height = outH;
-      const ctx = canvas.getContext('2d');
-
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, outW, outH);
-
-      let idx = 0;
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          if (idx >= ims.length) break;
-          const im = ims[idx++];
-
-          const x = pad + c * (cellW + gap);
-          const y = pad + r * (cellH + gap);
-
-          const iw = im.naturalWidth || im.width;
-          const ih = im.naturalHeight || im.height;
-          const targetRatio = cellW / cellH;
-          const imgRatio = iw / ih;
-
-          let sx = 0, sy = 0, sw = iw, sh = ih;
-          if (imgRatio > targetRatio) {
-            sw = ih * targetRatio;
-            sx = (iw - sw) / 2;
-          } else {
-            sh = iw / targetRatio;
-            sy = (ih - sh) / 2;
-          }
-
-          ctx.drawImage(im, sx, sy, sw, sh, x, y, cellW, cellH);
-        }
-      }
-
-      const dataUrl = canvas.toDataURL('image/png', 1.0);
-      openImgViewer(dataUrl);
-    }
+    topBar.querySelector('#rhynioManage')?.addEventListener('click', () => {
+      openRhynioManager();
+    });
 
     topBar.querySelector('#imgExport')?.addEventListener('click', () => {
       openImageExportGallery(list);
@@ -3180,8 +3523,11 @@ if (act === 'gojuon') {
           syncThumbInMainListByDino(d, dataUrl);
 
           openToast('画像を保存しました');
-        } catch {
+        } catch (e) {
+          console.error(e);
           openToast('画像の保存に失敗しました');
+        } finally {
+          try { file.value = ''; } catch {}
         }
       });
 
@@ -3195,7 +3541,8 @@ if (act === 'gojuon') {
           thumb.textContent = 'No Image';
           syncThumbInMainListByDino(d, '');
           openToast('画像を削除しました');
-        } catch {
+        } catch (e) {
+          console.error(e);
           openToast('削除に失敗しました');
         }
       });
