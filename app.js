@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-04-11 20:32';
+const BUILD_VERSION = '2026-04-11 20:50';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -920,12 +920,13 @@ for (let p = 0; p < pages; p++) {
     const no = rawNo > 0 ? rawNo : 1;
     const rawType = String(slot?.statType || 'M').toUpperCase();
     const statType = rawType === 'W' ? 'W' : 'M';
+    const legacyValue = String(slot?.statValue || '').replace(/[^\d]/g, '').slice(0, 4);
     return {
       id: Number(slot?.id || no) || no,
       no,
       level: String(slot?.level || '').replace(/[^\d]/g, '').slice(0, 4),
       statType,
-      statValue: String(slot?.statValue || '').replace(/[^\d]/g, '').slice(0, 4),
+      statValue: legacyValue || (statType === 'W' ? '310' : '312'),
       soldOut: !!slot?.soldOut,
     };
   }
@@ -972,11 +973,11 @@ for (let p = 0; p < pages; p++) {
       const noText = circled(Number(slot.no) || 0);
       const lv = String(slot.level || '').trim();
       const statType = String(slot.statType || 'M').toUpperCase() === 'W' ? 'W' : 'M';
-      const statValue = String(slot.statValue || '').trim();
+      const statValue = statType === 'W' ? '310' : '312';
       const parts = [`${noText} `];
       if (lv) parts.push(`Lv.${lv}`);
-      if (statValue) parts.push(`${lv ? ' ' : ''}(${statType}${statValue})`);
-      if (slot.soldOut) parts.push(`${(lv || statValue) ? ' ' : ''}売り切れ`);
+      parts.push(`${lv ? ' ' : ''}(${statType}${statValue})`);
+      if (slot.soldOut) parts.push(' 売り切れ');
       return parts.join('').trimEnd();
     }).join('\n');
   }
@@ -3260,9 +3261,9 @@ if (act === 'gojuon') {
     const cols = 3;
     const rows = 4;
     const perPage = cols * rows;
-    const gap = 6;
-    const pad = 8;
-    const bg = '#1f1f1f';
+    const gap = 4;
+    const pad = 4;
+    const bg = '#000000';
 
     const cellW = Math.max(...entries.map(x => x.img.naturalWidth || x.img.width || 0), 1);
     const cellH = Math.max(...entries.map(x => x.img.naturalHeight || x.img.height || 0), 1);
@@ -3443,51 +3444,50 @@ if (act === 'gojuon') {
           const meta = document.createElement('div');
           meta.className = 'rhynioMetaGrid';
           meta.innerHTML = `
-            <label class="rhynioField">
+            <label class="rhynioField rhynioFieldLv">
               <span>Lv</span>
-              <input class="rhynioInput js-rhynio-level" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(slot.level || '')}" placeholder="389">
+              <input class="rhynioInput js-rhynio-level" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(slot.level || '')}" placeholder="">
             </label>
-            <label class="rhynioField">
+            <label class="rhynioField rhynioFieldType">
               <span>種別</span>
               <select class="rhynioSelect js-rhynio-statType">
-                <option value="M" ${slot.statType === 'M' ? 'selected' : ''}>攻撃</option>
-                <option value="W" ${slot.statType === 'W' ? 'selected' : ''}>重量</option>
+                <option value="M" ${slot.statType === 'M' ? 'selected' : ''}>攻撃(M312)</option>
+                <option value="W" ${slot.statType === 'W' ? 'selected' : ''}>重量(W310)</option>
               </select>
             </label>
-            <label class="rhynioField">
-              <span>値</span>
-              <input class="rhynioInput js-rhynio-statValue" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(slot.statValue || '')}" placeholder="312">
-            </label>
-            <label class="rhynioCheck">
-              <input class="js-rhynio-sold" type="checkbox" ${slot.soldOut ? 'checked' : ''}>
-              <span>売り切れ</span>
-            </label>
+            <button class="rhynioSoldBtn ${slot.soldOut ? 'isOn' : ''}" type="button">${slot.soldOut ? '売り切れ解除' : '売り切れ'}</button>
           `;
 
           const levelInput = meta.querySelector('.js-rhynio-level');
           const statTypeSel = meta.querySelector('.js-rhynio-statType');
-          const statValueInput = meta.querySelector('.js-rhynio-statValue');
-          const soldChk = meta.querySelector('.js-rhynio-sold');
+          const soldBtn = meta.querySelector('.rhynioSoldBtn');
 
           const persistMeta = () => {
             const target = rhynioSlots.find(x => Number(x.id) === Number(slot.id));
             if (!target) return;
             target.level = String(levelInput?.value || '').replace(/[^\d]/g, '').slice(0, 4);
             target.statType = String(statTypeSel?.value || 'M').toUpperCase() === 'W' ? 'W' : 'M';
-            target.statValue = String(statValueInput?.value || '').replace(/[^\d]/g, '').slice(0, 4);
-            target.soldOut = !!soldChk?.checked;
+            target.statValue = target.statType === 'W' ? '310' : '312';
             saveRhynioSlots();
             renderCopyBox();
           };
 
-          [levelInput, statValueInput].forEach((input) => {
-            input?.addEventListener('input', () => {
-              input.value = String(input.value || '').replace(/[^\d]/g, '').slice(0, 4);
-              persistMeta();
-            });
+          levelInput?.addEventListener('input', () => {
+            levelInput.value = String(levelInput.value || '').replace(/[^\d]/g, '').slice(0, 4);
+            persistMeta();
           });
           statTypeSel?.addEventListener('change', persistMeta);
-          soldChk?.addEventListener('change', persistMeta);
+          soldBtn?.addEventListener('click', async () => {
+            const target = rhynioSlots.find(x => Number(x.id) === Number(slot.id));
+            if (!target) return;
+            const nextState = !target.soldOut;
+            const ok = await confirmAsk(nextState ? `リニオ${circled(slot.no)} を売り切れにしますか？` : `リニオ${circled(slot.no)} の売り切れを解除しますか？`);
+            if (!ok) return;
+            target.soldOut = nextState;
+            saveRhynioSlots();
+            renderRhynioManagerList();
+            renderCopyBox();
+          });
 
           pick.addEventListener('click', () => file.click());
 
