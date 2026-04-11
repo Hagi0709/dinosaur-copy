@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-04-11 20:50';
+const BUILD_VERSION = '2026-04-11 20:32';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -916,17 +916,12 @@ for (let p = 0; p < pages; p++) {
     return `rhynio_${String(slotId)}`;
   }
   function normalizeRhynioSlot(slot, fallbackNo = 0) {
-    const rawNo = Number(slot?.no || fallbackNo || 0);
-    const no = rawNo > 0 ? rawNo : 1;
-    const rawType = String(slot?.statType || 'M').toUpperCase();
-    const statType = rawType === 'W' ? 'W' : 'M';
-    const legacyValue = String(slot?.statValue || '').replace(/[^\d]/g, '').slice(0, 4);
+    const no = Number(slot?.no || fallbackNo || 0) || 0;
     return {
-      id: Number(slot?.id || no) || no,
+      id: Number(slot?.id || no || Date.now()) || Date.now(),
       no,
       level: String(slot?.level || '').replace(/[^\d]/g, '').slice(0, 4),
-      statType,
-      statValue: legacyValue || (statType === 'W' ? '310' : '312'),
+      statType: String(slot?.statType || 'M').toUpperCase() === 'W' ? 'W' : 'M',
       soldOut: !!slot?.soldOut,
     };
   }
@@ -951,13 +946,12 @@ for (let p = 0; p < pages; p++) {
       saveRhynioSlots();
       return;
     }
-
     let changed = false;
     for (let i = 0; i < rhynioSlots.length; i++) {
-      const normalized = normalizeRhynioSlot(rhynioSlots[i], i + 1);
-      if (JSON.stringify(normalized) !== JSON.stringify(rhynioSlots[i])) changed = true;
-      rhynioSlots[i] = normalized;
-      rhynioSlotSeq = Math.max(rhynioSlotSeq, Number(normalized.no) || 0, Number(normalized.id) || 0);
+      const next = normalizeRhynioSlot(rhynioSlots[i], i + 1);
+      if (JSON.stringify(next) != JSON.stringify(rhynioSlots[i])) changed = true;
+      rhynioSlots[i] = next;
+      rhynioSlotSeq = Math.max(rhynioSlotSeq, Number(next.no) || 0, Number(next.id) || 0);
     }
     try { localStorage.setItem(LS.RHYNIO_SLOT_SEQ, String(rhynioSlotSeq)); } catch {}
     if (changed) saveRhynioSlots();
@@ -970,15 +964,13 @@ for (let p = 0; p < pages; p++) {
   }
   function buildRhynioCopyText(slots) {
     return (slots || []).map((slot) => {
-      const noText = circled(Number(slot.no) || 0);
-      const lv = String(slot.level || '').trim();
+      const noTxt = circled(Number(slot.no) || 0);
+      const lvTxt = String(slot.level || '').trim();
       const statType = String(slot.statType || 'M').toUpperCase() === 'W' ? 'W' : 'M';
-      const statValue = statType === 'W' ? '310' : '312';
-      const parts = [`${noText} `];
-      if (lv) parts.push(`Lv.${lv}`);
-      parts.push(`${lv ? ' ' : ''}(${statType}${statValue})`);
-      if (slot.soldOut) parts.push(' 売り切れ');
-      return parts.join('').trimEnd();
+      const statTxt = statType === 'W' ? 'W310' : 'M312';
+      const soldTxt = slot.soldOut ? ' 売り切れ' : '';
+      if (!lvTxt) return `${noTxt} (${statTxt})${soldTxt}`.trim();
+      return `${noTxt} Lv.${lvTxt} (${statTxt})${soldTxt}`.trim();
     }).join('\n');
   }
   function getRhynioMemoText() {
@@ -986,16 +978,10 @@ for (let p = 0; p < pages; p++) {
     return buildRhynioCopyText(filled).trim();
   }
   function isRhynioDinoId(id) {
-    const rec = dinos.find(x => x.id === id);
-    const name = String(rec?.name || '');
-    return norm(name).includes(norm('リニオグナタ')) || norm(displayName(name)).includes(norm('リニオグナタ'));
-  }
-  function refreshRhynioMemoCards() {
-    $$('.card[data-kind="dino"][data-did]').forEach((card) => {
-      const did = String(card.dataset.did || '');
-      if (!did || !isRhynioDinoId(did)) return;
-      applyMemoToCard(card, did);
-    });
+    const d = dinos.find(x => x.id === id);
+    const name = String(d?.name || '');
+    const n = norm(displayName(name));
+    return n.includes(norm('リニオ')) || n.includes('rhynio') || n.includes('rhynio');
   }
 
   /* ========= DOM ========= */
@@ -1510,23 +1496,12 @@ function installLeftToggleHit(card) {
   /* ========= cards ========= */
 
   function getMemoForDinoId(id) {
-    let baseMemo = '';
-
     const c = custom.dino.find(x => x.id === id);
-    if (c && typeof c.memo === 'string') baseMemo = c.memo;
-    else {
-      const o = dinoOverride[id];
-      if (o && typeof o.memo === 'string') baseMemo = o.memo;
-    }
-
-    if (isRhynioDinoId(id)) {
-      const rhynioMemo = getRhynioMemoText();
-      if (baseMemo && rhynioMemo) return `${baseMemo}
-${rhynioMemo}`;
-      if (rhynioMemo) return rhynioMemo;
-    }
-
-    return baseMemo;
+    const baseMemo = (c && typeof c.memo === 'string') ? c.memo : ((dinoOverride[id] && typeof dinoOverride[id].memo === 'string') ? dinoOverride[id].memo : '');
+    if (!isRhynioDinoId(id)) return baseMemo || '';
+    const rhynioMemo = getRhynioMemoText();
+    if (baseMemo && rhynioMemo) return `${baseMemo}\n${rhynioMemo}`;
+    return rhynioMemo || baseMemo || '';
   }
 
   function getMemoImgForDinoId(id) {
@@ -3134,49 +3109,30 @@ if (act === 'gojuon') {
     const cx = x + r;
     const cy = y + r;
 
-    ctx.save();
+    const grad = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.35, r * 0.15, cx, cy, r);
+    grad.addColorStop(0, '#ffe89a');
+    grad.addColorStop(0.55, '#ffc928');
+    grad.addColorStop(1, '#8f5d00');
 
+    ctx.save();
+    ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = '#090909';
     ctx.fill();
 
-    ctx.lineWidth = Math.max(3, size * 0.07);
-    ctx.strokeStyle = '#d39c12';
+    ctx.lineWidth = Math.max(3, size * 0.06);
+    ctx.strokeStyle = '#1a1a1a';
     ctx.stroke();
 
-    ctx.beginPath();
-    ctx.arc(cx, cy, r * 0.79, 0, Math.PI * 2);
-    ctx.lineWidth = Math.max(2, size * 0.055);
-    ctx.strokeStyle = '#ffcf3d';
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, r * 0.64, 0, Math.PI * 2);
-    ctx.fillStyle = '#111111';
-    ctx.fill();
-
-    const shine = ctx.createLinearGradient(x, y, x, y + size * 0.62);
-    shine.addColorStop(0, 'rgba(255,255,255,.34)');
-    shine.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.beginPath();
-    ctx.arc(cx, cy - r * 0.06, r * 0.9, Math.PI, 0, false);
-    ctx.arc(cx, cy, r * 0.12, 0, Math.PI, true);
-    ctx.closePath();
-    ctx.fillStyle = shine;
-    ctx.fill();
-
-    ctx.font = `900 ${Math.max(20, size * 0.58)}px Arial Black, system-ui, -apple-system, BlinkMacSystemFont, sans-serif`;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `900 ${Math.max(22, size * 0.56)}px system-ui, -apple-system, BlinkMacSystemFont, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineJoin = 'round';
-    ctx.miterLimit = 2;
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = Math.max(2.8, size * 0.09);
-    ctx.strokeText(String(label), cx, cy + size * 0.01);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(String(label), cx, cy + size * 0.01);
-
+    ctx.strokeStyle = 'rgba(0,0,0,.40)';
+    ctx.lineWidth = Math.max(2, size * 0.08);
+    ctx.strokeText(String(label), cx, cy + size * 0.03);
+    ctx.fillText(String(label), cx, cy + size * 0.03);
     ctx.restore();
   }
 
@@ -3287,8 +3243,8 @@ if (act === 'gojuon') {
     const cols = 3;
     const rows = 4;
     const perPage = cols * rows;
-    const gap = 4;
-    const pad = 4;
+    const gap = 6;
+    const pad = 0;
     const bg = '#000000';
 
     const cellW = Math.max(...entries.map(x => x.img.naturalWidth || x.img.width || 0), 1);
@@ -3322,11 +3278,11 @@ if (act === 'gojuon') {
 
         ctx.drawImage(im, dx, dy, dw, dh);
 
-        const badgeSize = Math.max(58, Math.round(Math.min(cellW, cellH) * 0.205));
+        const badgeSize = Math.max(54, Math.round(Math.min(cellW, cellH) * 0.19));
         drawRhynioBadge(
           ctx,
-          x + cellW - badgeSize - 6,
-          y + 6,
+          x + cellW - badgeSize - 10,
+          y + 10,
           badgeSize,
           Number(entry.slot.no) || (p + idx + 1)
         );
@@ -3417,6 +3373,33 @@ if (act === 'gojuon') {
       exportBtn.addEventListener('click', () => exportRhynioSheets());
     }
 
+    function renderCopyBox(parent) {
+      const copyWrap = document.createElement('div');
+      copyWrap.className = 'rhynioCopyWrap';
+      const memoText = getRhynioMemoText();
+      copyWrap.innerHTML = `
+        <div class="rhynioCopyHead">
+          <div class="rhynioCopyTitle">コピー用</div>
+          <button class="pill js-rhynioCopyBtn" type="button">コピー</button>
+        </div>
+        <textarea class="rhynioCopyText" readonly>${escapeHtml(memoText)}</textarea>
+      `;
+      copyWrap.querySelector('.js-rhynioCopyBtn')?.addEventListener('click', async () => {
+        const text = getRhynioMemoText();
+        if (!text) {
+          openToast('コピーする内容がありません');
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(text);
+          openToast('コピー済み✓');
+        } catch {
+          openToast('コピーに失敗しました');
+        }
+      });
+      parent.appendChild(copyWrap);
+    }
+
     function renderRhynioManagerList() {
       const body = ov.querySelector('.exportGalleryBody');
       if (!body) return;
@@ -3493,9 +3476,8 @@ if (act === 'gojuon') {
             if (!target) return;
             target.level = String(levelInput?.value || '').replace(/[^\d]/g, '').slice(0, 4);
             target.statType = String(statTypeSel?.value || 'M').toUpperCase() === 'W' ? 'W' : 'M';
-            target.statValue = target.statType === 'W' ? '310' : '312';
             saveRhynioSlots();
-            renderCopyBox();
+            renderMain();
           };
 
           levelInput?.addEventListener('input', () => {
@@ -3512,22 +3494,20 @@ if (act === 'gojuon') {
             target.soldOut = nextState;
             saveRhynioSlots();
             renderRhynioManagerList();
-            renderCopyBox();
+            renderMain();
           });
 
           pick.addEventListener('click', () => file.click());
-
           file.addEventListener('change', async () => {
             const f = file.files && file.files[0];
             if (!f) return;
-
             try {
               const dataUrl = await fileToDataURLCompressed(f, 1200, 0.9);
               await idbPutImage(key, dataUrl);
               imageCache[key] = dataUrl;
-              thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
               openToast('画像を保存しました');
-              renderCopyBox();
+              renderRhynioManagerList();
+              renderMain();
             } catch (e) {
               console.error(e);
               openToast('画像の保存に失敗しました');
@@ -3538,29 +3518,27 @@ if (act === 'gojuon') {
 
           del.addEventListener('click', async () => {
             const hasImg = !!String(imageCache[key] || '').trim();
-            if (!hasImg) {
-              openToast('画像がありません');
+            const target = rhynioSlots.find(x => Number(x.id) === Number(slot.id));
+            if (!hasImg && !String(target?.level || '').trim() && !target?.soldOut && String(target?.statType || 'M') === 'M') {
+              openToast('削除する内容がありません');
               return;
             }
-
-            const ok = await confirmAsk(`リニオ${circled(slot.no)} の画像を削除しますか？`);
+            const ok = await confirmAsk(`リニオ${circled(slot.no)} をリセットしますか？`);
             if (!ok) return;
-
             try {
-              await idbDelImage(key);
-              delete imageCache[key];
-              const target = rhynioSlots.find(x => Number(x.id) === Number(slot.id));
+              if (hasImg) {
+                await idbDelImage(key);
+                delete imageCache[key];
+              }
               if (target) {
                 target.level = '';
                 target.statType = 'M';
-                target.statValue = '312';
                 target.soldOut = false;
-                saveRhynioSlots();
               }
-              thumb.textContent = 'No Image';
-              openToast('画像を削除しました');
+              saveRhynioSlots();
+              openToast('リセットしました');
               renderRhynioManagerList();
-              renderCopyBox();
+              renderMain();
             } catch (e) {
               console.error(e);
               openToast('削除に失敗しました');
@@ -3569,68 +3547,23 @@ if (act === 'gojuon') {
 
           thumb.addEventListener('click', () => {
             const u = imageCache[key];
-            if (!u) return;
-            openImgViewer(u);
+            if (u) openImgViewer(u);
           });
 
           btns.appendChild(pick);
           btns.appendChild(del);
-
           mid.appendChild(name);
           mid.appendChild(btns);
-          mid.appendChild(meta);
 
           row.appendChild(thumb);
           row.appendChild(mid);
+          row.appendChild(meta);
           row.appendChild(file);
-
           listBox.appendChild(row);
         });
 
-      const copyWrap = document.createElement('div');
-      copyWrap.className = 'rhynioCopyWrap';
-      copyWrap.innerHTML = `
-        <div class="rhynioCopyHead">
-          <div class="rhynioCopyTitle">コピー用テキスト</div>
-          <button class="pill" type="button" id="rhynioCopyBtn">コピー</button>
-        </div>
-        <textarea id="rhynioCopyText" class="rhynioCopyText" readonly></textarea>
-      `;
-
       body.appendChild(listBox);
-      body.appendChild(copyWrap);
-
-      copyWrap.querySelector('#rhynioCopyBtn')?.addEventListener('click', async () => {
-        const ta = copyWrap.querySelector('#rhynioCopyText');
-        const txt = String(ta?.value || '');
-        if (!txt.trim()) {
-          openToast('コピーする内容がありません');
-          return;
-        }
-        try {
-          await navigator.clipboard.writeText(txt);
-          openToast('コピー済み✓');
-        } catch {
-          try {
-            ta?.focus();
-            ta?.select();
-            document.execCommand('copy');
-            openToast('コピー済み✓');
-          } catch {
-            openToast('コピーに失敗しました');
-          }
-        }
-      });
-
-      renderCopyBox();
-    }
-
-    function renderCopyBox() {
-      const ta = ov.querySelector('#rhynioCopyText');
-      if (!ta) return;
-      const filled = getRhynioFilledSlots().slice().sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
-      ta.value = buildRhynioCopyText(filled);
-      refreshRhynioMemoCards();
+      renderCopyBox(body);
     }
 
     renderRhynioManagerList();
