@@ -3464,7 +3464,10 @@ if (act === 'gojuon') {
                 <option value="W" ${slot.statType === 'W' ? 'selected' : ''}>重量</option>
               </select>
             </label>
-            <button class="rhynioSoldBtn ${slot.soldOut ? 'isOn' : ''}" type="button">${slot.soldOut ? '売り切れ解除' : '売り切れ'}</button>
+            <label class="rhynioSoldWrap">
+              <span class="rhynioSoldLabel">売り切れ</span>
+              <button class="rhynioSoldBtn ${slot.soldOut ? 'isOn' : ''}" type="button">${slot.soldOut ? '売り切れ解除' : '売り切れ'}</button>
+            </label>
           `;
 
           const levelInput = meta.querySelector('.js-rhynio-level');
@@ -3555,8 +3558,12 @@ if (act === 'gojuon') {
           mid.appendChild(name);
           mid.appendChild(btns);
 
-          row.appendChild(thumb);
-          row.appendChild(mid);
+          const topRow = document.createElement('div');
+          topRow.className = 'rhynioTopRow';
+          topRow.appendChild(thumb);
+          topRow.appendChild(mid);
+
+          row.appendChild(topRow);
           row.appendChild(meta);
           row.appendChild(file);
           listBox.appendChild(row);
