@@ -981,6 +981,22 @@ for (let p = 0; p < pages; p++) {
       return parts.join('').trimEnd();
     }).join('\n');
   }
+  function getRhynioMemoText() {
+    const filled = getRhynioFilledSlots().slice().sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
+    return buildRhynioCopyText(filled).trim();
+  }
+  function isRhynioDinoId(id) {
+    const rec = dinos.find(x => x.id === id);
+    const name = String(rec?.name || '');
+    return norm(name).includes(norm('リニオグナタ')) || norm(displayName(name)).includes(norm('リニオグナタ'));
+  }
+  function refreshRhynioMemoCards() {
+    $$('.card[data-kind="dino"][data-did]').forEach((card) => {
+      const did = String(card.dataset.did || '');
+      if (!did || !isRhynioDinoId(did)) return;
+      applyMemoToCard(card, did);
+    });
+  }
 
   /* ========= DOM ========= */
   const el = {
@@ -1494,13 +1510,23 @@ function installLeftToggleHit(card) {
   /* ========= cards ========= */
 
   function getMemoForDinoId(id) {
+    let baseMemo = '';
+
     const c = custom.dino.find(x => x.id === id);
-    if (c && typeof c.memo === 'string') return c.memo;
+    if (c && typeof c.memo === 'string') baseMemo = c.memo;
+    else {
+      const o = dinoOverride[id];
+      if (o && typeof o.memo === 'string') baseMemo = o.memo;
+    }
 
-    const o = dinoOverride[id];
-    if (o && typeof o.memo === 'string') return o.memo;
+    if (isRhynioDinoId(id)) {
+      const rhynioMemo = getRhynioMemoText();
+      if (baseMemo && rhynioMemo) return `${baseMemo}
+${rhynioMemo}`;
+      if (rhynioMemo) return rhynioMemo;
+    }
 
-    return '';
+    return baseMemo;
   }
 
   function getMemoImgForDinoId(id) {
@@ -3451,8 +3477,8 @@ if (act === 'gojuon') {
             <label class="rhynioField rhynioFieldType">
               <span>種別</span>
               <select class="rhynioSelect js-rhynio-statType">
-                <option value="M" ${slot.statType === 'M' ? 'selected' : ''}>攻撃(M312)</option>
-                <option value="W" ${slot.statType === 'W' ? 'selected' : ''}>重量(W310)</option>
+                <option value="M" ${slot.statType === 'M' ? 'selected' : ''}>攻撃</option>
+                <option value="W" ${slot.statType === 'W' ? 'selected' : ''}>重量</option>
               </select>
             </label>
             <button class="rhynioSoldBtn ${slot.soldOut ? 'isOn' : ''}" type="button">${slot.soldOut ? '売り切れ解除' : '売り切れ'}</button>
@@ -3523,8 +3549,17 @@ if (act === 'gojuon') {
             try {
               await idbDelImage(key);
               delete imageCache[key];
+              const target = rhynioSlots.find(x => Number(x.id) === Number(slot.id));
+              if (target) {
+                target.level = '';
+                target.statType = 'M';
+                target.statValue = '312';
+                target.soldOut = false;
+                saveRhynioSlots();
+              }
               thumb.textContent = 'No Image';
               openToast('画像を削除しました');
+              renderRhynioManagerList();
               renderCopyBox();
             } catch (e) {
               console.error(e);
@@ -3595,6 +3630,7 @@ if (act === 'gojuon') {
       if (!ta) return;
       const filled = getRhynioFilledSlots().slice().sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
       ta.value = buildRhynioCopyText(filled);
+      refreshRhynioMemoCards();
     }
 
     renderRhynioManagerList();
