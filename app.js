@@ -915,7 +915,24 @@ for (let p = 0; p < pages; p++) {
   function rhynioImageKey(slotId) {
     return `rhynio_${String(slotId)}`;
   }
+  function normalizeRhynioSlot(slot, fallbackNo = 0) {
+    const rawNo = Number(slot?.no || fallbackNo || 0);
+    const no = rawNo > 0 ? rawNo : 1;
+    const rawType = String(slot?.statType || 'M').toUpperCase();
+    const statType = rawType === 'W' ? 'W' : 'M';
+    return {
+      id: Number(slot?.id || no) || no,
+      no,
+      level: String(slot?.level || '').replace(/[^\d]/g, '').slice(0, 4),
+      statType,
+      statValue: String(slot?.statValue || '').replace(/[^\d]/g, '').slice(0, 4),
+      soldOut: !!slot?.soldOut,
+    };
+  }
   function saveRhynioSlots() {
+    for (let i = 0; i < rhynioSlots.length; i++) {
+      rhynioSlots[i] = normalizeRhynioSlot(rhynioSlots[i], i + 1);
+    }
     return saveJSON(LS.RHYNIO_SLOTS, rhynioSlots);
   }
   function nextRhynioSlotNo() {
@@ -924,19 +941,44 @@ for (let p = 0; p < pages; p++) {
     return rhynioSlotSeq;
   }
   function ensureRhynioSlots() {
-    if (rhynioSlots.length) return;
-    for (let i = 1; i <= 12; i++) {
-      rhynioSlots.push({ id: i, no: i });
+    if (!rhynioSlots.length) {
+      for (let i = 1; i <= 12; i++) {
+        rhynioSlots.push(normalizeRhynioSlot({ id: i, no: i }, i));
+      }
+      rhynioSlotSeq = Math.max(rhynioSlotSeq, 12);
+      try { localStorage.setItem(LS.RHYNIO_SLOT_SEQ, String(rhynioSlotSeq)); } catch {}
+      saveRhynioSlots();
+      return;
     }
-    rhynioSlotSeq = Math.max(rhynioSlotSeq, 12);
+
+    let changed = false;
+    for (let i = 0; i < rhynioSlots.length; i++) {
+      const normalized = normalizeRhynioSlot(rhynioSlots[i], i + 1);
+      if (JSON.stringify(normalized) !== JSON.stringify(rhynioSlots[i])) changed = true;
+      rhynioSlots[i] = normalized;
+      rhynioSlotSeq = Math.max(rhynioSlotSeq, Number(normalized.no) || 0, Number(normalized.id) || 0);
+    }
     try { localStorage.setItem(LS.RHYNIO_SLOT_SEQ, String(rhynioSlotSeq)); } catch {}
-    saveRhynioSlots();
+    if (changed) saveRhynioSlots();
   }
   function getRhynioFilledSlots() {
     return rhynioSlots.filter(slot => {
       const k = rhynioImageKey(slot.id);
       return !!String(imageCache[k] || '').trim();
     });
+  }
+  function buildRhynioCopyText(slots) {
+    return (slots || []).map((slot) => {
+      const noText = circled(Number(slot.no) || 0);
+      const lv = String(slot.level || '').trim();
+      const statType = String(slot.statType || 'M').toUpperCase() === 'W' ? 'W' : 'M';
+      const statValue = String(slot.statValue || '').trim();
+      const parts = [`${noText} `];
+      if (lv) parts.push(`Lv.${lv}`);
+      if (statValue) parts.push(`${lv ? ' ' : ''}(${statType}${statValue})`);
+      if (slot.soldOut) parts.push(`${(lv || statValue) ? ' ' : ''}売り切れ`);
+      return parts.join('').trimEnd();
+    }).join('\n');
   }
 
   /* ========= DOM ========= */
@@ -3065,30 +3107,49 @@ if (act === 'gojuon') {
     const cx = x + r;
     const cy = y + r;
 
-    const grad = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.35, r * 0.15, cx, cy, r);
-    grad.addColorStop(0, '#ffe89a');
-    grad.addColorStop(0.55, '#ffc928');
-    grad.addColorStop(1, '#8f5d00');
-
     ctx.save();
-    ctx.fillStyle = grad;
+
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#090909';
     ctx.fill();
 
-    ctx.lineWidth = Math.max(3, size * 0.06);
-    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = Math.max(3, size * 0.07);
+    ctx.strokeStyle = '#d39c12';
     ctx.stroke();
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `900 ${Math.max(22, size * 0.56)}px system-ui, -apple-system, BlinkMacSystemFont, sans-serif`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.79, 0, Math.PI * 2);
+    ctx.lineWidth = Math.max(2, size * 0.055);
+    ctx.strokeStyle = '#ffcf3d';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.64, 0, Math.PI * 2);
+    ctx.fillStyle = '#111111';
+    ctx.fill();
+
+    const shine = ctx.createLinearGradient(x, y, x, y + size * 0.62);
+    shine.addColorStop(0, 'rgba(255,255,255,.34)');
+    shine.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.beginPath();
+    ctx.arc(cx, cy - r * 0.06, r * 0.9, Math.PI, 0, false);
+    ctx.arc(cx, cy, r * 0.12, 0, Math.PI, true);
+    ctx.closePath();
+    ctx.fillStyle = shine;
+    ctx.fill();
+
+    ctx.font = `900 ${Math.max(20, size * 0.58)}px Arial Black, system-ui, -apple-system, BlinkMacSystemFont, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = 'rgba(0,0,0,.40)';
-    ctx.lineWidth = Math.max(2, size * 0.08);
-    ctx.strokeText(String(label), cx, cy + size * 0.03);
-    ctx.fillText(String(label), cx, cy + size * 0.03);
+    ctx.miterLimit = 2;
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = Math.max(2.8, size * 0.09);
+    ctx.strokeText(String(label), cx, cy + size * 0.01);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(String(label), cx, cy + size * 0.01);
+
     ctx.restore();
   }
 
@@ -3199,9 +3260,9 @@ if (act === 'gojuon') {
     const cols = 3;
     const rows = 4;
     const perPage = cols * rows;
-    const gap = 12;
-    const pad = 12;
-    const bg = '#f3e8da';
+    const gap = 6;
+    const pad = 8;
+    const bg = '#1f1f1f';
 
     const cellW = Math.max(...entries.map(x => x.img.naturalWidth || x.img.width || 0), 1);
     const cellH = Math.max(...entries.map(x => x.img.naturalHeight || x.img.height || 0), 1);
@@ -3234,11 +3295,11 @@ if (act === 'gojuon') {
 
         ctx.drawImage(im, dx, dy, dw, dh);
 
-        const badgeSize = Math.max(54, Math.round(Math.min(cellW, cellH) * 0.19));
+        const badgeSize = Math.max(58, Math.round(Math.min(cellW, cellH) * 0.205));
         drawRhynioBadge(
           ctx,
-          x + cellW - badgeSize - 10,
-          y + 10,
+          x + cellW - badgeSize - 6,
+          y + 6,
           badgeSize,
           Number(entry.slot.no) || (p + idx + 1)
         );
@@ -3322,7 +3383,7 @@ if (act === 'gojuon') {
 
       addBtn.addEventListener('click', () => {
         const next = nextRhynioSlotNo();
-        rhynioSlots.push({ id: next, no: next });
+        rhynioSlots.push(normalizeRhynioSlot({ id: next, no: next }, next));
         saveRhynioSlots();
         renderRhynioManagerList();
       });
@@ -3340,9 +3401,10 @@ if (act === 'gojuon') {
       rhynioSlots
         .slice()
         .sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0))
-        .forEach((slot) => {
+        .forEach((rawSlot) => {
+          const slot = normalizeRhynioSlot(rawSlot, rawSlot?.no);
           const row = document.createElement('div');
-          row.className = 'imgRow';
+          row.className = 'imgRow rhynioRow';
 
           const thumb = document.createElement('div');
           thumb.className = 'thumb';
@@ -3378,6 +3440,55 @@ if (act === 'gojuon') {
           file.accept = 'image/*';
           file.style.display = 'none';
 
+          const meta = document.createElement('div');
+          meta.className = 'rhynioMetaGrid';
+          meta.innerHTML = `
+            <label class="rhynioField">
+              <span>Lv</span>
+              <input class="rhynioInput js-rhynio-level" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(slot.level || '')}" placeholder="389">
+            </label>
+            <label class="rhynioField">
+              <span>種別</span>
+              <select class="rhynioSelect js-rhynio-statType">
+                <option value="M" ${slot.statType === 'M' ? 'selected' : ''}>攻撃</option>
+                <option value="W" ${slot.statType === 'W' ? 'selected' : ''}>重量</option>
+              </select>
+            </label>
+            <label class="rhynioField">
+              <span>値</span>
+              <input class="rhynioInput js-rhynio-statValue" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(slot.statValue || '')}" placeholder="312">
+            </label>
+            <label class="rhynioCheck">
+              <input class="js-rhynio-sold" type="checkbox" ${slot.soldOut ? 'checked' : ''}>
+              <span>売り切れ</span>
+            </label>
+          `;
+
+          const levelInput = meta.querySelector('.js-rhynio-level');
+          const statTypeSel = meta.querySelector('.js-rhynio-statType');
+          const statValueInput = meta.querySelector('.js-rhynio-statValue');
+          const soldChk = meta.querySelector('.js-rhynio-sold');
+
+          const persistMeta = () => {
+            const target = rhynioSlots.find(x => Number(x.id) === Number(slot.id));
+            if (!target) return;
+            target.level = String(levelInput?.value || '').replace(/[^\d]/g, '').slice(0, 4);
+            target.statType = String(statTypeSel?.value || 'M').toUpperCase() === 'W' ? 'W' : 'M';
+            target.statValue = String(statValueInput?.value || '').replace(/[^\d]/g, '').slice(0, 4);
+            target.soldOut = !!soldChk?.checked;
+            saveRhynioSlots();
+            renderCopyBox();
+          };
+
+          [levelInput, statValueInput].forEach((input) => {
+            input?.addEventListener('input', () => {
+              input.value = String(input.value || '').replace(/[^\d]/g, '').slice(0, 4);
+              persistMeta();
+            });
+          });
+          statTypeSel?.addEventListener('change', persistMeta);
+          soldChk?.addEventListener('change', persistMeta);
+
           pick.addEventListener('click', () => file.click());
 
           file.addEventListener('change', async () => {
@@ -3390,6 +3501,7 @@ if (act === 'gojuon') {
               imageCache[key] = dataUrl;
               thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
               openToast('画像を保存しました');
+              renderCopyBox();
             } catch (e) {
               console.error(e);
               openToast('画像の保存に失敗しました');
@@ -3413,6 +3525,7 @@ if (act === 'gojuon') {
               delete imageCache[key];
               thumb.textContent = 'No Image';
               openToast('画像を削除しました');
+              renderCopyBox();
             } catch (e) {
               console.error(e);
               openToast('削除に失敗しました');
@@ -3430,6 +3543,7 @@ if (act === 'gojuon') {
 
           mid.appendChild(name);
           mid.appendChild(btns);
+          mid.appendChild(meta);
 
           row.appendChild(thumb);
           row.appendChild(mid);
@@ -3438,7 +3552,49 @@ if (act === 'gojuon') {
           listBox.appendChild(row);
         });
 
+      const copyWrap = document.createElement('div');
+      copyWrap.className = 'rhynioCopyWrap';
+      copyWrap.innerHTML = `
+        <div class="rhynioCopyHead">
+          <div class="rhynioCopyTitle">コピー用テキスト</div>
+          <button class="pill" type="button" id="rhynioCopyBtn">コピー</button>
+        </div>
+        <textarea id="rhynioCopyText" class="rhynioCopyText" readonly></textarea>
+      `;
+
       body.appendChild(listBox);
+      body.appendChild(copyWrap);
+
+      copyWrap.querySelector('#rhynioCopyBtn')?.addEventListener('click', async () => {
+        const ta = copyWrap.querySelector('#rhynioCopyText');
+        const txt = String(ta?.value || '');
+        if (!txt.trim()) {
+          openToast('コピーする内容がありません');
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(txt);
+          openToast('コピー済み✓');
+        } catch {
+          try {
+            ta?.focus();
+            ta?.select();
+            document.execCommand('copy');
+            openToast('コピー済み✓');
+          } catch {
+            openToast('コピーに失敗しました');
+          }
+        }
+      });
+
+      renderCopyBox();
+    }
+
+    function renderCopyBox() {
+      const ta = ov.querySelector('#rhynioCopyText');
+      if (!ta) return;
+      const filled = getRhynioFilledSlots().slice().sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
+      ta.value = buildRhynioCopyText(filled);
     }
 
     renderRhynioManagerList();
