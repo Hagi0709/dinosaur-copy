@@ -3451,34 +3451,33 @@ if (act === 'gojuon') {
           file.style.display = 'none';
 
           const meta = document.createElement('div');
-          meta.className = 'rhynioMetaGrid';
+          meta.className = 'rhynioMetaBar';
           meta.innerHTML = `
-            <label class="rhynioField rhynioFieldLv">
-              <span>Lv</span>
+            <div class="rhynioMetaItem rhynioMetaItemLv">
+              <span class="rhynioMetaLabel">Lv</span>
               <input class="rhynioInput js-rhynio-level" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(slot.level || '')}" placeholder="">
-            </label>
-            <label class="rhynioField rhynioFieldType">
-              <span>種別</span>
-              <select class="rhynioSelect js-rhynio-statType">
-                <option value="M" ${slot.statType === 'M' ? 'selected' : ''}>攻撃</option>
-                <option value="W" ${slot.statType === 'W' ? 'selected' : ''}>重量</option>
-              </select>
-            </label>
-            <label class="rhynioSoldWrap">
-              <span class="rhynioSoldLabel">売り切れ</span>
+            </div>
+            <div class="rhynioMetaItem rhynioMetaItemType">
+              <span class="rhynioMetaLabel">種別</span>
+              <div class="rhynioSeg" role="group" aria-label="種別">
+                <button class="rhynioSegBtn js-rhynio-statType ${slot.statType === 'W' ? 'isOn' : ''}" type="button" data-value="W">重量</button>
+                <button class="rhynioSegBtn js-rhynio-statType ${slot.statType !== 'W' ? 'isOn' : ''}" type="button" data-value="M">攻撃</button>
+              </div>
+            </div>
+            <div class="rhynioMetaItem rhynioMetaItemSold">
+              <span class="rhynioMetaLabel">売り切れ</span>
               <button class="rhynioSoldBtn ${slot.soldOut ? 'isOn' : ''}" type="button">${slot.soldOut ? '売り切れ解除' : '売り切れ'}</button>
-            </label>
+            </div>
           `;
 
           const levelInput = meta.querySelector('.js-rhynio-level');
-          const statTypeSel = meta.querySelector('.js-rhynio-statType');
+          const statTypeBtns = Array.from(meta.querySelectorAll('.js-rhynio-statType'));
           const soldBtn = meta.querySelector('.rhynioSoldBtn');
 
           const persistMeta = () => {
             const target = rhynioSlots.find(x => Number(x.id) === Number(slot.id));
             if (!target) return;
             target.level = String(levelInput?.value || '').replace(/[^\d]/g, '').slice(0, 4);
-            target.statType = String(statTypeSel?.value || 'M').toUpperCase() === 'W' ? 'W' : 'M';
             saveRhynioSlots();
             renderMain();
           };
@@ -3487,7 +3486,16 @@ if (act === 'gojuon') {
             levelInput.value = String(levelInput.value || '').replace(/[^\d]/g, '').slice(0, 4);
             persistMeta();
           });
-          statTypeSel?.addEventListener('change', persistMeta);
+          statTypeBtns.forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const target = rhynioSlots.find(x => Number(x.id) === Number(slot.id));
+              if (!target) return;
+              target.statType = String(btn.getAttribute('data-value') || 'M').toUpperCase() === 'W' ? 'W' : 'M';
+              saveRhynioSlots();
+              renderRhynioManagerList();
+              renderMain();
+            });
+          });
           soldBtn?.addEventListener('click', async () => {
             const target = rhynioSlots.find(x => Number(x.id) === Number(slot.id));
             if (!target) return;
