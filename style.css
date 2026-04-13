@@ -1018,6 +1018,7 @@
     object-fit:cover;
     display:block;
   }
+  .thumb{ cursor: zoom-in; }
   .imgMid{
     min-width:0;
     display:flex;
@@ -1243,6 +1244,7 @@
     border-radius: 12px;
     user-select:none;
     -webkit-user-select:none;
+    cursor:zoom-in;
   }
 
   /* 画像出力モーダル内は文字選択を抑える（入力欄は除外） */
