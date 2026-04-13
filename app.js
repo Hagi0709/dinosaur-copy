@@ -969,7 +969,7 @@ for (let p = 0; p < pages; p++) {
   }
   function buildRhynioCopyText(slots) {
     return (slots || []).map((slot) => {
-      const noText = circled(Number(slot.no) || 0);
+      const noText = String(Number(slot.no) || 0);
       const lv = String(slot.level || '').trim();
       const statType = String(slot.statType || 'M').toUpperCase() === 'W' ? 'W' : 'M';
       const statFixed = statType === 'W' ? '310' : '312';
@@ -979,6 +979,20 @@ for (let p = 0; p < pages; p++) {
       if (slot.soldOut) parts.push(` 売り切れ`);
       return parts.join('').trimEnd();
     }).join('\n');
+  }
+
+  function getRhynioMemoText() {
+    const filled = getRhynioFilledSlots().slice().sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
+    return buildRhynioCopyText(filled).trim();
+  }
+
+  function isRhynioDinoCard(card, did, dinoData = null) {
+    const name = String(dinoData?.name || card?.dataset?.name || '').trim();
+    const baseName = String(dinoData?._baseName || '').trim();
+    if (/リニオグナタ/.test(name) || /リニオグナタ/.test(baseName)) return true;
+    if (/rhynio/i.test(name) || /rhyniognatha/i.test(name) || /rhyniognatha/i.test(baseName)) return true;
+    const key = norm(`${baseName} ${name}`);
+    return key.includes(norm('リニオグナタ')) || key.includes('rhynio') || key.includes('rhyniognatha');
   }
 
   /* ========= DOM ========= */
@@ -1525,9 +1539,11 @@ function installLeftToggleHit(card) {
     saveJSON(LS.DINO_OVERRIDE, dinoOverride);
   }
 
-  function applyMemoToCard(card, did) {
-    const memo = String(getMemoForDinoId(did) || '').trim();
+  function applyMemoToCard(card, did, dinoData = null) {
+    const baseMemo = String(getMemoForDinoId(did) || '').trim();
     const memoImg = String(getMemoImgForDinoId(did) || '').trim();
+    const rhynioMemo = isRhynioDinoCard(card, did, dinoData) ? getRhynioMemoText() : '';
+    const memo = [baseMemo, rhynioMemo].filter(Boolean).join(baseMemo && rhynioMemo ? '\n' : '');
     const memoEl = $('.js-memo', card);
     if (!memoEl) return;
 
@@ -1675,7 +1691,7 @@ if (!nameWrap) {
 
 const nameEl = $('.name', card);
 if (nameEl) nameEl.textContent = displayName(d.name);
-    applyMemoToCard(card, d.id);
+    applyMemoToCard(card, d.id, d);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
 requestAnimationFrame(() => installLeftToggleHit(card));
@@ -1948,7 +1964,7 @@ if (!nameWrap) {
 
 const nameEl = $('.name', card);
 if (nameEl) nameEl.textContent = displayName(d.name);
-    applyMemoToCard(card, d.id);
+    applyMemoToCard(card, d.id, d);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
 requestAnimationFrame(() => installLeftToggleHit(card));
@@ -3420,7 +3436,7 @@ if (act === 'gojuon') {
 
           const name = document.createElement('div');
           name.className = 'imgName';
-          name.textContent = `リニオ${circled(slot.no)}`;
+          name.textContent = `リニオ${Number(slot.no) || 0}`;
 
           const btns = document.createElement('div');
           btns.className = 'imgBtns';
@@ -3486,7 +3502,8 @@ if (act === 'gojuon') {
             const target = rhynioSlots.find(x => Number(x.id) === Number(slot.id));
             if (!target) return;
             const nextState = !target.soldOut;
-            const ok = await confirmAsk(nextState ? `リニオ${circled(slot.no)} を売り切れにしますか？` : `リニオ${circled(slot.no)} の売り切れを解除しますか？`);
+            const slotLabel = `リニオ${Number(slot.no) || 0}`;
+            const ok = await confirmAsk(nextState ? `${slotLabel} を売り切れにしますか？` : `${slotLabel} の売り切れを解除しますか？`);
             if (!ok) {
               soldChk.checked = !!target.soldOut;
               return;
@@ -3527,7 +3544,7 @@ if (act === 'gojuon') {
               return;
             }
 
-            const ok = await confirmAsk(`リニオ${circled(slot.no)} をリセットしますか？`);
+            const ok = await confirmAsk(`リニオ${Number(slot.no) || 0} をリセットしますか？`);
             if (!ok) return;
 
             try {
