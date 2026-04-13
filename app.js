@@ -969,7 +969,7 @@ for (let p = 0; p < pages; p++) {
   }
   function buildRhynioCopyText(slots) {
     return (slots || []).map((slot) => {
-      const noText = String(Number(slot.no) || 0);
+      const noText = circled(Number(slot.no) || 0);
       const lv = String(slot.level || '').trim();
       const statType = String(slot.statType || 'M').toUpperCase() === 'W' ? 'W' : 'M';
       const statFixed = statType === 'W' ? '310' : '312';
@@ -3235,6 +3235,7 @@ if (act === 'gojuon') {
         out.className = 'exportPageImg';
         out.alt = `リニオ画像 ${idx + 1}/${pageUrls.length}`;
         out.src = src;
+        out.addEventListener('click', () => openImgViewer(src));
 
         wrap.appendChild(capEl);
         wrap.appendChild(out);
