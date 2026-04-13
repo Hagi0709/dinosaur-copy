@@ -2251,87 +2251,21 @@
 
 .inputDisplay{font-size:16px;font-weight:900;line-height:1;text-align:right;white-space:nowrap;}
 
-/* ===== Rhynio manager layout fix ===== */
-.rhynioRow{
-  display:block !important;
-  padding:14px !important;
-}
-.rhynioTopRow{
-  display:grid;
-  grid-template-columns:140px minmax(0,1fr);
-  gap:12px;
-  align-items:start;
-}
-.rhynioTopRow .thumb{
-  grid-column:1;
-  grid-row:1;
-}
-.rhynioTopRow .imgMid{
-  grid-column:2;
-  grid-row:1;
-  width:100%;
-  min-width:0;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.rhynioTopRow .imgName{
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.rhynioTopRow .imgBtns{
-  display:flex;
-  gap:10px;
-  flex-wrap:nowrap;
-}
-.rhynioTopRow .imgBtns > *{
-  flex:1 1 0;
-  min-width:0;
-}
-.rhynioMetaGrid{
-  display:grid !important;
-  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
-  gap:10px !important;
-  margin-top:14px !important;
-  width:100%;
-  align-items:end;
-}
-.rhynioField,
-.rhynioSoldWrap{
-  min-width:0;
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-}
-.rhynioSoldLabel{
-  font-size:12px;
-  font-weight:900;
-  color:rgba(255,255,255,.78);
-}
-.rhynioInput,
-.rhynioSelect,
-.rhynioSoldBtn{
-  width:100% !important;
-  min-width:0;
-}
-@media (max-width:520px){
-  .rhynioTopRow{
-    grid-template-columns:120px minmax(0,1fr);
-    gap:10px;
-  }
-  .rhynioTopRow .thumb{
-    width:120px;
-  }
-  .rhynioMetaGrid{
-    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
-    gap:8px !important;
-  }
-  .rhynioInput,
-  .rhynioSelect,
-  .rhynioSoldBtn{
-    height:44px;
-    padding:0 10px;
-    font-size:13px;
-  }
-}
+/* ===== Rhynio manager final override ===== */
+.rhynioRow{display:flex !important;flex-direction:column !important;gap:14px !important;align-items:stretch !important;padding:14px !important;}
+.rhynioTopRow{display:grid !important;grid-template-columns:140px minmax(0,1fr) !important;gap:14px !important;align-items:center !important;width:100% !important;}
+.rhynioTopRow .thumb{width:140px !important;margin:0 !important;}
+.rhynioTopRow .imgMid{display:flex !important;flex-direction:column !important;gap:12px !important;min-width:0 !important;width:100% !important;}
+.rhynioTopRow .imgName{margin:0 !important;font-size:20px !important;font-weight:950 !important;line-height:1.05 !important;}
+.rhynioTopRow .imgBtns{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:10px !important;width:100% !important;}
+.rhynioTopRow .imgBtns > *{width:100% !important;min-width:0 !important;}
+.rhynioMetaGrid{display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr)) !important;gap:12px !important;width:100% !important;align-items:end !important;}
+.rhynioField,.rhynioCheck{min-width:0 !important;display:flex !important;flex-direction:column !important;gap:8px !important;}
+.rhynioField span,.rhynioCheck > span:first-child{font-size:12px !important;font-weight:900 !important;color:rgba(255,255,255,.82) !important;}
+.rhynioInput,.rhynioSelect{width:100% !important;height:48px !important;border-radius:18px !important;padding:0 14px !important;font-size:18px !important;font-weight:950 !important;}
+.rhynioInput{text-align:center !important;}
+.rhynioSelect{padding-right:38px !important;}
+.rhynioCheckRow{display:flex !important;align-items:center !important;justify-content:center !important;gap:10px !important;height:48px !important;padding:0 14px !important;border-radius:18px !important;border:1px solid rgba(255,255,255,.14) !important;background:rgba(255,255,255,.08) !important;white-space:nowrap !important;overflow:hidden !important;}
+.rhynioCheck input{width:22px !important;height:22px !important;margin:0 !important;accent-color:#ff8896 !important;flex:0 0 auto !important;}
+.rhynioCheckText{font-size:16px !important;font-weight:950 !important;color:#fff !important;white-space:nowrap !important;line-height:1 !important;flex:0 0 auto !important;}
+@media (max-width:520px){.rhynioTopRow{grid-template-columns:120px minmax(0,1fr) !important;gap:12px !important;}.rhynioTopRow .thumb{width:120px !important;}.rhynioTopRow .imgName{font-size:18px !important;}.rhynioInput,.rhynioSelect{height:46px !important;font-size:16px !important;}.rhynioMetaGrid{gap:10px !important;}}
