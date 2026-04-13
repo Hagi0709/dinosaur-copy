@@ -972,11 +972,11 @@ for (let p = 0; p < pages; p++) {
       const noText = circled(Number(slot.no) || 0);
       const lv = String(slot.level || '').trim();
       const statType = String(slot.statType || 'M').toUpperCase() === 'W' ? 'W' : 'M';
-      const statValue = String(slot.statValue || '').trim();
+      const statFixed = statType === 'W' ? '310' : '312';
       const parts = [`${noText} `];
       if (lv) parts.push(`Lv.${lv}`);
-      if (statValue) parts.push(`${lv ? ' ' : ''}(${statType}${statValue})`);
-      if (slot.soldOut) parts.push(`${(lv || statValue) ? ' ' : ''}売り切れ`);
+      parts.push(`${lv ? ' ' : ''}(${statType}${statFixed})`);
+      if (slot.soldOut) parts.push(` 売り切れ`);
       return parts.join('').trimEnd();
     }).join('\n');
   }
@@ -3455,7 +3455,7 @@ if (act === 'gojuon') {
               </select>
             </label>
             <label class="rhynioCheck">
-              <span>売り切れ</span>
+              <span aria-hidden="true"></span>
               <span class="rhynioCheckRow">
                 <input class="js-rhynio-sold" type="checkbox" ${slot.soldOut ? 'checked' : ''}>
                 <span class="rhynioCheckText">売り切れ</span>
@@ -3595,18 +3595,24 @@ if (act === 'gojuon') {
           openToast('コピーする内容がありません');
           return;
         }
+        let copied = false;
         try {
           await navigator.clipboard.writeText(txt);
-          openToast('コピー済み✓');
+          copied = true;
         } catch {
           try {
             ta?.focus();
             ta?.select();
             document.execCommand('copy');
-            openToast('コピー済み✓');
+            copied = true;
           } catch {
-            openToast('コピーに失敗しました');
+            copied = false;
           }
+        }
+        if (copied) {
+          showRoomCopyPreview(txt, 'コピー完了✨️');
+        } else {
+          openToast('コピーに失敗しました');
         }
       });
 
