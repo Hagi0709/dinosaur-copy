@@ -185,13 +185,13 @@ function formatSpecialLabel(name) {
       ov.style.position = 'fixed';
       ov.style.inset = '0';
       // ✅ ルーム画面のモーダル等より常に前面に出す（背面回り込み防止）
-      ov.style.zIndex = '20000';
+      ov.style.zIndex = '20500';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
       ov.style.padding = '16px';
-      ov.style.background = 'rgba(0,0,0,.35)';
-      ov.style.backdropFilter = 'blur(6px)';
+      ov.style.background = '#000000';
+      ov.style.backdropFilter = 'none';
 
       const panel = document.createElement('div');
       panel.style.width = 'min(560px, 92vw)';
@@ -287,13 +287,13 @@ function formatSpecialLabel(name) {
       ov.id = id;
       ov.style.position = 'fixed';
       ov.style.inset = '0';
-      ov.style.zIndex = '20000';
+      ov.style.zIndex = '20500';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
       ov.style.padding = '16px';
-      ov.style.background = 'rgba(0,0,0,.35)';
-      ov.style.backdropFilter = 'blur(6px)';
+      ov.style.background = '#000000';
+      ov.style.backdropFilter = 'none';
 
       const panel = document.createElement('div');
       panel.className = 'exportGalleryPanel';
@@ -1047,7 +1047,7 @@ for (let p = 0; p < pages; p++) {
     bump('modalOverlay', 20000);
     bump('roomOverlay', 20000);
     bump('editOverlay', 20000);
-    bump('imgOverlay', 20000);
+    bump('imgOverlay', 30000);
   })();
   if (el.versionText) el.versionText.textContent = `Version: ${BUILD_VERSION}`;
   ensureRhynioSlots();
