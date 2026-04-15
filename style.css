@@ -422,9 +422,12 @@
     position:relative;
   }
   .priceHitArea{
-  display:block;
-  width:100%;
-  margin:0;
+  display:inline-flex;
+  flex-direction:column;
+  align-items:flex-end;
+  width:auto;
+  max-width:100%;
+  margin:0 0 0 auto;
   padding:0;
   border:0;
   background:transparent;
@@ -1779,11 +1782,16 @@
   /* ✅ JS生成オーバーレイも常に最前面（背面回り込み防止） */
   #posMenuOverlay,
   #posEntryOverlay,
-  #posReportOverlay,
-  #roomCopyPreviewOverlay{
+  #posReportOverlay{
     position: fixed !important;
     inset: 0 !important;
     z-index: 20000 !important;
+  }
+
+  #roomCopyPreviewOverlay{
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 31000 !important;
   }
 
 
