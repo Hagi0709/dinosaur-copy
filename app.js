@@ -185,7 +185,7 @@ function formatSpecialLabel(name) {
       ov.style.position = 'fixed';
       ov.style.inset = '0';
       // ✅ ルーム画面のモーダル等より常に前面に出す（背面回り込み防止）
-      ov.style.zIndex = '20500';
+      ov.style.zIndex = '31000';
       ov.style.display = 'none';
       ov.style.alignItems = 'center';
       ov.style.justifyContent = 'center';
@@ -3169,6 +3169,37 @@ if (act === 'gojuon') {
     ctx.restore();
   }
 
+  function drawRhynioSoldOutCross(ctx, x, y, w, h) {
+    const lineW = Math.max(14, Math.round(Math.min(w, h) * 0.06));
+    const inset = Math.max(6, Math.round(lineW * 0.2));
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // まず淡い広めの赤で、画像全体にさりげなく被せる
+    ctx.strokeStyle = 'rgba(255, 72, 72, 0.16)';
+    ctx.lineWidth = lineW;
+    ctx.beginPath();
+    ctx.moveTo(x + inset, y + inset);
+    ctx.lineTo(x + w - inset, y + h - inset);
+    ctx.moveTo(x + w - inset, y + inset);
+    ctx.lineTo(x + inset, y + h - inset);
+    ctx.stroke();
+
+    // 中央に少しだけ芯を入れて、でも主張しすぎない
+    ctx.strokeStyle = 'rgba(255, 96, 96, 0.28)';
+    ctx.lineWidth = Math.max(4, Math.round(lineW * 0.34));
+    ctx.beginPath();
+    ctx.moveTo(x + inset, y + inset);
+    ctx.lineTo(x + w - inset, y + h - inset);
+    ctx.moveTo(x + w - inset, y + inset);
+    ctx.lineTo(x + inset, y + h - inset);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
   function openRhynioExportPreview(pageUrls) {
     const id = 'rhynioExportOverlay';
     let ov = document.getElementById(id);
@@ -3311,6 +3342,10 @@ if (act === 'gojuon') {
         const dy = y + (cellH - dh) / 2;
 
         ctx.drawImage(im, dx, dy, dw, dh);
+
+        if (entry.slot?.soldOut) {
+          drawRhynioSoldOutCross(ctx, dx, dy, dw, dh);
+        }
 
         const badgeSize = Math.max(58, Math.round(Math.min(cellW, cellH) * 0.205));
         drawRhynioBadge(
