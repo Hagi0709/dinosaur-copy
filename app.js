@@ -3901,7 +3901,7 @@ if (act === 'gojuon') {
 
 function roomLabelForSentence(room) {
   const n = Number(String(room).replace('ROOM', '')) || 0;
-  if (n >= 5) return `2階${room}`;
+  if (n >= 5) return `${room}`;
   return room;
 }
 
