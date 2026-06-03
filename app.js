@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-04-11 20:32';
+const BUILD_VERSION = '2026-06-04 00:03';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -826,8 +826,10 @@ function formatSpecialLabel(name) {
   };
   const prices = Object.assign({}, defaultPrices, loadJSON(LS.PRICES, {}));
   const defaultDollarPrices = {
-    '受精卵': 1, '受精卵(指定)': 1,
-    '胚': 1, '胚(指定)': 1,
+    // ✅ 英語版は基本「1体/1個あたり」のドル単価。
+    // Egg Pair / Embryo Pair は ♂1 + ♀1 なので、$0.5 × 2 = $1。
+    '受精卵': 0.5, '受精卵(指定)': 0.5,
+    '胚': 0.5, '胚(指定)': 0.5,
     '幼体': 1,
     '成体': 5,
     'クローン': 5, 'クローン(指定)': 3,
@@ -844,8 +846,8 @@ function formatSpecialLabel(name) {
   const activePrices = () => isEnglishMode() ? pricesEn : prices;
   const money = (n, lang = appLang) => (lang === 'en') ? ('$' + (Number(n) || 0).toLocaleString('en-US')) : yen(n);
   const typeEnMap = {
-    '受精卵': 'Fertilized Egg',
-    '受精卵(指定)': 'Fertilized Egg',
+    '受精卵': 'Egg',
+    '受精卵(指定)': 'Egg',
     '胚': 'Embryo',
     '胚(指定)': 'Embryo',
     '幼体': 'Baby',
@@ -856,6 +858,261 @@ function formatSpecialLabel(name) {
     '特殊': 'Special',
     'アイテム': 'Item',
   };
+  const DEFAULT_ENGLISH_NAME_PAIRS = `
+Achatina｜アフリカマイマイ
+Acrocanthosaurus｜アクロカントサウルス
+Allosaurus｜アロサウルス
+Ammonite｜アンモナイト
+Angler｜アンコウ
+Ankylosaurus｜アンキロサウルス
+Araneo｜アラネオ
+Archaeopteryx｜始祖鳥
+Archelon｜アーケロン
+Argentavis｜アルゲンタヴィス
+Armadoggo｜アルマドッゴ
+Arthropluera｜アースロプレウラ
+Attack Drone｜アタックドローン
+Aureliax｜オーレリアックス
+Baryonyx｜バリオニクス
+Basilisk｜バジリスク
+Basilosaurus｜バシロサウルス
+Beelzebufo｜ベールゼブフォ
+Brachiosaurus｜ブラキオサウルス
+Brontosaurus｜ブロントサウルス
+Broodmother Lysrix｜ブルードマザー・リシックス
+Bulbdog｜バルブドッグ
+Burrowbuck｜バローバック
+Carbonemys｜カルボネミス
+Carcharodontosaurus｜カルカロドントサウルス
+Carnotaurus｜カルノタウルス
+Castoroides｜カストロイデス
+Cat｜ネコ
+Ceratosaurus｜ケラトサウルス
+Cerberax｜ケルベラックス
+Chalicotherium｜カリコテリウム
+Cnidaria｜クニダリア
+Coelacanth｜シーラカンス
+Compy｜コンプソグナトゥス
+Cosmo｜コスモ
+Cryolophosaurus｜クリョロフォサウルス
+Daeodon｜ダエオドン
+Deathworm｜デスワーム
+Defense Unit｜防衛ユニット
+Deinonychus｜デイノニクス
+Deinosuchus｜デイノスクス
+Deinotherium｜デイノテリウム
+Desert Titan｜デザートタイタン
+Desmodus｜デスモダス
+Dilophosaur｜ディロフォサウルス
+Dimetrodon｜ディメトロドン
+Dimorphodon｜ディモルフォドン
+Diplocaulus｜ディプロカウルス
+Diplodocus｜ディプロドクス
+Dire Bear｜ダイアベア
+Direwolf｜ダイアウルフ
+Dodo｜ドードー
+DodoRex｜ドードーレックス
+Dodo Wyvern｜ドードーワイバーン
+Doedicurus｜ドエディクルス
+Dragon｜ドラゴン
+Drakeling｜ドレイクリング
+Dreadnoughtus｜ドレッドノータス
+Dreadmare｜ドレッドメア
+Dung Beetle｜フンコロガシ
+Dunkleosteus｜ダンクルオステウス
+Elderclaw｜エルダークロー
+Electrophorus｜デンキウナギ
+Enforcer｜エンフォーサー
+Enigmasaur｜エニグマサウルス
+Equus｜エクウス
+Eurypterid｜ウミサソリ
+Fasolasuchus｜ファソラスクス
+Featherlight｜フェザーライト
+Forest Titan｜フォレストタイタン
+Gacha｜ガチャ
+Gallimimus｜ガリミムス
+Gasbags｜ガスバッグ
+Giant Bee｜ジャイアントビー
+Bison｜バイソン
+Gigadesmodus｜ギガデスモダス
+Giganotosaurus｜ギガノトサウルス
+Gigantopithecus｜ギガントピテクス
+Gigantoraptor｜ギガントラプトル
+Gloon｜グルーン
+Glowbug｜グロウバグ
+Glowtail｜グロウテイル
+Grand Tortugar｜グランドトートゥガー
+Griffin｜グリフィン
+Grendel｜グレンデル
+Helicoprion｜ヘリコプリオン
+Hesperornis｜ヘスペロルニス
+Hyaenodon｜ヒエノドン
+Hydra｜ヒドラ
+Ice Titan｜アイスタイタン
+Ichthyornis｜イクチオルニス
+Ichthyosaurus｜イクチオサウルス
+Iguanodon｜イグアノドン
+Jerboa｜トビネズミ
+Jug Bug｜ジャグバグ
+Kairuku｜カイルクペンギン
+Kaprosuchus｜カプロスクス
+Karkinos｜カルキノス
+Kentrosaurus｜ケントロサウルス
+King Titan｜キングタイタン
+Lamprey｜ヤツメウナギ
+Leech｜ヒル
+Leedsichthys｜リードシクティス
+Liopleurodon｜リオプレウロドン
+Lost King｜ロストキング
+Lost Queen｜ロストクイーン
+Lymantria｜リマントリア
+Lystrosaurus｜リストロサウルス
+Maeguana｜マエグアナ
+Malwyn｜マルウィン
+Mammoth｜マンモス
+Managarmr｜マナガルム
+Manta｜マンタ
+Manticore｜マンティコア
+Mantis｜カマキリ
+Megalania｜メガラニア
+Megaloceros｜メガロケロス
+Megalodon｜メガロドン
+Megalosaurus｜メガロサウルス
+Meganeura｜メガネウラ
+Megapithecus｜メガピテクス
+Megaraptor｜メガラプトル
+Megatherium｜メガテリウム
+Mesopithecus｜メソピテクス
+Microraptor｜ミクロラプトル
+Minotaur｜ミノタウロス
+Morellatops｜モレラトプス
+Mosasaurus｜モササウルス
+Moschops｜モスコプス
+Nameless｜ネームレス
+Natrix｜ナトリックス
+Neophyte｜ネオファイト
+Nunatak｜ヌナタク
+Oasisaur｜オアシサウルス
+Onyc｜オニコニクテリス
+Ossidon｜オシドン
+Otter｜カワウソ
+Overseer｜監視者
+Oviraptor｜オヴィラプトル
+Ovis｜ヒツジ
+Palaeoctopus｜パレオオクトパス
+Pachy｜パキケファロサウルス
+Pachyrhinosaurus｜パキリノサウルス
+Paraceratherium｜パラケラテリウム
+Parasaur｜パラサウロロフス
+Pegomastax｜ペゴマスタクス
+Pelagornis｜ペラゴルニス
+Phiomia｜フィオミア
+Phoenix｜フェニックス
+Piranha｜ピラニア
+Plesiosaur｜プレシオサウルス
+Procoptodon｜プロコプトドン
+Pteranodon｜プテラノドン
+Pulmonoscorpius｜プルモノスコルピウス
+Purlovia｜プロヴィア
+Pyromane｜パイロメイン
+Quetzal｜ケツァルコアトルス
+Raptor｜ラプトル
+Ravager｜ラベジャー
+Reaper｜リーパー
+Revenant｜レヴナント
+Rex｜ティラノサウルス
+Rhyniognatha｜リニオグナタ
+Rock Drake｜ロックドレイク
+Rock Elemental｜ロックエレメンタル
+Roll Rat｜ロールラット
+Sabertooth｜サーベルタイガー
+Sabertooth Salmon｜セイバートゥース・サーモン
+Sarco｜サルコスクス
+Scout｜スカウト
+Seeker｜シーカー
+Shastasaurus｜シャスタサウルス
+Shinehorn｜シャインホーン
+Snow Owl｜スノーオウル
+Solwyn｜ソルウィン
+Spinosaurus｜スピノサウルス
+Stegosaurus｜ステゴサウルス
+Tapejara｜タペヤラ
+Terror Bird｜テラーバード
+Thanatos｜タナトス
+Therizinosaurus｜テリジノサウルス
+Thodes｜ソーデス
+Thorny Dragon｜モロクトカゲ
+Thrall｜スロール
+Thylacoleo｜ティラコレオ
+Tidepup｜タイドパップ
+Titanoboa｜ティタノボア
+Titanomyrma｜ティタノミルマ
+Titanosaur｜ティタノサウルス
+Triceratops｜トリケラトプス
+Trilobite｜三葉虫
+Troodon｜トロオドン
+Murder Turkey｜マーダーターキー
+Tusoteuthis｜トゥソテウティス
+Unicorn｜ユニコーン
+Veilwyn｜ヴェイルウィン
+Velonasaur｜ベロナサウルス
+Vulture｜ハゲワシ
+Woolly Rhino｜ケブカサイ
+Wyvern｜ワイバーン
+Xiphactinus｜シファクティヌス
+Yeti｜イエティ
+Yi Ling｜イーリン
+Yutyrannus｜ユウティラヌス
+`;
+  const DEFAULT_ENGLISH_BY_JA = (() => {
+    const out = {};
+    DEFAULT_ENGLISH_NAME_PAIRS.split(/\r?\n/).forEach(line => {
+      const s = String(line || '').trim();
+      if (!s || !s.includes('｜')) return;
+      const [en, ja] = s.split('｜');
+      if (en && ja) out[String(ja).trim()] = String(en).trim();
+    });
+    return out;
+  })();
+
+  function defaultEnglishNameForDino(d) {
+    const cleanJaName = (v) => {
+      let x = displayName(String(v || '').trim());
+      x = x.replace(/[（(].*?[）)]/g, '').trim();
+      x = x.replace(/変種$/g, '').trim();
+      x = x.replace(/^(X|R|TEK)\s*/i, '').trim();
+      return x;
+    };
+
+    const candidates = [
+      cleanJaName(d?.name || ''),
+      cleanJaName(d?._baseName || ''),
+      displayName(d?.name || ''),
+      displayName(d?._baseName || ''),
+      String(d?.name || '').trim(),
+      String(d?._baseName || '').trim(),
+    ].filter(Boolean);
+
+    for (const ja of candidates) {
+      if (DEFAULT_ENGLISH_BY_JA[ja]) return DEFAULT_ENGLISH_BY_JA[ja];
+    }
+    return '';
+  }
+
+  function seedDefaultEnglishNames() {
+    let changed = false;
+    for (const d of (dinos || [])) {
+      if (!d || !d.id) continue;
+      const def = defaultEnglishNameForDino(d);
+      if (!def) continue;
+      const cur = dinoEnglish[d.id] || {};
+      if (String(cur.enName || '').trim()) continue;
+      dinoEnglish[d.id] = { ...cur, enName: def };
+      changed = true;
+    }
+    if (changed) saveJSON(LS.DINO_EN, dinoEnglish);
+  }
+
   function typeLabel(type, lang = appLang) {
     const t = String(type || '');
     if (lang === 'en') return typeEnMap[t] || typeEnMap[t.replace('(指定)', '')] || t.replace('(指定)', '');
@@ -867,15 +1124,15 @@ function formatSpecialLabel(name) {
     const mm = Math.max(0, Number(m || 0));
     const ff = Math.max(0, Number(f || 0));
     const qty = mm + ff;
-    const isPairType = /\(指定\)$/.test(String(type || '')) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(String(type || ''));
-    // ✅ 英語版は「Pair」価格を1ペア単位で扱う（例: Fertilized Egg Pair = $1）
-    if (lang === 'en' && isPairType && mm > 0 && mm === ff) return unit * mm;
+
+    // ✅ 単価は「1体/1個あたり」で計算する。
+    // 例：Egg の単価が $0.5 の場合、♂1 + ♀1 の Pair は $1。
     return unit * qty;
   }
   function dinoEnglishName(d) {
     const row = dinoEnglish[d.id] || {};
     const en = String(row.enName || '').trim();
-    return en || displayName(d.name);
+    return en || defaultEnglishNameForDino(d) || displayName(d.name);
   }
   function dinoDisplayName(d) {
     return isEnglishMode() ? dinoEnglishName(d) : displayName(d.name);
@@ -884,17 +1141,21 @@ function formatSpecialLabel(name) {
     return displayName(it.name);
   }
   function imageKeyForDino(d, lang = appLang) {
-    const base = imageKeyForDino(d);
+    const base = imageKeyFromBaseName(d._baseName || d.name);
     return lang === 'en' ? `img_en_${stableHash(norm(d._baseName || d.name))}` : base;
   }
   function updateLangUI() {
     if (el.langMode) el.langMode.value = appLang;
+    const manageSel = document.getElementById('manageLangMode');
+    if (manageSel) manageSel.value = appLang;
     document.documentElement.dataset.langMode = appLang;
   }
   function renderTotalBoth(y = lastTotals.yen, d = lastTotals.dollar) {
     lastTotals = { yen: Number(y) || 0, dollar: Number(d) || 0 };
     if (!el.total) return;
-    el.total.innerHTML = `<span>${(Number(y)||0).toLocaleString('ja-JP')}円</span><span>$${(Number(d)||0).toLocaleString('en-US')}</span>`;
+    el.total.textContent = isEnglishMode()
+      ? `$${(Number(d) || 0).toLocaleString('en-US')}`
+      : `${(Number(y) || 0).toLocaleString('ja-JP')}円`;
     fitTotalText();
   }
 
@@ -1427,6 +1688,7 @@ function sortByOrder(list, kind) {
       el.out.value =
 `Thank you for your order!
 Please review your order below 👇🏻
+
 ${enLines.join('\n')}
 ━━━━━━━━━━━━━━
 Total: ${money(dollarSum, 'en')}`;
@@ -1994,7 +2256,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     const unit = $('.unit', card);
     bindUnitImageViewer(unit);
     const type = s.type || d.defType || '受精卵';
-    setUnitArea(unit, `<div class="unitLine">単価${prices[s.type] || 0}円</div>`, ' ', imgUrl, imageKeyForDino(d));
+    setUnitArea(unit, `<div class="unitLine">${isEnglishMode() ? '$' + (pricesEn[s.type] || 0) : '単価' + (prices[s.type] || 0) + '円'}</div>`, ' ', imgUrl, imageKeyForDino(d));
 
       const m = Number(s.m || 0);
       const f = Number(s.f || 0);
@@ -2005,26 +2267,38 @@ requestAnimationFrame(() => installLeftToggleHit(card));
         const unitPrice = activePrices()[type] || 0;
         const price = calcDinoAmount(type, m, f, appLang);
 
-        // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵×1 = 30円）
-const tOut = String(type).replace('(指定)', '');
-        const baseType = tOut; // (指定)を外した表示名
-        const hideSex = (baseType === '受精卵' || baseType === '胚') && !/\(指定\)$/.test(type);
-        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+        // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵×1 = 30円 / Egg Pair = $1）
+        const rawType = String(type);
+        const tOut = isEnglishMode() ? typeLabel(rawType, 'en') : rawType.replace('(指定)', '');
+        const baseType = rawType.replace('(指定)', '');
+        const hideSex = (baseType === '受精卵' || baseType === '胚') && !/\(指定\)$/.test(rawType);
+        const isPair = /\(指定\)$/.test(rawType) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(rawType);
 
         if (hideSex) {
           // ✅ 受精卵・胚はオスメス表記を出さない
-          priceHtml = `${tOut}×${qty} = ${money(price)}`;
+          priceHtml = isEnglishMode()
+            ? `${tOut}${qty > 1 ? ` × ${qty}` : ''} = ${money(price)}`
+            : `${tOut}×${qty} = ${money(price)}`;
         } else {
           const parts = [];
-          if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
-          if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
+          if (isEnglishMode()) {
+            if (m > 0) parts.push(`Male × ${m}`);
+            if (f > 0) parts.push(`Female × ${f}`);
+          } else {
+            if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
+            if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
+          }
 
           if (isPair && m === f && m > 0) {
-            priceHtml = `${tOut}ペア${m > 1 ? '×' + m : ''} = ${money(price)}`;
+            priceHtml = isEnglishMode()
+              ? `${tOut} Pair${m > 1 ? ` × ${m}` : ''} = ${money(price)}`
+              : `${tOut}ペア${m > 1 ? '×' + m : ''} = ${money(price)}`;
           } else if (parts.length) {
             priceHtml = `${tOut} ${parts.join(' ')} = ${money(price)}`;
           } else {
-            priceHtml = `${tOut}×${qty} = ${money(price)}`;
+            priceHtml = isEnglishMode()
+              ? `${tOut}${qty > 1 ? ` × ${qty}` : ''} = ${money(price)}`
+              : `${tOut}×${qty} = ${money(price)}`;
           }
         }
       }
@@ -2051,26 +2325,38 @@ const tOut = String(type).replace('(指定)', '');
         const unitPrice = activePrices()[type] || 0;
         const price = calcDinoAmount(type, m, f, appLang);
 
-        // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵×1 = 30円）
-const tOut = String(type).replace('(指定)', '');
-        const baseType = tOut; // (指定)を外した表示名
-        const hideSex = (baseType === '受精卵' || baseType === '胚') && !/\(指定\)$/.test(type);
-        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
+        // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵×1 = 30円 / Egg Pair = $1）
+        const rawType = String(type);
+        const tOut = isEnglishMode() ? typeLabel(rawType, 'en') : rawType.replace('(指定)', '');
+        const baseType = rawType.replace('(指定)', '');
+        const hideSex = (baseType === '受精卵' || baseType === '胚') && !/\(指定\)$/.test(rawType);
+        const isPair = /\(指定\)$/.test(rawType) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(rawType);
 
         if (hideSex) {
           // ✅ 受精卵・胚はオスメス表記を出さない
-          priceHtml = `${tOut}×${qty} = ${money(price)}`;
+          priceHtml = isEnglishMode()
+            ? `${tOut}${qty > 1 ? ` × ${qty}` : ''} = ${money(price)}`
+            : `${tOut}×${qty} = ${money(price)}`;
         } else {
           const parts = [];
-          if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
-          if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
+          if (isEnglishMode()) {
+            if (m > 0) parts.push(`Male × ${m}`);
+            if (f > 0) parts.push(`Female × ${f}`);
+          } else {
+            if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
+            if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
+          }
 
           if (isPair && m === f && m > 0) {
-            priceHtml = `${tOut}ペア${m > 1 ? '×' + m : ''} = ${money(price)}`;
+            priceHtml = isEnglishMode()
+              ? `${tOut} Pair${m > 1 ? ` × ${m}` : ''} = ${money(price)}`
+              : `${tOut}ペア${m > 1 ? '×' + m : ''} = ${money(price)}`;
           } else if (parts.length) {
             priceHtml = `${tOut} ${parts.join(' ')} = ${money(price)}`;
           } else {
-            priceHtml = `${tOut}×${qty} = ${money(price)}`;
+            priceHtml = isEnglishMode()
+              ? `${tOut}${qty > 1 ? ` × ${qty}` : ''} = ${money(price)}`
+              : `${tOut}×${qty} = ${money(price)}`;
           }
         }
       }
@@ -2336,6 +2622,7 @@ const tOut = String(type).replace('(指定)', '');
   function openModal() {
     ScrollLock.lock(); // ✅ 背面スクロール禁止
     el.modalOverlay.classList.remove('isHidden');
+    ensureManageLangControl();
     setManageTab('catalog');
   }
   function closeModal() {
@@ -2355,8 +2642,8 @@ const tOut = String(type).replace('(指定)', '');
     el.modalBody.classList.toggle('isManageImages', isImages);
     el.modal?.classList?.toggle('isManageImages', isImages);
 
+    ensureManageLangControl();
     el.modalBody.innerHTML = '';
-    el.modalBody.appendChild(renderLanguageSwitcher());
     if (kind === 'catalog') el.modalBody.appendChild(renderManageCatalog());
     if (kind === 'prices') el.modalBody.appendChild(renderManagePrices());
     if (kind === 'images') el.modalBody.appendChild(renderManageImages());
@@ -2381,41 +2668,44 @@ const tOut = String(type).replace('(指定)', '');
     if (e.target === el.editOverlay) closeEditModal();
   });
 
-  /* ========= manage: prices ========= */
-  function renderLanguageSwitcher() {
-    const row = document.createElement('div');
-    row.className = 'langSwitchRow';
-    row.innerHTML = `
-      <div>
-        <div class="langSwitchTitle">出品言語</div>
-        <div class="langSwitchSub">アプリ起動時は必ず日本語版に戻ります</div>
-      </div>
-      <select id="manageLangMode" class="langSelect">
-        <option value="ja">日本語版</option>
-        <option value="en">英語版</option>
-      </select>
-    `;
-    const sel = row.querySelector('#manageLangMode');
-    if (sel) {
-      sel.value = appLang;
+  /* ========= manage: language toggle ========= */
+  function currentManageTab() {
+    if (el.mTabImages?.classList.contains('isActive')) return 'images';
+    if (el.mTabPrices?.classList.contains('isActive')) return 'prices';
+    return 'catalog';
+  }
+
+  function ensureManageLangControl() {
+    const tabs = document.querySelector('.modalTabs');
+    if (!tabs) return;
+
+    let sel = document.getElementById('manageLangMode');
+    if (!sel) {
+      sel = document.createElement('select');
+      sel.id = 'manageLangMode';
+      sel.className = 'langMiniSelect';
+      sel.setAttribute('aria-label', '出品言語');
+      sel.innerHTML = `
+        <option value="ja">日本</option>
+        <option value="en">EN</option>
+      `;
+      tabs.appendChild(sel);
+
       sel.addEventListener('change', () => {
         appLang = sel.value === 'en' ? 'en' : 'ja';
         updateLangUI();
         renderList();
-        setManageTab(el.mTabImages?.classList.contains('isActive') ? 'images' : (el.mTabPrices?.classList.contains('isActive') ? 'prices' : 'catalog'));
+        setManageTab(currentManageTab());
         openToast(appLang === 'en' ? '英語版に切り替えました' : '日本語版に切り替えました');
       });
     }
-    return row;
+    sel.value = appLang;
   }
 
+  /* ========= manage: prices ========= */
+  // 言語切替は管理画面タブ列の最小セレクトで行うため、本文内には出さない。
   function renderManagePrices() {
     const box = document.createElement('div');
-
-    const note = document.createElement('div');
-    note.className = 'langHelp';
-    note.textContent = '日本語版は円、英語版はドルで保存します。';
-    box.appendChild(note);
 
     const grid = document.createElement('div');
     grid.className = 'priceGrid priceGridDual';
@@ -2487,8 +2777,9 @@ const top = document.createElement('div');
     list.forEach(obj => {
       const r = document.createElement('div');
       r.className = 'mRow';
+      const manageName = (activeTab === 'dino' && isEnglishMode()) ? dinoEnglishName(obj) : obj.name;
       r.innerHTML = `
-        <div class="mName">${escapeHtml(obj.name)}</div>
+        <div class="mName">${escapeHtml(manageName)}</div>
         <button class="sBtn" type="button" data-act="edit" data-id="${obj.id}">✎</button>
         <button class="sBtn" type="button" data-act="up" data-id="${obj.id}">↑</button>
         <button class="sBtn" type="button" data-act="down" data-id="${obj.id}">↓</button>
@@ -2914,7 +3205,7 @@ if (act === 'gojuon') {
         <input id="editName" class="editInput" type="text" value="${escapeHtml(d.name)}" autocomplete="off">
 
         <div class="editLabel">英語名</div>
-        <input id="editEnName" class="editInput" type="text" value="${escapeHtml((dinoEnglish[id] || {}).enName || '')}" autocomplete="off" placeholder="例: Archelon">
+        <input id="editEnName" class="editInput" type="text" value="${escapeHtml((dinoEnglish[id] || {}).enName || defaultEnglishNameForDino(d) || '')}" autocomplete="off" placeholder="例: Archelon">
 
         <div class="editLabel">デフォルト種類</div>
         <select id="editType" class="editSelect">
@@ -3883,7 +4174,7 @@ if (act === 'gojuon') {
       mid.className = 'imgMid imgMidDual';
       const name = document.createElement('div');
       name.className = 'imgName';
-      name.textContent = `${displayName(d.name)} / ${dinoEnglishName(d)}`;
+      name.textContent = isEnglishMode() ? dinoEnglishName(d) : displayName(d.name);
       const blocks = document.createElement('div');
       blocks.className = 'imgLangBlocks';
       blocks.appendChild(makeBlock('ja', '日本語'));
@@ -4574,6 +4865,14 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
     return raw;
   }
 
+  function posJapaneseDinoName(s) {
+    if (!s || typeof s !== 'object') return '';
+    const id = String(s.dinoId || '').trim();
+    const d = id ? dinos.find(x => String(x.id) === id) : null;
+    if (d) return formatSpecialLabel(posLedgerName(String(d.name || '')));
+    return formatSpecialLabel(posLedgerName(String(s.name || '')));
+  }
+
   function posDisplayParts(s) {
     if (!s || typeof s !== 'object') return { title: '', sub: '' };
     if (s.kind === 'item') {
@@ -4590,7 +4889,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
       return { title: `${name}${picks}`, sub: '' };
     }
 
-    let name = formatSpecialLabel(posLedgerName(String(s.name || '')));
+    let name = isEnglishMode() ? posJapaneseDinoName(s) : formatSpecialLabel(posLedgerName(String(s.name || '')));
     const rawType = String(s.type || '');
     const typeClean = rawType.replace('(指定)', '');
     const isSpecified = /\(指定\)$/.test(rawType);
@@ -5309,6 +5608,14 @@ if (stockBtn) {
 
       const total = mSales.reduce((a, b) => a + (Number(b.amount) || 0), 0);
 
+      const filterSalesByPeriod = (list) => (Array.isArray(list) ? list : []).filter(x => {
+        const mk = String(x.month || monthKeyFromTs(x.ts));
+        return mode === 'year' ? (mk.slice(0,4) === key) : (mk === key);
+      });
+      const totalYen = filterSalesByPeriod(pos.salesJa).reduce((a, b) => a + (Number(b.amount) || 0), 0);
+      const totalDollar = filterSalesByPeriod(pos.salesEn).reduce((a, b) => a + (Number(b.amount) || 0), 0);
+      const ledgerTopTotalText = `${yen(totalYen)} / $${(Number(totalDollar) || 0).toLocaleString('en-US')}`;
+
       // 種別売上（恐竜 + アイテム、0も全表示）
       const byType = new Map();
       const baseDinos = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
@@ -5402,7 +5709,7 @@ if (stockBtn) {
       })()
   }
 </td>
-            <td class="r posColTotal tabularNums">${escapeHtml(yen(d.totalAmt || 0))}</td>
+            <td class="r posColTotal tabularNums">${escapeHtml(money(d.totalAmt || 0))}</td>
           </tr>
         `;
       }).join('');
@@ -5453,7 +5760,7 @@ const head = `
   <div class="posHistHead">
     <div class="posHistHeadL">${escapeHtml(fmtMD(ts))} 注文</div>
     <button type="button" class="posHistHeadR posOrderDel tabularNums" data-pos-del-order="${escapeHtml(gKey)}" title="タップで注文ごと削除">
-      合計 ${escapeHtml(yen(gTotal))}
+      合計 ${escapeHtml(money(gTotal))}
     </button>
   </div>
 `;
@@ -5558,7 +5865,7 @@ const head = `
               ${mode==='year' ? yearOpts : monthOpts}
             </select>
           </div>
-          <div class="posTotal">合計 ${escapeHtml(money(total))}</div>
+          <div class="posTotal">合計 ${escapeHtml(ledgerTopTotalText)}</div>
         </div>
 
         <div class="posTabsWrap posTabsWrap3">
@@ -5706,6 +6013,10 @@ const head = `
       kind: 'dino',
       _baseName: x._baseName || x.name,
     })));
+
+    // ✅ 初回/未登録の生物には、内蔵の英語名対応表を自動反映する。
+    // 既に手入力された英語名は上書きしない。
+    seedDefaultEnglishNames();
 
     // built-in item と custom item を id 単位で統合する
     // 後勝ちにして、custom 側が base を上書きする
