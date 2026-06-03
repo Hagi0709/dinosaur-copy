@@ -884,7 +884,7 @@ function formatSpecialLabel(name) {
     return displayName(it.name);
   }
   function imageKeyForDino(d, lang = appLang) {
-    const base = imageKeyForDino(d);
+    const base = imageKeyFromBaseName(d._baseName || d.name);
     return lang === 'en' ? `img_en_${stableHash(norm(d._baseName || d.name))}` : base;
   }
   function updateLangUI() {
