@@ -98,6 +98,10 @@ function formatSpecialLabel(name) {
     DELIVERY: 'delivery_v1',
     DINO_IMAGES_OLD: 'dino_images_v1',
     DINO_OVERRIDE: 'dino_override_v1',
+    DINO_EN: 'dino_en_v1',
+    PRICES_EN: 'prices_en_v1',
+    POS_SALES_EN: 'pos_sales_en_v1',
+    POS_STOCK_EN: 'pos_stock_en_v1',
 
     ROOM_ENTRY_PW: 'room_entry_pw_v1',
     ROOM_PW: 'room_pw_v1',
@@ -326,104 +330,55 @@ function formatSpecialLabel(name) {
         try { ScrollLock.unlock(); } catch {}
       };
       imageExportCloseFn = hide;
-
       closeBtn.addEventListener('click', hide);
       ov.addEventListener('click', (e) => { if (e.target === ov) hide(); });
-
       installOverlayScrollGuard(ov, body);
-
-      // イベント委譲（削除/在庫入力/並び替え）
-      body.addEventListener('click', async (e) => {
-        const delBtn = e.target && e.target.closest ? e.target.closest('[data-pos-del-id]') : null;
-        if (delBtn) {
-          const id = String(delBtn.getAttribute('data-pos-del-id') || '');
-          if (!id) return;
-          const s = (Array.isArray(pos.sales) ? pos.sales : []).find(x => String(x.id||'') === id);
-          if (!s) return;
-
-          const parts = posDisplayParts(s);
-          // ✅ 「削除しますか？」→次行から注文内容を改行で表示
-          const msg = `削除しますか？\n${parts.title}${parts.sub ? `\n${parts.sub}` : ''}\n${fmtMD(s.ts)} / ${yen(s.amount)}`;
-          const ok = await confirmAsk(msg);
-          if (!ok) return;
-
-          const idx = (Array.isArray(pos.sales) ? pos.sales : []).findIndex(x => String(x.id||'') === id);
-          if (idx >= 0) {
-            pos.sales.splice(idx, 1);
-            posSave();
-            openToast('削除しました');
-            try {
-              const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
-              (ov.__renderPosReport || (()=>{}))(month);
-            } catch {}
-          }
-          return;
-        }
-
-        const stockBtn = e.target && e.target.closest ? e.target.closest('[data-stock-id]') : null;
-        if (stockBtn) {
-          const key = String(stockBtn.getAttribute('data-stock-id') || '');
-          if (!key) return;
-          const cur = stockGet(key);
-          const curTxt = (cur.m === null || cur.f === null) ? '' : `${cur.m}/${cur.f}`;
-          const v = prompt('在庫を入力（オス/メス）', curTxt);
-          if (v === null) return;
-          const s = String(v).trim();
-          if (!s) {
-            stockSet(key, null, null);
-          } else {
-            const mm = s.match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);
-            if (!mm) {
-              openToast('形式が正しくありません（例: 4/5）');
-              return;
-            }
-            stockSet(key, Number(mm[1]), Number(mm[2]));
-          }
-          try {
-            const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
-            (ov.__renderPosReport || (()=>{}))(month);
-          } catch {}
-          return;
-        }
-
-        const sortTh = e.target && e.target.closest ? e.target.closest('[data-pos-sort]') : null;
-        if (sortTh) {
-          const key = String(sortTh.getAttribute('data-pos-sort') || '');
-          if (!key) return;
-          const cur = (ov.__dinoSort) ? ov.__dinoSort : { key: 'totalAmt', dir: 'desc' };
-          let dir = cur.dir || 'desc';
-          if (cur.key === key) dir = (dir === 'asc') ? 'desc' : 'asc';
-          else dir = (key === 'name') ? 'asc' : 'desc';
-          ov.__dinoSort = { key, dir };
-          try {
-            const month = String(document.getElementById('posMonthSel')?.value || monthKeyFromTs(Date.now()));
-            (ov.__renderPosReport || (()=>{}))(month);
-          } catch {}
-        }
-      });
     }
 
     const body = ov.querySelector('.exportGalleryBody');
     if (body) {
       body.innerHTML = '';
+      const usable = (dList || []).map(d => ({ d, key: imageKeyForDino(d), url: imageCache[imageKeyForDino(d)] || '' })).filter(x => x.url);
 
       const ctrl = document.createElement('div');
       ctrl.className = 'exportGridCtrl';
       ctrl.innerHTML = `
         <div class="exportGridInputs">
           <div class="exportGridLabel">縦</div>
-          <input class="exportGridInput" id="exportRows" type="text" inputmode="numeric" min="1" value="6">
+          <input class="exportGridInput" id="exportRows" type="text" inputmode="numeric" min="1" value="7">
           <div class="exportGridLabel">横</div>
           <input class="exportGridInput" id="exportCols" type="text" inputmode="numeric" min="1" value="2">
+        </div>
+        <div class="exportSelBtns">
+          <button class="pill exportSmallBtn" type="button" id="exportSelectAll">全選択</button>
+          <button class="pill exportSmallBtn" type="button" id="exportSelectNone">全解除</button>
         </div>
         <button class="pill exportGridBtn" type="button" id="exportMake">生成</button>
       `;
       body.appendChild(ctrl);
 
+      const pickBox = document.createElement('div');
+      pickBox.className = 'exportPickBox';
+      pickBox.innerHTML = usable.length ? usable.map((x, i) => `
+        <label class="exportPickItem">
+          <input type="checkbox" data-export-idx="${i}" checked>
+          <span class="exportPickThumb"><img src="${escapeHtml(x.url)}" alt=""></span>
+          <span class="exportPickName">${escapeHtml(dinoDisplayName(x.d))}</span>
+        </label>
+      `).join('') : `<div style="padding:10px;opacity:.8;">画像がありません</div>`;
+      body.appendChild(pickBox);
+
       const outWrap = document.createElement('div');
       outWrap.className = 'exportGridOutWrap';
       outWrap.innerHTML = `<div id="exportGridImgs" class="exportPages"></div>`;
       body.appendChild(outWrap);
+
+      ctrl.querySelector('#exportSelectAll')?.addEventListener('click', () => {
+        $$('input[data-export-idx]', pickBox).forEach(x => { x.checked = true; });
+      });
+      ctrl.querySelector('#exportSelectNone')?.addEventListener('click', () => {
+        $$('input[data-export-idx]', pickBox).forEach(x => { x.checked = false; });
+      });
 
       const btn = ctrl.querySelector('#exportMake');
       btn?.addEventListener('click', async () => {
@@ -431,17 +386,15 @@ function formatSpecialLabel(name) {
 
         const rowsEl = ctrl.querySelector('#exportRows');
         const colsEl = ctrl.querySelector('#exportCols');
-        let rows = Math.max(1, Math.min(50, Number(rowsEl?.value || 1)));
-        let cols = Math.max(1, Math.min(20, Number(colsEl?.value || 1)));
+        let rows = Math.max(1, Math.min(50, Number(rowsEl?.value || 7)));
+        let cols = Math.max(1, Math.min(20, Number(colsEl?.value || 2)));
 
-        // 画像URLをリスト順に集める
-        const urls = [];
-        for (const d of (dList || [])) {
-          const k = imageKeyFromBaseName(d._baseName || d.name);
-          const url = imageCache[k];
-          if (url) urls.push(url);
-        }
-        if (!urls.length) { openToast('画像がありません'); return; }
+        const selected = $$('input[data-export-idx]', pickBox)
+          .filter(ch => ch.checked)
+          .map(ch => usable[Number(ch.dataset.exportIdx || -1)])
+          .filter(Boolean);
+        const urls = selected.map(x => x.url).filter(Boolean);
+        if (!urls.length) { openToast('出力する画像を選択してください'); return; }
 
         const loadImg = (src) => new Promise((res, rej) => {
           const im = new Image();
@@ -459,74 +412,59 @@ function formatSpecialLabel(name) {
           console.error(e);
           return;
         }
-// セルサイズは最大値に合わせる（カード画像が混在しても欠けない）
-const cellW = Math.max(...imgs.map(im => im.naturalWidth || im.width || 0), 1);
-const cellH = Math.max(...imgs.map(im => im.naturalHeight || im.height || 0), 1);
 
-// ✅ 画像間の隙間（px）
-const gap = 12;
+        const cellW = Math.max(...imgs.map(im => im.naturalWidth || im.width || 0), 1);
+        const cellH = Math.max(...imgs.map(im => im.naturalHeight || im.height || 0), 1);
+        const gap = 12;
+        const cap = rows * cols;
+        const pages = Math.max(1, Math.ceil(imgs.length / cap));
+        const imgsBox = body.querySelector('#exportGridImgs');
+        if (imgsBox) imgsBox.innerHTML = '';
 
-const cap = rows * cols;
-const pages = Math.max(1, Math.ceil(imgs.length / cap));
+        for (let p = 0; p < pages; p++) {
+          const slice = imgs.slice(p * cap, (p + 1) * cap);
+          const canvas = document.createElement('canvas');
+          canvas.width = cellW * cols + gap * (cols - 1);
+          canvas.height = cellH * rows + gap * (rows - 1);
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-const imgsBox = body.querySelector('#exportGridImgs');
-if (imgsBox) imgsBox.innerHTML = ''; 
+          for (let i = 0; i < slice.length; i++) {
+            const r = Math.floor(i / cols);
+            const c = i % cols;
+            if (r >= rows) break;
+            const x = c * (cellW + gap);
+            const y = r * (cellH + gap);
+            const im = slice[i];
+            const iw = im.naturalWidth || im.width;
+            const ih = im.naturalHeight || im.height;
+            const sc = Math.min(cellW / iw, cellH / ih);
+            const dw = iw * sc;
+            const dh = ih * sc;
+            const dx = x + (cellW - dw) / 2;
+            const dy = y + (cellH - dh) / 2;
+            ctx.drawImage(im, dx, dy, dw, dh);
+          }
 
-for (let p = 0; p < pages; p++) {
-  const slice = imgs.slice(p * cap, (p + 1) * cap);
-
-  const canvas = document.createElement('canvas');
-  canvas.width = cellW * cols + gap * (cols - 1);
-  canvas.height = cellH * rows + gap * (rows - 1);
-
-  const ctx = canvas.getContext('2d');
-  // 背景を黒に
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  for (let i = 0; i < slice.length; i++) {
-    const r = Math.floor(i / cols);
-    const c = i % cols;
-    if (r >= rows) break;
-    const x = c * (cellW + gap);
-    const y = r * (cellH + gap);
-
-    // セルに収まるようにcontain描画
-    const im = slice[i];
-    const iw = im.naturalWidth || im.width;
-    const ih = im.naturalHeight || im.height;
-    const s = Math.min(cellW / iw, cellH / ih);
-    const dw = iw * s;
-    const dh = ih * s;
-    const dx = x + (cellW - dw) / 2;
-    const dy = y + (cellH - dh) / 2;
-    ctx.drawImage(im, dx, dy, dw, dh);
-  }
-
-  const dataUrl = canvas.toDataURL('image/png', 1.0);
-
-  if (imgsBox) {
-    const wrap = document.createElement('div');
-    wrap.className = 'exportPage';
-
-    const capEl = document.createElement('div');
-    capEl.className = 'exportPageNo';
-    capEl.textContent = circled(p + 1);
-
-    const out = document.createElement('img');
-    out.className = 'exportPageImg';
-    out.alt = `配置画像 ${p + 1}/${pages}`;
-    out.src = dataUrl;
-
-    wrap.appendChild(capEl);
-    wrap.appendChild(out);
-    imgsBox.appendChild(wrap);
-  }
-}
+          const dataUrl = canvas.toDataURL('image/png', 1.0);
+          if (imgsBox) {
+            const wrap = document.createElement('div');
+            wrap.className = 'exportPage';
+            const capEl = document.createElement('div');
+            capEl.className = 'exportPageNo';
+            capEl.textContent = circled(p + 1);
+            const out = document.createElement('img');
+            out.className = 'exportPageImg';
+            out.alt = `配置画像 ${p + 1}/${pages}`;
+            out.src = dataUrl;
+            wrap.appendChild(capEl);
+            wrap.appendChild(out);
+            imgsBox.appendChild(wrap);
+          }
+        }
       });
     }
-
-    if (!ov.__posTab) ov.__posTab = 'types';
 
     try { ScrollLock.lock(); } catch {}
     ov.style.display = 'flex';
@@ -887,8 +825,78 @@ for (let p = 0; p < pages; p++) {
     'クローン': 500, 'クローン(指定)': 300,
   };
   const prices = Object.assign({}, defaultPrices, loadJSON(LS.PRICES, {}));
+  const defaultDollarPrices = {
+    '受精卵': 1, '受精卵(指定)': 1,
+    '胚': 1, '胚(指定)': 1,
+    '幼体': 1,
+    '成体': 5,
+    'クローン': 5, 'クローン(指定)': 3,
+  };
+  const pricesEn = Object.assign({}, defaultDollarPrices, loadJSON(LS.PRICES_EN, {}));
+  const dinoEnglish = Object.assign({}, loadJSON(LS.DINO_EN, {}));
+  let appLang = 'ja'; // ✅ 起動時は常に日本語版（localStorageには保存しない）
+  let lastTotals = { yen: 0, dollar: 0 };
+
   const typeList = Object.keys(defaultPrices).filter(t => t !== 'クローン(指定)');
   const specifiedMap = { '受精卵': '受精卵(指定)', '胚': '胚(指定)' };
+
+  const isEnglishMode = () => appLang === 'en';
+  const activePrices = () => isEnglishMode() ? pricesEn : prices;
+  const money = (n, lang = appLang) => (lang === 'en') ? ('$' + (Number(n) || 0).toLocaleString('en-US')) : yen(n);
+  const typeEnMap = {
+    '受精卵': 'Fertilized Egg',
+    '受精卵(指定)': 'Fertilized Egg',
+    '胚': 'Embryo',
+    '胚(指定)': 'Embryo',
+    '幼体': 'Baby',
+    '成体': 'Adult',
+    'クローン': 'Clone',
+    'クローン(指定)': 'Clone',
+    '全種': 'All Types',
+    '特殊': 'Special',
+    'アイテム': 'Item',
+  };
+  function typeLabel(type, lang = appLang) {
+    const t = String(type || '');
+    if (lang === 'en') return typeEnMap[t] || typeEnMap[t.replace('(指定)', '')] || t.replace('(指定)', '');
+    return t.replace('(指定)', '');
+  }
+  function calcDinoAmount(type, m, f, lang = appLang) {
+    const book = lang === 'en' ? pricesEn : prices;
+    const unit = Number(book[type] || 0);
+    const mm = Math.max(0, Number(m || 0));
+    const ff = Math.max(0, Number(f || 0));
+    const qty = mm + ff;
+    const isPairType = /\(指定\)$/.test(String(type || '')) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(String(type || ''));
+    // ✅ 英語版は「Pair」価格を1ペア単位で扱う（例: Fertilized Egg Pair = $1）
+    if (lang === 'en' && isPairType && mm > 0 && mm === ff) return unit * mm;
+    return unit * qty;
+  }
+  function dinoEnglishName(d) {
+    const row = dinoEnglish[d.id] || {};
+    const en = String(row.enName || '').trim();
+    return en || displayName(d.name);
+  }
+  function dinoDisplayName(d) {
+    return isEnglishMode() ? dinoEnglishName(d) : displayName(d.name);
+  }
+  function itemDisplayName(it) {
+    return displayName(it.name);
+  }
+  function imageKeyForDino(d, lang = appLang) {
+    const base = imageKeyForDino(d);
+    return lang === 'en' ? `img_en_${stableHash(norm(d._baseName || d.name))}` : base;
+  }
+  function updateLangUI() {
+    if (el.langMode) el.langMode.value = appLang;
+    document.documentElement.dataset.langMode = appLang;
+  }
+  function renderTotalBoth(y = lastTotals.yen, d = lastTotals.dollar) {
+    lastTotals = { yen: Number(y) || 0, dollar: Number(d) || 0 };
+    if (!el.total) return;
+    el.total.innerHTML = `<span>${(Number(y)||0).toLocaleString('ja-JP')}円</span><span>$${(Number(d)||0).toLocaleString('en-US')}</span>`;
+    fitTotalText();
+  }
 
   /* ========= special cfg (ガチャ等) ========= */
   const specialCfg = Object.assign({}, loadJSON(LS.SPECIAL_CFG, {}));
@@ -1030,6 +1038,7 @@ for (let p = 0; p < pages; p++) {
     imgOverlay: $('#imgOverlay'),
     imgClose: $('#imgClose'),
     imgViewerImg: $('#imgViewerImg'),
+    langMode: $('#langMode'),
   };
 
   /* ========= ✅ overlay z-index hardening =========
@@ -1176,25 +1185,26 @@ function sortByOrder(list, kind) {
   const ord = order[kind] || [];
   const idx = new Map(ord.map((id, i) => [id, i]));
 
-  // ✅ ソート用名称を生成（TEKは除外）
-  const sortName = (name) => {
-    if (!name) return '';
-    return name.startsWith('TEK')
-      ? name.slice(3).trim()
-      : name;
+  const sortKeyName = (obj) => {
+    const raw = kind === 'dino' && isEnglishMode() ? dinoEnglishName(obj) : String(obj?.name || '');
+    const base = raw.startsWith('TEK') ? raw.slice(3).trim() : raw;
+    return isEnglishMode() ? base.toLowerCase().replace(/\s+/g, '') : sortName(base);
   };
 
   return list.slice().sort((a, b) => {
-    const ai = idx.has(a.id) ? idx.get(a.id) : 1e9;
-    const bi = idx.has(b.id) ? idx.get(b.id) : 1e9;
-    if (ai !== bi) return ai - bi;
+    // ✅ 英語版は英名で並び替え。日本語版は従来の管理順を優先。
+    if (!isEnglishMode()) {
+      const ai = idx.has(a.id) ? idx.get(a.id) : 1e9;
+      const bi = idx.has(b.id) ? idx.get(b.id) : 1e9;
+      if (ai !== bi) return ai - bi;
+    }
 
-    const an = sortName(a.name);
-    const bn = sortName(b.name);
-
-    return an.localeCompare(bn, 'ja');
+    const an = sortKeyName(a);
+    const bn = sortKeyName(b);
+    return an.localeCompare(bn, isEnglishMode() ? 'en' : 'ja');
   });
 }
+
 
   /* ========= behavior rules ========= */
   function ensureDinoState(key, defType, spCfg = null) {
@@ -1245,12 +1255,12 @@ function sortByOrder(list, kind) {
 
   /* ========= image DOM sync ========= */
   function getImageUrlForDino(d) {
-    const k = imageKeyFromBaseName(d._baseName || d.name);
+    const k = imageKeyForDino(d);
     return imageCache[k] || '';
   }
   function syncThumbInMainListByDino(d, dataUrl) {
     const cards = $$(`[data-kind="dino"][data-did="${CSS.escape(d.id)}"]`, el.list);
-    const imageKey = imageKeyFromBaseName(d._baseName || d.name);
+    const imageKey = imageKeyForDino(d);
 
     cards.forEach(card => {
       let wrap = $('.miniThumb', card);
@@ -1292,11 +1302,51 @@ function sortByOrder(list, kind) {
 
 /* ========= output ========= */
   function rebuildOutput() {
-    const lines = [];
-    let sum = 0;
+    const jpLines = [];
+    const enLines = [];
+    let yenSum = 0;
+    let dollarSum = 0;
     let idx = 1;
 
     const dList = sortByOrder(dinos.filter(d => !hidden.dino.has(d.id)), 'dino');
+
+    const pushDinoLine = ({ d, type, m = 0, f = 0, qty = 0, priceYen = 0, priceDollar = 0, specialTextJa = '', specialTextEn = '' }) => {
+      yenSum += Number(priceYen) || 0;
+      dollarSum += Number(priceDollar) || 0;
+
+      const rawType = String(type || '受精卵');
+      const tJa = typeLabel(rawType, 'ja');
+      const tEn = typeLabel(rawType, 'en');
+      const isSpecified = /\(指定\)$/.test(rawType);
+      const typeClean = rawType.replace('(指定)', '');
+      const isPair = isSpecified || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(rawType);
+      const hideSex = (typeClean === '受精卵' || typeClean === '胚') && !isSpecified;
+
+      let ja = '';
+      let en = '';
+      if (specialTextJa || specialTextEn) {
+        ja = `${displayName(d.name)}${specialTextJa} = ${money(priceYen, 'ja')}`;
+        en = `${dinoEnglishName(d)} ${specialTextEn || specialTextJa} = ${money(priceDollar, 'en')}`;
+      } else if (hideSex) {
+        ja = `${displayName(d.name)}${tJa}×${qty} = ${money(priceYen, 'ja')}`;
+        en = `${dinoEnglishName(d)} ${tEn}${qty > 1 ? ` × ${qty}` : ''} = ${money(priceDollar, 'en')}`;
+      } else if (isPair && m === f && m > 0) {
+        ja = `${displayName(d.name)}${tJa}ペア${m > 1 ? '×' + m : ''} = ${money(priceYen, 'ja')}`;
+        en = `${dinoEnglishName(d)} ${tEn} Pair${m > 1 ? ` × ${m}` : ''} = ${money(priceDollar, 'en')}`;
+      } else {
+        const jpParts = [];
+        if (m > 0) jpParts.push(`♂︎×${m}`);
+        if (f > 0) jpParts.push(`♀︎×${f}`);
+        const enParts = [];
+        if (m > 0) enParts.push(`Male × ${m}`);
+        if (f > 0) enParts.push(`Female × ${f}`);
+        ja = `${displayName(d.name)}${tJa} ${jpParts.join(' ')} = ${money(priceYen, 'ja')}`;
+        en = `${dinoEnglishName(d)} ${tEn} ${enParts.join(' ')} = ${money(priceDollar, 'en')}`;
+      }
+      jpLines.push(`${idx}. ${ja}`);
+      enLines.push(`${idx}. ${en}`);
+      idx++;
+    };
 
     for (const d of dList) {
       const baseKey = d.id;
@@ -1315,54 +1365,29 @@ function sortByOrder(list, kind) {
 
           if (allowSex && sexQty > 0) {
             const type = s.type || d.defType || '受精卵';
-            const unitPrice = prices[type] || 0;
-            const price = unitPrice * sexQty;
-            sum += price;
-
-            const tOut = String(type).replace('(指定)', '');
-            const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
-
-            let line = '';
-            if (isPair) {
-              if (m === f) {
-                line = `${displayName(d.name)}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
-              } else {
-                const p = [];
-                if (m > 0) p.push(`♂︎×${m}`);
-                if (f > 0) p.push(`♀︎×${f}`);
-                line = `${displayName(d.name)}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
-              }
-            } else {
-              line = `${displayName(d.name)}${tOut}×${sexQty} = ${price.toLocaleString('ja-JP')}円`;
-            }
-
-            lines.push(`${idx}. ${line}`);
-            idx++;
+            pushDinoLine({
+              d, type, m, f, qty: sexQty,
+              priceYen: (prices[type] || 0) * sexQty,
+              priceDollar: calcDinoAmount(type, m, f, 'en'),
+            });
             continue;
           }
 
-          const unitPrice = Number(sp.unit || 0);
-          const allPrice = Number(sp.all || 0);
-
           if (s.all) {
-            const price = allPrice;
-            if (price > 0) {
-              sum += price;
-              lines.push(`${idx}. ${displayName(d.name)}全種 = ${price.toLocaleString('ja-JP')}円`);
-              idx++;
+            const priceYen = Number(sp.all || 0);
+            const priceDollar = Number(sp.allDollar || Math.max(1, Math.round(priceYen / 100)) || 0);
+            if (priceYen > 0 || priceDollar > 0) {
+              pushDinoLine({ d, type: '全種', qty: 1, priceYen, priceDollar, specialTextJa: '全種', specialTextEn: 'All Types' });
             }
             continue;
           }
 
           const picks = Array.isArray(s.picks) ? s.picks.slice() : [];
           if (picks.length <= 0) continue;
-
-          const price = picks.length * unitPrice;
-          sum += price;
-
+          const priceYen = picks.length * Number(sp.unit || 0);
+          const priceDollar = picks.length * Number(sp.unitDollar || Math.max(1, Math.round(Number(sp.unit || 0) / 100)) || 0);
           const seq = picks.map(n => circled(n)).join('');
-          lines.push(`${idx}. ${displayName(d.name)}${seq} = ${price.toLocaleString('ja-JP')}円`);
-          idx++;
+          pushDinoLine({ d, type: '特殊', qty: picks.length, priceYen, priceDollar, specialTextJa: seq, specialTextEn: seq });
           continue;
         }
 
@@ -1371,34 +1396,15 @@ function sortByOrder(list, kind) {
         const f = Number(s.f || 0);
         const qty = m + f;
         if (qty <= 0) continue;
-
-        const unitPrice = prices[type] || 0;
-        const price = unitPrice * qty;
-        sum += price;
-
-        const tOut = String(type).replace('(指定)', '');
-        const isPair = /\(指定\)$/.test(type) || ['幼体', '成体', 'クローン', 'クローン(指定)'].includes(type);
-
-        let line = '';
-        if (isPair) {
-          if (m === f) {
-            line = `${displayName(d.name)}${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
-          } else {
-            const p = [];
-            if (m > 0) p.push(`♂︎×${m}`);
-            if (f > 0) p.push(`♀︎×${f}`);
-            line = `${displayName(d.name)}${tOut} ${p.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
-          }
-        } else {
-          line = `${displayName(d.name)}${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
-        }
-
-        lines.push(`${idx}. ${line}`);
-        idx++;
+        pushDinoLine({
+          d, type, m, f, qty,
+          priceYen: (prices[type] || 0) * qty,
+          priceDollar: calcDinoAmount(type, m, f, 'en'),
+        });
       }
     }
 
-        const iList = sortByOrder(items.filter(it => !hidden.item.has(it.id)), 'item');
+    const iList = sortByOrder(items.filter(it => !hidden.item.has(it.id)), 'item');
     for (const it of iList) {
       const s = inputState.get(it.id);
       if (!s) continue;
@@ -1406,23 +1412,34 @@ function sortByOrder(list, kind) {
       if (qty <= 0) continue;
 
       const totalCount = qty * Number(it.unit || 1);
-      const price = qty * Number(it.price || 0);
-      sum += price;
-
-      lines.push(`${idx}. ${displayName(it.name)} × ${totalCount} = ${price.toLocaleString('ja-JP')}円`);
+      const priceYen = qty * Number(it.price || 0);
+      const priceDollar = qty * Number(it.priceDollar || Math.max(1, Math.round(Number(it.price || 0) / 100)) || 0);
+      yenSum += priceYen;
+      dollarSum += priceDollar;
+      jpLines.push(`${idx}. ${itemDisplayName(it)} × ${totalCount} = ${money(priceYen, 'ja')}`);
+      enLines.push(`${idx}. ${itemDisplayName(it)} × ${totalCount} = ${money(priceDollar, 'en')}`);
       idx++;
     }
 
-    el.total.textContent = yen(sum);
-    fitTotalText();
+    renderTotalBoth(yenSum, dollarSum);
+
+    if (isEnglishMode()) {
+      el.out.value =
+`Thank you for your order!
+Please review your order below 👇🏻
+${enLines.join('\n')}
+━━━━━━━━━━━━━━
+Total: ${money(dollarSum, 'en')}`;
+      return;
+    }
 
     el.out.value =
 `この度はご検討いただきありがとうございます！
 ご希望内容は以下となります👇🏻
 
-${lines.join('\n')}
+${jpLines.join('\n')}
 ーーーーーーーーーーーーーーー
-計：${sum.toLocaleString('ja-JP')}円
+計：${yenSum.toLocaleString('ja-JP')}円
 最短納品目安 : ${el.delivery.value}
 
 ご希望内容、金額をご確認の上購入の方よろしくお願いします🙏🏻
@@ -1594,7 +1611,7 @@ function installLeftToggleHit(card) {
     card.className = 'card isCollapsed';
     card.dataset.card = '1';
     card.dataset.key = key;
-    card.dataset.name = d.name;
+    card.dataset.name = `${d.name} ${dinoEnglishName(d)}`;
     card.dataset.kind = 'dino';
     card.dataset.did = d.id;
 
@@ -1690,7 +1707,7 @@ if (!nameWrap) {
 }
 
 const nameEl = $('.name', card);
-if (nameEl) nameEl.textContent = displayName(d.name);
+if (nameEl) nameEl.textContent = dinoDisplayName(d);
     applyMemoToCard(card, d.id, d);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -1700,7 +1717,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
       const undoBtn = $('button[data-act="undo"]', card);
       const unit = $('.unit', card);
       bindUnitImageViewer(unit);
-      setUnitArea(unit, `<div class="unitLine">1体=${unitPrice}円</div>`, ' ', imgUrl, imageKeyFromBaseName(d._baseName || d.name));
+      setUnitArea(unit, `<div class="unitLine">1体=${unitPrice}円</div>`, ' ', imgUrl, imageKeyForDino(d));
 
       const mEl = $('.js-m', card);
       const fEl = $('.js-f', card);
@@ -1757,25 +1774,25 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
             if (allowSex && sexQty > 0) {
               const type = s.type || d.defType || '受精卵';
-              price = (prices[type] || 0) * sexQty;
+              price = calcDinoAmount(type, m, f, appLang);
 
               const tOut = String(type).replace('(指定)', '');
               const parts = [];
               if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
               if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
-              priceHtml = `${tOut} ${parts.join(' ')} = ${yen(price)}`;
+              priceHtml = `${tOut} ${parts.join(' ')} = ${money(price)}`;
 
             } else if (s.all) {
               price = allPrice;
-              priceHtml = `全種= ${yen(price)}`;
+              priceHtml = `全種= ${money(price)}`;
             } else {
               price = picks.length * unitPrice;
               const nums = picks.map(n => circled(n)).join('');
-              priceHtml = nums ? `${nums} = ${yen(price)}` : ' ';
+              priceHtml = nums ? `${nums} = ${money(price)}` : ' ';
             }
           }
 
-          setUnitArea(unit, `<div class="unitLine">1体=${unitPrice}円</div>`, priceHtml, imgUrl);
+          setUnitArea(unit, `<div class="unitLine">${isEnglishMode() ? '$' + (Number(sp.unitDollar || Math.max(1, Math.round(unitPrice / 100))) || 0) : '1体=' + unitPrice + '円'}</div>`, priceHtml, imgUrl, imageKeyForDino(d));
         }
 
   
@@ -1963,7 +1980,7 @@ if (!nameWrap) {
 }
 
 const nameEl = $('.name', card);
-if (nameEl) nameEl.textContent = displayName(d.name);
+if (nameEl) nameEl.textContent = dinoDisplayName(d);
     applyMemoToCard(card, d.id, d);
 
 // ✅ DOM挿入後のサイズ確定を待ってから「折りたたみ範囲」を確実にセット
@@ -1977,7 +1994,7 @@ requestAnimationFrame(() => installLeftToggleHit(card));
     const unit = $('.unit', card);
     bindUnitImageViewer(unit);
     const type = s.type || d.defType || '受精卵';
-    setUnitArea(unit, `<div class="unitLine">単価${prices[s.type] || 0}円</div>`, ' ', imgUrl, imageKeyFromBaseName(d._baseName || d.name));
+    setUnitArea(unit, `<div class="unitLine">単価${prices[s.type] || 0}円</div>`, ' ', imgUrl, imageKeyForDino(d));
 
       const m = Number(s.m || 0);
       const f = Number(s.f || 0);
@@ -1985,8 +2002,8 @@ requestAnimationFrame(() => installLeftToggleHit(card));
 
       let priceHtml = ' ';
       if (qty > 0) {
-        const unitPrice = prices[type] || 0;
-        const price = unitPrice * qty;
+        const unitPrice = activePrices()[type] || 0;
+        const price = calcDinoAmount(type, m, f, appLang);
 
         // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵×1 = 30円）
 const tOut = String(type).replace('(指定)', '');
@@ -1996,22 +2013,22 @@ const tOut = String(type).replace('(指定)', '');
 
         if (hideSex) {
           // ✅ 受精卵・胚はオスメス表記を出さない
-          priceHtml = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+          priceHtml = `${tOut}×${qty} = ${money(price)}`;
         } else {
           const parts = [];
           if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
           if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
 
           if (isPair && m === f && m > 0) {
-            priceHtml = `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+            priceHtml = `${tOut}ペア${m > 1 ? '×' + m : ''} = ${money(price)}`;
           } else if (parts.length) {
-            priceHtml = `${tOut} ${parts.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+            priceHtml = `${tOut} ${parts.join(' ')} = ${money(price)}`;
           } else {
-            priceHtml = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+            priceHtml = `${tOut}×${qty} = ${money(price)}`;
           }
         }
       }
-      setUnitArea(unit, `<div class="unitLine">単価${prices[s.type] || 0}円</div>`, priceHtml, imgUrl);
+      setUnitArea(unit, `<div class="unitLine">${isEnglishMode() ? '$' + (pricesEn[s.type] || 0) : '単価' + (prices[s.type] || 0) + '円'}</div>`, priceHtml, imgUrl, imageKeyForDino(d));
 
     const mEl = $('.js-m', card);
     const fEl = $('.js-f', card);
@@ -2031,8 +2048,8 @@ const tOut = String(type).replace('(指定)', '');
 
       let priceHtml = ' ';
       if (qty > 0) {
-        const unitPrice = prices[type] || 0;
-        const price = unitPrice * qty;
+        const unitPrice = activePrices()[type] || 0;
+        const price = calcDinoAmount(type, m, f, appLang);
 
         // カード内は「恐竜名より後ろの文言」だけ表示（例：受精卵×1 = 30円）
 const tOut = String(type).replace('(指定)', '');
@@ -2042,22 +2059,22 @@ const tOut = String(type).replace('(指定)', '');
 
         if (hideSex) {
           // ✅ 受精卵・胚はオスメス表記を出さない
-          priceHtml = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+          priceHtml = `${tOut}×${qty} = ${money(price)}`;
         } else {
           const parts = [];
           if (m > 0) parts.push(`<span class="maleTxt">オス</span>×${m}`);
           if (f > 0) parts.push(`<span class="femaleTxt">メス</span>×${f}`);
 
           if (isPair && m === f && m > 0) {
-            priceHtml = `${tOut}ペア${m > 1 ? '×' + m : ''} = ${price.toLocaleString('ja-JP')}円`;
+            priceHtml = `${tOut}ペア${m > 1 ? '×' + m : ''} = ${money(price)}`;
           } else if (parts.length) {
-            priceHtml = `${tOut} ${parts.join(' ')} = ${price.toLocaleString('ja-JP')}円`;
+            priceHtml = `${tOut} ${parts.join(' ')} = ${money(price)}`;
           } else {
-            priceHtml = `${tOut}×${qty} = ${price.toLocaleString('ja-JP')}円`;
+            priceHtml = `${tOut}×${qty} = ${money(price)}`;
           }
         }
       }
-      setUnitArea(unit, `<div class="unitLine">単価${prices[s.type] || 0}円</div>`, priceHtml, imgUrl);
+      setUnitArea(unit, `<div class="unitLine">${isEnglishMode() ? '$' + (pricesEn[s.type] || 0) : '単価' + (prices[s.type] || 0) + '円'}</div>`, priceHtml, imgUrl, imageKeyForDino(d));
       mEl.textContent = String(s.m || 0);
       fEl.textContent = String(s.f || 0);
 
@@ -2339,6 +2356,7 @@ const tOut = String(type).replace('(指定)', '');
     el.modal?.classList?.toggle('isManageImages', isImages);
 
     el.modalBody.innerHTML = '';
+    el.modalBody.appendChild(renderLanguageSwitcher());
     if (kind === 'catalog') el.modalBody.appendChild(renderManageCatalog());
     if (kind === 'prices') el.modalBody.appendChild(renderManagePrices());
     if (kind === 'images') el.modalBody.appendChild(renderManageImages());
@@ -2364,11 +2382,43 @@ const tOut = String(type).replace('(指定)', '');
   });
 
   /* ========= manage: prices ========= */
+  function renderLanguageSwitcher() {
+    const row = document.createElement('div');
+    row.className = 'langSwitchRow';
+    row.innerHTML = `
+      <div>
+        <div class="langSwitchTitle">出品言語</div>
+        <div class="langSwitchSub">アプリ起動時は必ず日本語版に戻ります</div>
+      </div>
+      <select id="manageLangMode" class="langSelect">
+        <option value="ja">日本語版</option>
+        <option value="en">英語版</option>
+      </select>
+    `;
+    const sel = row.querySelector('#manageLangMode');
+    if (sel) {
+      sel.value = appLang;
+      sel.addEventListener('change', () => {
+        appLang = sel.value === 'en' ? 'en' : 'ja';
+        updateLangUI();
+        renderList();
+        setManageTab(el.mTabImages?.classList.contains('isActive') ? 'images' : (el.mTabPrices?.classList.contains('isActive') ? 'prices' : 'catalog'));
+        openToast(appLang === 'en' ? '英語版に切り替えました' : '日本語版に切り替えました');
+      });
+    }
+    return row;
+  }
+
   function renderManagePrices() {
     const box = document.createElement('div');
 
+    const note = document.createElement('div');
+    note.className = 'langHelp';
+    note.textContent = '日本語版は円、英語版はドルで保存します。';
+    box.appendChild(note);
+
     const grid = document.createElement('div');
-    grid.className = 'priceGrid';
+    grid.className = 'priceGrid priceGridDual';
 
     typeList.forEach(t => {
       const key = document.createElement('div');
@@ -2376,8 +2426,11 @@ const tOut = String(type).replace('(指定)', '');
       key.textContent = t;
 
       const val = document.createElement('div');
-      val.className = 'pVal';
-      val.innerHTML = `<input type="text" inputmode="numeric" value="${prices[t] || 0}" data-type="${t}">`;
+      val.className = 'pVal priceDualInputs';
+      val.innerHTML = `
+        <label>円 <input type="text" inputmode="numeric" value="${prices[t] || 0}" data-type-yen="${escapeHtml(t)}"></label>
+        <label>$ <input type="text" inputmode="numeric" value="${pricesEn[t] || 0}" data-type-dollar="${escapeHtml(t)}"></label>
+      `;
 
       grid.appendChild(key);
       grid.appendChild(val);
@@ -2392,13 +2445,19 @@ const tOut = String(type).replace('(指定)', '');
 
     box.addEventListener('click', (e) => {
       if (e.target?.dataset?.act !== 'savePrices') return;
-      $$('input[data-type]', box).forEach(inp => {
-        const t = inp.dataset.type;
+      $$('input[data-type-yen]', box).forEach(inp => {
+        const t = inp.dataset.typeYen;
         prices[t] = Number(inp.value || 0);
       });
+      $$('input[data-type-dollar]', box).forEach(inp => {
+        const t = inp.dataset.typeDollar;
+        pricesEn[t] = Number(inp.value || 0);
+      });
       saveJSON(LS.PRICES, prices);
+      saveJSON(LS.PRICES_EN, pricesEn);
       renderList();
       setManageTab('prices');
+      openToast('価格を保存しました');
     });
 
     return box;
@@ -2547,6 +2606,9 @@ if (act === 'gojuon') {
         <div class="editLabel">名前</div>
         <input id="addName" class="editInput" type="text" value="" autocomplete="off" placeholder="例：ガチャ">
 
+        <div class="editLabel">英語名</div>
+        <input id="addEnName" class="editInput" type="text" value="" autocomplete="off" placeholder="例: Archelon">
+
         <div class="editLabel">デフォルト種類</div>
         <select id="addType" class="editSelect">
           ${typeList.map(t => `<option value="${t}">${t}</option>`).join('')}
@@ -2583,11 +2645,17 @@ if (act === 'gojuon') {
           <div class="editLabel">何番までボタンを用意するか</div>
           <input id="spMax" class="editInput" type="text" inputmode="numeric" value="16">
 
-          <div class="editLabel">1体あたりの価格</div>
+          <div class="editLabel">1体あたりの価格（円）</div>
           <input id="spUnit" class="editInput" type="text" inputmode="numeric" value="300">
 
-          <div class="editLabel">全種の場合の価格</div>
+          <div class="editLabel">1体あたりの価格（ドル）</div>
+          <input id="spUnitDollar" class="editInput" type="text" inputmode="numeric" value="3">
+
+          <div class="editLabel">全種の場合の価格（円）</div>
           <input id="spAll" class="editInput" type="text" inputmode="numeric" value="3000">
+
+          <div class="editLabel">全種の場合の価格（ドル）</div>
+          <input id="spAllDollar" class="editInput" type="text" inputmode="numeric" value="30">
         </div>
 
         <div class="editBtns">
@@ -2665,6 +2733,7 @@ if (act === 'gojuon') {
 
       if (act === 'save') {
         const name = ($('#addName', box)?.value || '').trim();
+        const enName = ($('#addEnName', box)?.value || '').trim();
         const defType = ($('#addType', box)?.value || '受精卵');
         const memo = ($('#addMemo', box)?.value || '').trim();
         if (!name) return openToast('名前を入力してください');
@@ -2675,13 +2744,17 @@ if (act === 'gojuon') {
         if (existIdx >= 0) custom.dino[existIdx] = rec;
         else custom.dino.push(rec);
         saveJSON(LS.DINO_CUSTOM, custom.dino);
+        dinoEnglish[id] = { ...(dinoEnglish[id] || {}), enName };
+        saveJSON(LS.DINO_EN, dinoEnglish);
 
         if (spEnable?.checked) {
           const max = Math.max(1, Math.min(60, Number($('#spMax', box)?.value || 16)));
           const unit = Math.max(0, Number($('#spUnit', box)?.value || 0));
+          const unitDollar = Math.max(0, Number($('#spUnitDollar', box)?.value || 0));
           const all = Math.max(0, Number($('#spAll', box)?.value || 0));
+          const allDollar = Math.max(0, Number($('#spAllDollar', box)?.value || 0));
           const allowSex = !!spAllowSex?.checked;
-          specialCfg[id] = { enabled: true, max, unit, all, allowSex };
+          specialCfg[id] = { enabled: true, max, unit, unitDollar, all, allDollar, allowSex };
           saveJSON(LS.SPECIAL_CFG, specialCfg);
         }
 
@@ -2705,8 +2778,11 @@ if (act === 'gojuon') {
         <div class="editLabel">1セットあたり個数</div>
         <input id="addUnit" class="editInput" type="text" inputmode="numeric" value="1">
 
-        <div class="editLabel">価格（1セット）</div>
+        <div class="editLabel">価格（1セット・円）</div>
         <input id="addPrice" class="editInput" type="text" inputmode="numeric" value="0">
+
+        <div class="editLabel">価格（1セット・ドル）</div>
+        <input id="addPriceDollar" class="editInput" type="text" inputmode="numeric" value="1">
 
         <div class="editLabel">メモ</div>
         <textarea id="addMemo" class="editTextarea" placeholder="例：在庫少 / 取り置き不可"></textarea>
@@ -2789,14 +2865,16 @@ if (act === 'gojuon') {
         const name = ($('#addName', box)?.value || '').trim();
         const unit = Number($('#addUnit', box)?.value || 1);
         const price = Number($('#addPrice', box)?.value || 0);
+        const priceDollar = Number($('#addPriceDollar', box)?.value || 0);
         const memo = ($('#addMemo', box)?.value || '').trim();
         if (!name) return openToast('名前を入力してください');
         if (!Number.isFinite(unit) || unit <= 0) return openToast('個数は1以上');
         if (!Number.isFinite(price) || price < 0) return openToast('価格が不正です');
+        if (!Number.isFinite(priceDollar) || priceDollar < 0) return openToast('ドル価格が不正です');
 
         const id = stableId('i', name);
         const existIdx = custom.item.findIndex(x => x.id === id);
-        const rec = { id, name, unit, price, memo, memoImg: String(memoImgData || '') };
+        const rec = { id, name, unit, price, priceDollar, memo, memoImg: String(memoImgData || '') };
         if (existIdx >= 0) custom.item[existIdx] = rec;
         else custom.item.push(rec);
         custom.item = dedupeByIdKeepLast(custom.item);
@@ -2805,7 +2883,7 @@ if (act === 'gojuon') {
         hidden.item.delete(id);
         if (!saveJSON(LS.ITEM_HIDDEN, Array.from(hidden.item))) return;
 
-        const itemRec = { id, name, unit, price, kind: 'item' };
+        const itemRec = { id, name, unit, price, priceDollar, kind: 'item' };
         const itemIdx = items.findIndex(x => x.id === id);
         if (itemIdx >= 0) items[itemIdx] = itemRec;
         else items.push(itemRec);
@@ -2834,6 +2912,9 @@ if (act === 'gojuon') {
       <div class="editForm">
         <div class="editLabel">名前</div>
         <input id="editName" class="editInput" type="text" value="${escapeHtml(d.name)}" autocomplete="off">
+
+        <div class="editLabel">英語名</div>
+        <input id="editEnName" class="editInput" type="text" value="${escapeHtml((dinoEnglish[id] || {}).enName || '')}" autocomplete="off" placeholder="例: Archelon">
 
         <div class="editLabel">デフォルト種類</div>
         <select id="editType" class="editSelect">
@@ -2871,11 +2952,17 @@ if (act === 'gojuon') {
           <div class="editLabel">何番までボタンを用意するか</div>
           <input id="spMax" class="editInput" type="text" inputmode="numeric" value="${Number(curSp?.max || 16)}">
 
-          <div class="editLabel">1体あたりの価格</div>
+          <div class="editLabel">1体あたりの価格（円）</div>
           <input id="spUnit" class="editInput" type="text" inputmode="numeric" value="${Number(curSp?.unit || 300)}">
 
-          <div class="editLabel">全種の場合の価格</div>
+          <div class="editLabel">1体あたりの価格（ドル）</div>
+          <input id="spUnitDollar" class="editInput" type="text" inputmode="numeric" value="${Number(curSp?.unitDollar || 3)}">
+
+          <div class="editLabel">全種の場合の価格（円）</div>
           <input id="spAll" class="editInput" type="text" inputmode="numeric" value="${Number(curSp?.all || 3000)}">
+
+          <div class="editLabel">全種の場合の価格（ドル）</div>
+          <input id="spAllDollar" class="editInput" type="text" inputmode="numeric" value="${Number(curSp?.allDollar || 30)}">
         </div>
 
         <div class="editBtns">
@@ -2959,6 +3046,7 @@ if (act === 'gojuon') {
 
       if (act === 'save') {
         const newName = ($('#editName', box)?.value || '').trim();
+        const newEnName = ($('#editEnName', box)?.value || '').trim();
         const newDef = ($('#editType', box)?.value || '受精卵');
         const memo = ($('#editMemo', box)?.value || '').trim();
         if (!newName) return;
@@ -2988,12 +3076,17 @@ if (act === 'gojuon') {
         const di = dinos.findIndex(x => x.id === id);
         if (di >= 0) dinos[di] = Object.assign({}, dinos[di], { name: newName, defType: newDef });
 
+        dinoEnglish[id] = { ...(dinoEnglish[id] || {}), enName: newEnName };
+        saveJSON(LS.DINO_EN, dinoEnglish);
+
         if (spEnable?.checked) {
           const max = Math.max(1, Math.min(60, Number($('#spMax', box)?.value || 16)));
           const unit = Math.max(0, Number($('#spUnit', box)?.value || 0));
+          const unitDollar = Math.max(0, Number($('#spUnitDollar', box)?.value || 0));
           const all = Math.max(0, Number($('#spAll', box)?.value || 0));
+          const allDollar = Math.max(0, Number($('#spAllDollar', box)?.value || 0));
           const allowSex = !!spAllowSex?.checked;
-          specialCfg[id] = { enabled: true, max, unit, all, allowSex };
+          specialCfg[id] = { enabled: true, max, unit, unitDollar, all, allDollar, allowSex };
           saveJSON(LS.SPECIAL_CFG, specialCfg);
 
           const st = inputState.get(id);
@@ -3710,97 +3803,94 @@ if (act === 'gojuon') {
 
     list.forEach(d => {
       const row = document.createElement('div');
-      row.className = 'imgRow';
+      row.className = 'imgRow imgRowDual';
 
-      const thumb = document.createElement('div');
-      thumb.className = 'thumb';
+      const makeBlock = (lang, label) => {
+        const block = document.createElement('div');
+        block.className = 'imgLangBlock';
+        const thumb = document.createElement('div');
+        thumb.className = 'thumb';
+        const k = imageKeyForDino(d, lang);
+        const url = imageCache[k];
+        if (url) thumb.innerHTML = `<img src="${url}" alt="">`;
+        else thumb.textContent = 'No Image';
 
-      const k = imageKeyFromBaseName(d._baseName || d.name);
-      const url = imageCache[k];
+        const title = document.createElement('div');
+        title.className = 'imgLangTitle';
+        title.textContent = label;
 
-      if (url) thumb.innerHTML = `<img src="${url}" alt="">`;
-      else thumb.textContent = 'No Image';
+        const btns = document.createElement('div');
+        btns.className = 'imgBtns';
+        const pick = document.createElement('button');
+        pick.className = 'pill';
+        pick.type = 'button';
+        pick.textContent = '選択';
+        const del = document.createElement('button');
+        del.className = 'pill danger';
+        del.type = 'button';
+        del.textContent = '削除';
+        const file = document.createElement('input');
+        file.type = 'file';
+        file.accept = 'image/*';
+        file.style.display = 'none';
+
+        pick.addEventListener('click', () => file.click());
+        file.addEventListener('change', async () => {
+          const f = file.files && file.files[0];
+          if (!f) return;
+          try {
+            const dataUrl = await fileToDataURLCompressed(f, 900, 0.78);
+            await idbPutImage(k, dataUrl);
+            imageCache[k] = dataUrl;
+            thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
+            if (lang === appLang) syncThumbInMainListByDino(d, dataUrl);
+            openToast(`${label}画像を保存しました`);
+          } catch (e) {
+            console.error(e);
+            openToast('画像の保存に失敗しました');
+          } finally {
+            try { file.value = ''; } catch {}
+          }
+        });
+        del.addEventListener('click', async () => {
+          const ok = await confirmAsk(`${label}画像を削除しますか？`);
+          if (!ok) return;
+          try {
+            await idbDelImage(k);
+            delete imageCache[k];
+            thumb.textContent = 'No Image';
+            if (lang === appLang) syncThumbInMainListByDino(d, '');
+            openToast('画像を削除しました');
+          } catch (e) {
+            console.error(e);
+            openToast('削除に失敗しました');
+          }
+        });
+        thumb.addEventListener('click', () => {
+          const u = imageCache[k];
+          if (u) openImgViewer(u);
+        });
+        btns.appendChild(pick);
+        btns.appendChild(del);
+        block.appendChild(title);
+        block.appendChild(thumb);
+        block.appendChild(btns);
+        block.appendChild(file);
+        return block;
+      };
 
       const mid = document.createElement('div');
-      mid.className = 'imgMid';
-
+      mid.className = 'imgMid imgMidDual';
       const name = document.createElement('div');
       name.className = 'imgName';
-      name.textContent = displayName(d.name);
-
-      const btns = document.createElement('div');
-      btns.className = 'imgBtns';
-
-      const pick = document.createElement('button');
-      pick.className = 'pill';
-      pick.type = 'button';
-      pick.textContent = '選択';
-
-      const del = document.createElement('button');
-      del.className = 'pill danger';
-      del.type = 'button';
-      del.textContent = '削除';
-
-      const file = document.createElement('input');
-      file.type = 'file';
-      file.accept = 'image/*';
-      file.style.display = 'none';
-
-      pick.addEventListener('click', () => file.click());
-
-      file.addEventListener('change', async () => {
-        const f = file.files && file.files[0];
-        if (!f) return;
-
-        try {
-          const dataUrl = await fileToDataURLCompressed(f, 900, 0.78);
-          await idbPutImage(k, dataUrl);
-          imageCache[k] = dataUrl;
-
-          thumb.innerHTML = `<img src="${dataUrl}" alt="">`;
-          syncThumbInMainListByDino(d, dataUrl);
-
-          openToast('画像を保存しました');
-        } catch (e) {
-          console.error(e);
-          openToast('画像の保存に失敗しました');
-        } finally {
-          try { file.value = ''; } catch {}
-        }
-      });
-
-      del.addEventListener('click', async () => {
-        const ok = await confirmAsk('画像を削除しますか？');
-        if (!ok) return;
-
-        try {
-          await idbDelImage(k);
-          delete imageCache[k];
-          thumb.textContent = 'No Image';
-          syncThumbInMainListByDino(d, '');
-          openToast('画像を削除しました');
-        } catch (e) {
-          console.error(e);
-          openToast('削除に失敗しました');
-        }
-      });
-
-      thumb.addEventListener('click', () => {
-        const u = imageCache[k];
-        if (!u) return;
-        openImgViewer(u);
-      });
-
-      btns.appendChild(pick);
-      btns.appendChild(del);
-
+      name.textContent = `${displayName(d.name)} / ${dinoEnglishName(d)}`;
+      const blocks = document.createElement('div');
+      blocks.className = 'imgLangBlocks';
+      blocks.appendChild(makeBlock('ja', '日本語'));
+      blocks.appendChild(makeBlock('en', '英語'));
       mid.appendChild(name);
-      mid.appendChild(btns);
-
-      row.appendChild(thumb);
+      mid.appendChild(blocks);
       row.appendChild(mid);
-      row.appendChild(file);
-
       listBox.appendChild(row);
     });
 
@@ -4338,9 +4428,19 @@ const prev = btn.textContent;
 
   /* ========= POS ========= */
   const pos = {
-    sales: loadJSON(LS.POS_SALES, []), // flat lines
-    stock: loadJSON(LS.POS_STOCK, {}), // { [dinoId]: { m:number|null, f:number|null } }
+    salesJa: loadJSON(LS.POS_SALES, []),
+    stockJa: loadJSON(LS.POS_STOCK, {}),
+    salesEn: loadJSON(LS.POS_SALES_EN, []),
+    stockEn: loadJSON(LS.POS_STOCK_EN, {}),
   };
+  Object.defineProperty(pos, 'sales', {
+    get() { return isEnglishMode() ? this.salesEn : this.salesJa; },
+    set(v) { if (isEnglishMode()) this.salesEn = v; else this.salesJa = v; }
+  });
+  Object.defineProperty(pos, 'stock', {
+    get() { return isEnglishMode() ? this.stockEn : this.stockJa; },
+    set(v) { if (isEnglishMode()) this.stockEn = v; else this.stockJa = v; }
+  });
 
   // ✅ 既存データ互換：idが無い行にidを付与（削除が安定する）
   if (!Array.isArray(pos.sales)) pos.sales = [];
@@ -4387,8 +4487,10 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
   }
 
   function posSave() {
-    saveJSON(LS.POS_SALES, pos.sales || []);
-    saveJSON(LS.POS_STOCK, pos.stock || {});
+    saveJSON(LS.POS_SALES, pos.salesJa || []);
+    saveJSON(LS.POS_STOCK, pos.stockJa || {});
+    saveJSON(LS.POS_SALES_EN, pos.salesEn || []);
+    saveJSON(LS.POS_STOCK_EN, pos.stockEn || {});
   }
 
   function getStockKeyForDinoLine(s) {
@@ -4547,14 +4649,14 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
 
           if (allowSex && sexQty > 0) {
             const type = s.type || d.defType || '受精卵';
-            const unitPrice = prices[type] || 0;
-            const amount = unitPrice * sexQty;
+            const amount = calcDinoAmount(type, m, f, appLang);
             lines.push({
               ts, orderId, month: monthKeyFromTs(ts),
               delivery,
+              lang: appLang,
               kind: 'dino',
               dinoId: d.id,
-              name: displayName(d.name),
+              name: dinoDisplayName(d),
               type,
               qty: sexQty,
               m, f,
@@ -4563,17 +4665,18 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
             continue;
           }
 
-          const unitPrice = Number(sp.unit || 0);
-          const allPrice = Number(sp.all || 0);
+          const unitPrice = isEnglishMode() ? Number(sp.unitDollar || Math.max(1, Math.round(Number(sp.unit || 0) / 100)) || 0) : Number(sp.unit || 0);
+          const allPrice = isEnglishMode() ? Number(sp.allDollar || Math.max(1, Math.round(Number(sp.all || 0) / 100)) || 0) : Number(sp.all || 0);
           if (s.all) {
             const amount = allPrice;
             if (amount > 0) {
               lines.push({
                 ts, orderId, month: monthKeyFromTs(ts),
                 delivery,
+                lang: appLang,
                 kind: 'dino',
                 dinoId: d.id,
-                name: displayName(d.name),
+                name: dinoDisplayName(d),
                 type: '全種',
                 qty: 1,
                 m: 0, f: 0,
@@ -4590,9 +4693,10 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
             lines.push({
               ts, orderId, month: monthKeyFromTs(ts),
               delivery,
+              lang: appLang,
               kind: 'dino',
               dinoId: d.id,
-              name: displayName(d.name),
+              name: dinoDisplayName(d),
               type: '特殊',
               qty: picks.length,
               m: 0, f: 0,
@@ -4610,15 +4714,15 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
         const qty = m + f;
         if (qty <= 0) continue;
 
-        const unitPrice = prices[type] || 0;
-        const amount = unitPrice * qty;
+        const amount = calcDinoAmount(type, m, f, appLang);
 
         lines.push({
           ts, orderId, month: monthKeyFromTs(ts),
           delivery,
+          lang: appLang,
           kind: 'dino',
           dinoId: d.id,
-          name: displayName(d.name),
+          name: dinoDisplayName(d),
           type,
           qty,
           m, f,
@@ -4634,7 +4738,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
       if (!s) continue;
       const qty = Number(s.qty || 0);
       if (qty <= 0) continue;
-      const unitPrice = Number(it.price || 0);
+      const unitPrice = isEnglishMode() ? Number(it.priceDollar || Math.max(1, Math.round(Number(it.price || 0) / 100)) || 0) : Number(it.price || 0);
       const amount = unitPrice * qty;
       lines.push({
         ts, orderId, month: monthKeyFromTs(ts),
@@ -4806,7 +4910,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
       head.style.padding = '12px 12px 8px 14px';
 
       const title = document.createElement('div');
-      title.textContent = '帳簿入力';
+      title.textContent = isEnglishMode() ? '帳簿入力（英語版）' : '帳簿入力';
       title.style.fontWeight = '900';
       title.style.fontSize = '14px';
       title.style.color = '#fff';
@@ -4856,7 +4960,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
         <div style="font-weight:900;">日付</div>
         <input id="posEntryDate" type="date" value="${escapeHtml(defaultDate)}"
           style="height:34px;border-radius:14px;padding:0 10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:#fff;font-weight:900;"/>
-        <div style="margin-left:auto;font-weight:950;color:rgba(120,255,179,.95)">合計 ${escapeHtml(yen(total))}</div>
+        <div style="margin-left:auto;font-weight:950;color:rgba(120,255,179,.95)">合計 ${escapeHtml(money(total))}</div>
       </div>
 
       <div class="posBox" style="margin-bottom:12px;">
@@ -4869,7 +4973,7 @@ if (!pos.stock || typeof pos.stock !== 'object') { pos.stock = {}; posNeedsSave 
                   <div class="posHistTitle" title="${escapeHtml(parts.title)}">${escapeHtml(parts.title)}</div>
                   ${parts.sub ? `<div class="posHistSub" title="${escapeHtml(parts.sub)}">${escapeHtml(parts.sub)}</div>` : ``}
                 </div>
-                <div class="posEntryAmt tabularNums" title="${escapeHtml(yen(s.amount))}">${escapeHtml(yen(s.amount))}</div>
+                <div class="posEntryAmt tabularNums" title="${escapeHtml(money(s.amount))}">${escapeHtml(money(s.amount))}</div>
               </div>
             `;
           }).join('') : `<div style="padding:10px;opacity:.8;">記録する商品がありません</div>`}
@@ -4960,7 +5064,7 @@ function openPosReport() {
       head.style.padding = '12px 12px 8px 14px';
 
       const title = document.createElement('div');
-      title.textContent = '帳簿';
+      title.textContent = isEnglishMode() ? '帳簿（英語版）' : '帳簿';
       title.style.fontWeight = '900';
       title.style.fontSize = '20px';
       title.style.color = '#fff';
@@ -5036,9 +5140,9 @@ if (orderBtn) {
     .map((s) => {
       const p = posDisplayParts(s);
       const left = p.sub ? `${p.title} ${p.sub}` : p.title;
-      return `${left} = ${yen(s.amount)}`;
+      return `${left} = ${money(s.amount)}`;
     });
-  const ok = await confirmAsk(`削除しますか？\n${fmtMD(ts)} 注文 合計 ${yen(gTotal)}\n${orderLines.join('\n')}`);
+  const ok = await confirmAsk(`削除しますか？\n${fmtMD(ts)} 注文 合計 ${money(gTotal)}\n${orderLines.join('\n')}`);
   if (!ok) return;
 
   pos.sales = (Array.isArray(pos.sales) ? pos.sales : []).filter(x => !ids.includes(String(x.id || '')));
@@ -5089,7 +5193,7 @@ if (stockBtn) {
           if (!s) return;
 
           const parts = posDisplayParts(s);
-          const ok = await confirmAsk(`削除しますか？\n${fmtMD(s.ts)} ${parts.title} / ${yen(s.amount)}`);
+          const ok = await confirmAsk(`削除しますか？\n${fmtMD(s.ts)} ${parts.title} / ${money(s.amount)}`);
           if (!ok) return;
 
           const idx = (Array.isArray(pos.sales) ? pos.sales : []).findIndex(x => String(x.id || '') === sid);
@@ -5363,7 +5467,7 @@ const head = `
                 <div class="posHistTitle" title="${escapeHtml(parts.title)}">${escapeHtml(parts.title)}</div>
                 ${parts.sub ? `<div class="posHistSub" title="${escapeHtml(parts.sub)}">${escapeHtml(parts.sub)}</div>` : ``}
               </div>
-              <button type="button" class="posHistAmt tabularNums" data-pos-del-id="${escapeHtml(String(s.id || ''))}" title="タップで削除">${escapeHtml(yen(s.amount))}</button>
+              <button type="button" class="posHistAmt tabularNums" data-pos-del-id="${escapeHtml(String(s.id || ''))}" title="タップで削除">${escapeHtml(money(s.amount))}</button>
             </div>
           `;
         }).join('');
@@ -5436,7 +5540,7 @@ const head = `
           <td class="c posDailyColRank tabularNums">${escapeHtml(String(i + 1))}</td>
           <td class="l posDailyColDate tabularNums">${escapeHtml(d.dayKey)}</td>
           <td class="c posDailyColCount tabularNums">${escapeHtml(String(d.count))}</td>
-          <td class="r posDailyColTotal tabularNums">${escapeHtml(yen(d.totalAmt))}</td>
+          <td class="r posDailyColTotal tabularNums">${escapeHtml(money(d.totalAmt))}</td>
         </tr>
       `).join('');
 
@@ -5454,7 +5558,7 @@ const head = `
               ${mode==='year' ? yearOpts : monthOpts}
             </select>
           </div>
-          <div class="posTotal">合計 ${escapeHtml(yen(total))}</div>
+          <div class="posTotal">合計 ${escapeHtml(money(total))}</div>
         </div>
 
         <div class="posTabsWrap posTabsWrap3">
@@ -5564,6 +5668,12 @@ const head = `
   el.mTabPrices?.addEventListener('click', () => setManageTab('prices'));
   el.mTabImages?.addEventListener('click', () => setManageTab('images'));
 
+  el.langMode?.addEventListener('change', () => {
+    appLang = el.langMode.value === 'en' ? 'en' : 'ja';
+    updateLangUI();
+    renderList();
+  });
+
   el.openRoom?.addEventListener('click', openRoom);
   el.closeRoom?.addEventListener('click', closeRoom);
   el.roomOverlay?.addEventListener('click', (e) => {
@@ -5572,6 +5682,8 @@ const head = `
 
   /* ========= init ========= */
   async function init() {
+    appLang = 'ja';
+    updateLangUI();
     await migrateOldImagesIfAny();
 
     try {
@@ -5605,6 +5717,7 @@ const head = `
         name: x.name,
         unit: x.unit,
         price: x.price,
+        priceDollar: x.priceDollar,
         kind: 'item'
       });
     });
@@ -5639,8 +5752,11 @@ const head = `
         <div class="editLabel">1セットあたり個数</div>
         <input id="editUnit" class="editInput" type="text" inputmode="numeric" value="${Number(it.unit || 1)}">
 
-        <div class="editLabel">価格（1セット）</div>
+        <div class="editLabel">価格（1セット・円）</div>
         <input id="editPrice" class="editInput" type="text" inputmode="numeric" value="${Number(it.price || 0)}">
+
+        <div class="editLabel">価格（1セット・ドル）</div>
+        <input id="editPriceDollar" class="editInput" type="text" inputmode="numeric" value="${Number(it.priceDollar || Math.max(1, Math.round(Number(it.price || 0) / 100)) || 0)}">
 
         <div class="editLabel">メモ</div>
         <textarea id="editMemo" class="editTextarea" placeholder="例：在庫少 / 取り置き不可">${escapeHtml(curMemo || '')}</textarea>
@@ -5723,21 +5839,23 @@ const head = `
         const name = ($('#editName', box)?.value || '').trim();
         const unit = Number($('#editUnit', box)?.value || 1);
         const price = Number($('#editPrice', box)?.value || 0);
+        const priceDollar = Number($('#editPriceDollar', box)?.value || 0);
         const memo = ($('#editMemo', box)?.value || '').trim();
 
         if (!name) return openToast('名前を入力してください');
         if (!Number.isFinite(unit) || unit <= 0) return openToast('個数は1以上');
         if (!Number.isFinite(price) || price < 0) return openToast('価格が不正');
+        if (!Number.isFinite(priceDollar) || priceDollar < 0) return openToast('ドル価格が不正');
 
         const existIdx = custom.item.findIndex(x => x.id === id);
-        const rec = { id, name, unit, price, memo, memoImg: String(memoImgData || '') };
+        const rec = { id, name, unit, price, priceDollar, memo, memoImg: String(memoImgData || '') };
         if (existIdx >= 0) custom.item[existIdx] = rec;
         else custom.item.push(rec);
         custom.item = dedupeByIdKeepLast(custom.item);
         saveJSON(LS.ITEM_CUSTOM, custom.item);
 
         const ii = items.findIndex(x => x.id === id);
-        if (ii >= 0) items[ii] = Object.assign({}, items[ii], { name, unit, price });
+        if (ii >= 0) items[ii] = Object.assign({}, items[ii], { name, unit, price, priceDollar });
 
         closeEditModal();
         renderList();
