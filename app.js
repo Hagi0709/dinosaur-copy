@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-06-04 00:03';
+const BUILD_VERSION = '2026-06-07 10:46';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -4342,20 +4342,55 @@ let ps = { sum: 0, hasDino: false, hasItem: false };
     }
 
     const place = (ps.hasDino && ps.hasItem) ? '冷蔵庫、金庫' : (ps.hasItem ? '金庫' : '冷蔵庫');
+    const roomTextEn = String(roomText || '').replace(/^ROOM\s*(\d+)$/i, 'ROOM $1');
+    const placeEn =
+      place === '冷蔵庫、金庫'
+        ? 'fridge and vault'
+        : place === '金庫'
+          ? 'vault'
+          : 'fridge';
+
+    const warnEn = hasEggOrEmbryoSelected()
+      ? `
+
+⚠️ Please note: fertilized eggs / embryos may disappear if transferred incorrectly. Please move them in your survivor inventory.`
+      : '';
 
 // ✅ ROOMコピーには購入内容を入れない
 let text =
 (entry === '0000')
-? 'コピー失敗‼️‼️'
-: `納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
+? (isEnglishMode() ? 'Copy failed!' : 'コピー失敗‼️‼️')
+: (
+  isEnglishMode()
+    ? `Your order is ready for pickup.
+
+Please collect it from the following location:
+
+Server: 5041 (The Island)
+Coordinates: 87 / 16 (West Zone 2, near the Red Obelisk)
+Entrance Password: ${entry}
+
+Please enter ${roomTextEn} using the password ${pw} and collect your items from the ${placeEn}.
+
+Thank you!${warnEn}`
+    : `納品が完了しましたのでご連絡させて頂きます。以下の場所まで受け取りよろしくお願いします🙏🏻
 
 サーバー番号 : 5041 (アイランド)
 座標 : 87 / 16 (西部2、赤オベ付近)
 入口パスワード【${entry}】
-${roomText}の方にパスワード【${pw}】で入室をして頂き、${place}より受け取りください。${warn}`;
+${roomText}の方にパスワード【${pw}】で入室をして頂き、${place}より受け取りください。${warn}`
+);
     // ✅ 配送追記（設定ON & 合計が閾値以上）
     if (roomCopyCfg?.deliveryAppendEnabled && ps.sum >= Number(roomCopyCfg.deliveryMin || 0)) {
-      text += `
+      text += isEnglishMode()
+        ? `
+
+🚚 If you would like delivery, please comment with the following information:
+
+1. Server number
+2. Delivery coordinates
+3. Fridge / vault password`
+        : `
 
 🚚配送希望の場合は
 以下の情報をコメントしてください🙇🏻‍♂️
