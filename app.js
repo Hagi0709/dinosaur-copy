@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-06-07 10:46';
+const BUILD_VERSION = '2026-06-11 21:41';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -340,6 +340,18 @@ function formatSpecialLabel(name) {
       body.innerHTML = '';
       const usable = (dList || []).map(d => ({ d, key: imageKeyForDino(d), url: imageCache[imageKeyForDino(d)] || '' })).filter(x => x.url);
 
+      const exportDefaultTypeBase = (x) => String(x?.d?.defType || '').replace('(指定)', '');
+      const setExportSelectionByDefaultType = (targetType) => {
+        let count = 0;
+        $$('input[data-export-idx]', pickBox).forEach(ch => {
+          const row = usable[Number(ch.dataset.exportIdx || -1)];
+          const on = !!row && exportDefaultTypeBase(row) === targetType;
+          ch.checked = on;
+          if (on) count++;
+        });
+        openToast(count ? `${targetType}のみ選択しました` : `${targetType}の画像がありません`);
+      };
+
       const ctrl = document.createElement('div');
       ctrl.className = 'exportGridCtrl';
       ctrl.innerHTML = `
@@ -351,6 +363,8 @@ function formatSpecialLabel(name) {
         </div>
         <div class="exportSelBtns">
           <button class="pill exportSmallBtn" type="button" id="exportSelectAll">全選択</button>
+          <button class="pill exportSmallBtn" type="button" id="exportSelectEggs">受精卵のみ</button>
+          <button class="pill exportSmallBtn" type="button" id="exportSelectEmbryos">胚のみ</button>
           <button class="pill exportSmallBtn" type="button" id="exportSelectNone">全解除</button>
         </div>
         <button class="pill exportGridBtn" type="button" id="exportMake">生成</button>
@@ -375,6 +389,12 @@ function formatSpecialLabel(name) {
 
       ctrl.querySelector('#exportSelectAll')?.addEventListener('click', () => {
         $$('input[data-export-idx]', pickBox).forEach(x => { x.checked = true; });
+      });
+      ctrl.querySelector('#exportSelectEggs')?.addEventListener('click', () => {
+        setExportSelectionByDefaultType('受精卵');
+      });
+      ctrl.querySelector('#exportSelectEmbryos')?.addEventListener('click', () => {
+        setExportSelectionByDefaultType('胚');
       });
       ctrl.querySelector('#exportSelectNone')?.addEventListener('click', () => {
         $$('input[data-export-idx]', pickBox).forEach(x => { x.checked = false; });
