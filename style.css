@@ -2402,8 +2402,41 @@
 .imgLangBlock .imgBtns{display:flex;gap:8px;}
 .imgLangBlock .pill{flex:1;min-width:0;padding:0 8px;}
 
-.exportSelBtns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
-.exportSmallBtn{height:34px;padding:0 12px;}
+.exportSelStatus{
+  width:100%;
+  padding:9px 10px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.065);
+  color:rgba(255,255,255,.90);
+  font-size:13px;
+  font-weight:950;
+  text-align:center;
+  letter-spacing:.02em;
+}
+.exportSelBtns{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:10px;
+  width:100%;
+  align-items:stretch;
+}
+.exportSelBtns .exportSmallBtn{
+  width:100%;
+  max-width:none;
+  height:44px;
+  min-width:0;
+  margin:0;
+  padding:0 8px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  line-height:1.05;
+  font-size:13px;
+  font-weight:950;
+  white-space:nowrap;
+}
 .exportPickBox{
   display:grid;
   grid-template-columns:repeat(2, minmax(0, 1fr));
