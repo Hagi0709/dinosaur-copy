@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-06-11 21:41';
+const BUILD_VERSION = '2026-06-11 22:06-02';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -341,6 +341,7 @@ function formatSpecialLabel(name) {
       const usable = (dList || []).map(d => ({ d, key: imageKeyForDino(d), url: imageCache[imageKeyForDino(d)] || '' })).filter(x => x.url);
 
       const exportDefaultTypeBase = (x) => String(x?.d?.defType || '').replace('(指定)', '');
+      let updateExportSelectionCount = () => {};
       const setExportSelectionByDefaultType = (targetType) => {
         let count = 0;
         $$('input[data-export-idx]', pickBox).forEach(ch => {
@@ -349,7 +350,8 @@ function formatSpecialLabel(name) {
           ch.checked = on;
           if (on) count++;
         });
-        openToast(count ? `${targetType}のみ選択しました` : `${targetType}の画像がありません`);
+        updateExportSelectionCount();
+        openToast(count ? `${targetType}のみ選択しました（${count}件）` : `${targetType}の画像がありません`);
       };
 
       const ctrl = document.createElement('div');
@@ -361,11 +363,12 @@ function formatSpecialLabel(name) {
           <div class="exportGridLabel">横</div>
           <input class="exportGridInput" id="exportCols" type="text" inputmode="numeric" min="1" value="2">
         </div>
-        <div class="exportSelBtns">
+        <div class="exportSelStatus" id="exportSelCount" aria-live="polite">選択中：0 / ${usable.length}件</div>
+        <div class="exportSelBtns" aria-label="画像出力の選択操作">
           <button class="pill exportSmallBtn" type="button" id="exportSelectAll">全選択</button>
+          <button class="pill exportSmallBtn" type="button" id="exportSelectNone">全解除</button>
           <button class="pill exportSmallBtn" type="button" id="exportSelectEggs">受精卵のみ</button>
           <button class="pill exportSmallBtn" type="button" id="exportSelectEmbryos">胚のみ</button>
-          <button class="pill exportSmallBtn" type="button" id="exportSelectNone">全解除</button>
         </div>
         <button class="pill exportGridBtn" type="button" id="exportMake">生成</button>
       `;
@@ -387,8 +390,22 @@ function formatSpecialLabel(name) {
       outWrap.innerHTML = `<div id="exportGridImgs" class="exportPages"></div>`;
       body.appendChild(outWrap);
 
+      const exportCountEl = ctrl.querySelector('#exportSelCount');
+      updateExportSelectionCount = () => {
+        const total = usable.length;
+        const count = $$('input[data-export-idx]', pickBox).filter(ch => ch.checked).length;
+        if (exportCountEl) exportCountEl.textContent = `選択中：${count} / ${total}件`;
+      };
+      pickBox.addEventListener('change', (e) => {
+        if (e.target && e.target.matches && e.target.matches('input[data-export-idx]')) {
+          updateExportSelectionCount();
+        }
+      });
+      updateExportSelectionCount();
+
       ctrl.querySelector('#exportSelectAll')?.addEventListener('click', () => {
         $$('input[data-export-idx]', pickBox).forEach(x => { x.checked = true; });
+        updateExportSelectionCount();
       });
       ctrl.querySelector('#exportSelectEggs')?.addEventListener('click', () => {
         setExportSelectionByDefaultType('受精卵');
@@ -398,6 +415,7 @@ function formatSpecialLabel(name) {
       });
       ctrl.querySelector('#exportSelectNone')?.addEventListener('click', () => {
         $$('input[data-export-idx]', pickBox).forEach(x => { x.checked = false; });
+        updateExportSelectionCount();
       });
 
       const btn = ctrl.querySelector('#exportMake');
