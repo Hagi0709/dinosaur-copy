@@ -1243,33 +1243,68 @@
     gap:16px;
     overflow-x:auto;
     overflow-y:hidden;
-    padding:10px 4px 14px;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-x pan-y;
+    padding:10px 4px 16px;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    touch-action:pan-x pan-y;
   }
   .exportPage{
-    flex:0 0 92%;
-    scroll-snap-align: start;
+    flex:0 0 min(96%, 660px);
+    scroll-snap-align:start;
     background:#000000;
-    border: 1px solid rgba(255,255,255,.12);
-    border-radius: 16px;
-    padding: 10px;
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:18px;
+    padding:12px;
+    box-shadow:0 12px 32px rgba(0,0,0,.35);
+  }
+  .exportPageTop{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:8px;
   }
   .exportPageNo{
-    font-weight: 950;
-    margin-bottom: 8px;
+    font-weight:950;
     user-select:none;
     -webkit-user-select:none;
+  }
+  .exportPageHint{
+    font-size:11px;
+    font-weight:900;
+    color:rgba(255,255,255,.62);
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  .exportPageActions{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:8px;
+    margin:0 0 10px;
+  }
+  .exportPageActionBtn{
+    height:40px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.16);
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    font-weight:950;
+    font-size:13px;
+    white-space:nowrap;
+  }
+  .exportPageActionBtn.isPrimary{
+    background:rgba(255,255,255,.16);
+    border-color:rgba(255,255,255,.28);
   }
   .exportPageImg{
     width:100%;
     height:auto;
     display:block;
-    border-radius: 12px;
-    user-select:none;
-    -webkit-user-select:none;
+    border-radius:12px;
     cursor:zoom-in;
+    -webkit-touch-callout:default;
+    -webkit-user-select:auto;
+    user-select:auto;
   }
 
   /* 画像出力モーダル内は文字選択を抑える（入力欄は除外） */
@@ -2488,3 +2523,47 @@
 /* build 2026-06-03 23:47 */
 
 /* build 2026-06-04 01:04: pos ledger top row fixed */
+
+
+  /* ✅ 画像出力：iPhoneで保存/コピーしやすい操作導線 */
+  #imageExportOverlay .exportGalleryPanel,
+  #rhynioExportOverlay .exportGalleryPanel{
+    width:min(760px, 100%);
+    max-height:min(92vh, 980px);
+  }
+  #imageExportOverlay .exportGalleryBody,
+  #rhynioExportOverlay .exportGalleryBody{
+    max-height:calc(92vh - 70px);
+  }
+
+  @media (max-width: 520px){
+    #imageExportOverlay,
+    #rhynioExportOverlay{
+      padding:8px !important;
+      align-items:center !important;
+    }
+    #imageExportOverlay .exportGalleryPanel,
+    #rhynioExportOverlay .exportGalleryPanel{
+      width:100%;
+      max-height:calc(100dvh - 16px);
+      border-radius:20px;
+    }
+    #imageExportOverlay .exportGalleryBody,
+    #rhynioExportOverlay .exportGalleryBody{
+      max-height:calc(100dvh - 86px);
+      padding:10px;
+    }
+    .exportPages{
+      gap:10px;
+      padding:8px 0 12px;
+    }
+    .exportPage{
+      flex-basis:96%;
+      padding:10px;
+    }
+    .exportPageActionBtn{
+      height:42px;
+      font-size:13px;
+      border-radius:14px;
+    }
+  }
