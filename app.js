@@ -2,7 +2,7 @@
 'use strict';
 
 
-const BUILD_VERSION = '2026-06-11 22:06-02';
+const BUILD_VERSION = '2026-06-27 12:45-01';
 
   /* ========= utils ========= */
   const $ = (s, r = document) => r.querySelector(s);
@@ -145,6 +145,188 @@ function formatSpecialLabel(name) {
       fr.onerror = () => resolve('');
       fr.readAsDataURL(file);
     });
+  }
+
+
+  /* ========= generated image actions ========= */
+  const EXPORT_IMAGE_MIME = 'image/png';
+
+  function exportImageFileName(prefix = 'black-gold-dinos', pageNo = 1) {
+    const safePrefix = String(prefix || 'black-gold-dinos')
+      .replace(/[\\/:*?"<>|\s]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || 'black-gold-dinos';
+    const n = Math.max(1, Number(pageNo) || 1);
+    return `${safePrefix}-${String(n).padStart(2, '0')}.png`;
+  }
+
+  async function dataUrlToBlob(dataUrl) {
+    const res = await fetch(dataUrl);
+    return await res.blob();
+  }
+
+  function openGeneratedImage(dataUrl, filename = 'image.png') {
+    if (!dataUrl) return;
+
+    // ✅ 先に空タブを開く（iPhone/Safariのポップアップ判定対策）
+    const w = window.open('', '_blank');
+    if (w) {
+      try {
+        w.document.open();
+        w.document.write(`<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>${escapeHtml(filename)}</title>
+<style>
+  html,body{margin:0;min-height:100%;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;}
+  body{display:flex;align-items:flex-start;justify-content:center;padding:12px;box-sizing:border-box;}
+  img{display:block;width:100%;max-width:1200px;height:auto;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto;}
+  .hint{position:fixed;left:10px;right:10px;bottom:10px;padding:9px 10px;border-radius:14px;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.18);font-size:12px;font-weight:800;text-align:center;}
+</style>
+</head>
+<body>
+  <img src="${dataUrl}" alt="${escapeHtml(filename)}">
+  <div class="hint">画像を長押しして保存できます</div>
+</body>
+</html>`);
+        w.document.close();
+        return;
+      } catch (e) {
+        try { w.close(); } catch {}
+      }
+    }
+
+    // ✅ 新規タブが使えない環境は既存ビューアで拡大表示
+    openImgViewer(dataUrl);
+    openToast('画像を開きました。長押しで保存してください');
+  }
+
+  async function saveGeneratedImage(dataUrl, filename = 'image.png') {
+    if (!dataUrl) return;
+    try {
+      const blob = await dataUrlToBlob(dataUrl);
+      const type = blob.type || EXPORT_IMAGE_MIME;
+
+      // ✅ iPhoneはdownloadより共有シートの方が安定することが多い
+      if (typeof File === 'function' && navigator.canShare && navigator.share) {
+        const file = new File([blob], filename, { type });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: filename });
+          openToast('保存/共有を開きました');
+          return;
+        }
+      }
+
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
+      openToast('保存を開始しました');
+    } catch (e) {
+      console.error(e);
+      openGeneratedImage(dataUrl, filename);
+      openToast('保存ボタンが使えません。開いた画像を長押し保存してください');
+    }
+  }
+
+  async function copyGeneratedImage(dataUrl, filename = 'image.png') {
+    if (!dataUrl) return;
+    try {
+      if (!navigator.clipboard || typeof ClipboardItem === 'undefined') {
+        throw new Error('Clipboard image API is not available');
+      }
+      const blob = await dataUrlToBlob(dataUrl);
+      const type = blob.type || EXPORT_IMAGE_MIME;
+      await navigator.clipboard.write([
+        new ClipboardItem({ [type]: blob })
+      ]);
+      openToast('画像をコピーしました');
+    } catch (e) {
+      console.warn(e);
+      openGeneratedImage(dataUrl, filename);
+      openToast('コピーできませんでした。開いた画像を長押し保存してください');
+    }
+  }
+
+  function createExportImageActions(dataUrl, filename) {
+    const actions = document.createElement('div');
+    actions.className = 'exportPageActions';
+
+    const openBtn = document.createElement('button');
+    openBtn.type = 'button';
+    openBtn.className = 'exportPageActionBtn';
+    openBtn.textContent = '開く';
+    openBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openGeneratedImage(dataUrl, filename);
+    });
+
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'exportPageActionBtn isPrimary';
+    saveBtn.textContent = '保存';
+    saveBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      await saveGeneratedImage(dataUrl, filename);
+    });
+
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'exportPageActionBtn';
+    copyBtn.textContent = 'コピー';
+    copyBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      await copyGeneratedImage(dataUrl, filename);
+    });
+
+    actions.appendChild(openBtn);
+    actions.appendChild(saveBtn);
+    actions.appendChild(copyBtn);
+    return actions;
+  }
+
+  function appendExportImagePage(parent, dataUrl, idx, total, altPrefix = '配置画像', filePrefix = 'black-gold-dinos') {
+    if (!parent || !dataUrl) return;
+    const pageNo = idx + 1;
+    const filename = exportImageFileName(filePrefix, pageNo);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'exportPage';
+
+    const top = document.createElement('div');
+    top.className = 'exportPageTop';
+
+    const capEl = document.createElement('div');
+    capEl.className = 'exportPageNo';
+    capEl.textContent = circled(pageNo);
+
+    const hint = document.createElement('div');
+    hint.className = 'exportPageHint';
+    hint.textContent = '保存ボタン推奨';
+
+    top.appendChild(capEl);
+    top.appendChild(hint);
+
+    const out = document.createElement('img');
+    out.className = 'exportPageImg';
+    out.alt = `${altPrefix} ${pageNo}/${total}`;
+    out.src = dataUrl;
+    out.addEventListener('click', () => openImgViewer(dataUrl));
+
+    wrap.appendChild(top);
+    wrap.appendChild(createExportImageActions(dataUrl, filename));
+    wrap.appendChild(out);
+    parent.appendChild(wrap);
   }
 
   /* ========= toast ========= */
@@ -486,20 +668,7 @@ function formatSpecialLabel(name) {
           }
 
           const dataUrl = canvas.toDataURL('image/png', 1.0);
-          if (imgsBox) {
-            const wrap = document.createElement('div');
-            wrap.className = 'exportPage';
-            const capEl = document.createElement('div');
-            capEl.className = 'exportPageNo';
-            capEl.textContent = circled(p + 1);
-            const out = document.createElement('img');
-            out.className = 'exportPageImg';
-            out.alt = `配置画像 ${p + 1}/${pages}`;
-            out.src = dataUrl;
-            wrap.appendChild(capEl);
-            wrap.appendChild(out);
-            imgsBox.appendChild(wrap);
-          }
+          appendExportImagePage(imgsBox, dataUrl, p, pages, '配置画像', 'black-gold-dinos');
         }
       });
     }
@@ -3677,22 +3846,7 @@ if (act === 'gojuon') {
     if (body) {
       body.innerHTML = '';
       (pageUrls || []).forEach((src, idx) => {
-        const wrap = document.createElement('div');
-        wrap.className = 'exportPage';
-
-        const capEl = document.createElement('div');
-        capEl.className = 'exportPageNo';
-        capEl.textContent = circled(idx + 1);
-
-        const out = document.createElement('img');
-        out.className = 'exportPageImg';
-        out.alt = `リニオ画像 ${idx + 1}/${pageUrls.length}`;
-        out.src = src;
-        out.addEventListener('click', () => openImgViewer(src));
-
-        wrap.appendChild(capEl);
-        wrap.appendChild(out);
-        body.appendChild(wrap);
+        appendExportImagePage(body, src, idx, pageUrls.length, 'リニオ画像', 'rhynio-sheet');
       });
     }
 
